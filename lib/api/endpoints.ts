@@ -28,7 +28,7 @@ export interface SearchQuery {
   tab?: "all" | "notes" | "profiles";
   limit?: number;
   offset?: number;
-  window?: "24h" | "7d" | "30d";
+  window?: "24h" | "7d";
 }
 
 interface SearchNotesApiResponse {

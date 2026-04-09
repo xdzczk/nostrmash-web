@@ -12,7 +12,7 @@ export function parseSearchQuery(raw: Record<string, string | string[] | undefin
     tab: tab === "notes" || tab === "profiles" || tab === "all" ? tab : "all",
     limit: limit ?? 20,
     offset: offset ?? 0,
-    window: window === "24h" || window === "7d" || window === "30d" ? window : "7d",
+    window: window === "24h" || window === "7d" ? window : "7d",
   };
 }
 

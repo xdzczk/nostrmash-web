@@ -49,34 +49,20 @@ export default async function HomePage() {
   let trendingProfiles: Awaited<ReturnType<typeof getTrendingProfiles>> | null = null;
   let trendingHashtags: Awaited<ReturnType<typeof getTrendingHashtags>> | null = null;
   let noteAuthorsByPubkey: Record<string, Profile> = {};
-  const results = await Promise.allSettled([
+  const primaryResults = await Promise.allSettled([
     getDiscoveryHome("shortTtl"),
     getNetworkStats("shortTtl"),
     getContentStats("shortTtl"),
     getRelayStats("shortTtl"),
-    getTrendingNotes("shortTtl"),
-    getTrendingProfiles("shortTtl"),
-    getTrendingHashtags("shortTtl"),
   ]);
-  const [
-    homeResult,
-    networkResult,
-    contentResult,
-    relayResult,
-    notesResult,
-    profilesResult,
-    hashtagsResult,
-  ] = results;
+  const [homeResult, networkResult, contentResult, relayResult] = primaryResults;
 
   payload = homeResult.status === "fulfilled" ? homeResult.value : null;
   networkStats = networkResult.status === "fulfilled" ? networkResult.value : null;
   contentStats = contentResult.status === "fulfilled" ? contentResult.value : null;
   relayStats = relayResult.status === "fulfilled" ? relayResult.value : null;
-  trendingNotes = notesResult.status === "fulfilled" ? notesResult.value : null;
-  trendingProfiles = profilesResult.status === "fulfilled" ? profilesResult.value : null;
-  trendingHashtags = hashtagsResult.status === "fulfilled" ? hashtagsResult.value : null;
 
-  const failedMessages = results
+  const failedMessages = primaryResults
     .filter((result): result is PromiseRejectedResult => result.status === "rejected")
     .map((result) =>
       result.reason instanceof Error ? result.reason.message : "Failed to load homepage data."
@@ -85,16 +71,64 @@ export default async function HomePage() {
     errorMessage = failedMessages.join(" | ");
   }
 
-  const homeNotes =
-    payload?.notes && payload.notes.length > 0 ? payload.notes : (trendingNotes?.notes ?? []);
-  const homeProfiles =
-    payload?.profiles && payload.profiles.length > 0
-      ? payload.profiles
-      : (trendingProfiles?.profiles ?? []);
-  const homeHashtags =
-    payload?.hashtags && payload.hashtags.length > 0
-      ? payload.hashtags
-      : (trendingHashtags?.hashtags ?? []);
+  let homeNotes = payload?.notes ?? [];
+  let homeProfiles = payload?.profiles ?? [];
+  let homeHashtags = payload?.hashtags ?? [];
+
+  const needsNotesFallback = homeNotes.length === 0;
+  const needsProfilesFallback = homeProfiles.length === 0;
+  const needsHashtagsFallback = homeHashtags.length === 0;
+  if (needsNotesFallback || needsProfilesFallback || needsHashtagsFallback) {
+    const fallbackRequests: Array<Promise<unknown>> = [];
+    if (needsNotesFallback) fallbackRequests.push(getTrendingNotes("shortTtl"));
+    if (needsProfilesFallback) fallbackRequests.push(getTrendingProfiles("shortTtl"));
+    if (needsHashtagsFallback) fallbackRequests.push(getTrendingHashtags("shortTtl"));
+    const fallbackResults = await Promise.allSettled(fallbackRequests);
+    let fallbackIndex = 0;
+    if (needsNotesFallback) {
+      const result = fallbackResults[fallbackIndex];
+      if (result?.status === "fulfilled") {
+        trendingNotes = result.value as Awaited<ReturnType<typeof getTrendingNotes>>;
+        homeNotes = trendingNotes.notes ?? [];
+      } else if (result?.status === "rejected") {
+        failedMessages.push(
+          result.reason instanceof Error ? result.reason.message : "Failed to load trending notes."
+        );
+      }
+      fallbackIndex += 1;
+    }
+    if (needsProfilesFallback) {
+      const result = fallbackResults[fallbackIndex];
+      if (result?.status === "fulfilled") {
+        trendingProfiles = result.value as Awaited<ReturnType<typeof getTrendingProfiles>>;
+        homeProfiles = trendingProfiles.profiles ?? [];
+      } else if (result?.status === "rejected") {
+        failedMessages.push(
+          result.reason instanceof Error
+            ? result.reason.message
+            : "Failed to load trending profiles."
+        );
+      }
+      fallbackIndex += 1;
+    }
+    if (needsHashtagsFallback) {
+      const result = fallbackResults[fallbackIndex];
+      if (result?.status === "fulfilled") {
+        trendingHashtags = result.value as Awaited<ReturnType<typeof getTrendingHashtags>>;
+        homeHashtags = trendingHashtags.hashtags ?? [];
+      } else if (result?.status === "rejected") {
+        failedMessages.push(
+          result.reason instanceof Error
+            ? result.reason.message
+            : "Failed to load trending hashtags."
+        );
+      }
+    }
+    if (failedMessages.length > 0) {
+      errorMessage = failedMessages.join(" | ");
+    }
+  }
+
   let hydratedHomeProfiles = homeProfiles;
 
   if (homeNotes.length > 0) {

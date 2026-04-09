@@ -8,14 +8,16 @@ import { StatCard } from "@/components/explorer/stat-card";
 import { buildMetadataEntries, extractPrimitiveStats, isRecord } from "@/components/explorer/utils";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
-import { getProfile, getProfileSummary } from "@/lib/api/endpoints";
+import { getProfileSummary } from "@/lib/api/endpoints";
+import type { Profile } from "@/lib/types/api";
 
 type Params = Promise<{ pubkeyOrNpub: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { pubkeyOrNpub } = await params;
   try {
-    const profile = await getProfile(pubkeyOrNpub, "requestTime");
+    const summary = await getProfileSummary(pubkeyOrNpub, "requestTime");
+    const profile = summary.profile ?? (summary as unknown as Profile);
     const label =
       profile.display_name ?? profile.name ?? profile.npub ?? profile.pubkey ?? pubkeyOrNpub;
     return {
@@ -33,16 +35,15 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 export default async function ProfilePage({ params }: { params: Params }) {
   const { pubkeyOrNpub } = await params;
   let errorMessage = "";
-  let profile: Awaited<ReturnType<typeof getProfile>> | null = null;
   let summary: Awaited<ReturnType<typeof getProfileSummary>> | null = null;
 
   try {
-    profile = await getProfile(pubkeyOrNpub, "requestTime");
     summary = await getProfileSummary(pubkeyOrNpub, "requestTime");
   } catch (error) {
     errorMessage =
       error instanceof Error ? error.message : "Failed to load profile and public summary.";
   }
+  const profile = summary ? (summary.profile ?? (summary as unknown as Profile)) : null;
 
   const summaryStats = extractPrimitiveStats(summary ?? {}, ["pubkey", "consistency"]).slice(0, 6);
   const details = profile

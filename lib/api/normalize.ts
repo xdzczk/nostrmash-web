@@ -127,7 +127,7 @@ export function normalizeDiscoveryHomeResponse(
   const relays = asRecord(networkSummary?.relays);
   const uniqueAuthors = asRecord(relays?.unique_authors);
   const totals = asRecord(networkSummary?.totals);
-  const profileCollections = asRecord(record.profiles);
+  const sectionProfiles = asRecord(sections?.profiles);
 
   const stats = compactDefined({
     events_ingested: asNumber(totals?.events_ingested),
@@ -140,9 +140,13 @@ export function normalizeDiscoveryHomeResponse(
 
   return {
     ...record,
-    notes: normalizeEventRecords(record.trending_notes ?? record.notes),
-    profiles: normalizeProfiles(profileCollections?.trending ?? record.profiles),
-    hashtags: normalizeHashtagEntries(record.trending_hashtags ?? record.hashtags),
+    notes: normalizeEventRecords(sections?.trending_notes ?? record.trending_notes ?? record.notes),
+    profiles: normalizeProfiles(
+      sectionProfiles?.trending ?? record.trending_profiles ?? record.profiles
+    ),
+    hashtags: normalizeHashtagEntries(
+      sections?.trending_hashtags ?? record.trending_hashtags ?? record.hashtags
+    ),
     stats,
   };
 }

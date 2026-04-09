@@ -87,39 +87,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
     }
   }
 
-  if (
-    canQuery &&
-    payload &&
-    ((payload.profiles?.length ?? 0) > 0 || suggestedProfiles.length > 0)
-  ) {
-    try {
-      const enriched = await getProfilesBatch(
-        [...(payload.profiles ?? []), ...suggestedProfiles]
-          .map((profile) => profile.pubkey)
-          .filter((pubkey): pubkey is string => typeof pubkey === "string" && pubkey.length > 0),
-        "requestTime"
-      );
-      const enrichedByPubkey = new Map(
-        enriched
-          .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
-          .map((profile) => [profile.pubkey.toLowerCase(), profile] as const)
-      );
-      hydratedProfiles = (payload.profiles ?? []).map((profile) => {
-        const key = typeof profile.pubkey === "string" ? profile.pubkey.toLowerCase() : "";
-        const enrichedProfile = key ? enrichedByPubkey.get(key) : undefined;
-        return { ...profile, ...(enrichedProfile ?? {}) };
-      });
-      hydratedSuggestedProfiles = suggestedProfiles.map((profile) => {
-        const key = typeof profile.pubkey === "string" ? profile.pubkey.toLowerCase() : "";
-        const enrichedProfile = key ? enrichedByPubkey.get(key) : undefined;
-        return { ...profile, ...(enrichedProfile ?? {}) };
-      });
-    } catch {
-      hydratedProfiles = payload.profiles ?? [];
-      hydratedSuggestedProfiles = suggestedProfiles;
-    }
-  }
-
   return (
     <div className="space-y-8">
       <PageHero
