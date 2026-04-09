@@ -16,6 +16,7 @@ import {
   getContentStats,
   getDiscoveryHome,
   getNetworkStats,
+  getProfile,
   getProfilesBatch,
   getRelayStats,
   getTrendingHashtags,
@@ -31,6 +32,14 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
+  const hasRichIdentity = (profile: Profile | undefined): boolean => {
+    if (!profile) return false;
+    const displayName = typeof profile.display_name === "string" ? profile.display_name.trim() : "";
+    const name = typeof profile.name === "string" ? profile.name.trim() : "";
+    const picture = typeof profile.picture === "string" ? profile.picture.trim() : "";
+    return displayName.length > 0 || name.length > 0 || picture.length > 0;
+  };
+
   let errorMessage = "";
   let payload: Awaited<ReturnType<typeof getDiscoveryHome>> | null = null;
   let networkStats: Awaited<ReturnType<typeof getNetworkStats>> | null = null;
@@ -102,6 +111,30 @@ export default async function HomePage() {
           .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
           .map((profile) => [profile.pubkey.toLowerCase(), profile])
       );
+
+      const authorPubkeysNeedingFallback = Array.from(
+        new Set(
+          homeNotes
+            .slice(0, 5)
+            .map((note) => (typeof note.pubkey === "string" ? note.pubkey.toLowerCase() : ""))
+            .filter((pubkey) => pubkey.length > 0)
+            .filter((pubkey) => !hasRichIdentity(noteAuthorsByPubkey[pubkey]))
+        )
+      );
+      if (authorPubkeysNeedingFallback.length > 0) {
+        const fallbackProfiles = await Promise.allSettled(
+          authorPubkeysNeedingFallback.map((pubkey) => getProfile(pubkey, "shortTtl"))
+        );
+        for (const result of fallbackProfiles) {
+          if (
+            result.status === "fulfilled" &&
+            typeof result.value.pubkey === "string" &&
+            result.value.pubkey.length > 0
+          ) {
+            noteAuthorsByPubkey[result.value.pubkey.toLowerCase()] = result.value;
+          }
+        }
+      }
     } catch {
       noteAuthorsByPubkey = {};
     }
@@ -126,6 +159,39 @@ export default async function HomePage() {
         const enriched = key ? enrichedByPubkey.get(key) : undefined;
         return { ...profile, ...(enriched ?? {}) };
       });
+
+      const profilesNeedingFallback = hydratedHomeProfiles
+        .slice(0, 5)
+        .map((profile) => (typeof profile.pubkey === "string" ? profile.pubkey.toLowerCase() : ""))
+        .filter((pubkey) => pubkey.length > 0)
+        .filter((pubkey, index, arr) => arr.indexOf(pubkey) === index)
+        .filter((pubkey) => {
+          const match = hydratedHomeProfiles.find(
+            (profile) =>
+              typeof profile.pubkey === "string" && profile.pubkey.toLowerCase() === pubkey
+          );
+          return !hasRichIdentity(match);
+        });
+      if (profilesNeedingFallback.length > 0) {
+        const fallbackProfiles = await Promise.allSettled(
+          profilesNeedingFallback.map((pubkey) => getProfile(pubkey, "shortTtl"))
+        );
+        const fallbackByPubkey = new Map<string, Profile>();
+        for (const result of fallbackProfiles) {
+          if (
+            result.status === "fulfilled" &&
+            typeof result.value.pubkey === "string" &&
+            result.value.pubkey.length > 0
+          ) {
+            fallbackByPubkey.set(result.value.pubkey.toLowerCase(), result.value);
+          }
+        }
+        hydratedHomeProfiles = hydratedHomeProfiles.map((profile) => {
+          const key = typeof profile.pubkey === "string" ? profile.pubkey.toLowerCase() : "";
+          const fallback = key ? fallbackByPubkey.get(key) : undefined;
+          return { ...profile, ...(fallback ?? {}) };
+        });
+      }
     } catch {
       hydratedHomeProfiles = homeProfiles;
     }

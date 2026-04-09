@@ -21,6 +21,7 @@ import {
   normalizeThreadResponse,
 } from "@/lib/api/normalize";
 import type { CacheClass } from "@/lib/caching/policies";
+import { npubToHex } from "@/lib/nostr/npub";
 
 export interface SearchQuery {
   q: string;
@@ -258,17 +259,36 @@ export async function getSearch(query: SearchQuery, cacheClass: CacheClass = "re
 }
 
 export async function getProfile(pubkey: string, cacheClass: CacheClass = "requestTime") {
-  const response = await fetchApiJson<ProfileApiResponse>(
-    `/api/v1/profiles/${encodeURIComponent(pubkey)}`,
-    {
-      cacheClass,
-    }
+  const normalized = pubkey.trim().replace(/^nostr:/i, "");
+  const decodedHex = normalized.toLowerCase().startsWith("npub1") ? npubToHex(normalized) : null;
+  const candidates = Array.from(
+    new Set(
+      [normalized, decodedHex].filter(
+        (candidate): candidate is string => typeof candidate === "string"
+      )
+    )
   );
-  const profile = normalizeProfile(response);
-  if (!profile) {
-    throw new Error("API returned an invalid profile payload.");
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<ProfileApiResponse>(
+        `/api/v1/profiles/${encodeURIComponent(candidate)}`,
+        {
+          cacheClass,
+        }
+      );
+      const profile = normalizeProfile(response);
+      if (profile) {
+        return profile;
+      }
+      lastError = new Error("API returned an invalid profile payload.");
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Profile lookup failed.");
+    }
   }
-  return profile;
+
+  throw lastError ?? new Error("Profile lookup failed.");
 }
 
 export async function getProfilesBatch(pubkeys: string[], cacheClass: CacheClass = "requestTime") {
@@ -295,11 +315,30 @@ export async function getProfilesBatch(pubkeys: string[], cacheClass: CacheClass
 }
 
 export async function getProfileSummary(pubkey: string, cacheClass: CacheClass = "requestTime") {
-  const response = await fetchApiJson<ProfileSummaryApiResponse>(
-    `/api/v1/users/${encodeURIComponent(pubkey)}/summary`,
-    { cacheClass }
+  const normalized = pubkey.trim().replace(/^nostr:/i, "");
+  const decodedHex = normalized.toLowerCase().startsWith("npub1") ? npubToHex(normalized) : null;
+  const candidates = Array.from(
+    new Set(
+      [normalized, decodedHex].filter(
+        (candidate): candidate is string => typeof candidate === "string"
+      )
+    )
   );
-  return normalizeProfileSummaryResponse(response);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<ProfileSummaryApiResponse>(
+        `/api/v1/users/${encodeURIComponent(candidate)}/summary`,
+        { cacheClass }
+      );
+      return normalizeProfileSummaryResponse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Profile summary lookup failed.");
+    }
+  }
+
+  throw lastError ?? new Error("Profile summary lookup failed.");
 }
 
 export async function getEvent(eventId: string, cacheClass: CacheClass = "requestTime") {
