@@ -57,25 +57,50 @@ export function HashtagsList({
   ranked?: boolean;
   searchable?: boolean;
 }) {
+  const normalized = hashtags.map((entry, index) => {
+    const hashtag = typeof entry === "string" ? entry : (entry.hashtag ?? "");
+    const count = typeof entry === "string" ? undefined : entry.count;
+    const href = searchable
+      ? `/search?q=${encodeURIComponent(`#${hashtag}`)}&tab=all&window=7d`
+      : undefined;
+    return {
+      hashtag: hashtag || "unknown",
+      count,
+      href,
+      rank: ranked ? index + 1 : undefined,
+    };
+  });
+  const top = ranked ? normalized.slice(0, 3) : [];
+  const rest = ranked ? normalized.slice(3) : normalized;
+
   return (
-    <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      {hashtags.map((entry, index) => {
-        const hashtag = typeof entry === "string" ? entry : (entry.hashtag ?? "");
-        const count = typeof entry === "string" ? undefined : entry.count;
-        const href = searchable
-          ? `/search?q=${encodeURIComponent(`#${hashtag}`)}&tab=all&window=7d`
-          : undefined;
-        return (
-          <li key={`${hashtag}-${index}`}>
+    <div className="space-y-2">
+      {top.length > 0 ? (
+        <ul className="grid gap-2 sm:grid-cols-3">
+          {top.map((entry, index) => (
+            <li key={`${entry.hashtag}-${index}`}>
+              <HashtagChip
+                hashtag={entry.hashtag}
+                count={entry.count}
+                href={entry.href}
+                rank={entry.rank}
+              />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {rest.map((entry, index) => (
+          <li key={`${entry.hashtag}-${index}`}>
             <HashtagChip
-              hashtag={hashtag || "unknown"}
-              count={count}
-              href={href}
-              rank={ranked ? index + 1 : undefined}
+              hashtag={entry.hashtag}
+              count={entry.count}
+              href={entry.href}
+              rank={entry.rank}
             />
           </li>
-        );
-      })}
-    </ul>
+        ))}
+      </ul>
+    </div>
   );
 }

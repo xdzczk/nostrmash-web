@@ -6,11 +6,15 @@ export function ThreadView({
   ancestors,
   focal,
   replies,
+  missingAncestorIds = [],
+  nextCursor,
   authorsByPubkey,
 }: {
   ancestors: EventRecord[];
   focal?: EventRecord;
   replies: EventRecord[];
+  missingAncestorIds?: string[];
+  nextCursor?: string;
   authorsByPubkey?: Record<string, Profile>;
 }) {
   if (!focal && ancestors.length === 0 && replies.length === 0) {
@@ -19,6 +23,15 @@ export function ThreadView({
 
   return (
     <div className="space-y-5">
+      {missingAncestorIds.length > 0 ? (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3">
+          <p className="text-xs text-amber-200">
+            Missing ancestors: {missingAncestorIds.slice(0, 4).join(", ")}
+            {missingAncestorIds.length > 4 ? ` +${missingAncestorIds.length - 4} more` : ""}
+          </p>
+        </div>
+      ) : null}
+
       {ancestors.length > 0 ? (
         <section className="space-y-3">
           <p className="text-sm font-medium text-zinc-300">Ancestors</p>
@@ -65,6 +78,12 @@ export function ThreadView({
             ))}
           </div>
         </section>
+      ) : null}
+
+      {typeof nextCursor === "string" && nextCursor.length > 0 ? (
+        <p className="text-xs text-zinc-500">
+          Thread has additional replies available (next_cursor present): {nextCursor}
+        </p>
       ) : null}
     </div>
   );

@@ -1,11 +1,13 @@
-import { formatValue } from "@/components/explorer/utils";
+import { formatMetricLabel, formatValue } from "@/components/explorer/utils";
 
 export function MetadataList({
   items,
   columns = 1,
+  normalizeLabels = true,
 }: {
   items: Array<{ label: string; value: unknown }>;
   columns?: 1 | 2;
+  normalizeLabels?: boolean;
 }) {
   if (items.length === 0) return null;
 
@@ -15,7 +17,9 @@ export function MetadataList({
     >
       {items.map((item) => (
         <div key={item.label} className="space-y-1">
-          <dt className="text-xs tracking-wide text-zinc-500 uppercase">{item.label}</dt>
+          <dt className="text-[11px] tracking-wide text-zinc-500 uppercase">
+            {normalizeLabels ? formatMetricLabel(item.label) : item.label}
+          </dt>
           <dd className="text-sm break-words text-zinc-200">{formatValue(item.value)}</dd>
         </div>
       ))}

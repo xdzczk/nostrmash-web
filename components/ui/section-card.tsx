@@ -10,10 +10,12 @@ export function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
-      <header className="mb-3">
-        <h2 className="text-lg font-semibold text-zinc-100">{title}</h2>
-        {description ? <p className="mt-1 text-sm text-zinc-400">{description}</p> : null}
+    <section className="rounded-xl border border-zinc-800/95 bg-zinc-900/55 p-4 sm:p-5">
+      <header className="mb-4 space-y-1">
+        <h2 className="text-lg font-semibold tracking-tight text-zinc-100 sm:text-[1.1rem]">
+          {title}
+        </h2>
+        {description ? <p className="text-sm leading-6 text-zinc-400">{description}</p> : null}
       </header>
       {children}
     </section>

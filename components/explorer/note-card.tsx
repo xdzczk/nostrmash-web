@@ -6,6 +6,7 @@ import { NoteMedia } from "@/components/explorer/note-media";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
   extractPrimitiveStats,
+  formatMetricLabel,
   noteAuthorIdentifier,
   profileIdentifier,
   profileInitial,
@@ -46,10 +47,15 @@ export function NoteCard({
     "tags",
   ])
     .filter((entry) => /(count|score|rank|likes|replies|zaps|boosts)/i.test(entry.label))
-    .slice(0, 4);
+    .slice(0, 3);
+  const isTopRank = typeof rank === "number" && rank <= 3;
 
   return (
-    <article className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
+    <article
+      className={`rounded-xl border p-4 ${
+        isTopRank ? "border-zinc-700 bg-zinc-900/65" : "border-zinc-800 bg-zinc-900/50"
+      }`}
+    >
       <div className="flex items-start gap-3">
         {author?.picture ? (
           <Image
@@ -68,7 +74,13 @@ export function NoteCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {typeof rank === "number" ? (
-              <span className="rounded-full border border-indigo-500/40 bg-indigo-500/10 px-2 py-1 text-indigo-300">
+              <span
+                className={`rounded-full px-2 py-1 ${
+                  isTopRank
+                    ? "border border-indigo-500/40 bg-indigo-500/10 text-indigo-300"
+                    : "border border-zinc-700 text-zinc-400"
+                }`}
+              >
                 #{rank}
               </span>
             ) : null}
@@ -94,7 +106,9 @@ export function NoteCard({
       </div>
 
       <p
-        className={`mt-3 text-sm text-zinc-100 ${showFullContent ? "whitespace-pre-wrap" : "line-clamp-4"}`}
+        className={`mt-3 text-sm leading-6 text-zinc-100 ${
+          showFullContent ? "whitespace-pre-wrap" : "line-clamp-4"
+        }`}
       >
         {content}
       </p>
@@ -103,16 +117,24 @@ export function NoteCard({
         <NoteMedia content={note.content} />
       ) : null}
 
+      <div className="mt-3 grid gap-2 text-xs text-zinc-300 sm:grid-cols-3">
+        {metrics.map((metric) => (
+          <div
+            key={metric.label}
+            className="rounded-md border border-zinc-800/90 bg-zinc-950/20 px-2 py-1.5"
+          >
+            <p className="text-[11px] tracking-wide text-zinc-500 uppercase">
+              {formatMetricLabel(metric.label)}
+            </p>
+            <p className="mt-0.5 text-sm text-zinc-200">
+              {truncateMiddle(String(metric.value), 18)}
+            </p>
+          </div>
+        ))}
+      </div>
+
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {note.id ? <IdBadge id={note.id} label="event" /> : null}
-        {metrics.map((metric) => (
-          <span
-            key={metric.label}
-            className="rounded-full border border-zinc-700 bg-zinc-900/80 px-2 py-1 text-[11px] text-zinc-300"
-          >
-            {metric.label}: {truncateMiddle(String(metric.value), 18)}
-          </span>
-        ))}
       </div>
 
       {noteHref ? (

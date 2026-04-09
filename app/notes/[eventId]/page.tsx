@@ -98,6 +98,24 @@ export default async function NotePage({ params }: { params: Params }) {
   const provenanceDetails = isRecord(eventPayload?.provenance)
     ? buildMetadataEntries(eventPayload.provenance, ["source", "relay", "indexed_at"])
     : [];
+  const provenanceRelays =
+    isRecord(eventPayload?.provenance) && Array.isArray(eventPayload.provenance.relays)
+      ? eventPayload.provenance.relays
+          .filter((entry): entry is Record<string, unknown> => isRecord(entry))
+          .map((entry, index) => ({
+            label: `relay_${index + 1}`,
+            value:
+              typeof entry.relay_url === "string"
+                ? `${entry.relay_url}${typeof entry.seen_at === "string" ? ` (${entry.seen_at})` : ""}`
+                : JSON.stringify(entry),
+          }))
+      : [];
+  const mediaDetails = isRecord(noteSummary?.media)
+    ? Object.entries(noteSummary.media).map(([label, value]) => ({ label, value }))
+    : [];
+  const quoteDetails = isRecord(noteSummary?.quote_repost_context)
+    ? Object.entries(noteSummary.quote_repost_context).map(([label, value]) => ({ label, value }))
+    : [];
 
   return (
     <div className="space-y-8">
@@ -155,6 +173,32 @@ export default async function NotePage({ params }: { params: Params }) {
           description="Indexing/provenance fields available from the API."
         >
           <MetadataList items={provenanceDetails} columns={2} />
+          {provenanceRelays.length > 0 ? (
+            <div className="mt-3">
+              <p className="mb-2 text-xs tracking-wide text-zinc-500 uppercase">
+                Relay observations
+              </p>
+              <MetadataList items={provenanceRelays} columns={1} />
+            </div>
+          ) : null}
+        </SectionCard>
+      ) : null}
+
+      {mediaDetails.length > 0 ? (
+        <SectionCard
+          title="Media summary"
+          description="Media and attachment details from note summary."
+        >
+          <MetadataList items={mediaDetails} columns={2} />
+        </SectionCard>
+      ) : null}
+
+      {quoteDetails.length > 0 ? (
+        <SectionCard
+          title="Quote or repost context"
+          description="Context fields for quoted or reposted note relationships."
+        >
+          <MetadataList items={quoteDetails} columns={2} />
         </SectionCard>
       ) : null}
 
@@ -163,6 +207,8 @@ export default async function NotePage({ params }: { params: Params }) {
           ancestors={threadPayload?.ancestors ?? []}
           focal={threadPayload?.root ?? focal}
           replies={threadPayload?.replies ?? []}
+          missingAncestorIds={threadPayload?.missing_ancestor_ids ?? []}
+          nextCursor={threadPayload?.next_cursor}
           authorsByPubkey={authorsByPubkey}
         />
       </SectionCard>

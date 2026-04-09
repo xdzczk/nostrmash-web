@@ -41,6 +41,7 @@ interface SearchProfilesApiResponse {
 interface SearchSuggestApiResponse {
   profiles?: unknown[];
   hashtags?: HashtagEntry[];
+  relays?: unknown[];
 }
 
 interface BatchProfilesApiResponse {
@@ -71,6 +72,23 @@ export async function getDiscoveryHome(cacheClass: CacheClass = "shortTtl") {
 }
 
 export async function getSearch(query: SearchQuery, cacheClass: CacheClass = "requestTime") {
+  const normalizeRelayHints = (value: unknown): string[] =>
+    (Array.isArray(value) ? value : [])
+      .map((entry) => {
+        if (typeof entry === "string") return entry.trim();
+        if (typeof entry === "object" && entry !== null) {
+          const record = entry as Record<string, unknown>;
+          for (const key of ["relay_url", "url", "host", "relay", "name"]) {
+            const relay = record[key];
+            if (typeof relay === "string" && relay.trim().length > 0) {
+              return relay.trim();
+            }
+          }
+        }
+        return "";
+      })
+      .filter((relay) => relay.length > 0);
+
   if (query.tab === "notes") {
     const notesResponse = await fetchApiJson<SearchNotesApiResponse>("/api/v1/search/notes", {
       cacheClass,
@@ -78,15 +96,24 @@ export async function getSearch(query: SearchQuery, cacheClass: CacheClass = "re
         q: query.q,
         limit: query.limit,
         offset: query.offset,
-        window: query.window === "24h" || query.window === "7d" ? query.window : undefined,
+        window: query.window,
       },
     });
     const notes = normalizeEventRecords(notesResponse.notes);
     return {
       notes,
       profiles: [],
+      profile_suggestions: [],
       hashtags: [],
+      relays: [],
       total: notes.length,
+      section_totals: {
+        notes: notes.length,
+        profiles: 0,
+        profile_suggestions: 0,
+        hashtags: 0,
+        relays: 0,
+      },
     } satisfies SearchResponse;
   }
 
@@ -106,8 +133,17 @@ export async function getSearch(query: SearchQuery, cacheClass: CacheClass = "re
     return {
       notes: [],
       profiles,
+      profile_suggestions: [],
       hashtags: [],
+      relays: [],
       total: profiles.length,
+      section_totals: {
+        notes: 0,
+        profiles: profiles.length,
+        profile_suggestions: 0,
+        hashtags: 0,
+        relays: 0,
+      },
     } satisfies SearchResponse;
   }
 
@@ -118,7 +154,7 @@ export async function getSearch(query: SearchQuery, cacheClass: CacheClass = "re
         q: query.q,
         limit: query.limit,
         offset: query.offset,
-        window: query.window === "24h" || query.window === "7d" ? query.window : undefined,
+        window: query.window,
       },
     }),
     fetchApiJson<SearchProfilesApiResponse>("/api/v1/search/profiles", {
@@ -142,10 +178,21 @@ export async function getSearch(query: SearchQuery, cacheClass: CacheClass = "re
     notesResult.status === "fulfilled" ? normalizeEventRecords(notesResult.value.notes) : [];
   const profiles =
     profilesResult.status === "fulfilled" ? normalizeProfiles(profilesResult.value.profiles) : [];
+  const profileSuggestions =
+    suggestResult.status === "fulfilled" ? normalizeProfiles(suggestResult.value.profiles) : [];
   const hashtags =
     suggestResult.status === "fulfilled"
       ? normalizeHashtagEntries(suggestResult.value.hashtags)
       : [];
+  const relays =
+    suggestResult.status === "fulfilled" ? normalizeRelayHints(suggestResult.value.relays) : [];
+  const uniqueProfiles = Array.from(
+    new Map(
+      [...profileSuggestions, ...profiles]
+        .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
+        .map((profile) => [profile.pubkey, profile])
+    ).values()
+  );
   const errors = [notesResult, profilesResult, suggestResult]
     .filter((result): result is PromiseRejectedResult => result.status === "rejected")
     .map((result) => (result.reason instanceof Error ? result.reason.message : "Search failed."));
@@ -156,9 +203,18 @@ export async function getSearch(query: SearchQuery, cacheClass: CacheClass = "re
 
   return {
     notes,
-    profiles,
+    profiles: uniqueProfiles,
+    profile_suggestions: profileSuggestions,
     hashtags,
-    total: notes.length + profiles.length + hashtags.length,
+    relays,
+    total: notes.length + uniqueProfiles.length + hashtags.length + relays.length,
+    section_totals: {
+      notes: notes.length,
+      profiles: profiles.length,
+      profile_suggestions: profileSuggestions.length,
+      hashtags: hashtags.length,
+      relays: relays.length,
+    },
     errors: errors.length > 0 ? errors : undefined,
   } satisfies SearchResponse;
 }

@@ -1,6 +1,6 @@
 export function ErrorPanel({ message }: { message: string }) {
   return (
-    <div className="rounded-md border border-red-900/50 bg-red-950/30 p-3 text-sm text-red-200">
+    <div className="rounded-lg border border-red-900/55 bg-red-950/30 p-3.5 text-sm text-red-200">
       {message}
     </div>
   );
@@ -8,7 +8,7 @@ export function ErrorPanel({ message }: { message: string }) {
 
 export function EmptyPanel({ message }: { message: string }) {
   return (
-    <div className="rounded-md border border-zinc-800 bg-zinc-900/40 p-3 text-sm text-zinc-300">
+    <div className="rounded-lg border border-zinc-800/95 bg-zinc-900/45 p-3.5 text-sm text-zinc-300">
       {message}
     </div>
   );
@@ -23,7 +23,7 @@ export function JsonPanel({
 }) {
   return (
     <pre
-      className={`overflow-auto rounded-md border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-300 ${maxHeightClassName}`}
+      className={`overflow-auto rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-300 ${maxHeightClassName}`}
     >
       {JSON.stringify(data, null, 2)}
     </pre>

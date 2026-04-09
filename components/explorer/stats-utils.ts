@@ -50,3 +50,74 @@ export function pickRelayEntryByHost(payload: unknown, relayHost: string): unkno
   }
   return null;
 }
+
+export interface RelayRowSummary {
+  relay: string;
+  metrics: Record<string, string | number | boolean>;
+}
+
+export function extractRelayRows(payload: unknown, limit = 20): RelayRowSummary[] {
+  const { arrays } = classifyStats(payload);
+  const rows: RelayRowSummary[] = [];
+
+  for (const group of arrays) {
+    for (const row of group.value) {
+      if (!isRecord(row)) continue;
+      const relay =
+        (["relay_url", "url", "host", "relay", "name"]
+          .map((key) => row[key])
+          .find((value) => typeof value === "string" && value.trim().length > 0) as
+          | string
+          | undefined) ?? "";
+      if (!relay) continue;
+
+      const metrics = Object.fromEntries(
+        Object.entries(row).filter(
+          ([key, value]) =>
+            key !== "relay_url" &&
+            key !== "url" &&
+            key !== "host" &&
+            key !== "relay" &&
+            key !== "name" &&
+            (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+        )
+      ) as Record<string, string | number | boolean>;
+
+      rows.push({ relay, metrics });
+      if (rows.length >= limit) {
+        return rows;
+      }
+    }
+  }
+
+  return rows;
+}
+
+export function pickTopPrimitiveStats(
+  payload: unknown,
+  preferredKeys: string[],
+  limit = 6
+): Array<{ label: string; value: string | number | boolean }> {
+  const { primitives } = classifyStats(payload);
+  if (primitives.length === 0) return [];
+
+  const byKey = new Map(primitives.map((entry) => [entry.label, entry]));
+  const selected: Array<{ label: string; value: string | number | boolean }> = [];
+  const seen = new Set<string>();
+
+  for (const key of preferredKeys) {
+    const stat = byKey.get(key);
+    if (!stat) continue;
+    selected.push(stat);
+    seen.add(key);
+    if (selected.length >= limit) return selected;
+  }
+
+  for (const stat of primitives) {
+    if (seen.has(stat.label)) continue;
+    selected.push(stat);
+    if (selected.length >= limit) break;
+  }
+
+  return selected;
+}

@@ -45,18 +45,23 @@ export default async function TrendingNotesPage() {
   return (
     <div className="space-y-8">
       <PageHero
+        eyebrow="Ranked notes"
         title="Trending notes"
         subtitle="Ranked notes currently surfacing in NostrMash trend windows."
       />
-      {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
       <SectionCard
         title="Ranked notes"
-        description="Rank order is displayed directly in each card."
+        description="Cards are weighted to emphasize the strongest current entries."
       >
-        {payload?.notes && payload.notes.length > 0 ? (
+        {errorMessage ? (
+          <ErrorPanel message={errorMessage} />
+        ) : payload?.notes && payload.notes.length > 0 ? (
           <NotesList notes={payload.notes} authorsByPubkey={authorsByPubkey} ranked />
         ) : (
-          <EmptyState message="No notes currently available." />
+          <EmptyState
+            title="No note ranking available"
+            message="The API did not return ranked notes for the current trend window."
+          />
         )}
       </SectionCard>
       <DebugDisclosure title="Debug payload" data={payload ?? {}} />

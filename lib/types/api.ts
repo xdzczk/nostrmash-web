@@ -51,8 +51,16 @@ export interface EventRecord {
 export interface SearchResponse {
   notes?: EventRecord[];
   profiles?: Profile[];
+  profile_suggestions?: Profile[];
   hashtags?: HashtagEntry[];
   relays?: string[];
+  section_totals?: {
+    notes?: number;
+    profiles?: number;
+    profile_suggestions?: number;
+    hashtags?: number;
+    relays?: number;
+  };
   total?: number;
   errors?: string[];
   consistency?: Consistency | string;

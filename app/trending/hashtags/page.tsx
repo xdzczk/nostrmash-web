@@ -25,18 +25,23 @@ export default async function TrendingHashtagsPage() {
   return (
     <div className="space-y-8">
       <PageHero
+        eyebrow="Ranked hashtags"
         title="Trending hashtags"
         subtitle="Hashtag activity ordered by current mention counts."
       />
-      {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
       <SectionCard
         title="Hashtag ranking"
-        description="Each chip surfaces rank and mention counts."
+        description="Top hashtags are elevated while lower ranks remain dense and scannable."
       >
-        {payload?.hashtags && payload.hashtags.length > 0 ? (
+        {errorMessage ? (
+          <ErrorPanel message={errorMessage} />
+        ) : payload?.hashtags && payload.hashtags.length > 0 ? (
           <HashtagsList hashtags={payload.hashtags} ranked searchable />
         ) : (
-          <EmptyState message="No hashtags currently available." />
+          <EmptyState
+            title="No hashtag ranking available"
+            message="The API did not return ranked hashtags for the current trend window."
+          />
         )}
       </SectionCard>
       <DebugDisclosure title="Debug payload" data={payload ?? {}} />

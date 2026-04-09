@@ -25,18 +25,23 @@ export default async function TrendingProfilesPage() {
   return (
     <div className="space-y-8">
       <PageHero
+        eyebrow="Ranked profiles"
         title="Trending profiles"
         subtitle="Ranked profiles currently surfacing in discovery outputs."
       />
-      {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
       <SectionCard
         title="Ranked profiles"
-        description="Rank order is shown directly in each profile card."
+        description="Profiles are structured for scan-first ranking and compact metrics."
       >
-        {payload?.profiles && payload.profiles.length > 0 ? (
+        {errorMessage ? (
+          <ErrorPanel message={errorMessage} />
+        ) : payload?.profiles && payload.profiles.length > 0 ? (
           <ProfilesList profiles={payload.profiles} ranked />
         ) : (
-          <EmptyState message="No profiles currently available." />
+          <EmptyState
+            title="No profile ranking available"
+            message="The API did not return ranked profiles for the current trend window."
+          />
         )}
       </SectionCard>
       <DebugDisclosure title="Debug payload" data={payload ?? {}} />

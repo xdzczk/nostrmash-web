@@ -3,7 +3,10 @@ import { SectionCard } from "@/components/ui/section-card";
 export default function MethodologyPage() {
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6">
+      <section className="rounded-xl border border-zinc-800/95 bg-zinc-900/55 p-5 sm:p-6">
+        <p className="text-[11px] font-medium tracking-[0.18em] text-zinc-500 uppercase">
+          Methodology
+        </p>
         <h1 className="text-2xl font-semibold tracking-tight">Methodology</h1>
         <p className="mt-2 text-sm text-zinc-300">
           NostrMash indexes public Nostr events and exposes read APIs for search and analytics. This

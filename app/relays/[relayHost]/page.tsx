@@ -1,6 +1,12 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 
-import { classifyStats, pickRelayEntryByHost } from "@/components/explorer/stats-utils";
+import {
+  classifyStats,
+  extractRelayRows,
+  pickRelayEntryByHost,
+} from "@/components/explorer/stats-utils";
+import { ConsistencyBadge } from "@/components/explorer/consistency-badge";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { MetadataList } from "@/components/explorer/metadata-list";
@@ -44,6 +50,21 @@ export default async function RelayPage({ params }: { params: Params }) {
       <PageHero
         title={`Relay ${relayHost}`}
         subtitle="Relay host lookup using currently available NostrMash relay analytics payloads."
+        badges={
+          <div className="flex flex-wrap gap-2">
+            <ConsistencyBadge
+              consistency={
+                typeof payload?.consistency === "string" ? payload.consistency : undefined
+              }
+            />
+            <Link
+              href={`/search?q=${encodeURIComponent(relayHost)}&tab=all&window=7d`}
+              className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-indigo-300 hover:border-indigo-400/40"
+            >
+              Search relay mentions
+            </Link>
+          </div>
+        }
       />
 
       {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
@@ -71,6 +92,39 @@ export default async function RelayPage({ params }: { params: Params }) {
       </SectionCard>
 
       <RelayStatList title="Aggregate relay metrics" stats={aggregatePrimitives.slice(0, 12)} />
+      <SectionCard
+        title="Nearby relay rows"
+        description="Additional relay entities present in the same aggregate payload."
+      >
+        {extractRelayRows(payload, 8).length > 0 ? (
+          <ul className="space-y-2">
+            {extractRelayRows(payload, 8).map((entry) => (
+              <li
+                key={entry.relay}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-800 bg-zinc-900/40 p-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-zinc-200">{entry.relay}</p>
+                  <p className="mt-1 truncate text-xs text-zinc-500">
+                    {Object.entries(entry.metrics)
+                      .slice(0, 2)
+                      .map(([label, value]) => `${label}: ${String(value)}`)
+                      .join(" • ")}
+                  </p>
+                </div>
+                <Link
+                  href={`/relays/${encodeURIComponent(entry.relay)}`}
+                  className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-indigo-300 hover:border-indigo-400/40"
+                >
+                  Open relay
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState message="No additional relay rows were found in this payload." />
+        )}
+      </SectionCard>
 
       <DebugDisclosure title="Debug payload: relay stats aggregate" data={payload ?? {}} />
     </div>

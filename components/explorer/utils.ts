@@ -1,7 +1,63 @@
 import type { EventRecord, Profile } from "@/lib/types/api";
 
+const LABEL_ALIASES: Record<string, string> = {
+  created_at: "Created",
+  updated_at: "Updated",
+  event_count: "Events",
+  note_count: "Notes",
+  notes_count: "Notes",
+  profile_count: "Profiles",
+  profiles_count: "Profiles",
+  relay_count: "Relays",
+  relay_url: "Relay",
+  unique_authors: "Unique authors",
+  unique_relays: "Unique relays",
+  unique_notes: "Unique notes",
+  unique_profiles: "Unique profiles",
+  active_relays: "Active relays",
+  active_authors: "Active authors",
+  active_profiles: "Active profiles",
+  active_notes: "Active notes",
+  top_relay_count: "Top relay count",
+  top_hashtag_count: "Top hashtag count",
+  total_notes: "Total notes",
+  total_profiles: "Total profiles",
+  total_relays: "Total relays",
+  total_hashtags: "Total hashtags",
+  consistency: "Consistency",
+  score: "Score",
+  rank: "Rank",
+  likes: "Likes",
+  replies: "Replies",
+  boosts: "Boosts",
+  zaps: "Zaps",
+  followers_count: "Followers",
+  following_count: "Following",
+  relay_mentions: "Relay mentions",
+  mention_count: "Mentions",
+  mentions_count: "Mentions",
+};
+
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function formatMetricLabel(value: string): string {
+  if (!value) return "Unknown";
+  const normalized = value.trim().toLowerCase();
+  const aliased = LABEL_ALIASES[normalized];
+  if (aliased) return aliased;
+
+  const words = value.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  if (words.length === 0) return "Unknown";
+
+  return words
+    .map((word) => {
+      const upper = word.toUpperCase();
+      if (upper === "NPUB" || upper === "NIP05" || upper === "URL") return upper;
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
 }
 
 export function truncateMiddle(value: string, maxLength = 36): string {

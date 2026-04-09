@@ -16,10 +16,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: `${appConfig.siteName} Explorer`,
+    default: appConfig.siteName,
     template: `%s · ${appConfig.siteName}`,
   },
-  description: "Public Nostr explorer and analytics surface powered by NostrMash APIs.",
+  description: "Durable read layer for Nostr search, trends, and relay observability.",
 };
 
 export default function RootLayout({
@@ -29,7 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col bg-zinc-950 text-zinc-100">
+      <body className="bg-background text-foreground flex min-h-full flex-col">
         <SiteShell>{children}</SiteShell>
       </body>
     </html>
