@@ -17,6 +17,7 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   line-height: 1.5;
+  overflow-x: clip;
 }
 
 a {

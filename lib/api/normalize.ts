@@ -1,7 +1,10 @@
 import type {
   DiscoveryHomeResponse,
+  EventCountsResponse,
   EventRecord,
+  EventSeenOnResponse,
   HashtagEntry,
+  NativeApiSemantics,
   NoteSummaryResponse,
   Profile,
   ProfileSummaryResponse,
@@ -35,6 +38,51 @@ function asArray(value: unknown): unknown[] {
 
 function compactDefined<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined)) as T;
+}
+
+const NATIVE_SEMANTIC_KEYS = [
+  "consistency",
+  "trust_mode",
+  "trust_applied",
+  "result_scope",
+  "next_cursor",
+] as const;
+
+const CURSOR_ALIASES = ["next_cursor", "cursor", "continuation", "next"] as const;
+
+function extractCursorLikeValue(value: unknown): string | undefined {
+  const record = asRecord(value);
+  if (!record) return undefined;
+  for (const key of CURSOR_ALIASES) {
+    const candidate = asString(record[key]);
+    if (candidate) return candidate;
+  }
+  return undefined;
+}
+
+export function extractNativeApiSemantics(...values: unknown[]): NativeApiSemantics {
+  const semantics: NativeApiSemantics = {};
+
+  for (const value of values) {
+    const record = asRecord(value);
+    if (!record) continue;
+    const meta = asRecord(record.meta);
+    for (const key of NATIVE_SEMANTIC_KEYS) {
+      if (semantics[key] !== undefined) continue;
+      if (record[key] !== undefined) {
+        semantics[key] = record[key] as never;
+        continue;
+      }
+      if (meta?.[key] !== undefined) {
+        semantics[key] = meta[key] as never;
+      }
+    }
+    if (!semantics.next_cursor) {
+      semantics.next_cursor = extractCursorLikeValue(record) ?? extractCursorLikeValue(meta);
+    }
+  }
+
+  return semantics;
 }
 
 export function normalizeEventRecord(value: unknown): EventRecord | null {
@@ -222,5 +270,78 @@ export function normalizeNoteSummaryResponse(value: unknown): NoteSummaryRespons
     media: media ?? undefined,
     thread: thread ?? undefined,
     summary,
+  };
+}
+
+function normalizeRelayObservation(
+  value: unknown
+): { relay_url?: string; seen_at?: string | number; [key: string]: unknown } | null {
+  if (typeof value === "string" && value.trim().length > 0) {
+    return { relay_url: value.trim() };
+  }
+
+  const record = asRecord(value);
+  if (!record) return null;
+
+  const relayUrl =
+    asString(record.relay_url) ??
+    asString(record.url) ??
+    asString(record.relay) ??
+    asString(record.host) ??
+    asString(record.name);
+  const seenAt =
+    asString(record.seen_at) ??
+    asNumber(record.seen_at) ??
+    asString(record.last_seen_at) ??
+    asNumber(record.last_seen_at) ??
+    asString(record.first_seen_at) ??
+    asNumber(record.first_seen_at);
+
+  return compactDefined({
+    ...record,
+    relay_url: relayUrl,
+    seen_at: seenAt,
+  });
+}
+
+export function normalizeEventSeenOnResponse(value: unknown): EventSeenOnResponse {
+  const record = asRecord(value) ?? {};
+  const candidateRelays =
+    record.relays ?? record.seen_on ?? record.seenOn ?? record.observations ?? record.entries;
+  const relays = asArray(candidateRelays)
+    .map((entry) => normalizeRelayObservation(entry))
+    .filter(
+      (entry): entry is { relay_url?: string; seen_at?: string | number; [key: string]: unknown } =>
+        entry !== null
+    );
+
+  return {
+    ...record,
+    relays: relays.length > 0 ? relays : undefined,
+  };
+}
+
+export function normalizeEventCountsResponse(value: unknown): EventCountsResponse {
+  const record = asRecord(value) ?? {};
+  const countsRecord = asRecord(record.counts);
+  if (countsRecord) {
+    return {
+      ...record,
+      counts: countsRecord,
+    };
+  }
+
+  const counts = compactDefined({
+    reply_count: asNumber(record.reply_count) ?? asNumber(record.replies),
+    reaction_count: asNumber(record.reaction_count) ?? asNumber(record.reactions),
+    repost_count: asNumber(record.repost_count) ?? asNumber(record.reposts),
+    zap_count: asNumber(record.zap_count) ?? asNumber(record.zaps),
+    zap_msats: asNumber(record.zap_msats),
+    quote_count: asNumber(record.quote_count) ?? asNumber(record.quotes),
+  });
+
+  return {
+    ...record,
+    counts: Object.keys(counts).length > 0 ? counts : undefined,
   };
 }

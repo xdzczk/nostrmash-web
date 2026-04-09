@@ -20,7 +20,7 @@ export function SiteNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex items-center gap-1.5 text-sm text-zinc-300">
+    <nav className="flex w-full flex-wrap items-center gap-1.5 text-sm text-zinc-300 sm:w-auto sm:justify-end">
       {navItems.map((item) => {
         const active = isActivePath(pathname, item.href);
         return (
@@ -28,7 +28,7 @@ export function SiteNav() {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            className={`rounded-md border px-3 py-1.5 text-[13px] font-medium tracking-[0.01em] transition focus-visible:ring-2 focus-visible:ring-indigo-400/70 focus-visible:outline-none ${
+            className={`min-h-11 rounded-md border px-3 py-2 text-[13px] font-medium tracking-[0.01em] transition focus-visible:ring-2 focus-visible:ring-indigo-400/70 focus-visible:outline-none ${
               active
                 ? "border-zinc-700 bg-zinc-900/90 text-zinc-100"
                 : "border-transparent text-zinc-400 hover:border-zinc-800 hover:bg-zinc-900/55 hover:text-zinc-100"

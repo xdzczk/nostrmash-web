@@ -10,13 +10,13 @@ export function BrandLogo({
   priority?: boolean;
 }) {
   return (
-    <span className={`relative block h-8 w-[168px] ${className}`.trim()}>
+    <span className={`relative block h-8 w-[132px] sm:w-[168px] ${className}`.trim()}>
       <Image
         src={LOGO_SRC}
         alt="NostrMash"
         fill
         priority={priority}
-        sizes="168px"
+        sizes="(min-width: 640px) 168px, 132px"
         className="object-contain object-left"
       />
     </span>

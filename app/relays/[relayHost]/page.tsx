@@ -58,7 +58,7 @@ export default async function RelayPage({ params }: { params: Params }) {
               }
             />
             <Link
-              href={`/search?q=${encodeURIComponent(relayHost)}&tab=all&window=7d`}
+              href={`/search?q=${encodeURIComponent(relayHost)}&tab=all`}
               className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-indigo-300 hover:border-indigo-400/40"
             >
               Search relay mentions

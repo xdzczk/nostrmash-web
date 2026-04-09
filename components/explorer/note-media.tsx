@@ -96,7 +96,7 @@ export function NoteMedia({ content }: { content: string }) {
               href={attachment.url}
               target="_blank"
               rel="noreferrer"
-              className="hover:text-zinc-200"
+              className="break-all hover:text-zinc-200"
             >
               {attachment.url}
             </a>

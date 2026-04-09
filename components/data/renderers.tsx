@@ -69,9 +69,7 @@ export function HashtagsList({
   const normalized = hashtags.map((entry, index) => {
     const hashtag = typeof entry === "string" ? entry : (entry.hashtag ?? "");
     const count = typeof entry === "string" ? undefined : entry.count;
-    const href = searchable
-      ? `/search?q=${encodeURIComponent(`#${hashtag}`)}&tab=all&window=7d`
-      : undefined;
+    const href = searchable ? `/search?q=${encodeURIComponent(`#${hashtag}`)}&tab=all` : undefined;
     return {
       hashtag: hashtag || "unknown",
       count,

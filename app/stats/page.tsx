@@ -229,7 +229,7 @@ export default async function StatsPage() {
                       Open relay
                     </Link>
                     <Link
-                      href={`/search?q=${encodeURIComponent(row.relay)}&tab=all&window=7d`}
+                      href={`/search?q=${encodeURIComponent(row.relay)}&tab=all`}
                       className="rounded-full border border-zinc-700 px-3 py-1 text-indigo-300 hover:border-indigo-400/40"
                     >
                       Search mentions

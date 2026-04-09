@@ -1,4 +1,13 @@
 export type Consistency = "strong" | "eventual";
+export type TrustMode = "off" | "best_effort" | "required" | string;
+
+export interface NativeApiSemantics {
+  consistency?: Consistency | string;
+  trust_mode?: TrustMode;
+  trust_applied?: boolean;
+  result_scope?: string | Record<string, unknown>;
+  next_cursor?: string;
+}
 
 export interface ApiErrorDetails {
   code?: string;
@@ -48,12 +57,14 @@ export interface EventRecord {
   [key: string]: unknown;
 }
 
-export interface SearchResponse {
+export interface SearchResponse extends NativeApiSemantics {
   notes?: EventRecord[];
   profiles?: Profile[];
   profile_suggestions?: Profile[];
   hashtags?: HashtagEntry[];
   relays?: string[];
+  surface_errors?: Partial<Record<"search" | "notes" | "profiles" | "suggest", string>>;
+  surface_cursors?: Partial<Record<"search" | "notes" | "profiles" | "suggest", string>>;
   section_totals?: {
     notes?: number;
     profiles?: number;
@@ -63,7 +74,17 @@ export interface SearchResponse {
   };
   total?: number;
   errors?: string[];
-  consistency?: Consistency | string;
+  [key: string]: unknown;
+}
+
+export interface SearchApiResponse extends NativeApiSemantics {
+  notes?: unknown[];
+  profiles?: unknown[];
+  profile_suggestions?: unknown[];
+  hashtags?: HashtagEntry[];
+  relays?: unknown[];
+  total?: number;
+  section_totals?: SearchResponse["section_totals"];
   [key: string]: unknown;
 }
 
@@ -75,56 +96,63 @@ export interface HashtagEntry {
   [key: string]: unknown;
 }
 
-export interface DiscoveryHomeResponse {
+export interface DiscoveryHomeResponse extends NativeApiSemantics {
   notes?: EventRecord[];
   profiles?: Profile[];
   hashtags?: HashtagEntry[];
   stats?: Record<string, unknown>;
-  consistency?: Consistency | string;
   [key: string]: unknown;
 }
 
-export interface TrendingNotesResponse {
+export interface TrendingNotesResponse extends NativeApiSemantics {
   notes?: EventRecord[];
-  consistency?: Consistency | string;
   [key: string]: unknown;
 }
 
-export interface TrendingProfilesResponse {
+export interface TrendingProfilesResponse extends NativeApiSemantics {
   profiles?: Profile[];
-  consistency?: Consistency | string;
   [key: string]: unknown;
 }
 
-export interface TrendingHashtagsResponse {
+export interface TrendingHashtagsResponse extends NativeApiSemantics {
   hashtags?: HashtagEntry[];
-  consistency?: Consistency | string;
   [key: string]: unknown;
 }
 
-export interface EventDetailResponse {
+export interface EventDetailResponse extends NativeApiSemantics {
   event?: EventRecord;
   provenance?: {
     relays?: Array<{ relay_url?: string; seen_at?: string }>;
     [key: string]: unknown;
   };
-  consistency?: Consistency | string;
   [key: string]: unknown;
 }
 
-export interface ThreadResponse {
+export interface EventSeenOnResponse extends NativeApiSemantics {
+  relays?: Array<{
+    relay_url?: string;
+    seen_at?: string | number;
+    [key: string]: unknown;
+  }>;
+  [key: string]: unknown;
+}
+
+export interface EventCountsResponse extends NativeApiSemantics {
+  counts?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface ThreadResponse extends NativeApiSemantics {
   root?: EventRecord;
   event?: EventRecord;
   ancestors?: EventRecord[];
   replies?: EventRecord[];
   events?: EventRecord[];
   missing_ancestor_ids?: string[];
-  next_cursor?: string;
-  consistency?: Consistency | string;
   [key: string]: unknown;
 }
 
-export interface NoteSummaryResponse {
+export interface NoteSummaryResponse extends NativeApiSemantics {
   note?: EventRecord;
   event?: EventRecord;
   author?: {
@@ -138,11 +166,10 @@ export interface NoteSummaryResponse {
   thread?: Record<string, unknown>;
   quote_repost_context?: Record<string, unknown>;
   summary?: Record<string, unknown>;
-  consistency?: Consistency | string;
   [key: string]: unknown;
 }
 
-export interface ProfileSummaryResponse {
+export interface ProfileSummaryResponse extends NativeApiSemantics {
   pubkey?: string;
   profile?: Profile;
   stats?: ProfileStats;
@@ -152,11 +179,46 @@ export interface ProfileSummaryResponse {
   reply_count?: number;
   recent_activity_at?: number;
   relay_count?: number;
-  consistency?: Consistency | string;
   [key: string]: unknown;
 }
 
-export interface StatsResponse {
-  consistency?: Consistency | string;
+export interface StatsResponse extends NativeApiSemantics {
   [key: string]: unknown;
 }
+
+export interface SearchNotesApiResponse extends NativeApiSemantics {
+  notes?: unknown[];
+  total?: number;
+  section_totals?: SearchResponse["section_totals"];
+  [key: string]: unknown;
+}
+
+export interface SearchProfilesApiResponse extends NativeApiSemantics {
+  profiles?: unknown[];
+  total?: number;
+  section_totals?: SearchResponse["section_totals"];
+  [key: string]: unknown;
+}
+
+export interface SearchSuggestApiResponse extends NativeApiSemantics {
+  profiles?: unknown[];
+  hashtags?: HashtagEntry[];
+  relays?: unknown[];
+  suggested_profiles?: unknown[];
+  suggested_hashtags?: HashtagEntry[];
+  total?: number;
+  section_totals?: SearchResponse["section_totals"];
+  [key: string]: unknown;
+}
+
+export interface BatchProfilesApiResponse extends NativeApiSemantics {
+  profiles?: unknown[];
+  [key: string]: unknown;
+}
+
+export type ProfileApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type ProfileSummaryApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type ThreadApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type NoteSummaryApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type EventSeenOnApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type EventCountsApiResponse = NativeApiSemantics & Record<string, unknown>;
