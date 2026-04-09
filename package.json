@@ -17,7 +17,7 @@
     "validate": "pnpm format:check && pnpm lint && pnpm typecheck",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "wrangler dev",
-    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf:deploy": "wrangler deploy --keep-vars",
     "cf:typegen": "wrangler types"
   },
   "dependencies": {

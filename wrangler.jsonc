@@ -1,5 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+  "build": {
+    "command": "pnpm run cf:build",
+    "cwd": ".",
+  },
   "main": ".open-next/worker.js",
   "name": "nostrmash-web",
   "compatibility_date": "2026-04-09",
