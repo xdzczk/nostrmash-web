@@ -23,6 +23,10 @@ function parseErrorMessage(body: ApiErrorBody | undefined, statusText: string): 
   return message || "Unknown API error";
 }
 
+function normalizeErrorText(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
 export async function fetchApiJson<T>(
   path: string,
   options?: {
@@ -52,12 +56,21 @@ export async function fetchApiJson<T>(
 
   if (!response.ok) {
     let errorBody: ApiErrorBody | undefined;
+    let errorText = "";
     try {
-      errorBody = (await response.json()) as ApiErrorBody;
+      const contentType = response.headers.get("content-type") ?? "";
+      if (contentType.includes("application/json")) {
+        errorBody = (await response.json()) as ApiErrorBody;
+      } else {
+        errorText = normalizeErrorText(await response.text());
+      }
     } catch {
       errorBody = undefined;
     }
-    throw new Error(`API ${response.status}: ${parseErrorMessage(errorBody, response.statusText)}`);
+
+    const message = parseErrorMessage(errorBody, response.statusText);
+    const details = errorText ? ` (${errorText.slice(0, 240)})` : "";
+    throw new Error(`API ${response.status}: ${message}${details}`);
   }
 
   return (await response.json()) as T;
