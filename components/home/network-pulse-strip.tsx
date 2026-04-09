@@ -9,13 +9,13 @@ export function NetworkPulseStrip({ title, stats }: { title: string; stats: Puls
   if (stats.length === 0) return null;
 
   return (
-    <section className="space-y-2.5">
+    <section className="space-y-2">
       <p className="text-[11px] font-medium tracking-[0.18em] text-zinc-500 uppercase">{title}</p>
-      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <article
             key={stat.label}
-            className="rounded-lg border border-zinc-800 bg-zinc-900/45 px-3.5 py-3.5"
+            className="rounded-lg border border-zinc-800 bg-zinc-900/45 px-3 py-3 sm:px-3.5 sm:py-3.5"
           >
             <p className="text-[11px] tracking-[0.14em] text-zinc-500 uppercase">
               {formatMetricLabel(stat.label)}

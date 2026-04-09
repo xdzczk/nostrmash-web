@@ -135,6 +135,132 @@ export function noteAuthorIdentifier(note: EventRecord): string {
   return "unknown author";
 }
 
+export function normalizeDomainForRoute(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().toLowerCase();
+  if (trimmed.length === 0) return null;
+  const withoutPunctuation = trimmed.replace(/[),.;!?]+$/g, "");
+  const candidate = withoutPunctuation.includes("://")
+    ? withoutPunctuation
+    : `https://${withoutPunctuation}`;
+  try {
+    const hostname = new URL(candidate).hostname.toLowerCase().replace(/\.$/, "");
+    return hostname.length > 0 ? hostname : null;
+  } catch {
+    const fallbackHost = withoutPunctuation
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .split("/")[0];
+    const fallback = (fallbackHost ?? "").replace(/\.$/, "");
+    return fallback.length > 0 ? fallback : null;
+  }
+}
+
+function extractUrlDomainsFromText(content: string): string[] {
+  const urls = content.match(/https?:\/\/\S+/g) ?? [];
+  const domains = urls
+    .map((url) => normalizeDomainForRoute(url))
+    .filter((domain): domain is string => typeof domain === "string");
+  return Array.from(new Set(domains));
+}
+
+function extractTagDomains(note: EventRecord): string[] {
+  if (!Array.isArray(note.tags)) return [];
+  const domains: string[] = [];
+  for (const tag of note.tags) {
+    if (!Array.isArray(tag) || tag.length < 2) continue;
+    const [tagName, tagValue] = tag;
+    if ((tagName === "r" || tagName === "u") && typeof tagValue === "string") {
+      const domain = normalizeDomainForRoute(tagValue);
+      if (domain) domains.push(domain);
+    }
+  }
+  return Array.from(new Set(domains));
+}
+
+export function extractDomainsFromNote(note: EventRecord, limit = 4): string[] {
+  const fromTags = extractTagDomains(note);
+  const fromContent =
+    typeof note.content === "string" && note.content.length > 0
+      ? extractUrlDomainsFromText(note.content)
+      : [];
+  return Array.from(new Set([...fromTags, ...fromContent])).slice(0, limit);
+}
+
+function extractHashtagTagValues(note: EventRecord): string[] {
+  if (!Array.isArray(note.tags)) return [];
+  const hashtags: string[] = [];
+  for (const tag of note.tags) {
+    if (!Array.isArray(tag) || tag.length < 2) continue;
+    const [tagName, tagValue] = tag;
+    if (tagName !== "t" || typeof tagValue !== "string") continue;
+    const normalized = tagValue.trim().replace(/^#/, "").toLowerCase();
+    if (normalized.length > 0) hashtags.push(normalized);
+  }
+  return Array.from(new Set(hashtags));
+}
+
+function extractHashtagTextValues(note: EventRecord): string[] {
+  if (typeof note.content !== "string" || note.content.length === 0) return [];
+  const matches = note.content.match(/(^|\s)#([a-z0-9_]+)/gi) ?? [];
+  const hashtags = matches
+    .map((entry) => {
+      const normalized = entry.trim().replace(/^#/, "").toLowerCase();
+      return normalized.replace(/[^a-z0-9_]/g, "");
+    })
+    .filter((value) => value.length > 0);
+  return Array.from(new Set(hashtags));
+}
+
+export function extractHashtagsFromNote(note: EventRecord, limit = 4): string[] {
+  return Array.from(
+    new Set([...extractHashtagTagValues(note), ...extractHashtagTextValues(note)])
+  ).slice(0, limit);
+}
+
+function normalizeRelayRouteHost(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return null;
+  const withScheme =
+    trimmed.includes("://") || /^[a-z][a-z0-9+\-.]*:/i.test(trimmed) ? trimmed : `wss://${trimmed}`;
+  try {
+    return new URL(withScheme).hostname.toLowerCase().replace(/\.$/, "");
+  } catch {
+    const fallback =
+      trimmed
+        .replace(/^wss?:\/\//i, "")
+        .replace(/^https?:\/\//i, "")
+        .replace(/^ws:/i, "")
+        .replace(/^wss:/i, "")
+        .replace(/^\/\//, "")
+        .split("/")[0]
+        ?.toLowerCase()
+        .replace(/\.$/, "") ?? "";
+    return fallback.length > 0 ? fallback : null;
+  }
+}
+
+export function extractRelayHostsFromNote(note: EventRecord, limit = 3): string[] {
+  if (!Array.isArray(note.tags)) return [];
+  const hosts: string[] = [];
+  for (const tag of note.tags) {
+    if (!Array.isArray(tag) || tag.length < 2) continue;
+    const [tagName, tagValue] = tag;
+    if (typeof tagValue !== "string") continue;
+    const normalizedTag = typeof tagName === "string" ? tagName.toLowerCase() : "";
+    const looksRelayTag =
+      normalizedTag === "relay" ||
+      normalizedTag === "relays" ||
+      normalizedTag === "seen_on" ||
+      (normalizedTag === "r" && /^wss?:\/\//i.test(tagValue.trim()));
+    if (!looksRelayTag) continue;
+    const host = normalizeRelayRouteHost(tagValue);
+    if (host) hosts.push(host);
+  }
+  return Array.from(new Set(hosts)).slice(0, limit);
+}
+
 export function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((entry): entry is string => typeof entry === "string");

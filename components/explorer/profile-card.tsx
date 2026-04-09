@@ -45,7 +45,7 @@ export function ProfileCard({
 
   return (
     <article
-      className={`rounded-xl border p-4 ${
+      className={`rounded-xl border p-3 sm:p-4 ${
         isTopRank ? "border-zinc-700 bg-zinc-900/65" : "border-zinc-800 bg-zinc-900/50"
       }`}
     >
@@ -57,10 +57,10 @@ export function ProfileCard({
             width={44}
             height={44}
             unoptimized
-            className="h-11 w-11 rounded-full border border-zinc-700 object-cover"
+            className="h-10 w-10 rounded-full border border-zinc-700 object-cover sm:h-11 sm:w-11"
           />
         ) : (
-          <div className="flex h-11 w-11 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900 text-xs text-zinc-500">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900 text-xs text-zinc-500 sm:h-11 sm:w-11">
             {profileInitial(profile)}
           </div>
         )}
@@ -86,7 +86,7 @@ export function ProfileCard({
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 text-xs text-zinc-300 sm:grid-cols-3">
+      <div className="mt-2.5 grid gap-2 text-xs text-zinc-300 sm:mt-3 sm:grid-cols-3">
         {metrics.map((metric) => (
           <div
             key={metric.label}
@@ -100,19 +100,26 @@ export function ProfileCard({
         ))}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-2.5 flex flex-wrap items-center gap-2 sm:mt-3">
         {identifier !== "unknown" ? (
           <IdBadge id={identifier} label={identifier.startsWith("npub") ? "npub" : "pubkey"} />
         ) : null}
       </div>
 
       {href ? (
-        <Link
-          href={href}
-          className="mt-3 inline-block text-xs text-indigo-300 hover:text-indigo-200"
-        >
-          Open profile
-        </Link>
+        <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
+          <Link href={href} className="text-indigo-300 hover:text-indigo-200">
+            Open profile
+          </Link>
+          <span className="text-zinc-600">•</span>
+          <Link href={`${href}#authored-notes`} className="text-indigo-300 hover:text-indigo-200">
+            Authored notes
+          </Link>
+          <span className="text-zinc-600">•</span>
+          <Link href={`${href}#related-profiles`} className="text-indigo-300 hover:text-indigo-200">
+            Related profiles
+          </Link>
+        </div>
       ) : null}
     </article>
   );

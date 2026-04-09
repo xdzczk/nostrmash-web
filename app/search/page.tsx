@@ -1,21 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { ConsistencyBadge } from "@/components/explorer/consistency-badge";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
-import { isRecord } from "@/components/explorer/utils";
+import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
 import { PageHero } from "@/components/explorer/page-hero";
 import { SearchForm } from "@/components/search/search-form";
 import { NotesList, ProfilesList, HashtagsList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
-import {
-  getProfilesBatch,
-  getSearch,
-  getTrendingHashtags,
-  getTrendingProfiles,
-} from "@/lib/api/endpoints";
+import { getSearch, getTrendingHashtags, getTrendingProfiles } from "@/lib/api/endpoints";
+import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { parseSearchQuery } from "@/lib/search-params/search";
 import type { Profile } from "@/lib/types/api";
 
@@ -60,16 +55,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
 
   if (payload?.notes?.length) {
     try {
-      const noteAuthors = await getProfilesBatch(
-        (payload.notes ?? [])
-          .map((note) => note.pubkey)
-          .filter((pubkey): pubkey is string => typeof pubkey === "string"),
+      noteAuthorsByPubkey = await fetchProfilesByPubkey(
+        extractEventAuthorPubkeys(payload.notes ?? []),
         "requestTime"
-      );
-      noteAuthorsByPubkey = Object.fromEntries(
-        noteAuthors
-          .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
-          .map((profile) => [profile.pubkey.toLowerCase(), profile])
       );
     } catch {
       noteAuthorsByPubkey = {};
@@ -135,17 +123,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   const profilesCursor =
     surfaceCursors.profiles ?? (activeTab === "profiles" ? payload?.next_cursor : undefined);
   const suggestCursor = surfaceCursors.suggest;
-  const resultScope = payload?.result_scope;
-  const resultScopeText =
-    typeof resultScope === "string"
-      ? resultScope
-      : isRecord(resultScope)
-        ? Object.entries(resultScope)
-            .slice(0, 3)
-            .map(([key, value]) => `${key}: ${String(value)}`)
-            .join(" • ")
-        : undefined;
-
+  const notesFailed = typeof surfaceErrors.notes === "string" && surfaceErrors.notes.length > 0;
+  const profilesFailed =
+    typeof surfaceErrors.profiles === "string" && surfaceErrors.profiles.length > 0;
+  const suggestFailed =
+    typeof surfaceErrors.suggest === "string" && surfaceErrors.suggest.length > 0;
+  const notesAvailable = (payload?.notes?.length ?? 0) > 0;
+  const profilesAvailable = hydratedProfiles.length > 0;
+  const suggestedProfilesAvailable = hydratedSuggestedProfiles.length > 0;
   return (
     <div className="space-y-8">
       <PageHero
@@ -154,29 +139,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
         badges={
           canQuery ? (
             <div className="flex flex-wrap gap-2 text-xs">
-              <ConsistencyBadge
-                consistency={
-                  typeof payload?.consistency === "string" ? payload.consistency : undefined
-                }
-              />
+              <NativeSemanticsBadges semantics={payload} />
               <span className="max-w-full rounded-full border border-zinc-700 px-2 py-1 break-all text-zinc-300">
                 Query: {query.q}
               </span>
-              {typeof payload?.trust_mode === "string" ? (
-                <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
-                  trust: {payload.trust_mode}
-                </span>
-              ) : null}
-              {typeof payload?.trust_applied === "boolean" ? (
-                <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
-                  trust applied: {payload.trust_applied ? "yes" : "no"}
-                </span>
-              ) : null}
-              {resultScopeText ? (
-                <span className="max-w-full rounded-full border border-zinc-700 px-2 py-1 break-words text-zinc-300">
-                  scope: {resultScopeText}
-                </span>
-              ) : null}
               {typeof payload?.total === "number" ? (
                 <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
                   {payload.total.toLocaleString()} results
@@ -255,8 +221,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               {surfaceErrors.notes ? (
                 <ErrorPanel message={`Notes surface unavailable: ${surfaceErrors.notes}`} />
               ) : null}
-              {payload?.notes && payload.notes.length > 0 ? (
-                <NotesList notes={payload.notes} authorsByPubkey={noteAuthorsByPubkey} />
+              {notesAvailable ? (
+                <NotesList notes={payload?.notes ?? []} authorsByPubkey={noteAuthorsByPubkey} />
+              ) : notesFailed ? (
+                <EmptyState message={`Notes are temporarily unavailable for "${query.q}".`} />
               ) : (
                 <EmptyState message={`No note hits for "${query.q}".`} />
               )}
@@ -276,8 +244,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               {surfaceErrors.profiles ? (
                 <ErrorPanel message={`Profiles surface unavailable: ${surfaceErrors.profiles}`} />
               ) : null}
-              {hydratedProfiles.length > 0 ? (
+              {profilesAvailable ? (
                 <ProfilesList profiles={hydratedProfiles} />
+              ) : profilesFailed ? (
+                <EmptyState message={`Profiles are temporarily unavailable for "${query.q}".`} />
               ) : (
                 <EmptyState message={`No profile hits for "${query.q}".`} />
               )}
@@ -300,7 +270,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               {surfaceErrors.suggest ? (
                 <ErrorPanel message={`Suggestions surface unavailable: ${surfaceErrors.suggest}`} />
               ) : null}
-              {hydratedSuggestedProfiles.length > 0 ? (
+              {suggestedProfilesAvailable ? (
                 <ProfilesList profiles={hydratedSuggestedProfiles} />
               ) : fallbackSuggestedProfiles.length > 0 ? (
                 <div className="space-y-3">
@@ -309,6 +279,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
                   </p>
                   <ProfilesList profiles={fallbackSuggestedProfiles} />
                 </div>
+              ) : suggestFailed ? (
+                <EmptyState message={`Suggestions are temporarily unavailable for "${query.q}".`} />
               ) : (
                 <EmptyState message={`No profile suggestions returned for "${query.q}".`} />
               )}

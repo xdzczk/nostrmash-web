@@ -1,28 +1,30 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-import { ConsistencyBadge } from "@/components/explorer/consistency-badge";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { extractPrimitiveStats, isRecord } from "@/components/explorer/utils";
 import { MetadataList } from "@/components/explorer/metadata-list";
+import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
 import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
 import { QuickEntryGrid } from "@/components/home/quick-entry-grid";
 import { SystemPosturePanel } from "@/components/home/system-posture-panel";
 import { SearchForm } from "@/components/search/search-form";
-import { NotesList, ProfilesList, HashtagsList } from "@/components/data/renderers";
+import { NotesList, ProfilesList, HashtagsList, DomainsList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { extractRelayRows } from "@/components/explorer/stats-utils";
 import {
   getDiscoveryHome,
-  getProfilesBatch,
   getContentStats,
   getNetworkStats,
   getRelayStats,
+  getTrendingDomains,
   getTrendingHashtags,
   getTrendingNotes,
   getTrendingProfiles,
 } from "@/lib/api/endpoints";
+import { extractNativeApiSemantics } from "@/lib/api/normalize";
+import { fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import type { Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = {
@@ -102,6 +104,7 @@ export default async function HomePage() {
   let trendingNotes: Awaited<ReturnType<typeof getTrendingNotes>> | null = null;
   let trendingProfiles: Awaited<ReturnType<typeof getTrendingProfiles>> | null = null;
   let trendingHashtags: Awaited<ReturnType<typeof getTrendingHashtags>> | null = null;
+  let trendingDomains: Awaited<ReturnType<typeof getTrendingDomains>> | null = null;
   let noteAuthorsByPubkey: Record<string, Profile> = {};
   try {
     payload = await getDiscoveryHome("shortTtl");
@@ -114,15 +117,24 @@ export default async function HomePage() {
   let homeNotes = payload?.notes ?? [];
   let homeProfiles = payload?.profiles ?? [];
   let homeHashtags = payload?.hashtags ?? [];
+  let homeDomains = payload?.domains ?? [];
 
   const needsNotesFallback = homeNotes.length === 0;
   const needsProfilesFallback = homeProfiles.length === 0;
   const needsHashtagsFallback = homeHashtags.length === 0;
-  if (needsNotesFallback || needsProfilesFallback || needsHashtagsFallback || !payload) {
+  const needsDomainsFallback = homeDomains.length === 0;
+  if (
+    needsNotesFallback ||
+    needsProfilesFallback ||
+    needsHashtagsFallback ||
+    needsDomainsFallback ||
+    !payload
+  ) {
     const fallbackRequests: Array<Promise<unknown>> = [];
     if (needsNotesFallback) fallbackRequests.push(getTrendingNotes("shortTtl"));
     if (needsProfilesFallback) fallbackRequests.push(getTrendingProfiles("shortTtl"));
     if (needsHashtagsFallback) fallbackRequests.push(getTrendingHashtags("shortTtl"));
+    if (needsDomainsFallback) fallbackRequests.push(getTrendingDomains("shortTtl"));
     const fallbackResults = await Promise.allSettled(fallbackRequests);
     let fallbackIndex = 0;
     if (needsNotesFallback) {
@@ -163,6 +175,20 @@ export default async function HomePage() {
             : "Failed to load trending hashtags."
         );
       }
+      fallbackIndex += 1;
+    }
+    if (needsDomainsFallback) {
+      const result = fallbackResults[fallbackIndex];
+      if (result?.status === "fulfilled") {
+        trendingDomains = result.value as Awaited<ReturnType<typeof getTrendingDomains>>;
+        homeDomains = trendingDomains.domains ?? [];
+      } else if (result?.status === "rejected") {
+        failedMessages.push(
+          result.reason instanceof Error
+            ? result.reason.message
+            : "Failed to load trending domains."
+        );
+      }
     }
   }
 
@@ -181,16 +207,10 @@ export default async function HomePage() {
   );
   if (pubkeysToHydrate.length > 0) {
     try {
-      const hydratedProfilesBatch = await getProfilesBatch(pubkeysToHydrate, "shortTtl");
-      const hydratedByPubkey = new Map(
-        hydratedProfilesBatch
-          .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
-          .map((profile) => [profile.pubkey.toLowerCase(), profile] as const)
-      );
-      noteAuthorsByPubkey = Object.fromEntries(hydratedByPubkey.entries());
+      noteAuthorsByPubkey = await fetchProfilesByPubkey(pubkeysToHydrate, "shortTtl");
       hydratedHomeProfiles = homeProfiles.map((profile) => {
         const key = typeof profile.pubkey === "string" ? profile.pubkey.toLowerCase() : "";
-        const hydrated = key ? hydratedByPubkey.get(key) : undefined;
+        const hydrated = key ? noteAuthorsByPubkey[key] : undefined;
         return { ...profile, ...(hydrated ?? {}) };
       });
     } catch {
@@ -301,26 +321,13 @@ export default async function HomePage() {
     })
     .filter(isNonNull);
 
-  const resultScopeValue = payload?.result_scope;
-  const heroScope =
-    typeof resultScopeValue === "string"
-      ? resultScopeValue
-      : isRecord(resultScopeValue)
-        ? Object.entries(resultScopeValue)
-            .slice(0, 2)
-            .map(([key, value]) => `${key}: ${String(value)}`)
-            .join(" • ")
-        : undefined;
-  const heroTrustMode = typeof payload?.trust_mode === "string" ? payload.trust_mode : undefined;
-  const heroTrustApplied =
-    typeof payload?.trust_applied === "boolean" ? payload.trust_applied : undefined;
   const errorMessage = failedMessages.length > 0 ? failedMessages.join(" | ") : "";
-  const heroBadges = [
-    typeof payload?.consistency === "string" ? payload.consistency : undefined,
-    typeof networkStats?.consistency === "string" ? networkStats.consistency : undefined,
-    typeof contentStats?.consistency === "string" ? contentStats.consistency : undefined,
-    typeof relayStats?.consistency === "string" ? relayStats.consistency : undefined,
-  ].filter((value): value is string => typeof value === "string");
+  const semantics = extractNativeApiSemantics(payload, networkStats, contentStats, relayStats);
+  const hasSemantics =
+    semantics.consistency !== undefined ||
+    semantics.trust_mode !== undefined ||
+    semantics.trust_applied !== undefined ||
+    semantics.result_scope !== undefined;
 
   const quickLinks = [
     {
@@ -339,9 +346,24 @@ export default async function HomePage() {
       description: "Query notes, profiles, and hashtags against the public index.",
     },
     {
+      href: `/hashtags/${encodeURIComponent(homeHashtags[0]?.hashtag ?? "nostr")}`,
+      label: "Open leading hashtag",
+      description: "Jump directly into hashtag explorer context and related tag loops.",
+    },
+    {
+      href: `/domains/${encodeURIComponent(homeDomains[0]?.domain ?? "nostr.com")}`,
+      label: "Open leading domain",
+      description: "Inspect what note activity is surfacing from this domain right now.",
+    },
+    {
+      href: "/relays",
+      label: "Open relay explorer",
+      description: "Rank active relays and inspect where activity is concentrated.",
+    },
+    {
       href: `/relays/${encodeURIComponent(relayLeaders[0]?.relay ?? "relay.damus.io")}`,
-      label: "Inspect relay host",
-      description: "Open relay-level metrics and read-path context.",
+      label: "Inspect leading relay",
+      description: "Open relay-level stats and health posture for the current leader.",
     },
   ];
 
@@ -364,30 +386,32 @@ export default async function HomePage() {
       label: "Leading relay",
       value: relayLeaders[0]?.relay ?? "Unavailable in this window",
     },
+    {
+      label: "Leading domain",
+      value: homeDomains[0]?.domain ?? "Unavailable in this window",
+    },
   ];
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/55 p-5 sm:p-6 lg:p-7">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
-          <div className="space-y-5">
-            <div className="space-y-3">
+    <div className="space-y-6 sm:space-y-8">
+      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/55 p-4 sm:p-6 lg:p-7">
+        <div className="grid gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
+          <div className="space-y-4 sm:space-y-5">
+            <div className="space-y-2.5 sm:space-y-3">
               <p className="text-[11px] font-medium tracking-[0.2em] text-zinc-500 uppercase">
                 Public observability
               </p>
               <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-zinc-100 sm:text-4xl">
                 Durable index. Compatible reads.
               </h1>
-              <p className="max-w-3xl text-sm leading-6 text-zinc-300 sm:text-base">
+              <p className="max-w-3xl text-sm leading-5 text-zinc-300 sm:text-base sm:leading-6">
                 NostrMash keeps canonical ingest in durable storage and serves calm explorer reads
                 for search, trends, and relay inspection.
               </p>
             </div>
-            {heroBadges.length > 0 ? (
+            {hasSemantics ? (
               <div className="flex flex-wrap items-center gap-2">
-                {heroBadges.map((consistency, index) => (
-                  <ConsistencyBadge key={`${consistency}-${index}`} consistency={consistency} />
-                ))}
+                <NativeSemanticsBadges semantics={semantics} />
               </div>
             ) : null}
             <SearchForm
@@ -399,15 +423,6 @@ export default async function HomePage() {
               <span className="text-zinc-700">•</span>
               <span>Trend outputs reflect current public API ranking windows.</span>
             </div>
-            {heroScope || heroTrustMode || heroTrustApplied !== undefined ? (
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-500">
-                {heroScope ? <span>Result scope: {heroScope}</span> : null}
-                {heroTrustMode ? <span>Trust mode: {heroTrustMode}</span> : null}
-                {heroTrustApplied !== undefined ? (
-                  <span>Trust applied: {heroTrustApplied ? "yes" : "no"}</span>
-                ) : null}
-              </div>
-            ) : null}
           </div>
           <SystemPosturePanel />
         </div>
@@ -417,7 +432,7 @@ export default async function HomePage() {
 
       <NetworkPulseStrip title="Network pulse" stats={pulseStats} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">
         <SectionCard
           title="Trending now"
           description="Top ranked notes from current discovery outputs."
@@ -473,6 +488,22 @@ export default async function HomePage() {
         )}
         <Link href="/trending/hashtags" className="mt-3 inline-block text-sm text-indigo-300">
           View all trending hashtags
+        </Link>
+      </SectionCard>
+
+      <SectionCard title="Domain pulse" description="Domain movement from the active index window.">
+        {homeDomains.length > 0 ? (
+          <DomainsList domains={homeDomains.slice(0, 12)} ranked searchable />
+        ) : errorMessage ? (
+          <ErrorPanel message={errorMessage} />
+        ) : (
+          <EmptyState
+            title="Domain ranking is sparse"
+            message="No ranked domain activity was returned for the active window."
+          />
+        )}
+        <Link href="/trending/domains" className="mt-3 inline-block text-sm text-indigo-300">
+          View all trending domains
         </Link>
       </SectionCard>
 

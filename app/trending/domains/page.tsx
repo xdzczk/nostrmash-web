@@ -5,10 +5,10 @@ import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
 import { PageHero } from "@/components/explorer/page-hero";
-import { HashtagsList } from "@/components/data/renderers";
+import { DomainsList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
-import { getTrendingHashtags } from "@/lib/api/endpoints";
+import { getTrendingDomains } from "@/lib/api/endpoints";
 import {
   buildContinuationHref,
   readSearchParam,
@@ -17,13 +17,13 @@ import {
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 
 export const metadata: Metadata = {
-  title: "Trending Hashtags",
-  description: "Hashtag pulse and ranked mention counts from NostrMash trending data.",
+  title: "Trending Domains",
+  description: "Domain pulse and ranked note counts from NostrMash discovery data.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-export default async function TrendingHashtagsPage({
+export default async function TrendingDomainsPage({
   searchParams,
 }: {
   searchParams: SearchParams;
@@ -32,14 +32,14 @@ export default async function TrendingHashtagsPage({
   const cursor = readSearchParam(resolvedSearchParams, "cursor");
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   let errorMessage = "";
-  let payload: Awaited<ReturnType<typeof getTrendingHashtags>> | null = null;
+  let payload: Awaited<ReturnType<typeof getTrendingDomains>> | null = null;
   try {
-    payload = await getTrendingHashtags("shortTtl", { cursor });
+    payload = await getTrendingDomains("shortTtl", { cursor });
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : "Failed to load trending hashtags.";
+    errorMessage = error instanceof Error ? error.message : "Failed to load trending domains.";
   }
   const continuationHref = buildContinuationHref(
-    "/trending/hashtags",
+    "/trending/domains",
     currentSearchParams,
     "cursor",
     payload?.next_cursor
@@ -54,9 +54,9 @@ export default async function TrendingHashtagsPage({
   return (
     <div className="space-y-8">
       <PageHero
-        eyebrow="Ranked hashtags"
-        title="Trending hashtags"
-        subtitle="Hashtag activity ordered by current mention counts."
+        eyebrow="Ranked domains"
+        title="Trending domains"
+        subtitle="Domain activity ordered by current note counts."
         badges={
           hasSemantics ? (
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -66,22 +66,22 @@ export default async function TrendingHashtagsPage({
         }
       />
       <SectionCard
-        title="Hashtag ranking"
-        description="Top hashtags are elevated while lower ranks remain dense and scannable."
+        title="Domain ranking"
+        description="Top domains are elevated while lower ranks remain dense and scannable."
       >
         {errorMessage ? (
           <ErrorPanel message={errorMessage} />
-        ) : payload?.hashtags && payload.hashtags.length > 0 ? (
-          <HashtagsList hashtags={payload.hashtags} ranked searchable />
+        ) : payload?.domains && payload.domains.length > 0 ? (
+          <DomainsList domains={payload.domains} ranked searchable />
         ) : (
           <EmptyState
-            title="No hashtag ranking available"
-            message="The API did not return ranked hashtags for the current trend window."
+            title="No domain ranking available"
+            message="The API did not return ranked domains for the current trend window."
           />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
           <Link href={continuationHref} className="mt-3 inline-block text-sm text-indigo-300">
-            Load more ranked hashtags
+            Load more ranked domains
           </Link>
         ) : null}
       </SectionCard>

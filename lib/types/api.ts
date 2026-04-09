@@ -96,10 +96,19 @@ export interface HashtagEntry {
   [key: string]: unknown;
 }
 
+export interface DomainEntry {
+  domain?: string;
+  count?: number;
+  event_count?: number;
+  unique_authors?: number;
+  [key: string]: unknown;
+}
+
 export interface DiscoveryHomeResponse extends NativeApiSemantics {
   notes?: EventRecord[];
   profiles?: Profile[];
   hashtags?: HashtagEntry[];
+  domains?: DomainEntry[];
   stats?: Record<string, unknown>;
   [key: string]: unknown;
 }
@@ -116,6 +125,64 @@ export interface TrendingProfilesResponse extends NativeApiSemantics {
 
 export interface TrendingHashtagsResponse extends NativeApiSemantics {
   hashtags?: HashtagEntry[];
+  [key: string]: unknown;
+}
+
+export interface TrendingDomainsResponse extends NativeApiSemantics {
+  domains?: DomainEntry[];
+  [key: string]: unknown;
+}
+
+export interface HotConversationsResponse extends NativeApiSemantics {
+  notes?: EventRecord[];
+  [key: string]: unknown;
+}
+
+export interface RisingProfilesResponse extends NativeApiSemantics {
+  profiles?: Profile[];
+  [key: string]: unknown;
+}
+
+export interface HashtagDetailResponse extends NativeApiSemantics {
+  hashtag?: string;
+  count?: number;
+  event_count?: number;
+  unique_authors?: number;
+  related?: HashtagEntry[];
+  notes?: EventRecord[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface HashtagNotesResponse extends NativeApiSemantics {
+  hashtag?: string;
+  notes?: EventRecord[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface RelatedHashtagsResponse extends NativeApiSemantics {
+  hashtag?: string;
+  related?: HashtagEntry[];
+  hashtags?: HashtagEntry[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface DomainDetailResponse extends NativeApiSemantics {
+  domain?: string;
+  count?: number;
+  event_count?: number;
+  unique_authors?: number;
+  notes?: EventRecord[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface DomainNotesResponse extends NativeApiSemantics {
+  domain?: string;
+  notes?: EventRecord[];
+  total?: number;
   [key: string]: unknown;
 }
 
@@ -152,6 +219,39 @@ export interface ThreadResponse extends NativeApiSemantics {
   [key: string]: unknown;
 }
 
+export interface EventAncestorsResponse extends NativeApiSemantics {
+  event?: EventRecord;
+  ancestors?: EventRecord[];
+  missing_ancestor_ids?: string[];
+  [key: string]: unknown;
+}
+
+export interface EventRepliesResponse extends NativeApiSemantics {
+  event?: EventRecord;
+  root_event_id?: string;
+  replies?: EventRecord[];
+  [key: string]: unknown;
+}
+
+export interface ThreadSummaryResponse extends NativeApiSemantics {
+  root_event_id?: string;
+  summary?: Record<string, unknown>;
+  counts?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface ThreadActivityResponse extends NativeApiSemantics {
+  root_event_id?: string;
+  activity?: EventRecord[];
+  [key: string]: unknown;
+}
+
+export interface RelatedNotesResponse extends NativeApiSemantics {
+  event_id?: string;
+  related?: EventRecord[];
+  [key: string]: unknown;
+}
+
 export interface NoteSummaryResponse extends NativeApiSemantics {
   note?: EventRecord;
   event?: EventRecord;
@@ -179,6 +279,93 @@ export interface ProfileSummaryResponse extends NativeApiSemantics {
   reply_count?: number;
   recent_activity_at?: number;
   relay_count?: number;
+  [key: string]: unknown;
+}
+
+export interface AuthorEventsResponse extends NativeApiSemantics {
+  pubkey?: string;
+  events?: EventRecord[];
+  [key: string]: unknown;
+}
+
+export interface AuthorRepliesResponse extends NativeApiSemantics {
+  pubkey?: string;
+  replies?: EventRecord[];
+  [key: string]: unknown;
+}
+
+export interface ProfileFollowersResponse extends NativeApiSemantics {
+  pubkey?: string;
+  followers?: Profile[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface ProfileMentionsResponse extends NativeApiSemantics {
+  pubkey?: string;
+  mentions?: Profile[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface RelatedProfilesResponse extends NativeApiSemantics {
+  pubkey?: string;
+  related_profiles?: Profile[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface ContactListContextResponse extends NativeApiSemantics {
+  pubkey?: string;
+  contacts?: Profile[];
+  contact_pubkeys?: string[];
+  relays?: string[];
+  [key: string]: unknown;
+}
+
+export interface RelayListEntry {
+  relay_url?: string;
+  read?: boolean;
+  write?: boolean;
+  [key: string]: unknown;
+}
+
+export interface RelayListContextResponse extends NativeApiSemantics {
+  pubkey?: string;
+  relays?: RelayListEntry[];
+  [key: string]: unknown;
+}
+
+export interface RelayHealthResponse extends NativeApiSemantics {
+  relays?: Array<{
+    relay_url?: string;
+    status?: string;
+    healthy?: boolean;
+    latency_ms?: number;
+    uptime?: number | string;
+    last_seen_at?: string | number;
+    [key: string]: unknown;
+  }>;
+  [key: string]: unknown;
+}
+
+export interface ProfileTopicsResponse extends NativeApiSemantics {
+  pubkey?: string;
+  topics?: HashtagEntry[];
+  profiles?: Profile[];
+  [key: string]: unknown;
+}
+
+export interface AuthorAnalyticsResponse extends NativeApiSemantics {
+  pubkey?: string;
+  [key: string]: unknown;
+}
+
+export interface TrustScoreResponse extends NativeApiSemantics {
+  pubkey?: string;
+  trust_score?: number | string;
+  score?: number | string;
+  metadata?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
@@ -222,3 +409,25 @@ export type ThreadApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type NoteSummaryApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type EventSeenOnApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type EventCountsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type EventAncestorsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type EventRepliesApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type ThreadSummaryApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type ThreadActivityApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type RelatedNotesApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type AuthorEventsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type AuthorRepliesApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type ProfileFollowersApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type ProfileMentionsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type RelatedProfilesApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type ContactListContextApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type RelayListContextApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type RelayHealthApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type ProfileTopicsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type AuthorAnalyticsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type TrustScoreApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type HashtagDetailApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type HashtagNotesApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type RelatedHashtagsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type TrendingDomainsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type DomainDetailApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type DomainNotesApiResponse = NativeApiSemantics & Record<string, unknown>;

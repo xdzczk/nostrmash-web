@@ -12,6 +12,9 @@ import {
   profileInitial,
   profileLabel,
   profileSecondaryLabel,
+  extractDomainsFromNote,
+  extractHashtagsFromNote,
+  extractRelayHostsFromNote,
   truncateMiddle,
 } from "@/components/explorer/utils";
 import type { EventRecord, Profile } from "@/lib/types/api";
@@ -58,10 +61,13 @@ export function NoteCard({
     .filter((entry) => /(count|score|rank|likes|replies|zaps|boosts)/i.test(entry.label))
     .slice(0, 3);
   const isTopRank = typeof rank === "number" && rank <= 3;
+  const noteDomains = extractDomainsFromNote(note, 4);
+  const noteHashtags = extractHashtagsFromNote(note, 4);
+  const relayHosts = extractRelayHostsFromNote(note, 3);
 
   return (
     <article
-      className={`rounded-xl border p-4 ${
+      className={`rounded-xl border p-3 sm:p-4 ${
         isTopRank ? "border-zinc-700 bg-zinc-900/65" : "border-zinc-800 bg-zinc-900/50"
       }`}
     >
@@ -73,10 +79,10 @@ export function NoteCard({
             width={44}
             height={44}
             unoptimized
-            className="h-11 w-11 rounded-full border border-zinc-700 object-cover"
+            className="h-10 w-10 rounded-full border border-zinc-700 object-cover sm:h-11 sm:w-11"
           />
         ) : (
-          <div className="flex h-11 w-11 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900 text-xs text-zinc-500">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900 text-xs text-zinc-500 sm:h-11 sm:w-11">
             {author ? profileInitial(author) : "?"}
           </div>
         )}
@@ -115,7 +121,7 @@ export function NoteCard({
       </div>
 
       <p
-        className={`mt-3 text-sm leading-6 text-zinc-100 ${
+        className={`mt-2.5 text-sm leading-5 text-zinc-100 sm:mt-3 sm:leading-6 ${
           showFullContent ? "whitespace-pre-wrap" : "line-clamp-4"
         }`}
       >
@@ -126,7 +132,49 @@ export function NoteCard({
         <NoteMedia content={note.content} />
       ) : null}
 
-      <div className="mt-3 grid gap-2 text-xs text-zinc-300 sm:grid-cols-3">
+      {noteDomains.length > 0 ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {noteDomains.map((domain) => (
+            <Link
+              key={domain}
+              href={`/domains/${encodeURIComponent(domain)}`}
+              className="rounded-full border border-zinc-700 px-2.5 py-1 text-xs text-zinc-300 hover:text-zinc-100"
+            >
+              {domain}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+
+      {noteHashtags.length > 0 ? (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {noteHashtags.map((hashtag) => (
+            <Link
+              key={hashtag}
+              href={`/hashtags/${encodeURIComponent(hashtag)}`}
+              className="rounded-full border border-zinc-700 px-2.5 py-1 text-xs text-zinc-300 hover:text-zinc-100"
+            >
+              #{hashtag}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+
+      {relayHosts.length > 0 ? (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {relayHosts.map((relayHost) => (
+            <Link
+              key={relayHost}
+              href={`/relays/${encodeURIComponent(relayHost)}`}
+              className="rounded-full border border-zinc-700 px-2.5 py-1 text-xs text-indigo-300 hover:border-indigo-400/40"
+            >
+              relay: {relayHost}
+            </Link>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-2.5 grid gap-2 text-xs text-zinc-300 sm:mt-3 sm:grid-cols-3">
         {metrics.map((metric) => (
           <div
             key={metric.label}
@@ -142,17 +190,39 @@ export function NoteCard({
         ))}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-2.5 flex flex-wrap items-center gap-2 sm:mt-3">
         {resolvedNoteId ? <IdBadge id={resolvedNoteId} label="event" /> : null}
       </div>
 
-      {noteHref ? (
-        <Link
-          href={noteHref}
-          className="mt-3 inline-block text-xs text-indigo-300 hover:text-indigo-200"
-        >
-          Open note
-        </Link>
+      {resolvedNoteId ? (
+        <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
+          {noteHref ? (
+            <Link href={noteHref} className="text-indigo-300 hover:text-indigo-200">
+              Open note
+            </Link>
+          ) : null}
+          <span className="text-zinc-600">•</span>
+          <Link
+            href={`/notes/${encodeURIComponent(resolvedNoteId)}#conversation-context`}
+            className="text-indigo-300 hover:text-indigo-200"
+          >
+            View thread
+          </Link>
+          <span className="text-zinc-600">•</span>
+          <Link
+            href={`/notes/${encodeURIComponent(resolvedNoteId)}#related-notes`}
+            className="text-indigo-300 hover:text-indigo-200"
+          >
+            Related notes
+          </Link>
+          <span className="text-zinc-600">•</span>
+          <Link
+            href={`/notes/${encodeURIComponent(resolvedNoteId)}#note-provenance`}
+            className="text-indigo-300 hover:text-indigo-200"
+          >
+            Seen-on relays
+          </Link>
+        </div>
       ) : null}
     </article>
   );

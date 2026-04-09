@@ -21,7 +21,7 @@ export function PageHero({
 }) {
   return (
     <section
-      className={`space-y-5 rounded-xl border border-zinc-800/95 bg-zinc-900/55 p-5 sm:p-6 ${
+      className={`space-y-4 rounded-xl border border-zinc-800/95 bg-zinc-900/55 p-4 sm:space-y-5 sm:p-6 ${
         emphasize ? "shadow-[0_0_0_1px_rgba(63,63,70,0.34)]" : ""
       } ${className ?? ""}`}
     >
@@ -33,13 +33,15 @@ export function PageHero({
         ) : null}
         <h1
           className={`font-semibold tracking-tight text-zinc-100 ${
-            emphasize ? "text-3xl sm:text-[2.1rem]" : "text-2xl"
+            emphasize ? "text-[1.85rem] sm:text-[2.1rem]" : "text-[1.75rem] sm:text-2xl"
           }`}
         >
           {title}
         </h1>
         {subtitle ? (
-          <p className="max-w-4xl text-sm leading-6 text-zinc-300 sm:text-[0.95rem]">{subtitle}</p>
+          <p className="max-w-4xl text-sm leading-5 text-zinc-300 sm:text-[0.95rem] sm:leading-6">
+            {subtitle}
+          </p>
         ) : null}
       </div>
       {badges ? <div className="flex flex-wrap items-center gap-2">{badges}</div> : null}

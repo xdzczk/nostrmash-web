@@ -8,7 +8,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
   return (
     <>
       <header className="border-b border-zinc-800/90 bg-zinc-950/92 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-5">
           <Link
             href="/"
             aria-label="NostrMash home"
@@ -19,7 +19,9 @@ export function SiteShell({ children }: { children: ReactNode }) {
           <SiteNav />
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-5 py-8">{children}</main>
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-6 pb-28 sm:px-5 sm:py-8 sm:pb-8">
+        {children}
+      </main>
     </>
   );
 }

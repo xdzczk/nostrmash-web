@@ -1,3 +1,4 @@
+import { DomainChip } from "@/components/explorer/domain-chip";
 import { HashtagChip } from "@/components/explorer/hashtag-chip";
 import { NoteCard } from "@/components/explorer/note-card";
 import { ProfileCard } from "@/components/explorer/profile-card";
@@ -61,17 +62,25 @@ export function HashtagsList({
   hashtags,
   ranked = false,
   searchable = false,
+  linkMode = "explorer",
 }: {
-  hashtags: Array<string | { hashtag?: string; count?: number }>;
+  hashtags: Array<string | { hashtag?: string; count?: number; event_count?: number }>;
   ranked?: boolean;
   searchable?: boolean;
+  linkMode?: "explorer" | "search";
 }) {
   const normalized = hashtags.map((entry, index) => {
     const hashtag = typeof entry === "string" ? entry : (entry.hashtag ?? "");
-    const count = typeof entry === "string" ? undefined : entry.count;
-    const href = searchable ? `/search?q=${encodeURIComponent(`#${hashtag}`)}&tab=all` : undefined;
+    const normalizedHashtag = hashtag.trim().replace(/^#/, "");
+    const count = typeof entry === "string" ? undefined : (entry.count ?? entry.event_count);
+    const href =
+      searchable && normalizedHashtag.length > 0
+        ? linkMode === "search"
+          ? `/search?q=${encodeURIComponent(`#${normalizedHashtag}`)}&tab=all`
+          : `/hashtags/${encodeURIComponent(normalizedHashtag)}`
+        : undefined;
     return {
-      hashtag: hashtag || "unknown",
+      hashtag: normalizedHashtag || "unknown",
       count,
       href,
       rank: ranked ? index + 1 : undefined,
@@ -101,6 +110,68 @@ export function HashtagsList({
           <li key={`${entry.hashtag}-${index}`}>
             <HashtagChip
               hashtag={entry.hashtag}
+              count={entry.count}
+              href={entry.href}
+              rank={entry.rank}
+            />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function DomainsList({
+  domains,
+  ranked = false,
+  searchable = false,
+}: {
+  domains: Array<string | { domain?: string; count?: number; event_count?: number }>;
+  ranked?: boolean;
+  searchable?: boolean;
+}) {
+  const normalized = domains.map((entry, index) => {
+    const domain = typeof entry === "string" ? entry : (entry.domain ?? "");
+    const normalizedDomain = domain
+      .trim()
+      .toLowerCase()
+      .replace(/^www\./, "");
+    const count = typeof entry === "string" ? undefined : (entry.count ?? entry.event_count);
+    const href =
+      searchable && normalizedDomain.length > 0
+        ? `/domains/${encodeURIComponent(normalizedDomain)}`
+        : undefined;
+    return {
+      domain: normalizedDomain || "unknown.domain",
+      count,
+      href,
+      rank: ranked ? index + 1 : undefined,
+    };
+  });
+  const top = ranked ? normalized.slice(0, 3) : [];
+  const rest = ranked ? normalized.slice(3) : normalized;
+
+  return (
+    <div className="space-y-2">
+      {top.length > 0 ? (
+        <ul className="grid gap-2 sm:grid-cols-3">
+          {top.map((entry, index) => (
+            <li key={`${entry.domain}-${index}`}>
+              <DomainChip
+                domain={entry.domain}
+                count={entry.count}
+                href={entry.href}
+                rank={entry.rank}
+              />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {rest.map((entry, index) => (
+          <li key={`${entry.domain}-${index}`}>
+            <DomainChip
+              domain={entry.domain}
               count={entry.count}
               href={entry.href}
               rank={entry.rank}

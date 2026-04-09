@@ -1,0 +1,143 @@
+import Link from "next/link";
+import type { Metadata } from "next";
+
+import { extractRelayHealthRows, relayHealthPosture } from "@/components/explorer/stats-utils";
+import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
+import { EmptyState } from "@/components/explorer/empty-state";
+import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
+import { PageHero } from "@/components/explorer/page-hero";
+import { MetadataList } from "@/components/explorer/metadata-list";
+import { SectionCard } from "@/components/ui/section-card";
+import { ErrorPanel } from "@/components/ui/status-panels";
+import { getRelayHealth } from "@/lib/api/endpoints";
+import {
+  buildContinuationHref,
+  readSearchParam,
+  toUrlSearchParams,
+} from "@/lib/search-params/pagination";
+import { extractNativeApiSemantics } from "@/lib/api/normalize";
+
+export const metadata: Metadata = {
+  title: "Relay health posture",
+  description: "Inspect relay health signals returned by backend health surfaces.",
+};
+
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function RelayHealthPage({ searchParams }: { searchParams: SearchParams }) {
+  const resolvedSearchParams = await searchParams;
+  const cursor = readSearchParam(resolvedSearchParams, "cursor");
+  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
+  let errorMessage = "";
+  let payload: Awaited<ReturnType<typeof getRelayHealth>> | null = null;
+
+  try {
+    payload = await getRelayHealth("shortTtl", { cursor });
+  } catch (error) {
+    errorMessage = error instanceof Error ? error.message : "Failed to load relay health.";
+  }
+  const continuationHref = buildContinuationHref(
+    "/relays/health",
+    currentSearchParams,
+    "cursor",
+    payload?.next_cursor
+  );
+
+  const rows = extractRelayHealthRows(payload, 250).sort((left, right) => {
+    const leftHealthy = left.healthy === true ? 0 : left.healthy === false ? 1 : 2;
+    const rightHealthy = right.healthy === true ? 0 : right.healthy === false ? 1 : 2;
+    if (leftHealthy !== rightHealthy) return leftHealthy - rightHealthy;
+    return left.host.localeCompare(right.host);
+  });
+  const posture = relayHealthPosture(rows);
+  const semantics = extractNativeApiSemantics(payload);
+
+  return (
+    <div className="space-y-8">
+      <PageHero
+        eyebrow="Health posture"
+        title="Relay health posture"
+        subtitle="Backend health data only: no frontend scoring, just current relay health facts."
+        badges={
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <NativeSemanticsBadges semantics={semantics} />
+            <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+              healthy: {posture.healthy.toLocaleString()}
+            </span>
+            <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+              unhealthy: {posture.unhealthy.toLocaleString()}
+            </span>
+            <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+              unknown: {posture.unknown.toLocaleString()}
+            </span>
+            <Link
+              href="/relays"
+              className="rounded-full border border-zinc-700 px-2 py-1 text-indigo-300 hover:border-indigo-400/40"
+            >
+              Back to relay explorer
+            </Link>
+          </div>
+        }
+      />
+
+      {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
+
+      <SectionCard
+        title="Health observations"
+        description="Relay-level health rows as returned by /api/v1/relays/health."
+      >
+        {rows.length > 0 ? (
+          <ul className="space-y-2">
+            {rows.slice(0, 120).map((row) => (
+              <li
+                key={row.host}
+                id={`relay-${encodeURIComponent(row.host)}`}
+                className="rounded-md border border-zinc-800 bg-zinc-900/40 p-3"
+              >
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="min-w-0 truncate text-sm text-zinc-100">{row.relay}</p>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+                      {row.healthy === true
+                        ? "healthy"
+                        : row.healthy === false
+                          ? "unhealthy"
+                          : "health unknown"}
+                    </span>
+                    <Link
+                      href={`/relays/${encodeURIComponent(row.host)}`}
+                      className="rounded-full border border-zinc-700 px-2 py-1 text-indigo-300 hover:border-indigo-400/40"
+                    >
+                      Open relay
+                    </Link>
+                  </div>
+                </div>
+                <MetadataList
+                  items={[
+                    { label: "status", value: row.status ?? "n/a" },
+                    { label: "latency_ms", value: row.latencyMs ?? "n/a" },
+                    { label: "uptime", value: row.uptime ?? "n/a" },
+                    { label: "last_seen_at", value: row.lastSeenAt ?? "n/a" },
+                  ]}
+                  columns={2}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState
+            title="Health data unavailable"
+            message="No relay health observations were returned by the backend endpoint."
+          />
+        )}
+        {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
+          <Link href={continuationHref} className="mt-3 inline-block text-sm text-indigo-300">
+            Load more health rows
+          </Link>
+        ) : null}
+      </SectionCard>
+
+      <DebugDisclosure title="Debug payload: relay health" data={payload ?? {}} />
+    </div>
+  );
+}

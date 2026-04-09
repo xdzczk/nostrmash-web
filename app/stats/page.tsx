@@ -1,17 +1,18 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-import { ConsistencyBadge } from "@/components/explorer/consistency-badge";
 import { classifyStats, pickTopPrimitiveStats } from "@/components/explorer/stats-utils";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { MetadataList } from "@/components/explorer/metadata-list";
+import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
 import { PageHero } from "@/components/explorer/page-hero";
 import { StatCard } from "@/components/explorer/stat-card";
 import { formatMetricLabel, isRecord } from "@/components/explorer/utils";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { getContentStats, getNetworkStats, getRelayStats } from "@/lib/api/endpoints";
+import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractRelayRows } from "@/components/explorer/stats-utils";
 
 export const metadata: Metadata = {
@@ -150,6 +151,7 @@ export default async function StatsPage() {
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Failed to load stats.";
   }
+  const semantics = extractNativeApiSemantics(network, content, relays);
 
   return (
     <div className="space-y-8">
@@ -159,19 +161,7 @@ export default async function StatsPage() {
         subtitle="Read network, content, and relay metrics without opening raw payloads."
         badges={
           <div className="flex flex-wrap gap-2">
-            <ConsistencyBadge
-              consistency={
-                typeof network?.consistency === "string" ? network.consistency : undefined
-              }
-            />
-            <ConsistencyBadge
-              consistency={
-                typeof content?.consistency === "string" ? content.consistency : undefined
-              }
-            />
-            <ConsistencyBadge
-              consistency={typeof relays?.consistency === "string" ? relays.consistency : undefined}
-            />
+            <NativeSemanticsBadges semantics={semantics} />
           </div>
         }
       />

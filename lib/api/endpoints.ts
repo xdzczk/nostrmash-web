@@ -1,40 +1,108 @@
 import type {
+  AuthorAnalyticsApiResponse,
+  AuthorAnalyticsResponse,
+  AuthorEventsApiResponse,
+  AuthorEventsResponse,
+  AuthorRepliesApiResponse,
+  AuthorRepliesResponse,
   BatchProfilesApiResponse,
+  ContactListContextApiResponse,
+  ContactListContextResponse,
   DiscoveryHomeResponse,
+  DomainDetailApiResponse,
+  DomainDetailResponse,
+  DomainNotesApiResponse,
+  DomainNotesResponse,
+  EventAncestorsApiResponse,
+  EventAncestorsResponse,
   EventCountsApiResponse,
   EventCountsResponse,
   EventDetailResponse,
+  EventRepliesApiResponse,
+  EventRepliesResponse,
   EventSeenOnApiResponse,
   EventSeenOnResponse,
+  HotConversationsResponse,
+  HashtagDetailApiResponse,
+  HashtagDetailResponse,
+  HashtagNotesApiResponse,
+  HashtagNotesResponse,
   NoteSummaryApiResponse,
   Profile,
   ProfileApiResponse,
+  ProfileFollowersApiResponse,
+  ProfileFollowersResponse,
+  ProfileMentionsApiResponse,
+  ProfileMentionsResponse,
   ProfileSummaryApiResponse,
+  ProfileTopicsApiResponse,
+  ProfileTopicsResponse,
+  RelatedProfilesApiResponse,
+  RelatedProfilesResponse,
+  RelayListContextApiResponse,
+  RelayListContextResponse,
+  RelayHealthApiResponse,
+  RelayHealthResponse,
+  RelatedHashtagsApiResponse,
+  RelatedHashtagsResponse,
+  RelatedNotesApiResponse,
+  RelatedNotesResponse,
   SearchResponse,
   SearchApiResponse,
   SearchNotesApiResponse,
   SearchProfilesApiResponse,
   SearchSuggestApiResponse,
   StatsResponse,
+  RisingProfilesResponse,
+  ThreadActivityApiResponse,
+  ThreadActivityResponse,
   ThreadApiResponse,
+  ThreadSummaryApiResponse,
+  ThreadSummaryResponse,
+  TrendingDomainsApiResponse,
+  TrendingDomainsResponse,
   TrendingHashtagsResponse,
   TrendingNotesResponse,
   TrendingProfilesResponse,
+  TrustScoreApiResponse,
+  TrustScoreResponse,
 } from "@/lib/types/api";
 import { fetchApiJson } from "@/lib/api/http";
 import {
   normalizeDiscoveryHomeResponse,
   normalizeEventCountsResponse,
+  normalizeEventAncestorsResponse,
+  normalizeEventRepliesResponse,
   normalizeEventRecord,
   normalizeEventRecords,
   normalizeEventSeenOnResponse,
+  normalizeDomainDetailResponse,
+  normalizeDomainEntries,
+  normalizeDomainNotesResponse,
+  normalizeHashtagDetailResponse,
+  normalizeHashtagNotesResponse,
+  normalizeRelatedHashtagsResponse,
   extractNativeApiSemantics,
   normalizeHashtagEntries,
   normalizeNoteSummaryResponse,
+  normalizeAuthorEventsResponse,
+  normalizeAuthorAnalyticsResponse,
+  normalizeAuthorRepliesResponse,
+  normalizeContactListContextResponse,
   normalizeProfile,
+  normalizeProfileFollowersResponse,
+  normalizeProfileMentionsResponse,
   normalizeProfiles,
   normalizeProfileSummaryResponse,
+  normalizeProfileTopicsResponse,
+  normalizeRelatedProfilesResponse,
+  normalizeRelayListContextResponse,
+  normalizeRelayHealthResponse,
+  normalizeRelatedNotesResponse,
+  normalizeThreadActivityResponse,
   normalizeThreadResponse,
+  normalizeThreadSummaryResponse,
+  normalizeTrustScoreResponse,
 } from "@/lib/api/normalize";
 import type { CacheClass } from "@/lib/caching/policies";
 import { npubToHex } from "@/lib/nostr/npub";
@@ -55,18 +123,63 @@ const nativeApiV1Routes = {
   profilesBatch: "/api/v1/profiles/batch",
   profileByPubkey: (pubkey: string) => `/api/v1/profiles/${encodeURIComponent(pubkey)}`,
   profileSummaryByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/summary`,
+  profileFollowersByPubkey: (pubkey: string) =>
+    `/api/v1/users/${encodeURIComponent(pubkey)}/followers`,
+  profileMentionsByPubkey: (pubkey: string) =>
+    `/api/v1/users/${encodeURIComponent(pubkey)}/mentions`,
+  contactListByPubkey: (pubkey: string) => `/api/v1/contact-lists/${encodeURIComponent(pubkey)}`,
+  relayListByPubkey: (pubkey: string) => `/api/v1/relay-lists/${encodeURIComponent(pubkey)}`,
+  relatedProfilesByPubkey: (pubkey: string) =>
+    `/api/v1/discovery/profiles/${encodeURIComponent(pubkey)}/related`,
+  profileTopicsByPubkey: (pubkey: string) =>
+    `/api/v1/profiles/${encodeURIComponent(pubkey)}/topics`,
+  authorEventsByPubkey: (pubkey: string) => `/api/v1/authors/${encodeURIComponent(pubkey)}/events`,
+  authorRepliesByPubkey: (pubkey: string) =>
+    `/api/v1/authors/${encodeURIComponent(pubkey)}/replies`,
+  authorAnalyticsActivityByPubkey: (pubkey: string) =>
+    `/api/v1/authors/${encodeURIComponent(pubkey)}/analytics/activity`,
+  authorAnalyticsBehaviorByPubkey: (pubkey: string) =>
+    `/api/v1/authors/${encodeURIComponent(pubkey)}/analytics/behavior`,
+  authorAnalyticsPostingBehaviorByPubkey: (pubkey: string) =>
+    `/api/v1/authors/${encodeURIComponent(pubkey)}/analytics/posting-behavior`,
+  trustScoreByPubkey: (pubkey: string) => `/api/v1/trust/scores/${encodeURIComponent(pubkey)}`,
   eventById: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}`,
+  eventAncestorsById: (eventId: string) =>
+    `/api/v1/events/${encodeURIComponent(eventId)}/ancestors`,
+  eventRepliesById: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/replies`,
   eventSeenOnById: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/seen-on`,
   eventCountsById: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/counts`,
   threadByEventId: (eventId: string) => `/api/v1/threads/${encodeURIComponent(eventId)}`,
+  threadSummaryByRootEventId: (rootEventId: string) =>
+    `/api/v1/threads/${encodeURIComponent(rootEventId)}/summary`,
+  threadActivityByRootEventId: (rootEventId: string) =>
+    `/api/v1/threads/${encodeURIComponent(rootEventId)}/activity`,
   noteSummaryByEventId: (eventId: string) => `/api/v1/notes/${encodeURIComponent(eventId)}/summary`,
+  noteRelatedByEventId: (eventId: string) => `/api/v1/notes/${encodeURIComponent(eventId)}/related`,
   trendingNotes: "/api/v1/discovery/notes/trending",
   trendingProfiles: "/api/v1/discovery/profiles/trending",
+  hotConversations: "/api/v1/discovery/conversations/hot",
+  risingProfiles: "/api/v1/discovery/profiles/rising",
   trendingHashtags: "/api/v1/discovery/hashtags/trending",
+  trendingDomains: "/api/v1/discovery/domains/trending",
+  hashtagByName: (hashtag: string) => `/api/v1/discovery/hashtags/${encodeURIComponent(hashtag)}`,
+  hashtagNotesByName: (hashtag: string) =>
+    `/api/v1/discovery/hashtags/${encodeURIComponent(hashtag)}/notes`,
+  hashtagRelatedByName: (hashtag: string) =>
+    `/api/v1/discovery/hashtags/${encodeURIComponent(hashtag)}/related`,
+  domainByName: (domain: string) => `/api/v1/discovery/domains/${encodeURIComponent(domain)}`,
+  domainNotesByName: (domain: string) =>
+    `/api/v1/discovery/domains/${encodeURIComponent(domain)}/notes`,
   networkStats: "/api/v1/discovery/stats/network",
   contentStats: "/api/v1/discovery/stats/content",
   relayStats: "/api/v1/discovery/stats/relays",
+  relayHealth: "/api/v1/relays/health",
 } as const;
+
+interface CursorQuery {
+  cursor?: string;
+  limit?: number;
+}
 
 const normalizeSearchQueryText = (value: string): string =>
   value
@@ -78,6 +191,18 @@ const looksLikeProfileIdentifier = (value: string): boolean =>
   /^npub1[02-9ac-hj-np-z]+$/i.test(value) || /^[0-9a-f]{64}$/i.test(value);
 
 const looksLikeEventIdentifier = (value: string): boolean => /^[0-9a-f]{64}$/i.test(value);
+
+function buildPubkeyCandidates(pubkey: string): string[] {
+  const normalized = pubkey.trim().replace(/^nostr:/i, "");
+  const decodedHex = normalized.toLowerCase().startsWith("npub1") ? npubToHex(normalized) : null;
+  return Array.from(
+    new Set(
+      [normalized, decodedHex].filter(
+        (candidate): candidate is string => typeof candidate === "string"
+      )
+    )
+  );
+}
 
 function toSearchCursor(value: unknown): string | undefined {
   if (typeof value === "string" && value.length > 0) return value;
@@ -99,6 +224,25 @@ function buildSearchQuery(
     limit: query.limit,
     cursor: query.cursor,
   };
+}
+
+function normalizeHashtagQuery(hashtag: string): string {
+  return hashtag.trim().replace(/^#/, "");
+}
+
+function normalizeDomainQuery(domain: string): string {
+  const normalized = domain.trim().toLowerCase();
+  if (normalized.length === 0) return "";
+  const candidate = normalized.includes("://") ? normalized : `https://${normalized}`;
+  try {
+    return new URL(candidate).hostname.toLowerCase().replace(/\.$/, "");
+  } catch {
+    const hostname = normalized
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .split("/")[0];
+    return (hostname ?? "").replace(/\.$/, "");
+  }
 }
 
 const normalizeRelayHints = (value: unknown): string[] =>
@@ -132,6 +276,42 @@ function buildSearchSectionTotals(
     hashtags: hashtagsCount,
     relays: relaysCount,
   };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizeHotConversationNotes(value: unknown): ReturnType<typeof normalizeEventRecords> {
+  const normalizedDirect = normalizeEventRecords(value).filter((note) => note.id.length > 0);
+  if (normalizedDirect.length > 0) return normalizedDirect;
+  if (!Array.isArray(value)) return [];
+
+  const expanded = value
+    .map((entry) => {
+      if (!isRecord(entry)) return null;
+      const candidate =
+        entry.note ??
+        entry.event ??
+        entry.root ??
+        entry.root_note ??
+        entry.latest ??
+        entry.last_event ??
+        entry;
+      if (isRecord(candidate)) {
+        return normalizeEventRecord({
+          ...candidate,
+          id: candidate.id ?? entry.root_event_id ?? entry.event_id ?? entry.id,
+          event_id: candidate.event_id ?? entry.root_event_id ?? entry.event_id,
+          pubkey: candidate.pubkey ?? entry.pubkey ?? entry.author_pubkey,
+        });
+      }
+      return normalizeEventRecord(candidate);
+    })
+    .filter((note): note is NonNullable<ReturnType<typeof normalizeEventRecord>> => note !== null)
+    .filter((note) => note.id.length > 0);
+
+  return Array.from(new Map(expanded.map((note) => [note.id, note])).values());
 }
 
 async function fetchSearchNotes(
@@ -549,6 +729,291 @@ export async function getProfileSummary(pubkey: string, cacheClass: CacheClass =
   throw lastError ?? new Error("Profile summary lookup failed.");
 }
 
+export async function getProfileFollowers(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<ProfileFollowersResponse> {
+  const candidates = buildPubkeyCandidates(pubkey);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<ProfileFollowersApiResponse>(
+        nativeApiV1Routes.profileFollowersByPubkey(candidate),
+        {
+          cacheClass,
+          query: buildCursorQuery(query),
+        }
+      );
+      return normalizeProfileFollowersResponse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Profile followers lookup failed.");
+    }
+  }
+
+  throw lastError ?? new Error("Profile followers lookup failed.");
+}
+
+export async function getProfileMentions(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<ProfileMentionsResponse> {
+  const candidates = buildPubkeyCandidates(pubkey);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<ProfileMentionsApiResponse>(
+        nativeApiV1Routes.profileMentionsByPubkey(candidate),
+        {
+          cacheClass,
+          query: buildCursorQuery(query),
+        }
+      );
+      return normalizeProfileMentionsResponse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Profile mentions lookup failed.");
+    }
+  }
+
+  throw lastError ?? new Error("Profile mentions lookup failed.");
+}
+
+export async function getRelatedProfiles(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<RelatedProfilesResponse> {
+  const candidates = buildPubkeyCandidates(pubkey);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<RelatedProfilesApiResponse>(
+        nativeApiV1Routes.relatedProfilesByPubkey(candidate),
+        {
+          cacheClass,
+          query: buildCursorQuery(query),
+        }
+      );
+      return normalizeRelatedProfilesResponse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Related profiles lookup failed.");
+    }
+  }
+
+  throw lastError ?? new Error("Related profiles lookup failed.");
+}
+
+export async function getContactListContext(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime"
+): Promise<ContactListContextResponse> {
+  const candidates = buildPubkeyCandidates(pubkey);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<ContactListContextApiResponse>(
+        nativeApiV1Routes.contactListByPubkey(candidate),
+        {
+          cacheClass,
+        }
+      );
+      return normalizeContactListContextResponse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Contact list lookup failed.");
+    }
+  }
+
+  throw lastError ?? new Error("Contact list lookup failed.");
+}
+
+export async function getRelayListContext(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime"
+): Promise<RelayListContextResponse> {
+  const candidates = buildPubkeyCandidates(pubkey);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<RelayListContextApiResponse>(
+        nativeApiV1Routes.relayListByPubkey(candidate),
+        {
+          cacheClass,
+        }
+      );
+      return normalizeRelayListContextResponse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Relay list lookup failed.");
+    }
+  }
+
+  throw lastError ?? new Error("Relay list lookup failed.");
+}
+
+export async function getProfileTopics(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime"
+): Promise<ProfileTopicsResponse> {
+  const candidates = buildPubkeyCandidates(pubkey);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<ProfileTopicsApiResponse>(
+        nativeApiV1Routes.profileTopicsByPubkey(candidate),
+        {
+          cacheClass,
+        }
+      );
+      return normalizeProfileTopicsResponse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Profile topics lookup failed.");
+    }
+  }
+
+  throw lastError ?? new Error("Profile topics lookup failed.");
+}
+
+export async function getAuthorEvents(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<AuthorEventsResponse> {
+  const normalized = pubkey.trim().replace(/^nostr:/i, "");
+  const decodedHex = normalized.toLowerCase().startsWith("npub1") ? npubToHex(normalized) : null;
+  const candidates = Array.from(
+    new Set(
+      [normalized, decodedHex].filter(
+        (candidate): candidate is string => typeof candidate === "string"
+      )
+    )
+  );
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<AuthorEventsApiResponse>(
+        nativeApiV1Routes.authorEventsByPubkey(candidate),
+        {
+          cacheClass,
+          query: buildCursorQuery(query),
+        }
+      );
+      return normalizeAuthorEventsResponse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Author events lookup failed.");
+    }
+  }
+
+  throw lastError ?? new Error("Author events lookup failed.");
+}
+
+export async function getAuthorReplies(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<AuthorRepliesResponse> {
+  const normalized = pubkey.trim().replace(/^nostr:/i, "");
+  const decodedHex = normalized.toLowerCase().startsWith("npub1") ? npubToHex(normalized) : null;
+  const candidates = Array.from(
+    new Set(
+      [normalized, decodedHex].filter(
+        (candidate): candidate is string => typeof candidate === "string"
+      )
+    )
+  );
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<AuthorRepliesApiResponse>(
+        nativeApiV1Routes.authorRepliesByPubkey(candidate),
+        {
+          cacheClass,
+          query: buildCursorQuery(query),
+        }
+      );
+      return normalizeAuthorRepliesResponse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Author replies lookup failed.");
+    }
+  }
+
+  throw lastError ?? new Error("Author replies lookup failed.");
+}
+
+async function fetchAuthorAnalyticsByRoutes(
+  pubkey: string,
+  cacheClass: CacheClass,
+  routes: Array<(pubkey: string) => string>
+): Promise<AuthorAnalyticsResponse> {
+  const candidates = buildPubkeyCandidates(pubkey);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    for (const route of routes) {
+      try {
+        const response = await fetchApiJson<AuthorAnalyticsApiResponse>(route(candidate), {
+          cacheClass,
+        });
+        return normalizeAuthorAnalyticsResponse(response);
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error("Author analytics lookup failed.");
+      }
+    }
+  }
+
+  throw lastError ?? new Error("Author analytics lookup failed.");
+}
+
+export async function getAuthorActivityAnalytics(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime"
+): Promise<AuthorAnalyticsResponse> {
+  return fetchAuthorAnalyticsByRoutes(pubkey, cacheClass, [
+    nativeApiV1Routes.authorAnalyticsActivityByPubkey,
+  ]);
+}
+
+export async function getAuthorPostingBehaviorAnalytics(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime"
+): Promise<AuthorAnalyticsResponse> {
+  return fetchAuthorAnalyticsByRoutes(pubkey, cacheClass, [
+    nativeApiV1Routes.authorAnalyticsPostingBehaviorByPubkey,
+    nativeApiV1Routes.authorAnalyticsBehaviorByPubkey,
+  ]);
+}
+
+export async function getTrustScore(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime"
+): Promise<TrustScoreResponse> {
+  const candidates = buildPubkeyCandidates(pubkey);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<TrustScoreApiResponse>(
+        nativeApiV1Routes.trustScoreByPubkey(candidate),
+        {
+          cacheClass,
+        }
+      );
+      return normalizeTrustScoreResponse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Trust score lookup failed.");
+    }
+  }
+
+  throw lastError ?? new Error("Trust score lookup failed.");
+}
+
 export async function getEvent(eventId: string, cacheClass: CacheClass = "requestTime") {
   return fetchApiJson<EventDetailResponse>(nativeApiV1Routes.eventById(eventId), {
     cacheClass,
@@ -591,6 +1056,89 @@ export async function getThread(eventId: string, cacheClass: CacheClass = "reque
   return normalizeThreadResponse(response);
 }
 
+function buildCursorQuery(
+  query?: CursorQuery
+): Record<string, string | number | undefined> | undefined {
+  if (!query) return undefined;
+  return {
+    cursor: query.cursor,
+    limit: query.limit,
+  };
+}
+
+export async function getEventAncestors(
+  eventId: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<EventAncestorsResponse> {
+  const response = await fetchApiJson<EventAncestorsApiResponse>(
+    nativeApiV1Routes.eventAncestorsById(eventId),
+    {
+      cacheClass,
+      query: buildCursorQuery(query),
+    }
+  );
+  return normalizeEventAncestorsResponse(response);
+}
+
+export async function getEventReplies(
+  eventId: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<EventRepliesResponse> {
+  const response = await fetchApiJson<EventRepliesApiResponse>(
+    nativeApiV1Routes.eventRepliesById(eventId),
+    {
+      cacheClass,
+      query: buildCursorQuery(query),
+    }
+  );
+  return normalizeEventRepliesResponse(response);
+}
+
+export async function getThreadSummary(
+  rootEventId: string,
+  cacheClass: CacheClass = "requestTime"
+): Promise<ThreadSummaryResponse> {
+  const response = await fetchApiJson<ThreadSummaryApiResponse>(
+    nativeApiV1Routes.threadSummaryByRootEventId(rootEventId),
+    {
+      cacheClass,
+    }
+  );
+  return normalizeThreadSummaryResponse(response);
+}
+
+export async function getThreadActivity(
+  rootEventId: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<ThreadActivityResponse> {
+  const response = await fetchApiJson<ThreadActivityApiResponse>(
+    nativeApiV1Routes.threadActivityByRootEventId(rootEventId),
+    {
+      cacheClass,
+      query: buildCursorQuery(query),
+    }
+  );
+  return normalizeThreadActivityResponse(response);
+}
+
+export async function getRelatedNotes(
+  eventId: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<RelatedNotesResponse> {
+  const response = await fetchApiJson<RelatedNotesApiResponse>(
+    nativeApiV1Routes.noteRelatedByEventId(eventId),
+    {
+      cacheClass,
+      query: buildCursorQuery(query),
+    }
+  );
+  return normalizeRelatedNotesResponse(response);
+}
+
 export async function getNoteSummary(eventId: string, cacheClass: CacheClass = "requestTime") {
   const response = await fetchApiJson<NoteSummaryApiResponse>(
     nativeApiV1Routes.noteSummaryByEventId(eventId),
@@ -601,9 +1149,10 @@ export async function getNoteSummary(eventId: string, cacheClass: CacheClass = "
   return normalizeNoteSummaryResponse(response);
 }
 
-export async function getTrendingNotes(cacheClass: CacheClass = "shortTtl") {
+export async function getTrendingNotes(cacheClass: CacheClass = "shortTtl", query?: CursorQuery) {
   const response = await fetchApiJson<TrendingNotesResponse>(nativeApiV1Routes.trendingNotes, {
     cacheClass,
+    query: buildCursorQuery(query),
   });
   return {
     ...response,
@@ -611,11 +1160,15 @@ export async function getTrendingNotes(cacheClass: CacheClass = "shortTtl") {
   };
 }
 
-export async function getTrendingProfiles(cacheClass: CacheClass = "shortTtl") {
+export async function getTrendingProfiles(
+  cacheClass: CacheClass = "shortTtl",
+  query?: CursorQuery
+) {
   const response = await fetchApiJson<TrendingProfilesResponse>(
     nativeApiV1Routes.trendingProfiles,
     {
       cacheClass,
+      query: buildCursorQuery(query),
     }
   );
   return {
@@ -624,17 +1177,159 @@ export async function getTrendingProfiles(cacheClass: CacheClass = "shortTtl") {
   };
 }
 
-export async function getTrendingHashtags(cacheClass: CacheClass = "shortTtl") {
+export async function getHotConversations(
+  cacheClass: CacheClass = "shortTtl",
+  query?: CursorQuery
+) {
+  const response = await fetchApiJson<HotConversationsResponse>(
+    nativeApiV1Routes.hotConversations,
+    {
+      cacheClass,
+      query: buildCursorQuery(query),
+    }
+  );
+  const responseRecord = response as Record<string, unknown>;
+  const notes = normalizeHotConversationNotes(
+    response.notes ??
+      responseRecord.conversations ??
+      responseRecord.events ??
+      responseRecord.notes ??
+      responseRecord.items ??
+      responseRecord.data
+  );
+  return {
+    ...response,
+    notes,
+  } satisfies HotConversationsResponse;
+}
+
+export async function getRisingProfiles(cacheClass: CacheClass = "shortTtl", query?: CursorQuery) {
+  const response = await fetchApiJson<RisingProfilesResponse>(nativeApiV1Routes.risingProfiles, {
+    cacheClass,
+    query: buildCursorQuery(query),
+  });
+  const responseRecord = response as Record<string, unknown>;
+  return {
+    ...response,
+    profiles: normalizeProfiles(
+      response.profiles ??
+        responseRecord.rising_profiles ??
+        responseRecord.users ??
+        responseRecord.items ??
+        responseRecord.data
+    ),
+  } satisfies RisingProfilesResponse;
+}
+
+export async function getTrendingHashtags(
+  cacheClass: CacheClass = "shortTtl",
+  query?: CursorQuery
+) {
   const response = await fetchApiJson<TrendingHashtagsResponse>(
     nativeApiV1Routes.trendingHashtags,
     {
       cacheClass,
+      query: buildCursorQuery(query),
     }
   );
   return {
     ...response,
     hashtags: normalizeHashtagEntries(response.hashtags),
   };
+}
+
+export async function getTrendingDomains(cacheClass: CacheClass = "shortTtl", query?: CursorQuery) {
+  const response = await fetchApiJson<TrendingDomainsApiResponse>(
+    nativeApiV1Routes.trendingDomains,
+    {
+      cacheClass,
+      query: buildCursorQuery(query),
+    }
+  );
+  return {
+    ...response,
+    domains: normalizeDomainEntries(
+      response.domains ??
+        (response as Record<string, unknown>).items ??
+        (response as Record<string, unknown>).data
+    ),
+  } satisfies TrendingDomainsResponse;
+}
+
+export async function getHashtagDetail(
+  hashtag: string,
+  cacheClass: CacheClass = "requestTime"
+): Promise<HashtagDetailResponse> {
+  const normalizedHashtag = normalizeHashtagQuery(hashtag);
+  const response = await fetchApiJson<HashtagDetailApiResponse>(
+    nativeApiV1Routes.hashtagByName(normalizedHashtag),
+    {
+      cacheClass,
+    }
+  );
+  return normalizeHashtagDetailResponse(response);
+}
+
+export async function getHashtagNotes(
+  hashtag: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<HashtagNotesResponse> {
+  const normalizedHashtag = normalizeHashtagQuery(hashtag);
+  const response = await fetchApiJson<HashtagNotesApiResponse>(
+    nativeApiV1Routes.hashtagNotesByName(normalizedHashtag),
+    {
+      cacheClass,
+      query: buildCursorQuery(query),
+    }
+  );
+  return normalizeHashtagNotesResponse(response);
+}
+
+export async function getRelatedHashtags(
+  hashtag: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<RelatedHashtagsResponse> {
+  const normalizedHashtag = normalizeHashtagQuery(hashtag);
+  const response = await fetchApiJson<RelatedHashtagsApiResponse>(
+    nativeApiV1Routes.hashtagRelatedByName(normalizedHashtag),
+    {
+      cacheClass,
+      query: buildCursorQuery(query),
+    }
+  );
+  return normalizeRelatedHashtagsResponse(response);
+}
+
+export async function getDomainDetail(
+  domain: string,
+  cacheClass: CacheClass = "requestTime"
+): Promise<DomainDetailResponse> {
+  const normalizedDomain = normalizeDomainQuery(domain);
+  const response = await fetchApiJson<DomainDetailApiResponse>(
+    nativeApiV1Routes.domainByName(normalizedDomain),
+    {
+      cacheClass,
+    }
+  );
+  return normalizeDomainDetailResponse(response);
+}
+
+export async function getDomainNotes(
+  domain: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<DomainNotesResponse> {
+  const normalizedDomain = normalizeDomainQuery(domain);
+  const response = await fetchApiJson<DomainNotesApiResponse>(
+    nativeApiV1Routes.domainNotesByName(normalizedDomain),
+    {
+      cacheClass,
+      query: buildCursorQuery(query),
+    }
+  );
+  return normalizeDomainNotesResponse(response);
 }
 
 export async function getNetworkStats(cacheClass: CacheClass = "shortTtl") {
@@ -647,4 +1342,15 @@ export async function getContentStats(cacheClass: CacheClass = "shortTtl") {
 
 export async function getRelayStats(cacheClass: CacheClass = "shortTtl") {
   return fetchApiJson<StatsResponse>(nativeApiV1Routes.relayStats, { cacheClass });
+}
+
+export async function getRelayHealth(
+  cacheClass: CacheClass = "shortTtl",
+  query?: CursorQuery
+): Promise<RelayHealthResponse> {
+  const response = await fetchApiJson<RelayHealthApiResponse>(nativeApiV1Routes.relayHealth, {
+    cacheClass,
+    query: buildCursorQuery(query),
+  });
+  return normalizeRelayHealthResponse(response);
 }

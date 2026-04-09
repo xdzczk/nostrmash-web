@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { EmptyState } from "@/components/explorer/empty-state";
 import { ThreadNode } from "@/components/thread/thread-node";
 import type { EventRecord, Profile } from "@/lib/types/api";
@@ -17,6 +19,8 @@ export function ThreadView({
   replies,
   missingAncestorIds = [],
   nextCursor,
+  continuationHref,
+  continuationLabel = "Load next replies",
   authorsByPubkey,
 }: {
   ancestors: EventRecord[];
@@ -24,6 +28,8 @@ export function ThreadView({
   replies: EventRecord[];
   missingAncestorIds?: string[];
   nextCursor?: string;
+  continuationHref?: string;
+  continuationLabel?: string;
   authorsByPubkey?: Record<string, Profile>;
 }) {
   if (!focal && ancestors.length === 0 && replies.length === 0) {
@@ -84,9 +90,20 @@ export function ThreadView({
       ) : null}
 
       {typeof nextCursor === "string" && nextCursor.length > 0 ? (
-        <p className="text-xs break-all text-zinc-500">
-          Thread has additional replies available (next_cursor present): {nextCursor}
-        </p>
+        <div className="rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
+          <p className="text-xs text-indigo-100">
+            More replies are available from the backend continuation cursor.
+          </p>
+          {continuationHref ? (
+            <Link
+              href={continuationHref}
+              className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+            >
+              {continuationLabel}
+            </Link>
+          ) : null}
+          <p className="mt-2 text-xs break-all text-indigo-300/80">cursor: {nextCursor}</p>
+        </div>
       ) : null}
     </div>
   );

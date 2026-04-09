@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cache } from "react";
 
-import { ConsistencyBadge } from "@/components/explorer/consistency-badge";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
@@ -9,7 +9,9 @@ import { MetadataList } from "@/components/explorer/metadata-list";
 import { NoteCard } from "@/components/explorer/note-card";
 import { PageHero } from "@/components/explorer/page-hero";
 import { ProfileCard } from "@/components/explorer/profile-card";
+import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
 import { StatCard } from "@/components/explorer/stat-card";
+import { normalizeRelayHost } from "@/components/explorer/stats-utils";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
   buildMetadataEntries,
@@ -21,17 +23,28 @@ import { ThreadView } from "@/components/thread/thread-view";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import {
+  getEventAncestors,
   getEvent,
   getEventCounts,
+  getEventReplies,
   getEventSeenOn,
   getNoteSummary,
-  getProfilesBatch,
+  getRelatedNotes,
+  getThreadActivity,
+  getThreadSummary,
   getThread,
 } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
+import { fetchProfilesByPubkey, listHydratablePubkeys } from "@/lib/api/profile-hydration";
+import {
+  buildContinuationHref,
+  readSearchParam,
+  toUrlSearchParams,
+} from "@/lib/search-params/pagination";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
 type Params = Promise<{ eventId: string }>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 function isNonNull<T>(value: T | null): value is T {
   return value !== null;
@@ -51,10 +64,14 @@ function toThreadRoute(eventId: string): string {
   return `/search?q=${encodeURIComponent(eventId)}&tab=notes`;
 }
 
+const getNoteSummaryCached = cache(async (eventId: string) =>
+  getNoteSummary(eventId, "requestTime")
+);
+
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { eventId } = await params;
   try {
-    const payload = await getNoteSummary(eventId, "requestTime");
+    const payload = await getNoteSummaryCached(eventId);
     const content = payload.note?.content;
     const author = payload.note?.pubkey;
     const preview =
@@ -75,8 +92,19 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   }
 }
 
-export default async function NotePage({ params }: { params: Params }) {
+export default async function NotePage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
   const { eventId } = await params;
+  const resolvedSearchParams = await searchParams;
+  const repliesCursor = readSearchParam(resolvedSearchParams, "replies_cursor");
+  const activityCursor = readSearchParam(resolvedSearchParams, "activity_cursor");
+  const relatedCursor = readSearchParam(resolvedSearchParams, "related_cursor");
+  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
 
   let errorMessage = "";
   let eventPayload: Awaited<ReturnType<typeof getEvent>> | null = null;
@@ -84,18 +112,36 @@ export default async function NotePage({ params }: { params: Params }) {
   let eventCountsPayload: Awaited<ReturnType<typeof getEventCounts>> | null = null;
   let noteSummary: Awaited<ReturnType<typeof getNoteSummary>> | null = null;
   let threadPayload: Awaited<ReturnType<typeof getThread>> | null = null;
+  let ancestorsPayload: Awaited<ReturnType<typeof getEventAncestors>> | null = null;
+  let repliesPayload: Awaited<ReturnType<typeof getEventReplies>> | null = null;
+  let relatedPayload: Awaited<ReturnType<typeof getRelatedNotes>> | null = null;
+  let threadSummaryPayload: Awaited<ReturnType<typeof getThreadSummary>> | null = null;
+  let threadActivityPayload: Awaited<ReturnType<typeof getThreadActivity>> | null = null;
   let authorsByPubkey: Record<string, Profile> = {};
 
-  const [noteSummaryResult, threadResult] = await Promise.allSettled([
-    getNoteSummary(eventId, "requestTime"),
-    getThread(eventId, "requestTime"),
-  ]);
+  const [noteSummaryResult, threadResult, ancestorsResult, repliesResult, relatedResult] =
+    await Promise.allSettled([
+      getNoteSummaryCached(eventId),
+      getThread(eventId, "requestTime"),
+      getEventAncestors(eventId, "requestTime"),
+      getEventReplies(eventId, "requestTime", { cursor: repliesCursor }),
+      getRelatedNotes(eventId, "requestTime", { cursor: relatedCursor }),
+    ]);
 
   if (noteSummaryResult.status === "fulfilled") {
     noteSummary = noteSummaryResult.value;
   }
   if (threadResult.status === "fulfilled") {
     threadPayload = threadResult.value;
+  }
+  if (ancestorsResult.status === "fulfilled") {
+    ancestorsPayload = ancestorsResult.value;
+  }
+  if (repliesResult.status === "fulfilled") {
+    repliesPayload = repliesResult.value;
+  }
+  if (relatedResult.status === "fulfilled") {
+    relatedPayload = relatedResult.value;
   }
 
   const focalFromPrimary = noteSummary?.note ?? threadPayload?.root;
@@ -145,9 +191,64 @@ export default async function NotePage({ params }: { params: Params }) {
         : "Failed to load note thread."
     );
   }
+  if (!ancestorsPayload && ancestorsResult.status === "rejected") {
+    enrichmentErrors.push(
+      ancestorsResult.reason instanceof Error
+        ? ancestorsResult.reason.message
+        : "Failed to load ancestors."
+    );
+  }
+  if (!repliesPayload && repliesResult.status === "rejected") {
+    enrichmentErrors.push(
+      repliesResult.reason instanceof Error
+        ? repliesResult.reason.message
+        : "Failed to load replies."
+    );
+  }
+  if (!relatedPayload && relatedResult.status === "rejected") {
+    enrichmentErrors.push(
+      relatedResult.reason instanceof Error
+        ? relatedResult.reason.message
+        : "Failed to load related notes."
+    );
+  }
   const compactErrors = enrichmentErrors.filter((value) => value.length > 0);
   if (!noteSummary && !threadPayload && !eventPayload && compactErrors.length > 0) {
     errorMessage = compactErrors.join(" | ");
+  }
+
+  const threadContextFromSummary = isRecord(noteSummary?.thread) ? noteSummary.thread : {};
+  const rootEventIdCandidate =
+    (typeof threadContextFromSummary.root_event_id === "string"
+      ? threadContextFromSummary.root_event_id
+      : undefined) ??
+    repliesPayload?.root_event_id ??
+    threadPayload?.root?.id ??
+    ancestorsPayload?.ancestors?.[0]?.id;
+
+  if (rootEventIdCandidate) {
+    const [threadSummaryResult, threadActivityResult] = await Promise.allSettled([
+      getThreadSummary(rootEventIdCandidate, "requestTime"),
+      getThreadActivity(rootEventIdCandidate, "requestTime", { cursor: activityCursor }),
+    ]);
+    if (threadSummaryResult.status === "fulfilled") {
+      threadSummaryPayload = threadSummaryResult.value;
+    } else {
+      enrichmentErrors.push(
+        threadSummaryResult.reason instanceof Error
+          ? threadSummaryResult.reason.message
+          : "Failed to load thread summary."
+      );
+    }
+    if (threadActivityResult.status === "fulfilled") {
+      threadActivityPayload = threadActivityResult.value;
+    } else {
+      enrichmentErrors.push(
+        threadActivityResult.reason instanceof Error
+          ? threadActivityResult.reason.message
+          : "Failed to load thread activity."
+      );
+    }
   }
 
   const authorProfileFromSummary =
@@ -156,23 +257,20 @@ export default async function NotePage({ params }: { params: Params }) {
       : undefined;
 
   try {
-    const noteAuthors = await getProfilesBatch(
-      [
-        eventPayload?.event,
-        noteSummary?.note,
-        threadPayload?.root,
-        ...(threadPayload?.ancestors ?? []),
-        ...(threadPayload?.replies ?? []),
-        authorProfileFromSummary,
-      ]
-        .flatMap((note) => (note?.pubkey ? [note.pubkey] : []))
-        .filter((pubkey): pubkey is string => typeof pubkey === "string"),
+    authorsByPubkey = await fetchProfilesByPubkey(
+      listHydratablePubkeys(
+        [
+          eventPayload?.event,
+          noteSummary?.note,
+          threadPayload?.root,
+          ...(ancestorsPayload?.ancestors ?? threadPayload?.ancestors ?? []),
+          ...(repliesPayload?.replies ?? threadPayload?.replies ?? []),
+          ...(threadActivityPayload?.activity ?? []),
+          ...(relatedPayload?.related ?? []),
+          authorProfileFromSummary,
+        ].flatMap((note) => (note?.pubkey ? [note.pubkey] : []))
+      ),
       "requestTime"
-    );
-    authorsByPubkey = Object.fromEntries(
-      noteAuthors
-        .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
-        .map((profile) => [profile.pubkey.toLowerCase(), profile])
     );
   } catch {
     authorsByPubkey = {};
@@ -183,11 +281,25 @@ export default async function NotePage({ params }: { params: Params }) {
   }
 
   const focal = noteSummary?.note ?? eventPayload?.event ?? threadPayload?.root;
+  const ancestors = ancestorsPayload?.ancestors ?? threadPayload?.ancestors ?? [];
+  const replies = repliesPayload?.replies ?? threadPayload?.replies ?? [];
+  const missingAncestorIds =
+    ancestorsPayload?.missing_ancestor_ids ?? threadPayload?.missing_ancestor_ids ?? [];
+  const activity = threadActivityPayload?.activity ?? [];
+  const relatedNotes = (relatedPayload?.related ?? []).filter((note) => note.id !== focal?.id);
+  const repliesNextCursor = repliesPayload?.next_cursor ?? threadPayload?.next_cursor;
+  const activityNextCursor = threadActivityPayload?.next_cursor;
+  const relatedNextCursor = relatedPayload?.next_cursor;
   const semantics = extractNativeApiSemantics(
     noteSummary,
     eventSeenOnPayload,
     eventCountsPayload,
     threadPayload,
+    ancestorsPayload,
+    repliesPayload,
+    threadSummaryPayload,
+    threadActivityPayload,
+    relatedPayload,
     eventPayload
   );
   const resolvedAuthor =
@@ -227,21 +339,48 @@ export default async function NotePage({ params }: { params: Params }) {
       : isRecord(noteSummary) && Array.isArray((noteSummary as Record<string, unknown>).seen_on)
         ? ((noteSummary as Record<string, unknown>).seen_on as unknown[])
         : [];
-  const provenanceRelays = rawProvenanceRelays
+  const provenanceRelayObservations = rawProvenanceRelays
     .map((entry, index) => {
       if (typeof entry === "string") {
-        return { label: `relay_${index + 1}`, value: entry };
+        const relay = entry.trim();
+        const routeHost = normalizeRelayHost(relay);
+        if (!relay || !routeHost) return null;
+        return {
+          key: `${routeHost}-${index}`,
+          relay,
+          routeHost,
+          seenAt: undefined as string | number | undefined,
+        };
       }
       if (!isRecord(entry)) return null;
+      const relay =
+        typeof entry.relay_url === "string"
+          ? entry.relay_url
+          : typeof entry.url === "string"
+            ? entry.url
+            : typeof entry.host === "string"
+              ? entry.host
+              : "";
+      const routeHost = normalizeRelayHost(relay);
+      if (!relay || !routeHost) return null;
+      const seenAt =
+        typeof entry.seen_at === "string" || typeof entry.seen_at === "number"
+          ? entry.seen_at
+          : typeof entry.last_seen_at === "string" || typeof entry.last_seen_at === "number"
+            ? entry.last_seen_at
+            : undefined;
       return {
-        label: `relay_${index + 1}`,
-        value:
-          typeof entry.relay_url === "string"
-            ? `${entry.relay_url}${typeof entry.seen_at === "string" ? ` (${entry.seen_at})` : ""}`
-            : JSON.stringify(entry),
+        key: `${routeHost}-${index}`,
+        relay,
+        routeHost,
+        seenAt,
       };
     })
     .filter(isNonNull);
+  const provenanceRelayByHost = new Map(
+    provenanceRelayObservations.map((observation) => [observation.routeHost, observation])
+  );
+  const provenanceRelayLinks = Array.from(provenanceRelayByHost.values());
   const mediaDetails = isRecord(noteSummary?.media)
     ? Object.entries(noteSummary.media).map(([label, value]) => ({ label, value }))
     : [];
@@ -251,55 +390,56 @@ export default async function NotePage({ params }: { params: Params }) {
   const threadContext = isRecord(noteSummary?.thread) ? noteSummary.thread : {};
   const rootEventId =
     (typeof threadContext.root_event_id === "string" ? threadContext.root_event_id : undefined) ??
+    threadSummaryPayload?.root_event_id ??
+    repliesPayload?.root_event_id ??
     threadPayload?.root?.id;
   const parentEventId =
     (typeof threadContext.parent_event_id === "string"
       ? threadContext.parent_event_id
-      : undefined) ?? threadPayload?.ancestors?.at(-1)?.id;
-  const resultScope = semantics.result_scope;
-  const resultScopeText =
-    typeof resultScope === "string"
-      ? resultScope
-      : isRecord(resultScope)
-        ? Object.entries(resultScope)
-            .slice(0, 3)
-            .map(([key, value]) => `${key}: ${String(value)}`)
-            .join(" • ")
-        : undefined;
-
+      : undefined) ?? ancestors.at(-1)?.id;
+  const threadSummaryStats = extractPrimitiveStats(
+    {
+      ...(isRecord(threadSummaryPayload?.summary) ? threadSummaryPayload.summary : {}),
+      ...(isRecord(threadSummaryPayload?.counts) ? threadSummaryPayload.counts : {}),
+    },
+    []
+  )
+    .filter((entry) =>
+      /(count|reply|reaction|repost|zap|quote|participant|author|depth)/i.test(entry.label)
+    )
+    .slice(0, 8);
+  const repliesContinuationHref = buildContinuationHref(
+    `/notes/${encodeURIComponent(eventId)}`,
+    currentSearchParams,
+    "replies_cursor",
+    repliesNextCursor
+  );
+  const activityContinuationHref = buildContinuationHref(
+    `/notes/${encodeURIComponent(eventId)}`,
+    currentSearchParams,
+    "activity_cursor",
+    activityNextCursor
+  );
+  const relatedContinuationHref = buildContinuationHref(
+    `/notes/${encodeURIComponent(eventId)}`,
+    currentSearchParams,
+    "related_cursor",
+    relatedNextCursor
+  );
   return (
     <div className="space-y-8">
       <PageHero
         title="Note explorer"
-        subtitle="Inspect canonical note payload, author identity, counts, provenance, and thread context."
+        subtitle="Inspect note payload, ancestor context, continuation replies, thread activity, and related notes."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <ConsistencyBadge
-              consistency={
-                typeof semantics.consistency === "string" ? semantics.consistency : undefined
-              }
-            />
+            <NativeSemanticsBadges semantics={semantics} />
             <IdBadge id={eventId} label="event" />
             {focal?.pubkey ? <IdBadge id={focal.pubkey} label="author" /> : null}
             <Timestamp unixSeconds={focal?.created_at} />
             {typeof focal?.kind === "number" ? (
               <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
                 kind {focal.kind}
-              </span>
-            ) : null}
-            {typeof semantics.trust_mode === "string" ? (
-              <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
-                trust: {semantics.trust_mode}
-              </span>
-            ) : null}
-            {typeof semantics.trust_applied === "boolean" ? (
-              <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
-                trust applied: {semantics.trust_applied ? "yes" : "no"}
-              </span>
-            ) : null}
-            {resultScopeText ? (
-              <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
-                scope: {resultScopeText}
               </span>
             ) : null}
           </div>
@@ -361,7 +501,7 @@ export default async function NotePage({ params }: { params: Params }) {
         </SectionCard>
       ) : null}
 
-      {provenanceDetails.length > 0 || provenanceRelays.length > 0 ? (
+      <div id="note-provenance">
         <SectionCard
           title="Provenance"
           description="Relay observations and trust metadata for this event."
@@ -369,18 +509,49 @@ export default async function NotePage({ params }: { params: Params }) {
           {provenanceDetails.length > 0 ? (
             <MetadataList items={provenanceDetails} columns={2} />
           ) : null}
-          {provenanceRelays.length > 0 ? (
+          {provenanceRelayLinks.length > 0 ? (
             <div className="mt-3">
               <p className="mb-2 text-xs tracking-wide text-zinc-500 uppercase">
                 Relay observations
               </p>
-              <MetadataList items={provenanceRelays} columns={1} />
+              <ul className="space-y-2">
+                {provenanceRelayLinks.map((observation) => (
+                  <li
+                    key={observation.key}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-800 bg-zinc-900/30 p-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm text-zinc-200">{observation.relay}</p>
+                      <p className="mt-1 truncate text-xs text-zinc-500">
+                        {observation.seenAt !== undefined
+                          ? `seen at ${String(observation.seenAt)}`
+                          : "seen timestamp not provided"}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <Link
+                        href={`/relays/${encodeURIComponent(observation.routeHost)}`}
+                        className="rounded-full border border-zinc-700 px-3 py-1 text-indigo-300 hover:border-indigo-400/40"
+                      >
+                        Open relay
+                      </Link>
+                      <Link
+                        href={`/relays/health#relay-${encodeURIComponent(observation.routeHost)}`}
+                        className="rounded-full border border-zinc-700 px-3 py-1 text-indigo-300 hover:border-indigo-400/40"
+                      >
+                        Health posture
+                      </Link>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
-          ) : (
-            <EmptyState message="No relay observations were returned for this event." />
-          )}
+          ) : null}
+          {provenanceDetails.length === 0 && provenanceRelayLinks.length === 0 ? (
+            <EmptyState message="No relay observations or trust metadata were returned for this event." />
+          ) : null}
         </SectionCard>
-      ) : null}
+      </div>
 
       {mediaDetails.length > 0 ? (
         <SectionCard
@@ -400,40 +571,146 @@ export default async function NotePage({ params }: { params: Params }) {
         </SectionCard>
       ) : null}
 
-      <SectionCard title="Thread" description="Ancestors, focal note, and replies in one view.">
-        <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
-          {rootEventId ? (
+      {threadSummaryStats.length > 0 ? (
+        <section className="space-y-3">
+          <p className="text-sm font-medium text-zinc-300">Thread activity summary</p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {threadSummaryStats.map((stat) => (
+              <StatCard key={stat.label} label={stat.label} value={stat.value} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <div id="conversation-context">
+        <SectionCard
+          title="Conversation context"
+          description="Ancestor context, focal note, and direct continuation replies."
+        >
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
             <Link
-              href={`/notes/${encodeURIComponent(rootEventId)}`}
+              href="/discovery/conversations/hot"
               className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300 hover:text-white"
             >
-              Open thread root
+              Explore hot conversations
             </Link>
-          ) : null}
-          {parentEventId ? (
             <Link
-              href={`/notes/${encodeURIComponent(parentEventId)}`}
+              href="/discovery/profiles/rising"
               className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300 hover:text-white"
             >
-              Open parent note
+              Explore rising profiles
             </Link>
+            {rootEventId ? (
+              <Link
+                href={`/notes/${encodeURIComponent(rootEventId)}`}
+                className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300 hover:text-white"
+              >
+                Open thread root
+              </Link>
+            ) : null}
+            {parentEventId ? (
+              <Link
+                href={`/notes/${encodeURIComponent(parentEventId)}`}
+                className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300 hover:text-white"
+              >
+                Open parent note
+              </Link>
+            ) : null}
+            <Link
+              href={toThreadRoute(rootEventId ?? eventId)}
+              className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300 hover:text-white"
+            >
+              View related thread activity
+            </Link>
+          </div>
+          <ThreadView
+            ancestors={ancestors}
+            focal={focal}
+            replies={replies}
+            missingAncestorIds={missingAncestorIds}
+            nextCursor={repliesNextCursor}
+            continuationHref={repliesContinuationHref}
+            continuationLabel="Continue replies"
+            authorsByPubkey={authorsByPubkey}
+          />
+        </SectionCard>
+      </div>
+
+      <div id="thread-activity">
+        <SectionCard
+          title="Thread activity"
+          description="Recent conversation activity for this thread root."
+        >
+          {activity.length > 0 ? (
+            <div className="space-y-3">
+              {activity.map((note, index) => (
+                <NoteCard
+                  key={note.id ?? `activity-${index}`}
+                  note={note}
+                  author={
+                    typeof note.pubkey === "string"
+                      ? authorsByPubkey[note.pubkey.toLowerCase()]
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyState message="No activity feed entries were returned for this thread." />
+          )}
+          {typeof activityNextCursor === "string" && activityNextCursor.length > 0 ? (
+            <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
+              <p className="text-xs text-indigo-100">
+                More thread activity is available. Continue with the backend cursor.
+              </p>
+              <Link
+                href={activityContinuationHref}
+                className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+              >
+                Continue activity
+              </Link>
+            </div>
           ) : null}
-          <Link
-            href={toThreadRoute(rootEventId ?? eventId)}
-            className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300 hover:text-white"
-          >
-            View related thread activity
-          </Link>
-        </div>
-        <ThreadView
-          ancestors={threadPayload?.ancestors ?? []}
-          focal={threadPayload?.root ?? focal}
-          replies={threadPayload?.replies ?? []}
-          missingAncestorIds={threadPayload?.missing_ancestor_ids ?? []}
-          nextCursor={threadPayload?.next_cursor}
-          authorsByPubkey={authorsByPubkey}
-        />
-      </SectionCard>
+        </SectionCard>
+      </div>
+
+      <div id="related-notes">
+        <SectionCard
+          title="Related notes"
+          description="Backend-provided notes connected to this note."
+        >
+          {relatedNotes.length > 0 ? (
+            <div className="space-y-3">
+              {relatedNotes.map((note, index) => (
+                <NoteCard
+                  key={note.id ?? `related-${index}`}
+                  note={note}
+                  author={
+                    typeof note.pubkey === "string"
+                      ? authorsByPubkey[note.pubkey.toLowerCase()]
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyState message="No related notes were returned for this event." />
+          )}
+          {typeof relatedNextCursor === "string" && relatedNextCursor.length > 0 ? (
+            <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
+              <p className="text-xs text-indigo-100">
+                More related notes are available from the continuation cursor.
+              </p>
+              <Link
+                href={relatedContinuationHref}
+                className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+              >
+                Continue related notes
+              </Link>
+            </div>
+          ) : null}
+        </SectionCard>
+      </div>
 
       <div className="space-y-3">
         <DebugDisclosure title="Debug payload: canonical event" data={eventPayload ?? {}} />
@@ -441,6 +718,14 @@ export default async function NotePage({ params }: { params: Params }) {
         <DebugDisclosure title="Debug payload: event counts" data={eventCountsPayload ?? {}} />
         <DebugDisclosure title="Debug payload: event seen-on" data={eventSeenOnPayload ?? {}} />
         <DebugDisclosure title="Debug payload: thread" data={threadPayload ?? {}} />
+        <DebugDisclosure title="Debug payload: ancestors" data={ancestorsPayload ?? {}} />
+        <DebugDisclosure title="Debug payload: replies" data={repliesPayload ?? {}} />
+        <DebugDisclosure title="Debug payload: thread summary" data={threadSummaryPayload ?? {}} />
+        <DebugDisclosure
+          title="Debug payload: thread activity"
+          data={threadActivityPayload ?? {}}
+        />
+        <DebugDisclosure title="Debug payload: related notes" data={relatedPayload ?? {}} />
       </div>
     </div>
   );
