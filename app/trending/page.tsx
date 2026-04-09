@@ -1,5 +1,7 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 
+import { PageHero } from "@/components/explorer/page-hero";
 import { SectionCard } from "@/components/ui/section-card";
 
 const sections = [
@@ -18,22 +20,33 @@ const sections = [
     title: "Trending hashtags",
     description: "Hashtag trends in the currently indexed network slice.",
   },
+  {
+    href: "/relays/relay.damus.io",
+    title: "Relay lookup",
+    description: "Inspect a relay host as a first-class explorer entity.",
+  },
 ];
+
+export const metadata: Metadata = {
+  title: "Trending",
+  description: "Overview of trending notes, profiles, hashtags, and relay lookup entry points.",
+};
 
 export default function TrendingPage() {
   return (
-    <div className="space-y-6">
-      <section className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Trending</h1>
-        <p className="mt-1 text-sm text-zinc-300">
-          Browse the main trend surfaces and switch between notes, profiles, and hashtags.
-        </p>
-      </section>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="space-y-8">
+      <PageHero
+        title="Trending surfaces"
+        subtitle="Compare top-ranked notes, profiles, and hashtag movement in one observability entry point."
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
         {sections.map((section) => (
           <SectionCard key={section.href} title={section.title} description={section.description}>
-            <Link href={section.href} className="text-sm text-indigo-300 hover:text-indigo-200">
-              Open page
+            <Link
+              href={section.href}
+              className="inline-block rounded-md border border-zinc-700 bg-zinc-900/40 px-3 py-2 text-sm text-indigo-300 hover:border-indigo-400/40 hover:text-indigo-200"
+            >
+              Open explorer
             </Link>
           </SectionCard>
         ))}

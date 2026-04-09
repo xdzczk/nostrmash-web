@@ -45,10 +45,7 @@ export async function getProfile(pubkey: string, cacheClass: CacheClass = "reque
   });
 }
 
-export async function getProfileSummary(
-  pubkey: string,
-  cacheClass: CacheClass = "requestTime"
-) {
+export async function getProfileSummary(pubkey: string, cacheClass: CacheClass = "requestTime") {
   return fetchApiJson<ProfileSummaryResponse>(
     `/api/v1/users/${encodeURIComponent(pubkey)}/summary`,
     { cacheClass }
@@ -68,10 +65,9 @@ export async function getThread(eventId: string, cacheClass: CacheClass = "reque
 }
 
 export async function getNoteSummary(eventId: string, cacheClass: CacheClass = "requestTime") {
-  return fetchApiJson<NoteSummaryResponse>(
-    `/api/v1/notes/${encodeURIComponent(eventId)}/summary`,
-    { cacheClass }
-  );
+  return fetchApiJson<NoteSummaryResponse>(`/api/v1/notes/${encodeURIComponent(eventId)}/summary`, {
+    cacheClass,
+  });
 }
 
 export async function getTrendingNotes(cacheClass: CacheClass = "shortTtl") {

@@ -1,7 +1,4 @@
-export async function traceApiCall<T>(
-  spanName: string,
-  operation: () => Promise<T>
-): Promise<T> {
+export async function traceApiCall<T>(spanName: string, operation: () => Promise<T>): Promise<T> {
   const startedAt = Date.now();
   try {
     const result = await operation();

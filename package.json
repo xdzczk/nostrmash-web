@@ -2,11 +2,19 @@
   "name": "nostrmash-web",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.18.1",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "prepare": "husky",
+    "lint": "eslint --cache --cache-location ./.next/cache/eslint .",
+    "lint:fix": "eslint --cache --cache-location ./.next/cache/eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write . --ignore-unknown",
+    "format:check": "prettier --check . --ignore-unknown",
+    "precheck": "pnpm lint && pnpm typecheck",
+    "validate": "pnpm format:check && pnpm lint && pnpm typecheck",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "wrangler dev",
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
@@ -23,10 +31,26 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@typescript-eslint/eslint-plugin": "^8.58.1",
+    "@typescript-eslint/parser": "^8.58.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1",
+    "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^4",
     "typescript": "^5",
     "wrangler": "^4.81.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --cache --cache-location ./.next/cache/eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   }
 }

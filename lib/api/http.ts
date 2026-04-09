@@ -57,9 +57,7 @@ export async function fetchApiJson<T>(
     } catch {
       errorBody = undefined;
     }
-    throw new Error(
-      `API ${response.status}: ${parseErrorMessage(errorBody, response.statusText)}`
-    );
+    throw new Error(`API ${response.status}: ${parseErrorMessage(errorBody, response.statusText)}`);
   }
 
   return (await response.json()) as T;

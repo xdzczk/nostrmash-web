@@ -6,21 +6,21 @@
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
     "directory": ".open-next/assets",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
   },
   "services": [
     {
       "binding": "WORKER_SELF_REFERENCE",
-      "service": "nostrmash-web"
-    }
+      "service": "nostrmash-web",
+    },
   ],
   "r2_buckets": [
     {
       "binding": "NEXT_INC_CACHE_R2_BUCKET",
-      "bucket_name": "nostrmash-web-opennext-cache"
-    }
+      "bucket_name": "nostrmash-web-opennext-cache",
+    },
   ],
   "images": {
-    "binding": "IMAGES"
-  }
+    "binding": "IMAGES",
+  },
 }

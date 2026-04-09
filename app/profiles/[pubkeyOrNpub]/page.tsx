@@ -1,8 +1,34 @@
+import type { Metadata } from "next";
+
+import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
+import { MetadataList } from "@/components/explorer/metadata-list";
+import { PageHero } from "@/components/explorer/page-hero";
+import { ProfileCard } from "@/components/explorer/profile-card";
+import { StatCard } from "@/components/explorer/stat-card";
+import { buildMetadataEntries, extractPrimitiveStats, isRecord } from "@/components/explorer/utils";
 import { SectionCard } from "@/components/ui/section-card";
-import { ErrorPanel, JsonPanel } from "@/components/ui/status-panels";
+import { ErrorPanel } from "@/components/ui/status-panels";
 import { getProfile, getProfileSummary } from "@/lib/api/endpoints";
 
 type Params = Promise<{ pubkeyOrNpub: string }>;
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { pubkeyOrNpub } = await params;
+  try {
+    const profile = await getProfile(pubkeyOrNpub, "requestTime");
+    const label =
+      profile.display_name ?? profile.name ?? profile.npub ?? profile.pubkey ?? pubkeyOrNpub;
+    return {
+      title: label,
+      description: `NostrMash profile explorer page for ${label}.`,
+    };
+  } catch {
+    return {
+      title: `Profile ${pubkeyOrNpub}`,
+      description: `NostrMash profile explorer page for ${pubkeyOrNpub}.`,
+    };
+  }
+}
 
 export default async function ProfilePage({ params }: { params: Params }) {
   const { pubkeyOrNpub } = await params;
@@ -18,22 +44,70 @@ export default async function ProfilePage({ params }: { params: Params }) {
       error instanceof Error ? error.message : "Failed to load profile and public summary.";
   }
 
+  const summaryStats = extractPrimitiveStats(summary ?? {}, ["pubkey", "consistency"]).slice(0, 6);
+  const details = profile
+    ? buildMetadataEntries(profile as Record<string, unknown>, [
+        "pubkey",
+        "npub",
+        "name",
+        "display_name",
+        "website",
+        "nip05",
+        "lud16",
+      ])
+    : [];
+  const timestamps = profile
+    ? buildMetadataEntries(profile as Record<string, unknown>, [
+        "created_at",
+        "updated_at",
+        "last_seen",
+      ])
+    : [];
+
   return (
-    <div className="space-y-6">
-      <section className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
-        <p className="mt-1 break-all text-sm text-zinc-300">{pubkeyOrNpub}</p>
-      </section>
+    <div className="space-y-8">
+      <PageHero
+        title={profile?.display_name ?? profile?.name ?? "Profile explorer"}
+        subtitle={
+          profile?.about ??
+          "Inspect profile identity, summary metrics, and metadata from NostrMash."
+        }
+      />
 
       {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <SectionCard title="Profile payload" description="Canonical profile response from API.">
-          <JsonPanel data={profile ?? {}} />
+      {profile ? (
+        <SectionCard title="Profile" description="Primary profile identity surface.">
+          <ProfileCard profile={profile} summary={isRecord(summary) ? summary : undefined} />
         </SectionCard>
-        <SectionCard title="Public summary" description="Counts and summary-level activity fields.">
-          <JsonPanel data={summary ?? {}} />
+      ) : null}
+
+      {summaryStats.length > 0 ? (
+        <section className="space-y-3">
+          <p className="text-sm font-medium text-zinc-300">Summary metrics</p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {summaryStats.map((stat) => (
+              <StatCard key={stat.label} label={stat.label} value={stat.value} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {details.length > 0 ? (
+        <SectionCard title="Profile details" description="Identifiers and public metadata fields.">
+          <MetadataList items={details} columns={2} />
         </SectionCard>
+      ) : null}
+
+      {timestamps.length > 0 ? (
+        <SectionCard title="Freshness" description="Any timestamp fields returned by the backend.">
+          <MetadataList items={timestamps} columns={2} />
+        </SectionCard>
+      ) : null}
+
+      <div className="space-y-3">
+        <DebugDisclosure title="Debug payload: profile" data={profile ?? {}} />
+        <DebugDisclosure title="Debug payload: summary" data={summary ?? {}} />
       </div>
     </div>
   );

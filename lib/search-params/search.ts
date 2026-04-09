@@ -1,8 +1,6 @@
 import type { SearchQuery } from "@/lib/api/endpoints";
 
-export function parseSearchQuery(
-  raw: Record<string, string | string[] | undefined>
-): SearchQuery {
+export function parseSearchQuery(raw: Record<string, string | string[] | undefined>): SearchQuery {
   const q = toSingle(raw.q)?.trim() ?? "";
   const tab = toSingle(raw.tab);
   const limit = parsePositiveInt(toSingle(raw.limit));

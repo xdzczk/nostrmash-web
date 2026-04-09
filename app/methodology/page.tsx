@@ -6,8 +6,8 @@ export default function MethodologyPage() {
       <section className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6">
         <h1 className="text-2xl font-semibold tracking-tight">Methodology</h1>
         <p className="mt-2 text-sm text-zinc-300">
-          NostrMash indexes public Nostr events and exposes read APIs for search and analytics.
-          This page explains how to interpret freshness, ranking windows, and limits.
+          NostrMash indexes public Nostr events and exposes read APIs for search and analytics. This
+          page explains how to interpret freshness, ranking windows, and limits.
         </p>
       </section>
 
@@ -16,7 +16,9 @@ export default function MethodologyPage() {
           <ul className="list-disc space-y-1 pl-5 text-sm text-zinc-300">
             <li>Results are from the local NostrMash index, not the entire Nostr universe.</li>
             <li>Coverage varies by relay ingestion, retention, and projection health.</li>
-            <li>Missing results can reflect index scope, not necessarily missing events globally.</li>
+            <li>
+              Missing results can reflect index scope, not necessarily missing events globally.
+            </li>
           </ul>
         </SectionCard>
 

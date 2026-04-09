@@ -1,7 +1,17 @@
+import type { Metadata } from "next";
+
+import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
+import { EmptyState } from "@/components/explorer/empty-state";
+import { PageHero } from "@/components/explorer/page-hero";
 import { HashtagsList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
-import { EmptyPanel, ErrorPanel, JsonPanel } from "@/components/ui/status-panels";
+import { ErrorPanel } from "@/components/ui/status-panels";
 import { getTrendingHashtags } from "@/lib/api/endpoints";
+
+export const metadata: Metadata = {
+  title: "Trending Hashtags",
+  description: "Hashtag pulse and ranked mention counts from NostrMash trending data.",
+};
 
 export default async function TrendingHashtagsPage() {
   let errorMessage = "";
@@ -13,21 +23,23 @@ export default async function TrendingHashtagsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Trending hashtags</h1>
-      </section>
+    <div className="space-y-8">
+      <PageHero
+        title="Trending hashtags"
+        subtitle="Hashtag activity ordered by current mention counts."
+      />
       {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
-      <SectionCard title="Hashtags" description="Current hashtag trend ranking output.">
+      <SectionCard
+        title="Hashtag ranking"
+        description="Each chip surfaces rank and mention counts."
+      >
         {payload?.hashtags && payload.hashtags.length > 0 ? (
-          <HashtagsList hashtags={payload.hashtags} />
+          <HashtagsList hashtags={payload.hashtags} ranked searchable />
         ) : (
-          <EmptyPanel message="No hashtags currently available." />
+          <EmptyState message="No hashtags currently available." />
         )}
       </SectionCard>
-      <SectionCard title="Raw payload" description="Full endpoint response for debugging.">
-        <JsonPanel data={payload ?? {}} />
-      </SectionCard>
+      <DebugDisclosure title="Debug payload" data={payload ?? {}} />
     </div>
   );
 }
