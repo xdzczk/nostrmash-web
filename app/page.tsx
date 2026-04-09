@@ -9,7 +9,8 @@ import { SearchForm } from "@/components/search/search-form";
 import { NotesList, ProfilesList, HashtagsList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
-import { getDiscoveryHome } from "@/lib/api/endpoints";
+import { getDiscoveryHome, getProfilesBatch } from "@/lib/api/endpoints";
+import type { Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = {
   title: "NostrMash Explorer",
@@ -20,10 +21,30 @@ export const metadata: Metadata = {
 export default async function HomePage() {
   let errorMessage = "";
   let payload: Awaited<ReturnType<typeof getDiscoveryHome>> | null = null;
+  let noteAuthorsByPubkey: Record<string, Profile> = {};
   try {
     payload = await getDiscoveryHome("shortTtl");
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Failed to load discovery home.";
+  }
+
+  if (payload?.notes?.length) {
+    try {
+      const noteAuthors = await getProfilesBatch(
+        (payload.notes ?? [])
+          .slice(0, 5)
+          .map((note) => note.pubkey)
+          .filter((pubkey): pubkey is string => typeof pubkey === "string"),
+        "shortTtl"
+      );
+      noteAuthorsByPubkey = Object.fromEntries(
+        noteAuthors
+          .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
+          .map((profile) => [profile.pubkey, profile])
+      );
+    } catch {
+      noteAuthorsByPubkey = {};
+    }
   }
 
   const pulseStats = extractPrimitiveStats(isRecord(payload?.stats) ? payload.stats : {}, []).slice(
@@ -58,7 +79,7 @@ export default async function HomePage() {
           {errorMessage ? (
             <ErrorPanel message={errorMessage} />
           ) : payload?.notes && payload.notes.length > 0 ? (
-            <NotesList notes={payload.notes.slice(0, 5)} />
+            <NotesList notes={payload.notes.slice(0, 5)} authorsByPubkey={noteAuthorsByPubkey} />
           ) : (
             <EmptyState message="No notes available for this time window." />
           )}

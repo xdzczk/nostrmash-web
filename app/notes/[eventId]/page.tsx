@@ -17,7 +17,8 @@ import {
 import { ThreadView } from "@/components/thread/thread-view";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
-import { getEvent, getNoteSummary, getThread } from "@/lib/api/endpoints";
+import { getEvent, getNoteSummary, getProfilesBatch, getThread } from "@/lib/api/endpoints";
+import type { Profile } from "@/lib/types/api";
 
 type Params = Promise<{ eventId: string }>;
 
@@ -52,6 +53,7 @@ export default async function NotePage({ params }: { params: Params }) {
   let eventPayload: Awaited<ReturnType<typeof getEvent>> | null = null;
   let noteSummary: Awaited<ReturnType<typeof getNoteSummary>> | null = null;
   let threadPayload: Awaited<ReturnType<typeof getThread>> | null = null;
+  let authorsByPubkey: Record<string, Profile> = {};
 
   try {
     [eventPayload, noteSummary, threadPayload] = await Promise.all([
@@ -61,6 +63,28 @@ export default async function NotePage({ params }: { params: Params }) {
     ]);
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Failed to load note details.";
+  }
+
+  try {
+    const noteAuthors = await getProfilesBatch(
+      [
+        eventPayload?.event,
+        noteSummary?.note,
+        threadPayload?.root,
+        ...(threadPayload?.ancestors ?? []),
+        ...(threadPayload?.replies ?? []),
+      ]
+        .flatMap((note) => (note?.pubkey ? [note.pubkey] : []))
+        .filter((pubkey): pubkey is string => typeof pubkey === "string"),
+      "requestTime"
+    );
+    authorsByPubkey = Object.fromEntries(
+      noteAuthors
+        .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
+        .map((profile) => [profile.pubkey, profile])
+    );
+  } catch {
+    authorsByPubkey = {};
   }
 
   const focal = eventPayload?.event ?? noteSummary?.note ?? threadPayload?.root;
@@ -98,7 +122,11 @@ export default async function NotePage({ params }: { params: Params }) {
 
       <SectionCard title="Focal note" description="Canonical note content and key identity fields.">
         {focal ? (
-          <NoteCard note={focal} showFullContent />
+          <NoteCard
+            note={focal}
+            author={typeof focal.pubkey === "string" ? authorsByPubkey[focal.pubkey] : undefined}
+            showFullContent
+          />
         ) : (
           <EmptyState message="No focal note payload was returned." />
         )}
@@ -135,6 +163,7 @@ export default async function NotePage({ params }: { params: Params }) {
           ancestors={threadPayload?.ancestors ?? []}
           focal={threadPayload?.root ?? focal}
           replies={threadPayload?.replies ?? []}
+          authorsByPubkey={authorsByPubkey}
         />
       </SectionCard>
 

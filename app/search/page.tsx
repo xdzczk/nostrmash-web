@@ -7,8 +7,9 @@ import { SearchForm } from "@/components/search/search-form";
 import { NotesList, ProfilesList, HashtagsList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
-import { getSearch } from "@/lib/api/endpoints";
+import { getProfilesBatch, getSearch } from "@/lib/api/endpoints";
 import { parseSearchQuery } from "@/lib/search-params/search";
+import type { Profile } from "@/lib/types/api";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -22,12 +23,31 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   const canQuery = query.q.length > 0;
   let errorMessage = "";
   let payload: Awaited<ReturnType<typeof getSearch>> | null = null;
+  let noteAuthorsByPubkey: Record<string, Profile> = {};
 
   if (canQuery) {
     try {
       payload = await getSearch(query, "requestTime");
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : "Search failed.";
+    }
+  }
+
+  if (payload?.notes?.length) {
+    try {
+      const noteAuthors = await getProfilesBatch(
+        (payload.notes ?? [])
+          .map((note) => note.pubkey)
+          .filter((pubkey): pubkey is string => typeof pubkey === "string"),
+        "requestTime"
+      );
+      noteAuthorsByPubkey = Object.fromEntries(
+        noteAuthors
+          .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
+          .map((profile) => [profile.pubkey, profile])
+      );
+    } catch {
+      noteAuthorsByPubkey = {};
     }
   }
 
@@ -59,9 +79,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
         <ErrorPanel message={errorMessage} />
       ) : (
         <div className="space-y-6">
+          {payload?.errors && payload.errors.length > 0 ? (
+            <ErrorPanel message={payload.errors.join(" | ")} />
+          ) : null}
           <SectionCard title="Notes" description="Notes matching the current query.">
             {payload?.notes && payload.notes.length > 0 ? (
-              <NotesList notes={payload.notes} />
+              <NotesList notes={payload.notes} authorsByPubkey={noteAuthorsByPubkey} />
             ) : (
               <EmptyState message={`No note hits for "${query.q}".`} />
             )}

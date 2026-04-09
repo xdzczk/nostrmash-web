@@ -1,9 +1,18 @@
 export type Consistency = "strong" | "eventual";
 
-export interface ApiErrorBody {
-  error?: string;
-  message?: string;
+export interface ApiErrorDetails {
   code?: string;
+  message?: string;
+  request_id?: string;
+  [key: string]: unknown;
+}
+
+export interface ApiErrorBody {
+  error?: string | ApiErrorDetails;
+  message?: string | ApiErrorDetails;
+  code?: string;
+  request_id?: string;
+  [key: string]: unknown;
 }
 
 export interface Profile {
@@ -16,6 +25,16 @@ export interface Profile {
   nip05?: string;
   lud16?: string;
   website?: string;
+  [key: string]: unknown;
+}
+
+export interface ProfileStats {
+  follower_count?: number;
+  following_count?: number;
+  note_count?: number;
+  reply_count?: number;
+  recent_activity_at?: number;
+  relay_count?: number;
   [key: string]: unknown;
 }
 
@@ -32,17 +51,26 @@ export interface EventRecord {
 export interface SearchResponse {
   notes?: EventRecord[];
   profiles?: Profile[];
-  hashtags?: string[];
+  hashtags?: HashtagEntry[];
   relays?: string[];
   total?: number;
+  errors?: string[];
   consistency?: Consistency | string;
+  [key: string]: unknown;
+}
+
+export interface HashtagEntry {
+  hashtag?: string;
+  count?: number;
+  event_count?: number;
+  unique_authors?: number;
   [key: string]: unknown;
 }
 
 export interface DiscoveryHomeResponse {
   notes?: EventRecord[];
   profiles?: Profile[];
-  hashtags?: Array<{ hashtag?: string; count?: number; [key: string]: unknown }>;
+  hashtags?: HashtagEntry[];
   stats?: Record<string, unknown>;
   consistency?: Consistency | string;
   [key: string]: unknown;
@@ -61,7 +89,7 @@ export interface TrendingProfilesResponse {
 }
 
 export interface TrendingHashtagsResponse {
-  hashtags?: Array<{ hashtag?: string; count?: number; [key: string]: unknown }>;
+  hashtags?: HashtagEntry[];
   consistency?: Consistency | string;
   [key: string]: unknown;
 }
@@ -78,15 +106,29 @@ export interface EventDetailResponse {
 
 export interface ThreadResponse {
   root?: EventRecord;
+  event?: EventRecord;
   ancestors?: EventRecord[];
   replies?: EventRecord[];
   events?: EventRecord[];
+  missing_ancestor_ids?: string[];
+  next_cursor?: string;
   consistency?: Consistency | string;
   [key: string]: unknown;
 }
 
 export interface NoteSummaryResponse {
   note?: EventRecord;
+  event?: EventRecord;
+  author?: {
+    pubkey?: string;
+    profile?: Profile;
+    stats?: ProfileStats;
+    [key: string]: unknown;
+  };
+  counts?: Record<string, unknown>;
+  media?: Record<string, unknown>;
+  thread?: Record<string, unknown>;
+  quote_repost_context?: Record<string, unknown>;
   summary?: Record<string, unknown>;
   consistency?: Consistency | string;
   [key: string]: unknown;
@@ -94,9 +136,13 @@ export interface NoteSummaryResponse {
 
 export interface ProfileSummaryResponse {
   pubkey?: string;
+  profile?: Profile;
+  stats?: ProfileStats;
   note_count?: number;
   follower_count?: number;
   following_count?: number;
+  reply_count?: number;
+  recent_activity_at?: number;
   relay_count?: number;
   consistency?: Consistency | string;
   [key: string]: unknown;

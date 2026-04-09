@@ -5,7 +5,9 @@ import { IdBadge } from "@/components/explorer/id-badge";
 import {
   extractPrimitiveStats,
   profileIdentifier,
+  profileInitial,
   profileLabel,
+  profileSecondaryLabel,
 } from "@/components/explorer/utils";
 import type { Profile } from "@/lib/types/api";
 
@@ -19,6 +21,7 @@ export function ProfileCard({
   summary?: Record<string, unknown>;
 }) {
   const label = profileLabel(profile);
+  const secondaryLabel = profileSecondaryLabel(profile);
   const identifier = profileIdentifier(profile);
   const href = identifier !== "unknown" ? `/profiles/${encodeURIComponent(identifier)}` : undefined;
   const metrics = extractPrimitiveStats(summary ?? profile, [
@@ -51,7 +54,7 @@ export function ProfileCard({
           />
         ) : (
           <div className="flex h-11 w-11 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900 text-xs text-zinc-500">
-            {label.slice(0, 1).toUpperCase()}
+            {profileInitial(profile)}
           </div>
         )}
         <div className="min-w-0 flex-1 space-y-1">
@@ -59,7 +62,11 @@ export function ProfileCard({
             {typeof rank === "number" ? `${rank}. ` : ""}
             {label}
           </p>
-          <p className="text-xs break-all text-zinc-500">{identifier}</p>
+          {secondaryLabel ? (
+            <p className="text-xs break-all text-zinc-500">{secondaryLabel}</p>
+          ) : (
+            <p className="text-xs break-all text-zinc-500">{identifier}</p>
+          )}
           {typeof profile.about === "string" && profile.about.length > 0 ? (
             <p className="line-clamp-2 text-sm text-zinc-300">{profile.about}</p>
           ) : null}

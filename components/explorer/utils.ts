@@ -34,6 +34,33 @@ export function profileIdentifier(profile: Profile): string {
   return profile.npub ?? profile.pubkey ?? "unknown";
 }
 
+export function profileSecondaryLabel(profile: Profile): string | null {
+  const displayName =
+    typeof profile.display_name === "string" && profile.display_name.trim().length > 0
+      ? profile.display_name.trim()
+      : null;
+  const name =
+    typeof profile.name === "string" && profile.name.trim().length > 0 ? profile.name.trim() : null;
+  const nip05 =
+    typeof profile.nip05 === "string" && profile.nip05.trim().length > 0
+      ? profile.nip05.trim()
+      : null;
+  const identifier = profileIdentifier(profile);
+
+  if (displayName && name && displayName !== name) {
+    return name;
+  }
+  if (nip05) {
+    return nip05;
+  }
+  return identifier !== "unknown" ? truncateMiddle(identifier) : null;
+}
+
+export function profileInitial(profile: Profile): string {
+  const label = profileLabel(profile).trim();
+  return label.slice(0, 1).toUpperCase() || "?";
+}
+
 export function noteAuthorIdentifier(note: EventRecord): string {
   if (typeof note.pubkey === "string" && note.pubkey.length > 0) {
     return truncateMiddle(note.pubkey);

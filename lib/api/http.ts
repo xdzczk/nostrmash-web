@@ -1,7 +1,7 @@
 import { appConfig } from "@/lib/config";
 import { toNextFetchConfig, type CacheClass } from "@/lib/caching/policies";
 import { traceApiCall } from "@/lib/telemetry/trace";
-import type { ApiErrorBody } from "@/lib/types/api";
+import type { ApiErrorBody, ApiErrorDetails } from "@/lib/types/api";
 
 function buildApiUrl(path: string, query?: URLSearchParams): string {
   const base = appConfig.apiBaseUrl.endsWith("/")
@@ -15,11 +15,34 @@ function buildApiUrl(path: string, query?: URLSearchParams): string {
   return url.toString();
 }
 
+function formatErrorDetails(details: ApiErrorDetails): string {
+  const message = typeof details.message === "string" ? details.message : undefined;
+  const code = typeof details.code === "string" ? details.code : undefined;
+  const requestId = typeof details.request_id === "string" ? details.request_id : undefined;
+  const parts = [message ?? code, requestId ? `request_id: ${requestId}` : undefined].filter(
+    Boolean
+  );
+  return parts.join(" - ");
+}
+
+function formatErrorValue(
+  value: ApiErrorBody["error"] | ApiErrorBody["message"]
+): string | undefined {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (value && typeof value === "object") {
+    return formatErrorDetails(value);
+  }
+  return undefined;
+}
+
 function parseErrorMessage(body: ApiErrorBody | undefined, statusText: string): string {
   if (!body) {
     return statusText || "Unknown API error";
   }
-  const message = body.message ?? body.error ?? body.code ?? statusText;
+  const message =
+    formatErrorValue(body.message) ?? formatErrorValue(body.error) ?? body.code ?? statusText;
   return message || "Unknown API error";
 }
 

@@ -5,10 +5,12 @@ import type { EventRecord, Profile } from "@/lib/types/api";
 
 export function NotesList({
   notes,
+  authorsByPubkey,
   ranked = false,
   showFullContent = false,
 }: {
   notes: EventRecord[];
+  authorsByPubkey?: Record<string, Profile>;
   ranked?: boolean;
   showFullContent?: boolean;
 }) {
@@ -18,6 +20,7 @@ export function NotesList({
         <li key={note.id ?? `note-${index}`}>
           <NoteCard
             note={note}
+            author={typeof note.pubkey === "string" ? authorsByPubkey?.[note.pubkey] : undefined}
             rank={ranked ? index + 1 : undefined}
             showFullContent={showFullContent}
           />
