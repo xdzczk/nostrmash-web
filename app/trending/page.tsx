@@ -45,6 +45,7 @@ export const metadata: Metadata = {
 export default async function TrendingPage() {
   let errorMessage = "";
   let authorsByPubkey: Record<string, Profile> = {};
+  let hydratedProfiles: Profile[] = [];
   const [notesResult, profilesResult, hashtagsResult] = await Promise.allSettled([
     getTrendingNotes("shortTtl"),
     getTrendingProfiles("shortTtl"),
@@ -76,10 +77,34 @@ export default async function TrendingPage() {
       authorsByPubkey = Object.fromEntries(
         profilesForNotes
           .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
-          .map((profile) => [profile.pubkey, profile])
+          .map((profile) => [profile.pubkey.toLowerCase(), profile])
       );
     } catch {
       authorsByPubkey = {};
+    }
+  }
+
+  if (profiles?.profiles?.length) {
+    try {
+      const enriched = await getProfilesBatch(
+        profiles.profiles
+          .slice(0, 5)
+          .map((profile) => profile.pubkey)
+          .filter((pubkey): pubkey is string => typeof pubkey === "string" && pubkey.length > 0),
+        "shortTtl"
+      );
+      const enrichedByPubkey = new Map(
+        enriched
+          .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
+          .map((profile) => [profile.pubkey.toLowerCase(), profile] as const)
+      );
+      hydratedProfiles = profiles.profiles.map((profile) => {
+        const key = typeof profile.pubkey === "string" ? profile.pubkey.toLowerCase() : "";
+        const enrichedProfile = key ? enrichedByPubkey.get(key) : undefined;
+        return { ...profile, ...(enrichedProfile ?? {}) };
+      });
+    } catch {
+      hydratedProfiles = profiles.profiles;
     }
   }
 
@@ -126,8 +151,8 @@ export default async function TrendingPage() {
           title="Trending profiles snapshot"
           description="Profiles currently surfacing with the strongest trend signals."
         >
-          {profiles?.profiles && profiles.profiles.length > 0 ? (
-            <ProfilesList profiles={profiles.profiles.slice(0, 5)} ranked />
+          {hydratedProfiles.length > 0 ? (
+            <ProfilesList profiles={hydratedProfiles.slice(0, 5)} ranked />
           ) : (
             <EmptyState
               title="Profiles snapshot unavailable"

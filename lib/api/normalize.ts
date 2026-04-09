@@ -43,7 +43,13 @@ export function normalizeEventRecord(value: unknown): EventRecord | null {
 
   return {
     ...record,
-    id: asString(record.id) ?? asString(record.event_id) ?? "",
+    id:
+      asString(record.id) ??
+      asString(record.event_id) ??
+      asString(record.eventId) ??
+      asString(record.note_id) ??
+      asString(record.noteId) ??
+      "",
     pubkey: asString(record.pubkey) ?? asString(record.author_pubkey),
   };
 }

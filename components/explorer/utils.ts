@@ -78,16 +78,27 @@ export function formatValue(value: unknown): string {
 }
 
 export function profileLabel(profile: Profile): string {
+  const displayName =
+    typeof profile.display_name === "string" ? profile.display_name.trim() : undefined;
+  const name = typeof profile.name === "string" ? profile.name.trim() : undefined;
+  const npub = typeof profile.npub === "string" ? profile.npub.trim() : undefined;
+  const pubkey = typeof profile.pubkey === "string" ? profile.pubkey.trim() : undefined;
+
+  const isHexLike = (value: string | undefined): boolean =>
+    typeof value === "string" && /^[0-9a-f]{40,}$/i.test(value);
+
   return (
-    profile.display_name ??
-    profile.name ??
-    profile.npub ??
-    truncateMiddle(profile.pubkey ?? "unknown")
+    (displayName && !isHexLike(displayName) ? displayName : undefined) ??
+    (name && !isHexLike(name) ? name : undefined) ??
+    npub ??
+    truncateMiddle(pubkey ?? "unknown")
   );
 }
 
 export function profileIdentifier(profile: Profile): string {
-  return profile.npub ?? profile.pubkey ?? "unknown";
+  const npub = typeof profile.npub === "string" ? profile.npub.trim() : "";
+  const pubkey = typeof profile.pubkey === "string" ? profile.pubkey.trim() : "";
+  return npub || pubkey || "unknown";
 }
 
 export function profileSecondaryLabel(profile: Profile): string | null {

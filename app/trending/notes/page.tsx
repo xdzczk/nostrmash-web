@@ -35,7 +35,7 @@ export default async function TrendingNotesPage() {
       authorsByPubkey = Object.fromEntries(
         authors
           .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
-          .map((profile) => [profile.pubkey, profile])
+          .map((profile) => [profile.pubkey.toLowerCase(), profile])
       );
     } catch {
       authorsByPubkey = {};

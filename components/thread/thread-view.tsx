@@ -2,6 +2,15 @@ import { EmptyState } from "@/components/explorer/empty-state";
 import { ThreadNode } from "@/components/thread/thread-node";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
+function getAuthorByPubkey(
+  authorsByPubkey: Record<string, Profile> | undefined,
+  pubkey: unknown
+): Profile | undefined {
+  if (!authorsByPubkey || typeof pubkey !== "string") return undefined;
+  const normalized = pubkey.trim().toLowerCase();
+  return authorsByPubkey[normalized] ?? authorsByPubkey[pubkey];
+}
+
 export function ThreadView({
   ancestors,
   focal,
@@ -40,11 +49,7 @@ export function ThreadView({
               <ThreadNode
                 key={ancestor.id ?? `ancestor-${index}`}
                 note={ancestor}
-                author={
-                  typeof ancestor.pubkey === "string"
-                    ? authorsByPubkey?.[ancestor.pubkey]
-                    : undefined
-                }
+                author={getAuthorByPubkey(authorsByPubkey, ancestor.pubkey)}
                 role="ancestor"
               />
             ))}
@@ -56,7 +61,7 @@ export function ThreadView({
         <section>
           <ThreadNode
             note={focal}
-            author={typeof focal.pubkey === "string" ? authorsByPubkey?.[focal.pubkey] : undefined}
+            author={getAuthorByPubkey(authorsByPubkey, focal.pubkey)}
             role="focal"
           />
         </section>
@@ -70,9 +75,7 @@ export function ThreadView({
               <ThreadNode
                 key={reply.id ?? `reply-${index}`}
                 note={reply}
-                author={
-                  typeof reply.pubkey === "string" ? authorsByPubkey?.[reply.pubkey] : undefined
-                }
+                author={getAuthorByPubkey(authorsByPubkey, reply.pubkey)}
                 role="reply"
               />
             ))}

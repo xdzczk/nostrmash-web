@@ -42,6 +42,8 @@ interface SearchSuggestApiResponse {
   profiles?: unknown[];
   hashtags?: HashtagEntry[];
   relays?: unknown[];
+  suggested_profiles?: unknown[];
+  suggested_hashtags?: HashtagEntry[];
 }
 
 interface BatchProfilesApiResponse {
@@ -72,6 +74,13 @@ export async function getDiscoveryHome(cacheClass: CacheClass = "shortTtl") {
 }
 
 export async function getSearch(query: SearchQuery, cacheClass: CacheClass = "requestTime") {
+  const normalizeSearchQueryText = (value: string): string =>
+    value
+      .trim()
+      .replace(/^nostr:/i, "")
+      .replace(/^@/, "");
+  const looksLikeProfileIdentifier = (value: string): boolean =>
+    /^npub1[02-9ac-hj-np-z]+$/i.test(value) || /^[0-9a-f]{64}$/i.test(value);
   const normalizeRelayHints = (value: unknown): string[] =>
     (Array.isArray(value) ? value : [])
       .map((entry) => {
@@ -90,10 +99,11 @@ export async function getSearch(query: SearchQuery, cacheClass: CacheClass = "re
       .filter((relay) => relay.length > 0);
 
   if (query.tab === "notes") {
+    const normalizedQueryText = normalizeSearchQueryText(query.q);
     const notesResponse = await fetchApiJson<SearchNotesApiResponse>("/api/v1/search/notes", {
       cacheClass,
       query: {
-        q: query.q,
+        q: normalizedQueryText,
         limit: query.limit,
         offset: query.offset,
         window: query.window,
@@ -118,28 +128,45 @@ export async function getSearch(query: SearchQuery, cacheClass: CacheClass = "re
   }
 
   if (query.tab === "profiles") {
+    const normalizedQueryText = normalizeSearchQueryText(query.q);
     const profilesResponse = await fetchApiJson<SearchProfilesApiResponse>(
       "/api/v1/search/profiles",
       {
         cacheClass,
         query: {
-          q: query.q,
+          q: normalizedQueryText,
           limit: query.limit,
           offset: query.offset,
         },
       }
     );
     const profiles = normalizeProfiles(profilesResponse.profiles);
+    let directProfileMatch: Profile[] = [];
+    if (profiles.length === 0 && looksLikeProfileIdentifier(normalizedQueryText)) {
+      try {
+        const profile = await getProfile(normalizedQueryText, cacheClass);
+        directProfileMatch = [profile];
+      } catch {
+        directProfileMatch = [];
+      }
+    }
+    const mergedProfiles = Array.from(
+      new Map(
+        [...profiles, ...directProfileMatch]
+          .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
+          .map((profile) => [profile.pubkey, profile])
+      ).values()
+    );
     return {
       notes: [],
-      profiles,
+      profiles: mergedProfiles,
       profile_suggestions: [],
       hashtags: [],
       relays: [],
-      total: profiles.length,
+      total: mergedProfiles.length,
       section_totals: {
         notes: 0,
-        profiles: profiles.length,
+        profiles: mergedProfiles.length,
         profile_suggestions: 0,
         hashtags: 0,
         relays: 0,
@@ -147,48 +174,59 @@ export async function getSearch(query: SearchQuery, cacheClass: CacheClass = "re
     } satisfies SearchResponse;
   }
 
-  const [notesResult, profilesResult, suggestResult] = await Promise.allSettled([
-    fetchApiJson<SearchNotesApiResponse>("/api/v1/search/notes", {
-      cacheClass,
-      query: {
-        q: query.q,
-        limit: query.limit,
-        offset: query.offset,
-        window: query.window,
-      },
-    }),
-    fetchApiJson<SearchProfilesApiResponse>("/api/v1/search/profiles", {
-      cacheClass,
-      query: {
-        q: query.q,
-        limit: query.limit,
-        offset: query.offset,
-      },
-    }),
-    fetchApiJson<SearchSuggestApiResponse>("/api/v1/search/suggest", {
-      cacheClass,
-      query: {
-        q: query.q,
-        limit: Math.min(query.limit ?? 20, 20),
-      },
-    }),
-  ]);
+  const normalizedQueryText = normalizeSearchQueryText(query.q);
+  const [notesResult, profilesResult, suggestResult, directProfileResult] =
+    await Promise.allSettled([
+      fetchApiJson<SearchNotesApiResponse>("/api/v1/search/notes", {
+        cacheClass,
+        query: {
+          q: normalizedQueryText,
+          limit: query.limit,
+          offset: query.offset,
+          window: query.window,
+        },
+      }),
+      fetchApiJson<SearchProfilesApiResponse>("/api/v1/search/profiles", {
+        cacheClass,
+        query: {
+          q: normalizedQueryText,
+          limit: query.limit,
+          offset: query.offset,
+        },
+      }),
+      fetchApiJson<SearchSuggestApiResponse>("/api/v1/search/suggest", {
+        cacheClass,
+        query: {
+          q: normalizedQueryText,
+          limit: Math.min(query.limit ?? 20, 20),
+        },
+      }),
+      looksLikeProfileIdentifier(normalizedQueryText)
+        ? getProfile(normalizedQueryText, cacheClass)
+        : Promise.reject(new Error("Direct profile lookup skipped.")),
+    ]);
 
   const notes =
     notesResult.status === "fulfilled" ? normalizeEventRecords(notesResult.value.notes) : [];
   const profiles =
     profilesResult.status === "fulfilled" ? normalizeProfiles(profilesResult.value.profiles) : [];
   const profileSuggestions =
-    suggestResult.status === "fulfilled" ? normalizeProfiles(suggestResult.value.profiles) : [];
+    suggestResult.status === "fulfilled"
+      ? normalizeProfiles(suggestResult.value.profiles ?? suggestResult.value.suggested_profiles)
+      : [];
   const hashtags =
     suggestResult.status === "fulfilled"
-      ? normalizeHashtagEntries(suggestResult.value.hashtags)
+      ? normalizeHashtagEntries(
+          suggestResult.value.hashtags ?? suggestResult.value.suggested_hashtags
+        )
       : [];
   const relays =
     suggestResult.status === "fulfilled" ? normalizeRelayHints(suggestResult.value.relays) : [];
+  const directProfileMatch =
+    directProfileResult.status === "fulfilled" ? [directProfileResult.value] : [];
   const uniqueProfiles = Array.from(
     new Map(
-      [...profileSuggestions, ...profiles]
+      [...profileSuggestions, ...profiles, ...directProfileMatch]
         .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
         .map((profile) => [profile.pubkey, profile])
     ).values()
@@ -210,7 +248,7 @@ export async function getSearch(query: SearchQuery, cacheClass: CacheClass = "re
     total: notes.length + uniqueProfiles.length + hashtags.length + relays.length,
     section_totals: {
       notes: notes.length,
-      profiles: profiles.length,
+      profiles: uniqueProfiles.length,
       profile_suggestions: profileSuggestions.length,
       hashtags: hashtags.length,
       relays: relays.length,

@@ -18,6 +18,9 @@ import {
   getNetworkStats,
   getProfilesBatch,
   getRelayStats,
+  getTrendingHashtags,
+  getTrendingNotes,
+  getTrendingProfiles,
 } from "@/lib/api/endpoints";
 import type { Profile } from "@/lib/types/api";
 
@@ -33,22 +36,62 @@ export default async function HomePage() {
   let networkStats: Awaited<ReturnType<typeof getNetworkStats>> | null = null;
   let contentStats: Awaited<ReturnType<typeof getContentStats>> | null = null;
   let relayStats: Awaited<ReturnType<typeof getRelayStats>> | null = null;
+  let trendingNotes: Awaited<ReturnType<typeof getTrendingNotes>> | null = null;
+  let trendingProfiles: Awaited<ReturnType<typeof getTrendingProfiles>> | null = null;
+  let trendingHashtags: Awaited<ReturnType<typeof getTrendingHashtags>> | null = null;
   let noteAuthorsByPubkey: Record<string, Profile> = {};
-  try {
-    [payload, networkStats, contentStats, relayStats] = await Promise.all([
-      getDiscoveryHome("shortTtl"),
-      getNetworkStats("shortTtl"),
-      getContentStats("shortTtl"),
-      getRelayStats("shortTtl"),
-    ]);
-  } catch (error) {
-    errorMessage = error instanceof Error ? error.message : "Failed to load discovery home.";
+  const results = await Promise.allSettled([
+    getDiscoveryHome("shortTtl"),
+    getNetworkStats("shortTtl"),
+    getContentStats("shortTtl"),
+    getRelayStats("shortTtl"),
+    getTrendingNotes("shortTtl"),
+    getTrendingProfiles("shortTtl"),
+    getTrendingHashtags("shortTtl"),
+  ]);
+  const [
+    homeResult,
+    networkResult,
+    contentResult,
+    relayResult,
+    notesResult,
+    profilesResult,
+    hashtagsResult,
+  ] = results;
+
+  payload = homeResult.status === "fulfilled" ? homeResult.value : null;
+  networkStats = networkResult.status === "fulfilled" ? networkResult.value : null;
+  contentStats = contentResult.status === "fulfilled" ? contentResult.value : null;
+  relayStats = relayResult.status === "fulfilled" ? relayResult.value : null;
+  trendingNotes = notesResult.status === "fulfilled" ? notesResult.value : null;
+  trendingProfiles = profilesResult.status === "fulfilled" ? profilesResult.value : null;
+  trendingHashtags = hashtagsResult.status === "fulfilled" ? hashtagsResult.value : null;
+
+  const failedMessages = results
+    .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+    .map((result) =>
+      result.reason instanceof Error ? result.reason.message : "Failed to load homepage data."
+    );
+  if (failedMessages.length > 0) {
+    errorMessage = failedMessages.join(" | ");
   }
 
-  if (payload?.notes?.length) {
+  const homeNotes =
+    payload?.notes && payload.notes.length > 0 ? payload.notes : (trendingNotes?.notes ?? []);
+  const homeProfiles =
+    payload?.profiles && payload.profiles.length > 0
+      ? payload.profiles
+      : (trendingProfiles?.profiles ?? []);
+  const homeHashtags =
+    payload?.hashtags && payload.hashtags.length > 0
+      ? payload.hashtags
+      : (trendingHashtags?.hashtags ?? []);
+  let hydratedHomeProfiles = homeProfiles;
+
+  if (homeNotes.length > 0) {
     try {
       const noteAuthors = await getProfilesBatch(
-        (payload.notes ?? [])
+        homeNotes
           .slice(0, 5)
           .map((note) => note.pubkey)
           .filter((pubkey): pubkey is string => typeof pubkey === "string"),
@@ -57,10 +100,34 @@ export default async function HomePage() {
       noteAuthorsByPubkey = Object.fromEntries(
         noteAuthors
           .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
-          .map((profile) => [profile.pubkey, profile])
+          .map((profile) => [profile.pubkey.toLowerCase(), profile])
       );
     } catch {
       noteAuthorsByPubkey = {};
+    }
+  }
+
+  if (homeProfiles.length > 0) {
+    try {
+      const enrichedProfiles = await getProfilesBatch(
+        homeProfiles
+          .slice(0, 6)
+          .map((profile) => profile.pubkey)
+          .filter((pubkey): pubkey is string => typeof pubkey === "string" && pubkey.length > 0),
+        "shortTtl"
+      );
+      const enrichedByPubkey = new Map(
+        enrichedProfiles
+          .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
+          .map((profile) => [profile.pubkey.toLowerCase(), profile] as const)
+      );
+      hydratedHomeProfiles = homeProfiles.map((profile) => {
+        const key = typeof profile.pubkey === "string" ? profile.pubkey.toLowerCase() : "";
+        const enriched = key ? enrichedByPubkey.get(key) : undefined;
+        return { ...profile, ...(enriched ?? {}) };
+      });
+    } catch {
+      hydratedHomeProfiles = homeProfiles;
     }
   }
 
@@ -107,18 +174,16 @@ export default async function HomePage() {
   const leadingSignals = [
     {
       label: "Leading note",
-      value: payload?.notes?.[0]?.id ? payload.notes[0].id : "Unavailable in this window",
+      value: homeNotes[0]?.id ? homeNotes[0].id : "Unavailable in this window",
     },
     {
       label: "Leading profile",
-      value: payload?.profiles?.[0]?.pubkey
-        ? payload.profiles[0].pubkey
-        : "Unavailable in this window",
+      value: homeProfiles[0]?.pubkey ? homeProfiles[0].pubkey : "Unavailable in this window",
     },
     {
       label: "Leading hashtag",
-      value: payload?.hashtags?.[0]?.hashtag
-        ? `#${payload.hashtags[0].hashtag}`
+      value: homeHashtags[0]?.hashtag
+        ? `#${homeHashtags[0].hashtag}`
         : "Unavailable in this window",
     },
     {
@@ -174,14 +239,10 @@ export default async function HomePage() {
           title="Trending now"
           description="Top ranked notes from current discovery outputs."
         >
-          {errorMessage ? (
+          {homeNotes.length > 0 ? (
+            <NotesList notes={homeNotes.slice(0, 5)} authorsByPubkey={noteAuthorsByPubkey} ranked />
+          ) : errorMessage ? (
             <ErrorPanel message={errorMessage} />
-          ) : payload?.notes && payload.notes.length > 0 ? (
-            <NotesList
-              notes={payload.notes.slice(0, 5)}
-              authorsByPubkey={noteAuthorsByPubkey}
-              ranked
-            />
           ) : (
             <EmptyState
               title="Notes ranking is sparse"
@@ -197,10 +258,10 @@ export default async function HomePage() {
           title="Profiles in motion"
           description="Profiles surfacing with current trend momentum."
         >
-          {errorMessage ? (
+          {hydratedHomeProfiles.length > 0 ? (
+            <ProfilesList profiles={hydratedHomeProfiles.slice(0, 5)} ranked />
+          ) : errorMessage ? (
             <ErrorPanel message={errorMessage} />
-          ) : payload?.profiles && payload.profiles.length > 0 ? (
-            <ProfilesList profiles={payload.profiles.slice(0, 5)} ranked />
           ) : (
             <EmptyState
               title="Profile ranking is sparse"
@@ -217,10 +278,10 @@ export default async function HomePage() {
         title="Hashtag pulse"
         description="Hashtag movement from the active index window."
       >
-        {errorMessage ? (
+        {homeHashtags.length > 0 ? (
+          <HashtagsList hashtags={homeHashtags.slice(0, 12)} ranked searchable />
+        ) : errorMessage ? (
           <ErrorPanel message={errorMessage} />
-        ) : payload?.hashtags && payload.hashtags.length > 0 ? (
-          <HashtagsList hashtags={payload.hashtags.slice(0, 12)} ranked searchable />
         ) : (
           <EmptyState
             title="Hashtag ranking is sparse"

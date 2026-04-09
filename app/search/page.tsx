@@ -8,7 +8,12 @@ import { SearchForm } from "@/components/search/search-form";
 import { NotesList, ProfilesList, HashtagsList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
-import { getProfilesBatch, getSearch } from "@/lib/api/endpoints";
+import {
+  getProfilesBatch,
+  getSearch,
+  getTrendingHashtags,
+  getTrendingProfiles,
+} from "@/lib/api/endpoints";
 import { parseSearchQuery } from "@/lib/search-params/search";
 import type { Profile } from "@/lib/types/api";
 
@@ -26,11 +31,17 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   let payload: Awaited<ReturnType<typeof getSearch>> | null = null;
   let noteAuthorsByPubkey: Record<string, Profile> = {};
   let suggestedProfiles: Profile[] = [];
+  let hydratedProfiles: Profile[] = [];
+  let hydratedSuggestedProfiles: Profile[] = [];
+  let fallbackSuggestedProfiles: Profile[] = [];
+  let fallbackSuggestedHashtags: Array<{ hashtag?: string; count?: number }> = [];
 
   if (canQuery) {
     try {
       payload = await getSearch(query, "requestTime");
       suggestedProfiles = payload.profile_suggestions ?? [];
+      hydratedProfiles = payload.profiles ?? [];
+      hydratedSuggestedProfiles = suggestedProfiles;
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : "Search failed.";
     }
@@ -47,10 +58,65 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
       noteAuthorsByPubkey = Object.fromEntries(
         noteAuthors
           .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
-          .map((profile) => [profile.pubkey, profile])
+          .map((profile) => [profile.pubkey.toLowerCase(), profile])
       );
     } catch {
       noteAuthorsByPubkey = {};
+    }
+  }
+
+  if (
+    canQuery &&
+    payload &&
+    (suggestedProfiles.length === 0 || (payload.hashtags?.length ?? 0) === 0)
+  ) {
+    try {
+      const [trendingProfiles, trendingHashtags] = await Promise.all([
+        getTrendingProfiles("shortTtl"),
+        getTrendingHashtags("shortTtl"),
+      ]);
+      if (suggestedProfiles.length === 0) {
+        fallbackSuggestedProfiles = (trendingProfiles.profiles ?? []).slice(0, 5);
+      }
+      if ((payload.hashtags?.length ?? 0) === 0) {
+        fallbackSuggestedHashtags = (trendingHashtags.hashtags ?? []).slice(0, 10);
+      }
+    } catch {
+      fallbackSuggestedProfiles = [];
+      fallbackSuggestedHashtags = [];
+    }
+  }
+
+  if (
+    canQuery &&
+    payload &&
+    ((payload.profiles?.length ?? 0) > 0 || suggestedProfiles.length > 0)
+  ) {
+    try {
+      const enriched = await getProfilesBatch(
+        [...(payload.profiles ?? []), ...suggestedProfiles]
+          .map((profile) => profile.pubkey)
+          .filter((pubkey): pubkey is string => typeof pubkey === "string" && pubkey.length > 0),
+        "requestTime"
+      );
+      const enrichedByPubkey = new Map(
+        enriched
+          .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
+          .map((profile) => [profile.pubkey.toLowerCase(), profile] as const)
+      );
+      hydratedProfiles = (payload.profiles ?? []).map((profile) => {
+        const key = typeof profile.pubkey === "string" ? profile.pubkey.toLowerCase() : "";
+        const enrichedProfile = key ? enrichedByPubkey.get(key) : undefined;
+        return { ...profile, ...(enrichedProfile ?? {}) };
+      });
+      hydratedSuggestedProfiles = suggestedProfiles.map((profile) => {
+        const key = typeof profile.pubkey === "string" ? profile.pubkey.toLowerCase() : "";
+        const enrichedProfile = key ? enrichedByPubkey.get(key) : undefined;
+        return { ...profile, ...(enrichedProfile ?? {}) };
+      });
+    } catch {
+      hydratedProfiles = payload.profiles ?? [];
+      hydratedSuggestedProfiles = suggestedProfiles;
     }
   }
 
@@ -113,8 +179,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
             )}
           </SectionCard>
           <SectionCard title="Profiles" description="Profiles relevant to the current query.">
-            {payload?.profiles && payload.profiles.length > 0 ? (
-              <ProfilesList profiles={payload.profiles} />
+            {hydratedProfiles.length > 0 ? (
+              <ProfilesList profiles={hydratedProfiles} />
             ) : (
               <EmptyState message={`No profile hits for "${query.q}".`} />
             )}
@@ -123,8 +189,15 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
             title="Suggested profiles"
             description="Additional profile candidates returned by search suggestions."
           >
-            {suggestedProfiles.length > 0 ? (
-              <ProfilesList profiles={suggestedProfiles} />
+            {hydratedSuggestedProfiles.length > 0 ? (
+              <ProfilesList profiles={hydratedSuggestedProfiles} />
+            ) : fallbackSuggestedProfiles.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-xs text-zinc-500">
+                  No direct suggestions returned; showing currently trending profiles.
+                </p>
+                <ProfilesList profiles={fallbackSuggestedProfiles} />
+              </div>
             ) : (
               <EmptyState message={`No profile suggestions returned for "${query.q}".`} />
             )}
@@ -132,6 +205,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
           <SectionCard title="Hashtags" description="Hashtags inferred from current query scope.">
             {payload?.hashtags && payload.hashtags.length > 0 ? (
               <HashtagsList hashtags={payload.hashtags} searchable />
+            ) : fallbackSuggestedHashtags.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-xs text-zinc-500">
+                  No query hashtags returned; showing active trending hashtags.
+                </p>
+                <HashtagsList hashtags={fallbackSuggestedHashtags} searchable />
+              </div>
             ) : (
               <EmptyState message={`No hashtags returned for "${query.q}".`} />
             )}

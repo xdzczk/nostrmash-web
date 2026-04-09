@@ -3,6 +3,15 @@ import { NoteCard } from "@/components/explorer/note-card";
 import { ProfileCard } from "@/components/explorer/profile-card";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
+function getAuthorByPubkey(
+  authorsByPubkey: Record<string, Profile> | undefined,
+  pubkey: unknown
+): Profile | undefined {
+  if (!authorsByPubkey || typeof pubkey !== "string") return undefined;
+  const normalized = pubkey.trim().toLowerCase();
+  return authorsByPubkey[normalized] ?? authorsByPubkey[pubkey];
+}
+
 export function NotesList({
   notes,
   authorsByPubkey,
@@ -20,7 +29,7 @@ export function NotesList({
         <li key={note.id ?? `note-${index}`}>
           <NoteCard
             note={note}
-            author={typeof note.pubkey === "string" ? authorsByPubkey?.[note.pubkey] : undefined}
+            author={getAuthorByPubkey(authorsByPubkey, note.pubkey)}
             rank={ranked ? index + 1 : undefined}
             showFullContent={showFullContent}
           />

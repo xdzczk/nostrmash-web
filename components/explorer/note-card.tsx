@@ -29,7 +29,16 @@ export function NoteCard({
   rank?: number;
   showFullContent?: boolean;
 }) {
-  const noteHref = href ?? (note.id ? `/notes/${encodeURIComponent(note.id)}` : undefined);
+  const resolvedNoteId =
+    (typeof note.id === "string" && note.id.length > 0
+      ? note.id
+      : typeof note.event_id === "string" && note.event_id.length > 0
+        ? note.event_id
+        : typeof note.eventId === "string" && note.eventId.length > 0
+          ? note.eventId
+          : undefined) ?? undefined;
+  const noteHref =
+    href ?? (resolvedNoteId ? `/notes/${encodeURIComponent(resolvedNoteId)}` : undefined);
   const authorLabel = author ? profileLabel(author) : noteAuthorIdentifier(note);
   const authorSecondaryLabel = author ? profileSecondaryLabel(author) : noteAuthorIdentifier(note);
   const authorHref =
@@ -134,7 +143,7 @@ export function NoteCard({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {note.id ? <IdBadge id={note.id} label="event" /> : null}
+        {resolvedNoteId ? <IdBadge id={resolvedNoteId} label="event" /> : null}
       </div>
 
       {noteHref ? (

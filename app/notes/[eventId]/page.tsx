@@ -81,7 +81,7 @@ export default async function NotePage({ params }: { params: Params }) {
     authorsByPubkey = Object.fromEntries(
       noteAuthors
         .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
-        .map((profile) => [profile.pubkey, profile])
+        .map((profile) => [profile.pubkey.toLowerCase(), profile])
     );
   } catch {
     authorsByPubkey = {};
