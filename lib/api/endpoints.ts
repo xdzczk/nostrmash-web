@@ -187,6 +187,12 @@ const normalizeSearchQueryText = (value: string): string =>
     .replace(/^nostr:/i, "")
     .replace(/^@/, "");
 
+const normalizeProfileSearchQueryText = (value: string): string => {
+  const normalized = normalizeSearchQueryText(value);
+  if (!normalized.toLowerCase().startsWith("npub1")) return normalized;
+  return npubToHex(normalized) ?? normalized;
+};
+
 const looksLikeProfileIdentifier = (value: string): boolean =>
   /^npub1[02-9ac-hj-np-z]+$/i.test(value) || /^[0-9a-f]{64}$/i.test(value);
 
@@ -360,8 +366,14 @@ export async function getSearch(
   cacheClass: CacheClass = "requestTime"
 ): Promise<SearchResponse> {
   const normalizedQueryText = normalizeSearchQueryText(query.q);
+  const normalizedProfileQueryText = normalizeProfileSearchQueryText(query.q);
   const searchQuery = {
     q: normalizedQueryText,
+    limit: query.limit,
+    offset: query.offset,
+  } satisfies Pick<SearchQuery, "q" | "limit" | "offset">;
+  const profileSearchQuery = {
+    q: normalizedProfileQueryText,
     limit: query.limit,
     offset: query.offset,
   } satisfies Pick<SearchQuery, "q" | "limit" | "offset">;
@@ -424,7 +436,7 @@ export async function getSearch(
   }
 
   if (query.tab === "profiles") {
-    const profilesResponse = await fetchSearchProfiles(searchQuery, cacheClass);
+    const profilesResponse = await fetchSearchProfiles(profileSearchQuery, cacheClass);
     const profiles = normalizeProfiles(profilesResponse.profiles);
     const currentOffset =
       typeof profilesResponse.offset === "number" ? profilesResponse.offset : (query.offset ?? 0);
@@ -491,7 +503,7 @@ export async function getSearch(
     ),
     fetchSearchProfiles(
       {
-        q: normalizedQueryText,
+        q: normalizedProfileQueryText,
         limit: query.limit,
         offset: 0,
       },
@@ -499,7 +511,7 @@ export async function getSearch(
     ),
     fetchSearchSuggest(
       {
-        q: normalizedQueryText,
+        q: normalizedProfileQueryText,
         limit: Math.min(query.limit ?? 20, 20),
       },
       cacheClass
@@ -569,6 +581,15 @@ export async function getSearch(
       : [];
   const mergedProfiles = dedupeProfiles([...profiles, ...directProfileMatch]);
   const uniqueSuggestions = dedupeProfiles(profileSuggestions);
+  const promotedSuggestions =
+    mergedProfiles.length === 0 && directProfileMatch.length === 0 ? uniqueSuggestions : [];
+  const effectiveProfiles = dedupeProfiles([...mergedProfiles, ...promotedSuggestions]);
+  const remainingSuggestions =
+    promotedSuggestions.length === 0
+      ? uniqueSuggestions
+      : uniqueSuggestions.filter(
+          (profile) => !effectiveProfiles.some((candidate) => candidate.pubkey === profile.pubkey)
+        );
 
   const surfaceErrors: NonNullable<SearchResponse["surface_errors"]> = {};
   if (searchResult.status === "rejected") {
@@ -640,8 +661,8 @@ export async function getSearch(
   } satisfies NonNullable<SearchResponse["surface_offsets"]>;
   const sectionTotals = buildSearchSectionTotals(
     notes.length,
-    mergedProfiles.length,
-    uniqueSuggestions.length,
+    effectiveProfiles.length,
+    remainingSuggestions.length,
     hashtags.length,
     relays.length
   );
@@ -658,8 +679,8 @@ export async function getSearch(
   return {
     ...semantics,
     notes,
-    profiles: mergedProfiles,
-    profile_suggestions: uniqueSuggestions,
+    profiles: effectiveProfiles,
+    profile_suggestions: remainingSuggestions,
     hashtags,
     relays,
     next_cursor: nextCursor,
@@ -673,10 +694,10 @@ export async function getSearch(
     total:
       searchResult.status === "fulfilled" && typeof searchResult.value.total === "number"
         ? searchResult.value.total
-        : notes.length + mergedProfiles.length + hashtags.length + relays.length,
+        : notes.length + effectiveProfiles.length + hashtags.length + relays.length,
     section_totals: {
-      ...sectionTotals,
       ...(sourceSectionTotals ?? {}),
+      ...sectionTotals,
     },
     errors: errors.length > 0 ? errors : undefined,
   } satisfies SearchResponse;
