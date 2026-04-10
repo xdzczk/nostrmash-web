@@ -111,7 +111,7 @@ export interface SearchQuery {
   q: string;
   tab?: "all" | "notes" | "profiles";
   limit?: number;
-  cursor?: string;
+  offset?: number;
 }
 
 const nativeApiV1Routes = {
@@ -217,12 +217,12 @@ function toSearchCursor(value: unknown): string | undefined {
 }
 
 function buildSearchQuery(
-  query: Pick<SearchQuery, "q" | "limit" | "cursor">
+  query: Pick<SearchQuery, "q" | "limit" | "offset">
 ): Record<string, string | number | undefined> {
   return {
     q: query.q,
     limit: query.limit,
-    cursor: query.cursor,
+    offset: query.offset,
   };
 }
 
@@ -315,7 +315,7 @@ function normalizeHotConversationNotes(value: unknown): ReturnType<typeof normal
 }
 
 async function fetchSearchNotes(
-  query: Pick<SearchQuery, "q" | "limit" | "cursor">,
+  query: Pick<SearchQuery, "q" | "limit" | "offset">,
   cacheClass: CacheClass
 ) {
   return fetchApiJson<SearchNotesApiResponse>(nativeApiV1Routes.searchNotes, {
@@ -325,7 +325,7 @@ async function fetchSearchNotes(
 }
 
 async function fetchSearchProfiles(
-  query: Pick<SearchQuery, "q" | "limit" | "cursor">,
+  query: Pick<SearchQuery, "q" | "limit" | "offset">,
   cacheClass: CacheClass
 ) {
   return fetchApiJson<SearchProfilesApiResponse>(nativeApiV1Routes.searchProfiles, {
@@ -341,13 +341,10 @@ async function fetchSearchSuggest(query: Pick<SearchQuery, "q" | "limit">, cache
   });
 }
 
-async function fetchSearch(
-  query: Pick<SearchQuery, "q" | "limit" | "cursor">,
-  cacheClass: CacheClass
-) {
+async function fetchSearch(query: Pick<SearchQuery, "q" | "limit">, cacheClass: CacheClass) {
   return fetchApiJson<SearchApiResponse>(nativeApiV1Routes.search, {
     cacheClass,
-    query: buildSearchQuery(query),
+    query,
   });
 }
 
@@ -366,8 +363,12 @@ export async function getSearch(
   const searchQuery = {
     q: normalizedQueryText,
     limit: query.limit,
-    cursor: query.cursor,
-  } satisfies Pick<SearchQuery, "q" | "limit" | "cursor">;
+    offset: query.offset,
+  } satisfies Pick<SearchQuery, "q" | "limit" | "offset">;
+  const combinedSearchQuery = {
+    q: normalizedQueryText,
+    limit: query.limit,
+  } satisfies Pick<SearchQuery, "q" | "limit">;
   const dedupeProfiles = (profiles: Profile[]): Profile[] =>
     Array.from(
       new Map(
@@ -380,6 +381,12 @@ export async function getSearch(
   if (query.tab === "notes") {
     const notesResponse = await fetchSearchNotes(searchQuery, cacheClass);
     const notes = normalizeEventRecords(notesResponse.notes);
+    const currentOffset =
+      typeof notesResponse.offset === "number" ? notesResponse.offset : (query.offset ?? 0);
+    const nextOffset =
+      typeof query.limit === "number" && notes.length >= query.limit
+        ? currentOffset + notes.length
+        : undefined;
     let directNoteMatch = [] as NonNullable<SearchResponse["notes"]>;
     if (notes.length === 0 && looksLikeEventIdentifier(normalizedQueryText)) {
       try {
@@ -404,6 +411,8 @@ export async function getSearch(
       profile_suggestions: [],
       hashtags: [],
       relays: [],
+      offset: currentOffset,
+      next_offset: nextOffset,
       next_cursor: notesCursor ?? semantics.next_cursor,
       surface_cursors: notesCursor ? { notes: notesCursor } : undefined,
       total: typeof notesResponse.total === "number" ? notesResponse.total : mergedNotes.length,
@@ -417,6 +426,12 @@ export async function getSearch(
   if (query.tab === "profiles") {
     const profilesResponse = await fetchSearchProfiles(searchQuery, cacheClass);
     const profiles = normalizeProfiles(profilesResponse.profiles);
+    const currentOffset =
+      typeof profilesResponse.offset === "number" ? profilesResponse.offset : (query.offset ?? 0);
+    const nextOffset =
+      typeof query.limit === "number" && profiles.length >= query.limit
+        ? currentOffset + profiles.length
+        : undefined;
     let directProfileMatch: Profile[] = [];
     if (profiles.length === 0 && looksLikeProfileIdentifier(normalizedQueryText)) {
       try {
@@ -444,6 +459,8 @@ export async function getSearch(
       profile_suggestions: [],
       hashtags: [],
       relays: [],
+      offset: currentOffset,
+      next_offset: nextOffset,
       next_cursor: profilesCursor ?? semantics.next_cursor,
       surface_cursors: profilesCursor ? { profiles: profilesCursor } : undefined,
       total:
@@ -463,12 +480,12 @@ export async function getSearch(
     directProfileResult,
     directNoteResult,
   ] = await Promise.allSettled([
-    fetchSearch(searchQuery, cacheClass),
+    fetchSearch(combinedSearchQuery, cacheClass),
     fetchSearchNotes(
       {
         q: normalizedQueryText,
         limit: query.limit,
-        cursor: query.cursor,
+        offset: 0,
       },
       cacheClass
     ),
@@ -476,7 +493,7 @@ export async function getSearch(
       {
         q: normalizedQueryText,
         limit: query.limit,
-        cursor: query.cursor,
+        offset: 0,
       },
       cacheClass
     ),
@@ -496,7 +513,9 @@ export async function getSearch(
   ]);
 
   const notesFromSearch =
-    searchResult.status === "fulfilled" ? normalizeEventRecords(searchResult.value.notes) : [];
+    searchResult.status === "fulfilled"
+      ? normalizeEventRecords(searchResult.value.notes ?? searchResult.value.events)
+      : [];
   const notesFromNotesSurface =
     notesResult.status === "fulfilled" ? normalizeEventRecords(notesResult.value.notes) : [];
   const directNoteMatch =
@@ -605,6 +624,20 @@ export async function getSearch(
       profilesResult.status === "fulfilled" ? toSearchCursor(profilesResult.value) : undefined,
     suggest: suggestResult.status === "fulfilled" ? toSearchCursor(suggestResult.value) : undefined,
   } satisfies NonNullable<SearchResponse["surface_cursors"]>;
+  const surfaceOffsets = {
+    notes:
+      notesResult.status === "fulfilled" &&
+      typeof query.limit === "number" &&
+      notesFromNotesSurface.length >= query.limit
+        ? notesFromNotesSurface.length
+        : undefined,
+    profiles:
+      profilesResult.status === "fulfilled" &&
+      typeof query.limit === "number" &&
+      profilesFromProfilesSurface.length >= query.limit
+        ? profilesFromProfilesSurface.length
+        : undefined,
+  } satisfies NonNullable<SearchResponse["surface_offsets"]>;
   const sectionTotals = buildSearchSectionTotals(
     notes.length,
     mergedProfiles.length,
@@ -633,6 +666,9 @@ export async function getSearch(
     surface_errors: Object.keys(surfaceErrors).length > 0 ? surfaceErrors : undefined,
     surface_cursors: Object.values(surfaceCursors).some((value) => typeof value === "string")
       ? surfaceCursors
+      : undefined,
+    surface_offsets: Object.values(surfaceOffsets).some((value) => typeof value === "number")
+      ? surfaceOffsets
       : undefined,
     total:
       searchResult.status === "fulfilled" && typeof searchResult.value.total === "number"

@@ -65,6 +65,7 @@ export interface SearchResponse extends NativeApiSemantics {
   relays?: string[];
   surface_errors?: Partial<Record<"search" | "notes" | "profiles" | "suggest", string>>;
   surface_cursors?: Partial<Record<"search" | "notes" | "profiles" | "suggest", string>>;
+  surface_offsets?: Partial<Record<"notes" | "profiles", number>>;
   section_totals?: {
     notes?: number;
     profiles?: number;
@@ -72,12 +73,15 @@ export interface SearchResponse extends NativeApiSemantics {
     hashtags?: number;
     relays?: number;
   };
+  offset?: number;
+  next_offset?: number;
   total?: number;
   errors?: string[];
   [key: string]: unknown;
 }
 
 export interface SearchApiResponse extends NativeApiSemantics {
+  events?: unknown[];
   notes?: unknown[];
   profiles?: unknown[];
   profile_suggestions?: unknown[];
@@ -375,6 +379,8 @@ export interface StatsResponse extends NativeApiSemantics {
 
 export interface SearchNotesApiResponse extends NativeApiSemantics {
   notes?: unknown[];
+  limit?: number;
+  offset?: number;
   total?: number;
   section_totals?: SearchResponse["section_totals"];
   [key: string]: unknown;
@@ -382,6 +388,8 @@ export interface SearchNotesApiResponse extends NativeApiSemantics {
 
 export interface SearchProfilesApiResponse extends NativeApiSemantics {
   profiles?: unknown[];
+  limit?: number;
+  offset?: number;
   total?: number;
   section_totals?: SearchResponse["section_totals"];
   [key: string]: unknown;
