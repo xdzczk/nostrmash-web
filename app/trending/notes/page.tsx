@@ -20,7 +20,7 @@ import type { Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = {
   title: "Trending Notes",
-  description: "Explore the notes getting the most attention right now.",
+  description: "Explore the notes leading the network.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -66,7 +66,7 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
       <PageHero
         eyebrow="Ranked notes"
         title="Trending notes"
-        subtitle="Notes getting the most attention right now."
+        subtitle="The notes leading the network."
         badges={
           hasSemantics ? (
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -75,7 +75,7 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
           ) : undefined
         }
       />
-      <SectionCard title="Ranked notes" description="The notes leading right now.">
+      <SectionCard title="Ranked notes" description="The strongest notes in view.">
         {errorMessage ? (
           <ErrorPanel message={errorMessage} />
         ) : payload?.notes && payload.notes.length > 0 ? (

@@ -21,6 +21,14 @@ type NormalizedDomain = {
   metric: DiscoveryMetric | null;
 };
 
+function splitIntoColumns<T>(items: T[], columnCount: number): T[][] {
+  if (items.length === 0 || columnCount <= 1) return [items];
+  const size = Math.ceil(items.length / columnCount);
+  return Array.from({ length: columnCount }, (_, index) =>
+    items.slice(index * size, index * size + size)
+  ).filter((column) => column.length > 0);
+}
+
 function formatCount(value: number, singular: string, plural: string): string {
   return `${value.toLocaleString()} ${value === 1 ? singular : plural}`;
 }
@@ -124,9 +132,10 @@ function HashtagDiscoveryModule({
   errorMessage?: string;
 }) {
   const items = normalizeHashtags(hashtags);
+  const columns = splitIntoColumns(items, 2);
 
   return (
-    <section className="rounded-[1.4rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_left,rgba(217,70,239,0.08),transparent_42%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(20,20,23,0.88))] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.12)] sm:p-5">
+    <section className="flex h-full flex-col rounded-[1.4rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_left,rgba(217,70,239,0.08),transparent_42%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(20,20,23,0.88))] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.12)] sm:p-5 xl:p-6">
       <header className="space-y-2.5">
         <div className="inline-flex items-center rounded-full border border-fuchsia-400/15 bg-fuchsia-400/8 px-2.5 py-1 text-[11px] font-medium tracking-[0.18em] text-fuchsia-200 uppercase">
           Hashtags
@@ -144,38 +153,46 @@ function HashtagDiscoveryModule({
         </div>
       </header>
 
-      <div className="mt-5 min-h-64">
+      <div className="mt-5 min-h-64 flex-1">
         {items.length > 0 ? (
-          <ol className="space-y-1.5">
-            {items.map((item, index) => {
-              const rank = index + 1;
+          <div className="grid gap-2.5 xl:grid-cols-2 xl:gap-x-6 xl:gap-y-0">
+            {columns.map((column, columnIndex) => {
+              const columnOffset = columnIndex * Math.ceil(items.length / columns.length);
 
               return (
-                <li key={item.label} className="border-b border-white/6 last:border-b-0">
-                  <Link
-                    href={item.href}
-                    className="flex items-baseline gap-4 rounded-2xl px-1 py-3 transition hover:bg-white/[0.03]"
-                  >
-                    <span className="w-9 shrink-0 text-right text-[11px] font-medium tracking-[0.2em] text-fuchsia-300/80 uppercase">
-                      {String(rank).padStart(2, "0")}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-3">
-                        <p className="truncate text-base font-semibold tracking-tight text-zinc-50 sm:text-[1.05rem]">
-                          #{item.label}
-                        </p>
-                        {item.metric ? (
-                          <span className="shrink-0 text-xs text-zinc-500">
-                            {item.metric.value}
+                <ol key={`hashtags-column-${columnIndex}`} className="space-y-1.5">
+                  {column.map((item, index) => {
+                    const rank = columnOffset + index + 1;
+
+                    return (
+                      <li key={item.label} className="border-b border-white/6 last:border-b-0">
+                        <Link
+                          href={item.href}
+                          className="flex items-baseline gap-4 rounded-2xl px-1 py-3 transition hover:bg-white/[0.03]"
+                        >
+                          <span className="w-9 shrink-0 text-right text-[11px] font-medium tracking-[0.2em] text-fuchsia-300/80 uppercase">
+                            {String(rank).padStart(2, "0")}
                           </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </Link>
-                </li>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline justify-between gap-3">
+                              <p className="truncate text-base font-semibold tracking-tight text-zinc-50 sm:text-[1.05rem]">
+                                #{item.label}
+                              </p>
+                              {item.metric ? (
+                                <span className="shrink-0 text-xs text-zinc-500">
+                                  {item.metric.value}
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ol>
               );
             })}
-          </ol>
+          </div>
         ) : errorMessage ? (
           <div className="flex h-full items-center">
             <ErrorPanel message={errorMessage} />
@@ -215,9 +232,10 @@ function DomainDiscoveryModule({
   errorMessage?: string;
 }) {
   const items = normalizeDomains(domains);
+  const columns = splitIntoColumns(items, 2);
 
   return (
-    <section className="rounded-[1.4rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.08),transparent_40%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(20,20,23,0.88))] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.12)] sm:p-5">
+    <section className="flex h-full flex-col rounded-[1.4rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.08),transparent_40%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(20,20,23,0.88))] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.12)] sm:p-5 xl:p-6">
       <header className="space-y-2.5">
         <div className="inline-flex items-center rounded-full border border-sky-400/15 bg-sky-400/8 px-2.5 py-1 text-[11px] font-medium tracking-[0.18em] text-sky-200 uppercase">
           Domains
@@ -235,32 +253,42 @@ function DomainDiscoveryModule({
         </div>
       </header>
 
-      <div className="mt-5 min-h-64">
+      <div className="mt-5 min-h-64 flex-1">
         {items.length > 0 ? (
-          <ol className="divide-y divide-zinc-800/80">
-            {items.map((item, index) => (
-              <li key={item.label}>
-                <Link
-                  href={item.href}
-                  className="group flex items-center gap-3 py-3 transition first:pt-0 last:pb-0 hover:text-white"
-                >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-700/80 bg-zinc-950/70 text-[11px] font-medium text-zinc-300">
-                    {index + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="truncate text-sm font-semibold text-zinc-100 sm:text-[0.97rem]">
-                        {item.label}
-                      </p>
-                      {item.metric ? (
-                        <span className="shrink-0 text-xs text-zinc-500">{item.metric.value}</span>
-                      ) : null}
-                    </div>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ol>
+          <div className="grid gap-2.5 xl:grid-cols-2 xl:gap-x-6 xl:gap-y-0">
+            {columns.map((column, columnIndex) => {
+              const columnOffset = columnIndex * Math.ceil(items.length / columns.length);
+
+              return (
+                <ol key={`domains-column-${columnIndex}`} className="divide-y divide-zinc-800/80">
+                  {column.map((item, index) => (
+                    <li key={item.label}>
+                      <Link
+                        href={item.href}
+                        className="group flex items-center gap-3 py-3 transition first:pt-0 last:pb-0 hover:text-white"
+                      >
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-700/80 bg-zinc-950/70 text-[11px] font-medium text-zinc-300">
+                          {columnOffset + index + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="truncate text-sm font-semibold text-zinc-100 sm:text-[0.97rem]">
+                              {item.label}
+                            </p>
+                            {item.metric ? (
+                              <span className="shrink-0 text-xs text-zinc-500">
+                                {item.metric.value}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ol>
+              );
+            })}
+          </div>
         ) : errorMessage ? (
           <div className="flex h-full items-center">
             <ErrorPanel message={errorMessage} />
@@ -304,7 +332,7 @@ export function ClosingDiscoveryRail({
   errorMessage?: string;
 }) {
   return (
-    <section className="relative overflow-hidden rounded-[1.7rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_bottom_center,rgba(99,102,241,0.08),transparent_40%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(15,15,17,0.98))] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.22)] sm:p-7">
+    <section className="relative overflow-hidden rounded-[1.7rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_bottom_center,rgba(99,102,241,0.08),transparent_40%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(15,15,17,0.98))] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.22)] sm:p-7 xl:p-8 2xl:px-9">
       <header className="max-w-3xl space-y-3">
         <div className="inline-flex items-center rounded-full border border-indigo-400/15 bg-indigo-400/8 px-2.5 py-1 text-[11px] font-medium tracking-[0.18em] text-indigo-200 uppercase">
           Keep exploring
@@ -323,7 +351,7 @@ export function ClosingDiscoveryRail({
         </div>
       </header>
 
-      <div className="mt-7 grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+      <div className="mt-7 grid gap-4 xl:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] xl:gap-5 2xl:grid-cols-[minmax(0,1.18fr)_minmax(0,0.82fr)]">
         <HashtagDiscoveryModule
           hashtags={hashtags}
           trendWindowLabel={trendWindowLabel}

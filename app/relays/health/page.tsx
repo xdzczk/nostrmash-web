@@ -19,7 +19,7 @@ import { extractNativeApiSemantics } from "@/lib/api/normalize";
 
 export const metadata: Metadata = {
   title: "Relay health",
-  description: "Inspect relay health signals returned by the backend health endpoint.",
+  description: "Inspect relay health signals across the network.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -57,7 +57,7 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
       <PageHero
         eyebrow="Relay health"
         title="Relay health"
-        subtitle="Backend health data only: no frontend scoring, just current relay health facts."
+        subtitle="Current relay health, shown directly from the health feed."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <NativeSemanticsBadges semantics={semantics} />
@@ -82,10 +82,7 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
 
       {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
 
-      <SectionCard
-        title="Health observations"
-        description="Relay-level health rows returned by /api/v1/relays/health."
-      >
+      <SectionCard title="Health observations" description="Health observations for active relays.">
         {rows.length > 0 ? (
           <ul className="space-y-2">
             {rows.slice(0, 120).map((row) => (
@@ -127,7 +124,7 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
         ) : (
           <EmptyState
             title="Health data unavailable"
-            message="No relay health observations were returned by the backend endpoint."
+            message="No relay health observations were returned."
           />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (

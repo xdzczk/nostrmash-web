@@ -604,7 +604,7 @@ export default async function ProfilePage({
 
       <SectionCard
         title="Discovery loops"
-        description="Jump from this profile into related views and back."
+        description="Move from this profile into the views around it."
       >
         <div className="flex flex-wrap gap-2 text-xs">
           <Link

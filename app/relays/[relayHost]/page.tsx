@@ -86,7 +86,7 @@ export default async function RelayPage({ params }: { params: Params }) {
     <div className="space-y-8">
       <PageHero
         title={`Relay ${relayHost}`}
-        subtitle="Relay detail with activity rank, backend health status, and provenance deep links."
+        subtitle="Relay detail with activity rank, health status, and provenance links."
         badges={
           <div className="flex flex-wrap gap-2">
             <NativeSemanticsBadges semantics={semantics} />
@@ -134,7 +134,7 @@ export default async function RelayPage({ params }: { params: Params }) {
       {relayActivity || relayHealth ? (
         <SectionCard
           title="Activity and health status"
-          description="Where this relay sits in current activity and backend health responses."
+          description="Where this relay sits in current activity and health reporting."
         >
           <MetadataList
             items={[

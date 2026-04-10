@@ -176,7 +176,7 @@ function ProfileDiscoveryRow({ profile, rank }: { profile: Profile; rank: number
             </p>
           ) : (
             <p className="mt-2.5 text-sm leading-6 text-zinc-400">
-              Activity around this profile is picking up.
+              This profile is gaining ground.
             </p>
           )}
 
@@ -236,7 +236,7 @@ export function ProfilesInMotionSpotlight({
   errorMessage?: string;
 }) {
   return (
-    <section className="relative overflow-hidden rounded-[1.6rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.1),transparent_38%),linear-gradient(180deg,rgba(24,24,27,0.96),rgba(20,20,23,0.92))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.16)] sm:p-6">
+    <section className="relative overflow-hidden rounded-[1.6rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.1),transparent_38%),linear-gradient(180deg,rgba(24,24,27,0.96),rgba(20,20,23,0.92))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.16)] sm:p-6 xl:p-7">
       <div className="flex h-full flex-col">
         <header className="space-y-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -248,10 +248,10 @@ export function ProfilesInMotionSpotlight({
           </div>
           <div className="space-y-2">
             <h2 className="text-[1.4rem] font-semibold tracking-tight text-zinc-50 sm:text-[1.75rem]">
-              Profiles drawing attention
+              Profiles in motion
             </h2>
-            <p className="max-w-xl text-sm leading-6 text-zinc-300 sm:text-base">
-              Profiles picking up attention, with enough identity to tell who is moving and why.
+            <p className="max-w-lg text-sm leading-6 text-zinc-300 sm:text-base">
+              Profiles gaining ground, with enough identity to see who is moving and why.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-300">

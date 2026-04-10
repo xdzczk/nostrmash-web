@@ -30,7 +30,7 @@ const sections = [
   {
     href: "/trending/profiles",
     title: "Trending profiles",
-    description: "Profiles picking up attention right now.",
+    description: "Profiles gaining ground across the network.",
   },
   {
     href: "/trending/hashtags",
@@ -50,7 +50,7 @@ const sections = [
   {
     href: "/discovery/profiles/rising",
     title: "Rising profiles",
-    description: "Profiles picking up before they reach the top lists.",
+    description: "Profiles gaining ground before they reach the top lists.",
   },
   {
     href: "/relays",
@@ -60,7 +60,7 @@ const sections = [
   {
     href: "/relays/health",
     title: "Relay health",
-    description: "Review relay availability and backend health signals.",
+    description: "Review relay availability and current health signals.",
   },
 ];
 
@@ -193,7 +193,7 @@ export default async function TrendingPage() {
       <div className="space-y-6">
         <SectionCard
           title="Trending now"
-          description="Top notes right now, with quick paths into threads and relay context."
+          description="The notes setting the pace, with direct links into threads and relay context."
         >
           <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300 sm:mb-4">
             <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
@@ -240,7 +240,7 @@ export default async function TrendingPage() {
 
         <SectionCard
           title="Profiles in motion"
-          description="Profiles picking up attention, with quick access to profile and note context."
+          description="Profiles gaining ground, with direct links into profile and note context."
         >
           <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300 sm:mb-4">
             <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
@@ -282,7 +282,7 @@ export default async function TrendingPage() {
 
         <SectionCard
           title="Hashtags gaining speed"
-          description="Topics picking up fastest right now."
+          description="The topics moving fastest across the network."
         >
           <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300 sm:mb-4">
             <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">

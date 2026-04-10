@@ -20,7 +20,7 @@ import type { Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = {
   title: "Rising Profiles",
-  description: "Profiles picking up attention before they reach the main trending lists.",
+  description: "Profiles gaining ground before they reach the main trending lists.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -65,7 +65,7 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
       <PageHero
         eyebrow="Discovery depth"
         title="Rising profiles"
-        subtitle="Profiles gaining traction, useful for finding emerging participants before they hit the main trending lists."
+        subtitle="Profiles gaining traction before they reach the main trending lists."
         badges={
           hasSemantics ? (
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -77,7 +77,7 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
 
       <SectionCard
         title="Rising profile feed"
-        description="Profiles picking up attention ahead of the main ranking."
+        description="Profiles gathering momentum before they break into the main ranking."
       >
         {errorMessage ? (
           <ErrorPanel message={errorMessage} />
@@ -98,7 +98,7 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
 
       <SectionCard
         title="Next exploration paths"
-        description="Jump from rising profiles into conversations and broader ranking views."
+        description="Follow these profiles into conversations and broader ranking views."
       >
         <div className="flex flex-wrap gap-2 text-xs">
           <Link

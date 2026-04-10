@@ -448,7 +448,7 @@ export default async function NotePage({
 
       {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
 
-      <SectionCard title="Focal note" description="The note itself and its core fields.">
+      <SectionCard title="Focal note" description="The note and its core fields.">
         {focal ? (
           <NoteCard
             note={focal}
@@ -465,7 +465,7 @@ export default async function NotePage({
       </SectionCard>
 
       {resolvedAuthor ? (
-        <SectionCard title="Author identity" description="The profile behind this note.">
+        <SectionCard title="Author identity" description="The author behind this note.">
           <ProfileCard
             profile={resolvedAuthor}
             summary={isRecord(noteSummary?.author) ? noteSummary.author : undefined}
@@ -504,7 +504,7 @@ export default async function NotePage({
       <div id="note-provenance">
         <SectionCard
           title="Provenance"
-          description="Where this event was seen and the trust data returned with it."
+          description="Where this event was seen and the trust data attached to it."
         >
           {provenanceDetails.length > 0 ? (
             <MetadataList items={provenanceDetails} columns={2} />
@@ -565,7 +565,7 @@ export default async function NotePage({
       {quoteDetails.length > 0 ? (
         <SectionCard
           title="Quote or repost context"
-          description="Quoted or reposted note context returned with this event."
+          description="Quoted or reposted note context attached to this event."
         >
           <MetadataList items={quoteDetails} columns={2} />
         </SectionCard>
@@ -585,7 +585,7 @@ export default async function NotePage({
       <div id="conversation-context">
         <SectionCard
           title="Conversation context"
-          description="The notes around this one in the thread."
+          description="The surrounding thread for this note."
         >
           <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
             <Link
@@ -670,7 +670,7 @@ export default async function NotePage({
       </div>
 
       <div id="related-notes">
-        <SectionCard title="Related notes" description="Other notes connected to this one.">
+        <SectionCard title="Related notes" description="Other notes linked to this one.">
           {relatedNotes.length > 0 ? (
             <div className="space-y-3">
               {relatedNotes.map((note, index) => (

@@ -44,7 +44,9 @@ export function SearchForm({
         router.push(`/search?q=${encodeURIComponent(trimmed)}&tab=all`);
       }}
     >
-      <div className="flex w-full flex-col gap-2 sm:flex-row">
+      <div
+        className={`flex w-full flex-col gap-2 sm:flex-row ${heroVariant ? "xl:items-stretch xl:gap-3" : ""}`}
+      >
         <input
           ref={inputRef}
           value={query}
@@ -53,7 +55,7 @@ export function SearchForm({
           aria-label="Search notes, profiles, hashtags, relays, and event IDs"
           className={`w-full min-w-0 rounded-lg border px-4 py-3 text-sm text-zinc-100 outline-none ${
             heroVariant
-              ? "border-zinc-700/90 bg-zinc-950/90 placeholder:text-zinc-500 focus:border-zinc-600 focus:ring-2 focus:ring-indigo-400/70"
+              ? "border-zinc-700/90 bg-zinc-950/90 px-5 py-3.5 text-[0.95rem] placeholder:text-zinc-500 focus:border-zinc-600 focus:ring-2 focus:ring-indigo-400/70 xl:py-4"
               : "border-zinc-700 bg-zinc-950 placeholder:text-zinc-500 focus:ring-2 focus:ring-indigo-400"
           }`}
         />
@@ -61,7 +63,7 @@ export function SearchForm({
           type="submit"
           className={`min-h-12 shrink-0 rounded-lg px-5 py-3 text-sm font-medium text-white transition sm:min-w-[120px] ${
             heroVariant
-              ? "bg-indigo-500/95 hover:bg-indigo-400"
+              ? "bg-indigo-500/95 hover:bg-indigo-400 xl:min-w-[148px] xl:px-6"
               : "bg-indigo-500 hover:bg-indigo-400"
           }`}
         >
@@ -69,7 +71,7 @@ export function SearchForm({
         </button>
       </div>
       {heroVariant && shortcuts.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 xl:gap-2.5">
           {shortcuts.map((shortcut) => (
             <button
               key={shortcut.label}
@@ -92,7 +94,9 @@ export function SearchForm({
         </div>
       ) : null}
       {helperText ? (
-        <p className={`text-xs ${heroVariant ? "text-zinc-500" : "text-zinc-400"}`}>{helperText}</p>
+        <p className={`text-xs ${heroVariant ? "max-w-3xl text-zinc-500" : "text-zinc-400"}`}>
+          {helperText}
+        </p>
       ) : null}
     </form>
   );

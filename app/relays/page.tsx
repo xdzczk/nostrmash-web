@@ -74,7 +74,7 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
       <PageHero
         eyebrow="Relay exploration"
         title="Relay explorer"
-        subtitle="Track active relays, inspect current health status, and open relay detail routes from one place."
+        subtitle="Track active relays, inspect health, and move into relay detail from one place."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <NativeSemanticsBadges semantics={semantics} />
@@ -103,10 +103,7 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
         <StatCard label="unknown health" value={posture.unknown} />
       </section>
 
-      <SectionCard
-        title="Dominant relay activity"
-        description="Relays with the most activity right now."
-      >
+      <SectionCard title="Dominant relay activity" description="Relays carrying the most activity.">
         {rankedRelays.length > 0 ? (
           <ul className="space-y-2">
             {rankedRelays.slice(0, 20).map((row) => {

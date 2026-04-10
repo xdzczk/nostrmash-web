@@ -20,7 +20,7 @@ import type { Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = {
   title: "Trending Profiles",
-  description: "Explore the profiles getting the most attention right now.",
+  description: "Explore the profiles with the strongest momentum.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -68,7 +68,7 @@ export default async function TrendingProfilesPage({
       <PageHero
         eyebrow="Ranked profiles"
         title="Trending profiles"
-        subtitle="Profiles getting the most attention right now."
+        subtitle="The profiles with the strongest momentum."
         badges={
           hasSemantics ? (
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -77,7 +77,7 @@ export default async function TrendingProfilesPage({
           ) : undefined
         }
       />
-      <SectionCard title="Ranked profiles" description="The profiles leading right now.">
+      <SectionCard title="Ranked profiles" description="The profiles strongest in view.">
         {errorMessage ? (
           <ErrorPanel message={errorMessage} />
         ) : hydratedProfiles.length > 0 ? (

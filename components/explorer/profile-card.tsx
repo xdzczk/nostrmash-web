@@ -66,16 +66,16 @@ export function ProfileCard({
   );
   const profileReasons: string[] = [];
   if (hasMomentumSignal) {
-    profileReasons.push("posting more");
+    profileReasons.push("posting momentum");
   }
   if (hasVisibilitySignal) {
-    profileReasons.push("showing up more");
+    profileReasons.push("wider visibility");
   }
   if (hasNetworkAttentionSignal) {
-    profileReasons.push("drawing attention");
+    profileReasons.push("network attention");
   }
   if (profileReasons.length === 0) {
-    profileReasons.push("active now");
+    profileReasons.push("gaining traction");
   }
 
   return (

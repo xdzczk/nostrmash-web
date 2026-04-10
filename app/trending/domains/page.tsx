@@ -18,7 +18,7 @@ import { extractNativeApiSemantics } from "@/lib/api/normalize";
 
 export const metadata: Metadata = {
   title: "Trending Domains",
-  description: "Explore the domains showing up most often right now.",
+  description: "Explore the domains spreading most widely through active notes.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -56,7 +56,7 @@ export default async function TrendingDomainsPage({
       <PageHero
         eyebrow="Ranked domains"
         title="Trending domains"
-        subtitle="Domains showing up most often in active notes."
+        subtitle="The domains spreading most widely through active notes."
         badges={
           hasSemantics ? (
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -65,7 +65,7 @@ export default async function TrendingDomainsPage({
           ) : undefined
         }
       />
-      <SectionCard title="Domain ranking" description="The domains leading right now.">
+      <SectionCard title="Domain ranking" description="The domains strongest in view.">
         {errorMessage ? (
           <ErrorPanel message={errorMessage} />
         ) : payload?.domains && payload.domains.length > 0 ? (

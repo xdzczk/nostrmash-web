@@ -287,154 +287,158 @@ export default async function HomePage() {
   const domainHighlights = homeDomains.slice(0, 8);
 
   return (
-    <div className="space-y-12 sm:space-y-16 lg:space-y-[4.75rem]">
-      <section className="relative overflow-hidden rounded-[2rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.12),transparent_34%),linear-gradient(180deg,rgba(24,24,27,0.94),rgba(14,14,16,0.98))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.28)] sm:p-7 lg:p-8">
-        <div className="grid gap-7 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-          <div className="space-y-6 sm:space-y-7">
-            <div className="space-y-4 sm:space-y-5">
-              <p className="text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase">
-                Discovery surface
-              </p>
-              <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-zinc-100 sm:text-5xl lg:text-[3.35rem]">
-                Search, track, and inspect what is moving across Nostr.
-              </h1>
-              <p className="max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base">
-                See leading notes, rising profiles, relay activity, and topic movement in one place.
-              </p>
-            </div>
-            <SearchForm
-              variant="hero"
-              helperText="Search notes, profiles, hashtags, relays, and event IDs from one public index."
-              shortcuts={heroSearchShortcuts}
-            />
-            <p className="max-w-xl text-xs leading-6 text-zinc-500">
-              Backed by durable ingest and rebuildable indexes.
-            </p>
-          </div>
-          <aside className="rounded-[1.5rem] border border-zinc-800/90 bg-zinc-950/35 p-4 sm:p-5">
-            <p className="text-[11px] font-medium tracking-[0.18em] text-zinc-500 uppercase">
-              Current window
-            </p>
-            <p className="mt-3 text-lg font-semibold tracking-tight text-zinc-100">
-              Start with the strongest signal.
-            </p>
-            <p className="mt-2 text-sm leading-6 text-zinc-400">
-              The homepage leads with the note worth reading, then expands into the profiles,
-              topics, and links around it.
-            </p>
-            <dl className="mt-5 space-y-3 border-t border-zinc-800/70 pt-4 text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-zinc-500">Window</dt>
-                <dd className="font-medium text-zinc-100">{trendWindowLabel}</dd>
+    <div className="relative right-1/2 left-1/2 -mx-[50vw] w-screen -translate-x-1/2 px-4 sm:px-5 xl:px-8 2xl:px-10">
+      <div className="mx-auto w-full max-w-[92rem] space-y-12 sm:space-y-16 xl:space-y-[5.1rem]">
+        <section className="relative overflow-hidden rounded-[2rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.12),transparent_34%),linear-gradient(180deg,rgba(24,24,27,0.94),rgba(14,14,16,0.98))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.28)] sm:p-7 xl:p-9 2xl:px-10">
+          <div className="grid gap-7 sm:gap-8 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.72fr)] xl:items-start xl:gap-10 2xl:grid-cols-[minmax(0,1.52fr)_360px] 2xl:gap-12">
+            <div className="space-y-6 sm:space-y-7">
+              <div className="space-y-4 sm:space-y-5">
+                <p className="text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase">
+                  Discovery surface
+                </p>
+                <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-zinc-100 sm:text-5xl xl:max-w-[15ch] xl:text-[3.7rem] xl:leading-[1.02] 2xl:max-w-[16ch] 2xl:text-[4rem]">
+                  Search, track, and inspect what is moving across Nostr.
+                </h1>
+                <p className="max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base">
+                  See leading notes, rising profiles, relay activity, and topic movement in one
+                  place.
+                </p>
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-zinc-500">Freshness</dt>
-                <dd className="font-medium text-zinc-100">{freshness}</dd>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-zinc-500">Top relay</dt>
-                <dd className="min-w-0">
-                  {topRelay ? (
-                    <Link
-                      href={`/relays/${encodeURIComponent(topRelay)}`}
-                      className="truncate font-medium text-zinc-200 transition hover:text-indigo-200"
-                    >
-                      {topRelay}
-                    </Link>
-                  ) : (
-                    <span className="font-medium text-zinc-100">Relay activity live</span>
-                  )}
-                </dd>
-              </div>
-            </dl>
-
-            {heroPulseStats.length > 0 ? (
-              <div className="mt-5 space-y-2.5 border-t border-zinc-800/70 pt-4">
-                {heroPulseStats.map((stat) => (
-                  <article
-                    key={stat.label}
-                    className="flex items-baseline justify-between gap-3 text-sm"
-                  >
-                    <p className="text-[11px] tracking-[0.16em] text-zinc-500 uppercase">
-                      {stat.label.replaceAll("_", " ")}
-                    </p>
-                    <p className="text-base font-semibold tracking-tight text-zinc-100">
-                      {String(stat.value)}
-                    </p>
-                  </article>
-                ))}
-              </div>
-            ) : null}
-          </aside>
-        </div>
-      </section>
-
-      <div className="grid gap-7 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.9fr)] xl:items-start">
-        <section className="overflow-hidden rounded-[1.65rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.12),transparent_38%),linear-gradient(180deg,rgba(24,24,27,0.96),rgba(22,22,25,0.92))] p-5 shadow-[0_24px_80px_rgba(49,46,129,0.1)] sm:p-6">
-          <header className="mb-5 space-y-3 sm:mb-6">
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="inline-flex items-center rounded-full border border-indigo-400/20 bg-indigo-400/10 px-2.5 py-1 text-[11px] font-medium tracking-[0.18em] text-indigo-200 uppercase">
-                Note ranking
-              </span>
-              <span className="text-zinc-600">•</span>
-              <span className="text-zinc-500">Top reads</span>
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-[1.55rem] font-semibold tracking-tight text-zinc-50 sm:text-[2rem]">
-                The note to read first
-              </h2>
-              <p className="max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base">
-                One lead note and two supporting picks surface the strongest activity first.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
-              <span>{trendWindowLabel}</span>
-              <span className="text-zinc-600">•</span>
-              <span>{notesFreshness}</span>
-            </div>
-          </header>
-          {flagshipNotes.length > 0 ? (
-            <TrendingFeaturedModule notes={flagshipNotes} authorsByPubkey={noteAuthorsByPubkey} />
-          ) : errorMessage ? (
-            <div className="flex min-h-80 items-center">
-              <ErrorPanel message={errorMessage} />
-            </div>
-          ) : (
-            <div className="flex min-h-80 items-center">
-              <EmptyState
-                title="Notes ranking is quiet"
-                message="No clear note movement was returned for this window."
+              <SearchForm
+                className="max-w-[56rem]"
+                variant="hero"
+                helperText="Search notes, profiles, hashtags, relays, and event IDs from one public index."
+                shortcuts={heroSearchShortcuts}
               />
+              <p className="max-w-lg text-xs leading-6 text-zinc-500">
+                Backed by durable ingest and rebuildable indexes.
+              </p>
             </div>
-          )}
-          <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500">
-            <Link
-              href="/trending/notes"
-              className="font-medium text-zinc-200 hover:text-indigo-200"
-            >
-              See all trending notes
-            </Link>
+            <aside className="rounded-[1.5rem] border border-zinc-800/90 bg-zinc-950/35 p-4 sm:p-5 xl:self-stretch xl:justify-self-end xl:p-6">
+              <p className="text-[11px] font-medium tracking-[0.18em] text-zinc-500 uppercase">
+                Current window
+              </p>
+              <p className="mt-3 text-lg font-semibold tracking-tight text-zinc-100">
+                Start with the strongest signal.
+              </p>
+              <p className="mt-2 text-sm leading-6 text-zinc-400">
+                The homepage leads with the note worth reading, then expands into the profiles,
+                topics, and links around it.
+              </p>
+              <dl className="mt-5 space-y-3 border-t border-zinc-800/70 pt-4 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-zinc-500">Window</dt>
+                  <dd className="font-medium text-zinc-100">{trendWindowLabel}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-zinc-500">Freshness</dt>
+                  <dd className="font-medium text-zinc-100">{freshness}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-zinc-500">Top relay</dt>
+                  <dd className="min-w-0">
+                    {topRelay ? (
+                      <Link
+                        href={`/relays/${encodeURIComponent(topRelay)}`}
+                        className="truncate font-medium text-zinc-200 transition hover:text-indigo-200"
+                      >
+                        {topRelay}
+                      </Link>
+                    ) : (
+                      <span className="font-medium text-zinc-100">Relay activity live</span>
+                    )}
+                  </dd>
+                </div>
+              </dl>
+
+              {heroPulseStats.length > 0 ? (
+                <div className="mt-5 space-y-2.5 border-t border-zinc-800/70 pt-4">
+                  {heroPulseStats.map((stat) => (
+                    <article
+                      key={stat.label}
+                      className="flex items-baseline justify-between gap-3 text-sm"
+                    >
+                      <p className="text-[11px] tracking-[0.16em] text-zinc-500 uppercase">
+                        {stat.label.replaceAll("_", " ")}
+                      </p>
+                      <p className="text-base font-semibold tracking-tight text-zinc-100">
+                        {String(stat.value)}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+            </aside>
           </div>
         </section>
 
-        <ProfilesInMotionSpotlight
-          profiles={profileHighlights}
+        <div className="grid gap-7 xl:grid-cols-[minmax(0,1.72fr)_minmax(320px,0.82fr)] xl:items-start xl:gap-6 2xl:grid-cols-[minmax(0,1.84fr)_minmax(340px,0.78fr)]">
+          <section className="overflow-hidden rounded-[1.65rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.12),transparent_38%),linear-gradient(180deg,rgba(24,24,27,0.96),rgba(22,22,25,0.92))] p-5 shadow-[0_24px_80px_rgba(49,46,129,0.1)] sm:p-6 xl:p-7">
+            <header className="mb-5 space-y-3 sm:mb-6">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="inline-flex items-center rounded-full border border-indigo-400/20 bg-indigo-400/10 px-2.5 py-1 text-[11px] font-medium tracking-[0.18em] text-indigo-200 uppercase">
+                  Note ranking
+                </span>
+                <span className="text-zinc-600">•</span>
+                <span className="text-zinc-500">Top reads</span>
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-[1.55rem] font-semibold tracking-tight text-zinc-50 sm:text-[2rem]">
+                  The note to read first
+                </h2>
+                <p className="max-w-3xl text-sm leading-6 text-zinc-400 sm:text-base">
+                  One lead note and two supporting picks surface the strongest activity first.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+                <span>{trendWindowLabel}</span>
+                <span className="text-zinc-600">•</span>
+                <span>{notesFreshness}</span>
+              </div>
+            </header>
+            {flagshipNotes.length > 0 ? (
+              <TrendingFeaturedModule notes={flagshipNotes} authorsByPubkey={noteAuthorsByPubkey} />
+            ) : errorMessage ? (
+              <div className="flex min-h-80 items-center">
+                <ErrorPanel message={errorMessage} />
+              </div>
+            ) : (
+              <div className="flex min-h-80 items-center">
+                <EmptyState
+                  title="Notes ranking is quiet"
+                  message="No clear note movement was returned for this window."
+                />
+              </div>
+            )}
+            <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500">
+              <Link
+                href="/trending/notes"
+                className="font-medium text-zinc-200 hover:text-indigo-200"
+              >
+                See all trending notes
+              </Link>
+            </div>
+          </section>
+
+          <ProfilesInMotionSpotlight
+            profiles={profileHighlights}
+            trendWindowLabel={trendWindowLabel}
+            freshnessLabel={profilesFreshness}
+            errorMessage={errorMessage}
+          />
+        </div>
+
+        <NetworkPulseStrip title="Network pulse" stats={pulseStats} />
+
+        <ClosingDiscoveryRail
+          hashtags={hashtagHighlights}
+          domains={domainHighlights}
           trendWindowLabel={trendWindowLabel}
-          freshnessLabel={profilesFreshness}
+          hashtagsFreshness={hashtagsFreshness}
+          domainsFreshness={domainsFreshness}
           errorMessage={errorMessage}
         />
       </div>
-
-      <NetworkPulseStrip title="Network pulse" stats={pulseStats} />
-
-      <ClosingDiscoveryRail
-        hashtags={hashtagHighlights}
-        domains={domainHighlights}
-        trendWindowLabel={trendWindowLabel}
-        hashtagsFreshness={hashtagsFreshness}
-        domainsFreshness={domainsFreshness}
-        errorMessage={errorMessage}
-      />
     </div>
   );
 }

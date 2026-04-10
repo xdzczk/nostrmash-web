@@ -35,8 +35,7 @@ export function RelaySummaryCard({
         <MetadataList items={summaryItems} columns={2} />
       ) : (
         <p className="text-sm text-zinc-400">
-          Relay-level fields were sparse in the current payload. Open debug details for the raw
-          response.
+          Relay details were sparse in this response. Open debug details for the raw payload.
         </p>
       )}
     </article>

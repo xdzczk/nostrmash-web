@@ -335,7 +335,7 @@ function FeaturedNoteCard({
   const statusLabel = buildStatusLabel(rank, signals);
 
   return (
-    <article className="rounded-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(39,39,42,0.94),rgba(24,24,27,0.92))] p-5 shadow-[0_30px_90px_rgba(15,23,42,0.24)] sm:p-6">
+    <article className="rounded-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(39,39,42,0.94),rgba(24,24,27,0.92))] p-5 shadow-[0_30px_90px_rgba(15,23,42,0.24)] sm:p-6 xl:p-7">
       <div className="flex flex-wrap items-center gap-2.5 text-sm">
         <span className="inline-flex items-center rounded-full border border-indigo-400/20 bg-indigo-400/10 px-2.5 py-1 text-[11px] font-medium tracking-[0.18em] text-indigo-200 uppercase">
           Featured note
@@ -349,15 +349,17 @@ function FeaturedNoteCard({
 
       <div
         className={`mt-5 grid gap-5 ${
-          mediaAttachment ? "xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.72fr)]" : ""
+          mediaAttachment
+            ? "xl:grid-cols-[minmax(0,1fr)_minmax(300px,0.78fr)] 2xl:grid-cols-[minmax(0,1.14fr)_minmax(320px,0.76fr)]"
+            : ""
         }`}
       >
-        <div className="min-w-0 space-y-[1.125rem]">
+        <div className="max-w-[50rem] min-w-0 space-y-[1.125rem]">
           <NoteAuthor note={note} author={author} />
-          <p className="text-base leading-7 [overflow-wrap:anywhere] whitespace-pre-wrap text-zinc-100 sm:text-[1.05rem]">
+          <p className="max-w-[44rem] text-base leading-7 [overflow-wrap:anywhere] whitespace-pre-wrap text-zinc-100 sm:text-[1.05rem]">
             {content}
           </p>
-          <p className="text-sm leading-6 text-zinc-300">
+          <p className="max-w-3xl text-sm leading-6 text-zinc-300">
             <span className="text-[11px] font-medium tracking-[0.18em] text-zinc-500 uppercase">
               Why now
             </span>
@@ -395,7 +397,7 @@ function SecondaryNoteCard({
   const statusLabel = buildStatusLabel(rank, signals);
 
   return (
-    <article className="rounded-[1.35rem] border border-white/8 bg-zinc-950/28 p-4">
+    <article className="rounded-[1.35rem] border border-white/8 bg-zinc-950/28 p-4 xl:p-5">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="font-medium tracking-[0.16em] text-zinc-300 uppercase">#{rank}</span>
         <span className="text-zinc-600">•</span>
@@ -439,14 +441,14 @@ export function TrendingFeaturedModule({
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.42fr)_minmax(280px,0.9fr)] xl:items-start">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.62fr)_minmax(300px,0.78fr)] xl:items-start xl:gap-5 2xl:grid-cols-[minmax(0,1.76fr)_minmax(320px,0.72fr)]">
       <FeaturedNoteCard
         note={featuredNote}
         author={getAuthorByPubkey(authorsByPubkey, featuredNote)}
         rank={1}
       />
 
-      <div className="grid gap-4">
+      <div className="grid gap-4 xl:gap-5">
         {secondaryNotes.map((note, index) => (
           <SecondaryNoteCard
             key={resolveNoteId(note) ?? `trending-secondary-${index}`}

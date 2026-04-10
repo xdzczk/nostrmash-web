@@ -49,7 +49,7 @@ const explorerJumpLinks = [
   {
     href: "/trending/profiles",
     label: "View active profiles",
-    description: "Browse profiles picking up attention right now.",
+    description: "Browse profiles gaining ground across the network.",
   },
   {
     href: "/trending/hashtags",
@@ -222,7 +222,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
           <EmptyState message="Enter a query to search indexed content." />
           <SectionCard
             title="Explore without a query"
-            description="Open key routes when you want to browse first."
+            description="Start with the main routes when you want to browse first."
           >
             <QuickEntryGrid links={explorerJumpLinks} />
           </SectionCard>
