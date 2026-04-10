@@ -18,7 +18,7 @@ import { extractNativeApiSemantics } from "@/lib/api/normalize";
 
 export const metadata: Metadata = {
   title: "Trending Hashtags",
-  description: "Explore ranked hashtag momentum and mention counts from current trending data.",
+  description: "Explore the topics getting the most attention right now.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -56,7 +56,7 @@ export default async function TrendingHashtagsPage({
       <PageHero
         eyebrow="Ranked hashtags"
         title="Trending hashtags"
-        subtitle="Hashtag activity ordered by current mention counts."
+        subtitle="Topics getting the most attention right now."
         badges={
           hasSemantics ? (
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -65,10 +65,7 @@ export default async function TrendingHashtagsPage({
           ) : undefined
         }
       />
-      <SectionCard
-        title="Hashtag ranking"
-        description="Top hashtags are elevated while lower ranks remain dense and scannable."
-      >
+      <SectionCard title="Hashtag ranking" description="The hashtags leading right now.">
         {errorMessage ? (
           <ErrorPanel message={errorMessage} />
         ) : payload?.hashtags && payload.hashtags.length > 0 ? (
@@ -76,12 +73,12 @@ export default async function TrendingHashtagsPage({
         ) : (
           <EmptyState
             title="No hashtag ranking available"
-            message="The API did not return ranked hashtags for the current trend window."
+            message="The API did not return ranked hashtags for this window."
           />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
           <Link href={continuationHref} className="mt-3 inline-block text-sm text-indigo-300">
-            Load more ranked hashtags
+            Load more hashtags
           </Link>
         ) : null}
       </SectionCard>

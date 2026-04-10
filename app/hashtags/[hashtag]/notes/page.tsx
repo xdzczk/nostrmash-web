@@ -145,18 +145,13 @@ export default async function HashtagNotesPage({
 
       {errors.length > 0 ? <ErrorPanel message={errors.join(" | ")} /> : null}
 
-      <SectionCard
-        title="Hashtag notes"
-        description="Notes in this hashtag, suitable for deeper thread exploration."
-      >
+      <SectionCard title="Hashtag notes" description="Notes using this hashtag.">
         {notes.length > 0 ? (
           <>
             <NotesList notes={notes} authorsByPubkey={authorsByPubkey} />
             {typeof notesNextCursor === "string" && notesNextCursor.length > 0 ? (
               <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
-                <p className="text-xs text-indigo-100">
-                  More notes are available from the continuation cursor.
-                </p>
+                <p className="text-xs text-indigo-100">More notes are available.</p>
                 <Link
                   href={notesContinuationHref}
                   className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
@@ -171,10 +166,7 @@ export default async function HashtagNotesPage({
         )}
       </SectionCard>
 
-      <SectionCard
-        title="Related hashtags"
-        description="Continue discovery through backend-provided hashtag relationships."
-      >
+      <SectionCard title="Related hashtags" description="Nearby topics connected to this hashtag.">
         {relatedHashtags.length > 0 ? (
           <HashtagsList hashtags={relatedHashtags} searchable />
         ) : (

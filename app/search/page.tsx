@@ -5,6 +5,7 @@ import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
 import { PageHero } from "@/components/explorer/page-hero";
+import { QuickEntryGrid } from "@/components/home/quick-entry-grid";
 import { SearchForm } from "@/components/search/search-form";
 import { NotesList, ProfilesList, HashtagsList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
@@ -18,7 +19,7 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export const metadata: Metadata = {
   title: "Search",
-  description: "Search notes, profiles, hashtags, and relays across NostrMash discovery data.",
+  description: "Search notes, profiles, hashtags, and relays across NostrMash.",
 };
 
 type SearchTab = NonNullable<Awaited<ReturnType<typeof parseSearchQuery>>["tab"]>;
@@ -27,6 +28,39 @@ const SEARCH_TABS: Array<{ key: SearchTab; label: string }> = [
   { key: "all", label: "All" },
   { key: "notes", label: "Notes" },
   { key: "profiles", label: "Profiles" },
+];
+
+const explorerJumpLinks = [
+  {
+    href: "/trending",
+    label: "Open trending surfaces",
+    description: "Compare leading notes, profiles, hashtags, and domains.",
+  },
+  {
+    href: "/stats",
+    label: "Inspect stats surfaces",
+    description: "Check network, content, and relay metrics in one view.",
+  },
+  {
+    href: "/trending/notes",
+    label: "Explore trending notes",
+    description: "Review ranked notes and open the threads behind them.",
+  },
+  {
+    href: "/trending/profiles",
+    label: "View active profiles",
+    description: "Browse profiles picking up attention right now.",
+  },
+  {
+    href: "/trending/hashtags",
+    label: "Check hashtag momentum",
+    description: "See which topics are moving fastest.",
+  },
+  {
+    href: "/relays",
+    label: "Open relay explorer",
+    description: "Inspect where relay activity is concentrated.",
+  },
 ];
 
 export default async function SearchPage({ searchParams }: { searchParams: SearchParams }) {
@@ -135,7 +169,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
     <div className="space-y-8">
       <PageHero
         title="Search"
-        subtitle="Search notes, profiles, hashtags, and relays from one focused explorer workflow."
+        subtitle="Search notes, profiles, hashtags, and relays from one focused index."
         badges={
           canQuery ? (
             <div className="flex flex-wrap gap-2 text-xs">
@@ -180,7 +214,15 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
       />
 
       {!canQuery ? (
-        <EmptyState message="Enter a query to start exploring indexed content." />
+        <div className="space-y-6">
+          <EmptyState message="Enter a query to search indexed content." />
+          <SectionCard
+            title="Explore without a query"
+            description="Open key routes when you want to browse first."
+          >
+            <QuickEntryGrid links={explorerJumpLinks} />
+          </SectionCard>
+        </div>
       ) : errorMessage ? (
         <ErrorPanel message={errorMessage} />
       ) : (
@@ -265,7 +307,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
           {visibleSections.suggest ? (
             <SectionCard
               title="Suggested profiles"
-              description="Additional profile candidates returned by search suggestions."
+              description="Additional profiles related to this query."
             >
               {surfaceErrors.suggest ? (
                 <ErrorPanel message={`Suggestions unavailable: ${surfaceErrors.suggest}`} />
@@ -275,7 +317,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               ) : fallbackSuggestedProfiles.length > 0 ? (
                 <div className="space-y-3">
                   <p className="text-xs text-zinc-500">
-                    No direct suggestions returned; showing currently trending profiles.
+                    No direct suggestions returned; showing trending profiles instead.
                   </p>
                   <ProfilesList profiles={fallbackSuggestedProfiles} />
                 </div>
@@ -289,20 +331,20 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
                   href={searchHref({ tab: "all", cursor: suggestCursor })}
                   className="mt-3 inline-block text-sm text-indigo-300"
                 >
-                  Continue suggestions
+                  Load more suggestions
                 </Link>
               ) : null}
             </SectionCard>
           ) : null}
 
           {visibleSections.hashtags ? (
-            <SectionCard title="Hashtags" description="Hashtags inferred from current query scope.">
+            <SectionCard title="Hashtags" description="Hashtags related to this query.">
               {payload?.hashtags && payload.hashtags.length > 0 ? (
                 <HashtagsList hashtags={payload.hashtags} searchable />
               ) : fallbackSuggestedHashtags.length > 0 ? (
                 <div className="space-y-3">
                   <p className="text-xs text-zinc-500">
-                    No hashtags matched this query; showing trending hashtags now.
+                    No hashtags matched this query; showing trending hashtags instead.
                   </p>
                   <HashtagsList hashtags={fallbackSuggestedHashtags} searchable />
                 </div>
@@ -313,10 +355,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
           ) : null}
 
           {visibleSections.relays ? (
-            <SectionCard
-              title="Relay matches"
-              description="Relay entities connected to this query."
-            >
+            <SectionCard title="Relay matches" description="Relays related to this query.">
               {payload?.relays && payload.relays.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {payload.relays.map((relay) => (

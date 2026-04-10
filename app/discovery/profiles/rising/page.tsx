@@ -20,8 +20,7 @@ import type { Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = {
   title: "Rising Profiles",
-  description:
-    "Profiles gaining momentum in current discovery windows before they reach top-ranked lists.",
+  description: "Profiles picking up attention before they reach the main trending lists.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -66,7 +65,7 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
       <PageHero
         eyebrow="Discovery depth"
         title="Rising profiles"
-        subtitle="Profiles with accelerating discovery signals, useful for finding emerging participants before top-rank saturation."
+        subtitle="Profiles gaining traction, useful for finding emerging participants before they hit the main trending lists."
         badges={
           hasSemantics ? (
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -78,7 +77,7 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
 
       <SectionCard
         title="Rising profile feed"
-        description="Momentum-oriented profile discovery that complements static trending lists."
+        description="Profiles picking up attention ahead of the main ranking."
       >
         {errorMessage ? (
           <ErrorPanel message={errorMessage} />
@@ -87,7 +86,7 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
         ) : (
           <EmptyState
             title="No rising profiles available"
-            message="The API did not return rising profile entries for this discovery window."
+            message="The API did not return rising profiles for this window."
           />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
@@ -99,7 +98,7 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
 
       <SectionCard
         title="Next exploration paths"
-        description="Bridge from profile momentum into live note and conversation context."
+        description="Jump from rising profiles into conversations and broader ranking views."
       >
         <div className="flex flex-wrap gap-2 text-xs">
           <Link
@@ -112,7 +111,7 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
             href="/trending/profiles"
             className="rounded-full border border-zinc-700 px-2.5 py-1 text-zinc-300 hover:text-zinc-100"
           >
-            Compare against trending profiles
+            See trending profiles
           </Link>
         </div>
       </SectionCard>

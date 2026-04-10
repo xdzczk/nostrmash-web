@@ -91,9 +91,7 @@ export function ThreadView({
 
       {typeof nextCursor === "string" && nextCursor.length > 0 ? (
         <div className="rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
-          <p className="text-xs text-indigo-100">
-            More replies are available from the backend continuation cursor.
-          </p>
+          <p className="text-xs text-indigo-100">More replies are available.</p>
           {continuationHref ? (
             <Link
               href={continuationHref}

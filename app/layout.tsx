@@ -19,8 +19,7 @@ export const metadata: Metadata = {
     default: appConfig.siteName,
     template: `%s · ${appConfig.siteName}`,
   },
-  description:
-    "Explore Nostr search, trends, profiles, and relay activity from one discovery surface.",
+  description: "Explore Nostr search, trends, profiles, and relay activity in one place.",
 };
 
 export const viewport: Viewport = {

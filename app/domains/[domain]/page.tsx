@@ -41,8 +41,8 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const { domain } = await params;
   const label = domainTitle(domain);
   return {
-    title: `${label} explorer`,
-    description: `NostrMash domain explorer for ${label}, including note activity and discovery context.`,
+    title: `${label}`,
+    description: `See notes and activity connected to ${label}.`,
   };
 }
 
@@ -103,7 +103,7 @@ export default async function DomainPage({ params }: { params: Params }) {
       <PageHero
         eyebrow="Domain explorer"
         title={domainTitle(normalizedDomain)}
-        subtitle="Inspect domain-level note trends and currently ranked notes."
+        subtitle="See the notes and activity connected to this domain."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <NativeSemanticsBadges semantics={semantics} />
@@ -152,10 +152,7 @@ export default async function DomainPage({ params }: { params: Params }) {
         ) : null}
       </section>
 
-      <SectionCard
-        title="Notes snapshot"
-        description="A short preview of notes currently associated with this domain."
-      >
+      <SectionCard title="Notes snapshot" description="A preview of notes linking to this domain.">
         {notes.length > 0 ? (
           <div className="space-y-3">
             <NotesList notes={notes.slice(0, 8)} authorsByPubkey={authorsByPubkey} />

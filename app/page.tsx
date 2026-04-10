@@ -3,12 +3,11 @@ import type { Metadata } from "next";
 
 import { EmptyState } from "@/components/explorer/empty-state";
 import { extractPrimitiveStats, isRecord } from "@/components/explorer/utils";
-import { DiscoveryQuickStartPanel } from "@/components/home/discovery-quick-start-panel";
+import { ClosingDiscoveryRail } from "@/components/home/closing-discovery-rail";
 import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
-import { QuickEntryGrid } from "@/components/home/quick-entry-grid";
+import { ProfilesInMotionSpotlight } from "@/components/home/profiles-in-motion-spotlight";
+import { TrendingFeaturedModule } from "@/components/home/trending-featured-module";
 import { SearchForm } from "@/components/search/search-form";
-import { NotesList, ProfilesList, HashtagsList, DomainsList } from "@/components/data/renderers";
-import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { extractRelayRows } from "@/components/explorer/stats-utils";
 import {
@@ -26,7 +25,7 @@ import type { Profile } from "@/lib/types/api";
 export const metadata: Metadata = {
   title: "NostrMash",
   description:
-    "Explore Nostr notes, profiles, relays, and trends through a public discovery surface backed by durable ingest.",
+    "Explore Nostr notes, profiles, relays, and live trends through a public discovery index.",
 };
 
 export default async function HomePage() {
@@ -251,71 +250,9 @@ export default async function HomePage() {
 
   const errorMessage = failedMessages.length > 0 ? failedMessages.join(" | ") : "";
 
-  const quickLinks = [
-    {
-      href: "/trending",
-      label: "Open trending surfaces",
-      description: "Compare ranked notes, profiles, and hashtags in current windows.",
-    },
-    {
-      href: "/stats",
-      label: "Inspect stats surfaces",
-      description: "Read network, content, and relay metrics from one operational view.",
-    },
-    {
-      href: "/search",
-      label: "Run direct search",
-      description: "Query notes, profiles, and hashtags against the public index.",
-    },
-    {
-      href: `/hashtags/${encodeURIComponent(homeHashtags[0]?.hashtag ?? "nostr")}`,
-      label: "Open leading hashtag",
-      description: "Jump directly into hashtag explorer context and related tag loops.",
-    },
-    {
-      href: `/domains/${encodeURIComponent(homeDomains[0]?.domain ?? "nostr.com")}`,
-      label: "Open leading domain",
-      description: "Inspect what note activity is surfacing from this domain right now.",
-    },
-    {
-      href: "/relays",
-      label: "Open relay explorer",
-      description: "Rank active relays and inspect where activity is concentrated.",
-    },
-    {
-      href: `/relays/${encodeURIComponent(relayLeaders[0]?.relay ?? "relay.damus.io")}`,
-      label: "Inspect leading relay",
-      description: "Open relay-level stats and health posture for the current leader.",
-    },
-  ];
-
-  const leadingSignals = [
-    {
-      label: "Leading note",
-      value: homeNotes[0]?.id ? homeNotes[0].id : "Unavailable in this window",
-    },
-    {
-      label: "Leading profile",
-      value: homeProfiles[0]?.pubkey ? homeProfiles[0].pubkey : "Unavailable in this window",
-    },
-    {
-      label: "Leading hashtag",
-      value: homeHashtags[0]?.hashtag
-        ? `#${homeHashtags[0].hashtag}`
-        : "Unavailable in this window",
-    },
-    {
-      label: "Leading relay",
-      value: relayLeaders[0]?.relay ?? "Unavailable in this window",
-    },
-    {
-      label: "Leading domain",
-      value: homeDomains[0]?.domain ?? "Unavailable in this window",
-    },
-  ];
   const topRelay = relayLeaders[0]?.relay;
   const topEventId = homeNotes[0]?.id ?? "0".repeat(64);
-  const freshness = formatFreshness(homeNotes[0]?.created_at) ?? "Live ingest active";
+  const freshness = formatFreshness(homeNotes[0]?.created_at) ?? "Live now";
   const notesFreshness = formatFreshness(homeNotes[0]?.created_at) ?? "Updated recently";
   const profileActivityCandidates = hydratedHomeProfiles
     .map((profile) =>
@@ -336,215 +273,168 @@ export default async function HomePage() {
     "Updated recently";
   const hashtagsFreshness = formatFreshness(homeNotes[0]?.created_at) ?? "Updated recently";
   const domainsFreshness = formatFreshness(homeNotes[0]?.created_at) ?? "Updated recently";
-  const trendWindowLabel = "24h trend window";
-  const quickStartActions = [
-    {
-      href: "/trending/notes",
-      label: "Explore trending notes",
-      description: "Ranked notes and thread pivots",
-    },
-    {
-      href: "/trending/profiles",
-      label: "View active profiles",
-      description: "Profiles gaining visibility",
-    },
-    {
-      href: topRelay ? `/relays/${encodeURIComponent(topRelay)}` : "/relays",
-      label: "Open relay activity",
-      description: "Where relay-side activity is concentrated",
-    },
-  ];
-  const quickStartFooter = `${freshness} · Window: ${trendWindowLabel}`;
+  const trendWindowLabel = "Last 24h";
   const heroSearchShortcuts = [
     { label: "#bitcoin", query: "#bitcoin" },
     { label: "npub", query: "npub1..." },
     { label: "relay URL", query: "wss://relay.damus.io" },
     { label: "note ID", query: topEventId },
   ];
+  const heroPulseStats = pulseStats.slice(0, 2);
+  const flagshipNotes = homeNotes.slice(0, 3);
+  const profileHighlights = hydratedHomeProfiles.slice(0, 3);
+  const hashtagHighlights = homeHashtags.slice(0, 8);
+  const domainHighlights = homeDomains.slice(0, 8);
 
   return (
-    <div className="space-y-8 sm:space-y-10">
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/55 p-4 sm:p-6 lg:p-7">
-        <div className="grid gap-6 sm:gap-7 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
-          <div className="space-y-5 sm:space-y-6">
-            <div className="space-y-3 sm:space-y-4">
-              <p className="text-[11px] font-medium tracking-[0.2em] text-zinc-500 uppercase">
-                Nostr explorer
+    <div className="space-y-12 sm:space-y-16 lg:space-y-[4.75rem]">
+      <section className="relative overflow-hidden rounded-[2rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.12),transparent_34%),linear-gradient(180deg,rgba(24,24,27,0.94),rgba(14,14,16,0.98))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.28)] sm:p-7 lg:p-8">
+        <div className="grid gap-7 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+          <div className="space-y-6 sm:space-y-7">
+            <div className="space-y-4 sm:space-y-5">
+              <p className="text-[11px] font-medium tracking-[0.22em] text-zinc-500 uppercase">
+                Discovery surface
               </p>
-              <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-zinc-100 sm:text-4xl">
-                Search, discover, inspect, and analyze what is moving across Nostr.
+              <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-zinc-100 sm:text-5xl lg:text-[3.35rem]">
+                Search, track, and inspect what is moving across Nostr.
               </h1>
-              <p className="max-w-3xl text-sm leading-5 text-zinc-300 sm:text-base sm:leading-6">
-                Track ranked notes, rising profiles, relay activity, and hashtag momentum from one
-                focused surface.
+              <p className="max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base">
+                See leading notes, rising profiles, relay activity, and topic movement in one place.
               </p>
             </div>
             <SearchForm
               variant="hero"
-              helperText="Search notes, profiles, hashtags, relays, and event IDs from one public discovery index."
+              helperText="Search notes, profiles, hashtags, relays, and event IDs from one public index."
               shortcuts={heroSearchShortcuts}
             />
-            <p className="text-xs text-zinc-500">
-              Built on durable ingest with rebuildable, explorer-grade discovery views.
+            <p className="max-w-xl text-xs leading-6 text-zinc-500">
+              Backed by durable ingest and rebuildable indexes.
             </p>
           </div>
-          <DiscoveryQuickStartPanel actions={quickStartActions} footerText={quickStartFooter} />
+          <aside className="rounded-[1.5rem] border border-zinc-800/90 bg-zinc-950/35 p-4 sm:p-5">
+            <p className="text-[11px] font-medium tracking-[0.18em] text-zinc-500 uppercase">
+              Current window
+            </p>
+            <p className="mt-3 text-lg font-semibold tracking-tight text-zinc-100">
+              Start with the strongest signal.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
+              The homepage leads with the note worth reading, then expands into the profiles,
+              topics, and links around it.
+            </p>
+            <dl className="mt-5 space-y-3 border-t border-zinc-800/70 pt-4 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-zinc-500">Window</dt>
+                <dd className="font-medium text-zinc-100">{trendWindowLabel}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-zinc-500">Freshness</dt>
+                <dd className="font-medium text-zinc-100">{freshness}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-zinc-500">Top relay</dt>
+                <dd className="min-w-0">
+                  {topRelay ? (
+                    <Link
+                      href={`/relays/${encodeURIComponent(topRelay)}`}
+                      className="truncate font-medium text-zinc-200 transition hover:text-indigo-200"
+                    >
+                      {topRelay}
+                    </Link>
+                  ) : (
+                    <span className="font-medium text-zinc-100">Relay activity live</span>
+                  )}
+                </dd>
+              </div>
+            </dl>
+
+            {heroPulseStats.length > 0 ? (
+              <div className="mt-5 space-y-2.5 border-t border-zinc-800/70 pt-4">
+                {heroPulseStats.map((stat) => (
+                  <article
+                    key={stat.label}
+                    className="flex items-baseline justify-between gap-3 text-sm"
+                  >
+                    <p className="text-[11px] tracking-[0.16em] text-zinc-500 uppercase">
+                      {stat.label.replaceAll("_", " ")}
+                    </p>
+                    <p className="text-base font-semibold tracking-tight text-zinc-100">
+                      {String(stat.value)}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </aside>
         </div>
       </section>
 
-      <NetworkPulseStrip title="Current discovery pulse" stats={pulseStats} />
-
-      <div className="grid gap-6 sm:gap-7 lg:grid-cols-2">
-        <SectionCard
-          title="Trending now"
-          description="Top ranked notes in the current trend window with direct thread and relay pivots."
-        >
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300 sm:mb-4">
-            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
-              {trendWindowLabel}
-            </span>
-            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
-              {notesFreshness}
-            </span>
-          </div>
-          {homeNotes.length > 0 ? (
-            <NotesList
-              notes={homeNotes.slice(0, 5)}
-              authorsByPubkey={noteAuthorsByPubkey}
-              ranked
-              discoverySignals
-            />
+      <div className="grid gap-7 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.9fr)] xl:items-start">
+        <section className="overflow-hidden rounded-[1.65rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.12),transparent_38%),linear-gradient(180deg,rgba(24,24,27,0.96),rgba(22,22,25,0.92))] p-5 shadow-[0_24px_80px_rgba(49,46,129,0.1)] sm:p-6">
+          <header className="mb-5 space-y-3 sm:mb-6">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="inline-flex items-center rounded-full border border-indigo-400/20 bg-indigo-400/10 px-2.5 py-1 text-[11px] font-medium tracking-[0.18em] text-indigo-200 uppercase">
+                Note ranking
+              </span>
+              <span className="text-zinc-600">•</span>
+              <span className="text-zinc-500">Top reads</span>
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-[1.55rem] font-semibold tracking-tight text-zinc-50 sm:text-[2rem]">
+                The note to read first
+              </h2>
+              <p className="max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base">
+                One lead note and two supporting picks surface the strongest activity first.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+              <span>{trendWindowLabel}</span>
+              <span className="text-zinc-600">•</span>
+              <span>{notesFreshness}</span>
+            </div>
+          </header>
+          {flagshipNotes.length > 0 ? (
+            <TrendingFeaturedModule notes={flagshipNotes} authorsByPubkey={noteAuthorsByPubkey} />
           ) : errorMessage ? (
-            <ErrorPanel message={errorMessage} />
+            <div className="flex min-h-80 items-center">
+              <ErrorPanel message={errorMessage} />
+            </div>
           ) : (
-            <EmptyState
-              title="Notes ranking is sparse"
-              message="No ranked notes were returned for the current trend window."
-            />
+            <div className="flex min-h-80 items-center">
+              <EmptyState
+                title="Notes ranking is quiet"
+                message="No clear note movement was returned for this window."
+              />
+            </div>
           )}
-          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-indigo-300">
-            <Link href="/trending/notes" className="hover:text-indigo-200">
-              Open trend view
-            </Link>
-            <span className="text-zinc-600">•</span>
-            <Link href="/trending/notes" className="hover:text-indigo-200">
-              Compare note ranks
+          <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500">
+            <Link
+              href="/trending/notes"
+              className="font-medium text-zinc-200 hover:text-indigo-200"
+            >
+              See all trending notes
             </Link>
           </div>
-        </SectionCard>
+        </section>
 
-        <SectionCard
-          title="Profiles in motion"
-          description="Profiles gaining visibility across recent activity with direct authored-note pivots."
-        >
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300 sm:mb-4">
-            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
-              {trendWindowLabel}
-            </span>
-            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
-              {profilesFreshness}
-            </span>
-          </div>
-          {hydratedHomeProfiles.length > 0 ? (
-            <ProfilesList profiles={hydratedHomeProfiles.slice(0, 5)} ranked discoverySignals />
-          ) : errorMessage ? (
-            <ErrorPanel message={errorMessage} />
-          ) : (
-            <EmptyState
-              title="Profile ranking is sparse"
-              message="No ranked profiles were returned for the current trend window."
-            />
-          )}
-          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-indigo-300">
-            <Link href="/trending/profiles" className="hover:text-indigo-200">
-              Open trend view
-            </Link>
-            <span className="text-zinc-600">•</span>
-            <Link href="/discovery/profiles/rising" className="hover:text-indigo-200">
-              Inspect rising profiles
-            </Link>
-          </div>
-        </SectionCard>
+        <ProfilesInMotionSpotlight
+          profiles={profileHighlights}
+          trendWindowLabel={trendWindowLabel}
+          freshnessLabel={profilesFreshness}
+          errorMessage={errorMessage}
+        />
       </div>
 
-      <SectionCard
-        title="Hashtags accelerating"
-        description="Hashtags rising faster than baseline in the active discovery window."
-      >
-        <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300 sm:mb-4">
-          <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
-            {trendWindowLabel}
-          </span>
-          <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
-            {hashtagsFreshness}
-          </span>
-          <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1 text-indigo-300">
-            Mention-lift rank
-          </span>
-        </div>
-        {homeHashtags.length > 0 ? (
-          <HashtagsList hashtags={homeHashtags.slice(0, 12)} ranked searchable />
-        ) : errorMessage ? (
-          <ErrorPanel message={errorMessage} />
-        ) : (
-          <EmptyState
-            title="Hashtag ranking is sparse"
-            message="No ranked hashtag activity was returned for the active window."
-          />
-        )}
-        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-indigo-300">
-          <Link href="/trending/hashtags" className="hover:text-indigo-200">
-            Open trend view
-          </Link>
-          <span className="text-zinc-600">•</span>
-          <Link href="/search?tab=all" className="hover:text-indigo-200">
-            Search related notes
-          </Link>
-        </div>
-      </SectionCard>
+      <NetworkPulseStrip title="Network pulse" stats={pulseStats} />
 
-      <SectionCard
-        title="Links gaining traction"
-        description="Domains ranking higher in current note discovery with cross-note spread signals."
-      >
-        <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300 sm:mb-4">
-          <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
-            {trendWindowLabel}
-          </span>
-          <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
-            {domainsFreshness}
-          </span>
-          <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1 text-indigo-300">
-            Cross-note spread rank
-          </span>
-        </div>
-        {homeDomains.length > 0 ? (
-          <DomainsList domains={homeDomains.slice(0, 12)} ranked searchable />
-        ) : errorMessage ? (
-          <ErrorPanel message={errorMessage} />
-        ) : (
-          <EmptyState
-            title="Domain ranking is sparse"
-            message="No ranked domain activity was returned for the active window."
-          />
-        )}
-        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-indigo-300">
-          <Link href="/trending/domains" className="hover:text-indigo-200">
-            Open trend view
-          </Link>
-          <span className="text-zinc-600">•</span>
-          <Link href="/search?tab=all" className="hover:text-indigo-200">
-            Search linked notes
-          </Link>
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        title="Explorer jump points"
-        description="Open high-signal routes directly from the current discovery surface."
-      >
-        <QuickEntryGrid links={quickLinks} leadingSignals={leadingSignals} />
-      </SectionCard>
+      <ClosingDiscoveryRail
+        hashtags={hashtagHighlights}
+        domains={domainHighlights}
+        trendWindowLabel={trendWindowLabel}
+        hashtagsFreshness={hashtagsFreshness}
+        domainsFreshness={domainsFreshness}
+        errorMessage={errorMessage}
+      />
     </div>
   );
 }

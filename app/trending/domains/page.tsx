@@ -18,7 +18,7 @@ import { extractNativeApiSemantics } from "@/lib/api/normalize";
 
 export const metadata: Metadata = {
   title: "Trending Domains",
-  description: "Explore ranked domain momentum and note counts from current discovery data.",
+  description: "Explore the domains showing up most often right now.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -56,7 +56,7 @@ export default async function TrendingDomainsPage({
       <PageHero
         eyebrow="Ranked domains"
         title="Trending domains"
-        subtitle="Domain activity ordered by current note counts."
+        subtitle="Domains showing up most often in active notes."
         badges={
           hasSemantics ? (
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -65,10 +65,7 @@ export default async function TrendingDomainsPage({
           ) : undefined
         }
       />
-      <SectionCard
-        title="Domain ranking"
-        description="Top domains are elevated while lower ranks remain dense and scannable."
-      >
+      <SectionCard title="Domain ranking" description="The domains leading right now.">
         {errorMessage ? (
           <ErrorPanel message={errorMessage} />
         ) : payload?.domains && payload.domains.length > 0 ? (
@@ -76,12 +73,12 @@ export default async function TrendingDomainsPage({
         ) : (
           <EmptyState
             title="No domain ranking available"
-            message="The API did not return ranked domains for the current trend window."
+            message="The API did not return ranked domains for this window."
           />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
           <Link href={continuationHref} className="mt-3 inline-block text-sm text-indigo-300">
-            Load more ranked domains
+            Load more domains
           </Link>
         ) : null}
       </SectionCard>

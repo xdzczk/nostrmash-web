@@ -72,9 +72,45 @@ export async function hydrateProfiles(
     profiles.map((profile) => profile.pubkey),
     cacheClass
   );
+  const hydratedByNpub: Record<string, Profile> = Object.fromEntries(
+    Object.values(hydratedByPubkey)
+      .filter((profile) => typeof profile.npub === "string" && profile.npub.length > 0)
+      .map((profile) => [profile.npub!.toLowerCase(), profile])
+  );
+
+  const npubOnlyIdentifiers = Array.from(
+    new Set(
+      profiles
+        .filter((profile) => {
+          const hasPubkey = typeof profile.pubkey === "string" && profile.pubkey.length > 0;
+          const hasNpub = typeof profile.npub === "string" && profile.npub.length > 0;
+          return !hasPubkey && hasNpub;
+        })
+        .map((profile) => profile.npub!.toLowerCase())
+    )
+  );
+  if (npubOnlyIdentifiers.length > 0) {
+    const npubHydrationResults = await Promise.allSettled(
+      npubOnlyIdentifiers.map((npub) => getProfile(npub, cacheClass))
+    );
+    for (const result of npubHydrationResults) {
+      if (result.status !== "fulfilled") continue;
+      const profile = result.value;
+      if (typeof profile.pubkey === "string" && profile.pubkey.length > 0) {
+        hydratedByPubkey[profile.pubkey.toLowerCase()] = profile;
+      }
+      if (typeof profile.npub === "string" && profile.npub.length > 0) {
+        hydratedByNpub[profile.npub.toLowerCase()] = profile;
+      }
+    }
+  }
+
   return profiles.map((profile) => {
     const key = typeof profile.pubkey === "string" ? profile.pubkey.toLowerCase() : "";
-    return key ? { ...profile, ...(hydratedByPubkey[key] ?? {}) } : profile;
+    const npubKey = typeof profile.npub === "string" ? profile.npub.toLowerCase() : "";
+    const hydrated =
+      (key ? hydratedByPubkey[key] : undefined) ?? (npubKey ? hydratedByNpub[npubKey] : undefined);
+    return hydrated ? { ...profile, ...hydrated } : profile;
   });
 }
 

@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { IdBadge } from "@/components/explorer/id-badge";
 import { NoteMedia } from "@/components/explorer/note-media";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
@@ -93,14 +92,14 @@ export function NoteCard({
     trendReasons.push("recently published");
   }
   if (trendReasons.length === 0) {
-    trendReasons.push("momentum in current window");
+    trendReasons.push("standing out now");
   }
-  const showSpikeMarker = isTopRank;
+  const rankLabel = typeof rank === "number" ? `#${rank}` : null;
 
   return (
     <article
-      className={`rounded-xl border p-3 sm:p-4 ${
-        isTopRank ? "border-zinc-700 bg-zinc-900/65" : "border-zinc-800 bg-zinc-900/50"
+      className={`rounded-[1.15rem] border p-4 sm:p-5 ${
+        isTopRank ? "border-indigo-500/20 bg-zinc-900/60" : "border-zinc-800/85 bg-zinc-900/45"
       }`}
     >
       <div className="flex items-start gap-3">
@@ -114,26 +113,17 @@ export function NoteCard({
             className="h-10 w-10 rounded-full border border-zinc-700 object-cover sm:h-11 sm:w-11"
           />
         ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900 text-xs text-zinc-500 sm:h-11 sm:w-11">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-950/70 text-xs text-zinc-500 sm:h-11 sm:w-11">
             {author ? profileInitial(author) : "?"}
           </div>
         )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            {typeof rank === "number" ? (
+            {rankLabel ? (
               <span
-                className={`rounded-full px-2 py-1 ${
-                  isTopRank
-                    ? "border border-indigo-500/40 bg-indigo-500/10 text-indigo-300"
-                    : "border border-zinc-700 text-zinc-400"
-                }`}
+                className={isTopRank ? "font-medium text-indigo-300" : "font-medium text-zinc-500"}
               >
-                #{rank}
-              </span>
-            ) : null}
-            {discoverySignals && showSpikeMarker ? (
-              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-emerald-300">
-                Spike now
+                {rankLabel}
               </span>
             ) : null}
             {authorHref ? (
@@ -165,51 +155,61 @@ export function NoteCard({
       ) : null}
 
       {noteDomains.length > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+          <span className="text-zinc-500">Links</span>
           {noteDomains.map((domain) => (
-            <Link
-              key={domain}
-              href={`/domains/${encodeURIComponent(domain)}`}
-              className="rounded-full border border-zinc-700 px-2.5 py-1 text-xs text-zinc-300 hover:text-zinc-100"
-            >
-              {domain}
-            </Link>
+            <span key={domain} className="inline-flex items-center gap-2">
+              <span className="text-zinc-600">•</span>
+              <Link
+                href={`/domains/${encodeURIComponent(domain)}`}
+                className="text-zinc-300 transition hover:text-zinc-100"
+              >
+                {domain}
+              </Link>
+            </span>
           ))}
         </div>
       ) : null}
 
       {noteHashtags.length > 0 ? (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+          <span className="text-zinc-500">Topics</span>
           {noteHashtags.map((hashtag) => (
-            <Link
-              key={hashtag}
-              href={`/hashtags/${encodeURIComponent(hashtag)}`}
-              className="rounded-full border border-zinc-700 px-2.5 py-1 text-xs text-zinc-300 hover:text-zinc-100"
-            >
-              #{hashtag}
-            </Link>
+            <span key={hashtag} className="inline-flex items-center gap-2">
+              <span className="text-zinc-600">•</span>
+              <Link
+                href={`/hashtags/${encodeURIComponent(hashtag)}`}
+                className="text-zinc-300 transition hover:text-zinc-100"
+              >
+                #{hashtag}
+              </Link>
+            </span>
           ))}
         </div>
       ) : null}
 
       {relayHosts.length > 0 ? (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+          <span className="text-zinc-500">Relays</span>
           {relayHosts.map((relayHost) => (
-            <Link
-              key={relayHost}
-              href={`/relays/${encodeURIComponent(relayHost)}`}
-              className="rounded-full border border-zinc-700 px-2.5 py-1 text-xs break-all text-indigo-300 hover:border-indigo-400/40"
-            >
-              relay: {relayHost}
-            </Link>
+            <span key={relayHost} className="inline-flex items-center gap-2">
+              <span className="text-zinc-600">•</span>
+              <Link
+                href={`/relays/${encodeURIComponent(relayHost)}`}
+                className="break-all text-zinc-300 transition hover:text-indigo-200"
+              >
+                {relayHost}
+              </Link>
+            </span>
           ))}
         </div>
       ) : null}
 
       {discoverySignals ? (
-        <div className="mt-2.5 space-y-1 sm:mt-3">
-          <p className="text-[11px] tracking-[0.14em] text-zinc-500 uppercase">Why this note</p>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400 sm:mt-3">
+          <span className="text-zinc-500">Why now</span>
+          <span className="text-zinc-600">•</span>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             {trendReasons.slice(0, 2).map((reason, index) => (
               <span key={reason} className="inline-flex items-center gap-2">
                 {index > 0 ? <span className="text-zinc-600">•</span> : null}
@@ -220,25 +220,22 @@ export function NoteCard({
         </div>
       ) : null}
 
-      <div className="mt-2.5 grid gap-2 text-xs text-zinc-300 sm:mt-3 sm:grid-cols-3">
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-300 sm:mt-3">
         {metrics.map((metric) => (
-          <div
-            key={metric.label}
-            className="rounded-md border border-zinc-800/90 bg-zinc-950/20 px-2 py-1.5"
-          >
-            <p className="text-[11px] tracking-wide text-zinc-500 uppercase">
-              {formatMetricLabel(metric.label)}
-            </p>
-            <p className="mt-0.5 text-sm text-zinc-200">
+          <span key={metric.label} className="inline-flex items-center gap-1.5">
+            <span className="text-zinc-500">{formatMetricLabel(metric.label)}</span>
+            <span className="font-medium text-zinc-100">
               {truncateMiddle(String(metric.value), 18)}
-            </p>
-          </div>
+            </span>
+          </span>
         ))}
       </div>
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-2 sm:mt-3">
-        {resolvedNoteId ? <IdBadge id={resolvedNoteId} label="event" /> : null}
-      </div>
+      {resolvedNoteId ? (
+        <div className="mt-2.5 text-xs text-zinc-500 sm:mt-3">
+          Event {truncateMiddle(resolvedNoteId, 24)}
+        </div>
+      ) : null}
 
       {resolvedNoteId ? (
         <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">

@@ -20,7 +20,7 @@ import type { Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = {
   title: "Trending Notes",
-  description: "Explore ranked note activity from the current NostrMash trend window.",
+  description: "Explore the notes getting the most attention right now.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -66,7 +66,7 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
       <PageHero
         eyebrow="Ranked notes"
         title="Trending notes"
-        subtitle="Ranked notes currently surfacing in NostrMash trend windows."
+        subtitle="Notes getting the most attention right now."
         badges={
           hasSemantics ? (
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -75,10 +75,7 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
           ) : undefined
         }
       />
-      <SectionCard
-        title="Ranked notes"
-        description="Cards are weighted to emphasize the strongest current entries."
-      >
+      <SectionCard title="Ranked notes" description="The notes leading right now.">
         {errorMessage ? (
           <ErrorPanel message={errorMessage} />
         ) : payload?.notes && payload.notes.length > 0 ? (
@@ -86,12 +83,12 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
         ) : (
           <EmptyState
             title="No note ranking available"
-            message="The API did not return ranked notes for the current trend window."
+            message="The API did not return ranked notes for this window."
           />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
           <Link href={continuationHref} className="mt-3 inline-block text-sm text-indigo-300">
-            Load more ranked notes
+            Load more notes
           </Link>
         ) : null}
         <div className="mt-4 flex flex-wrap gap-2 text-xs">

@@ -105,7 +105,7 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
 
       <SectionCard
         title="Dominant relay activity"
-        description="Ranking from relay stats payload using backend-provided relay counters."
+        description="Relays with the most activity right now."
       >
         {rankedRelays.length > 0 ? (
           <ul className="space-y-2">

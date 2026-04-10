@@ -20,7 +20,7 @@ import type { Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = {
   title: "Trending Profiles",
-  description: "Explore ranked profile activity from the current NostrMash trend window.",
+  description: "Explore the profiles getting the most attention right now.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -68,7 +68,7 @@ export default async function TrendingProfilesPage({
       <PageHero
         eyebrow="Ranked profiles"
         title="Trending profiles"
-        subtitle="Ranked profiles currently surfacing in discovery outputs."
+        subtitle="Profiles getting the most attention right now."
         badges={
           hasSemantics ? (
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -77,10 +77,7 @@ export default async function TrendingProfilesPage({
           ) : undefined
         }
       />
-      <SectionCard
-        title="Ranked profiles"
-        description="Profiles are structured for scan-first ranking and compact metrics."
-      >
+      <SectionCard title="Ranked profiles" description="The profiles leading right now.">
         {errorMessage ? (
           <ErrorPanel message={errorMessage} />
         ) : hydratedProfiles.length > 0 ? (
@@ -88,12 +85,12 @@ export default async function TrendingProfilesPage({
         ) : (
           <EmptyState
             title="No profile ranking available"
-            message="The API did not return ranked profiles for the current trend window."
+            message="The API did not return ranked profiles for this window."
           />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
           <Link href={continuationHref} className="mt-3 inline-block text-sm text-indigo-300">
-            Load more ranked profiles
+            Load more profiles
           </Link>
         ) : null}
         <div className="mt-4 flex flex-wrap gap-2 text-xs">

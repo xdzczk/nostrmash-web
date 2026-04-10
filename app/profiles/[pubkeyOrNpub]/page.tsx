@@ -155,12 +155,12 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       profile.display_name ?? profile.name ?? profile.npub ?? profile.pubkey ?? pubkeyOrNpub;
     return {
       title: label,
-      description: `NostrMash profile explorer page for ${label}.`,
+      description: `View profile activity, notes, and network context for ${label}.`,
     };
   } catch {
     return {
       title: `Profile ${pubkeyOrNpub}`,
-      description: `NostrMash profile explorer page for ${pubkeyOrNpub}.`,
+      description: `View profile activity, notes, and network context for ${pubkeyOrNpub}.`,
     };
   }
 }
@@ -580,8 +580,7 @@ export default async function ProfilePage({
       <PageHero
         title={headerTitle}
         subtitle={
-          profile?.about ??
-          "Inspect identity, counters, and authored activity from NostrMash profile explorer."
+          profile?.about ?? "View identity, activity, and network context for this profile."
         }
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -605,7 +604,7 @@ export default async function ProfilePage({
 
       <SectionCard
         title="Discovery loops"
-        description="Jump from this profile into momentum views, then back into note and profile detail."
+        description="Jump from this profile into related views and back."
       >
         <div className="flex flex-wrap gap-2 text-xs">
           <Link
@@ -632,7 +631,7 @@ export default async function ProfilePage({
       </SectionCard>
 
       {profile ? (
-        <SectionCard title="Profile header" description="Primary identity and profile card.">
+        <SectionCard title="Profile header" description="Core identity details for this profile.">
           <ProfileCard profile={profile} summary={isRecord(summary) ? summary : undefined} />
         </SectionCard>
       ) : null}
@@ -651,7 +650,7 @@ export default async function ProfilePage({
       {authorActivityStatCards.length > 0 || authorActivityMetadata.length > 0 ? (
         <SectionCard
           title="Author activity analytics"
-          description="Backend-provided author analytics. Explorer presents returned fields without deriving extra formulas."
+          description="Activity metrics returned for this profile."
         >
           {authorActivityStatCards.length > 0 ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -671,7 +670,7 @@ export default async function ProfilePage({
       {postingBehaviorStatCards.length > 0 || postingBehaviorMetadata.length > 0 ? (
         <SectionCard
           title="Posting and reply behavior"
-          description="Backend-provided posting/reply behavior fields when available. Explorer only formats values for readability."
+          description="Posting and reply patterns returned for this profile."
         >
           {postingBehaviorStatCards.length > 0 ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -691,7 +690,7 @@ export default async function ProfilePage({
       {trustScoreValue !== undefined || trustMetadata.length > 0 ? (
         <SectionCard
           title="Trust signals"
-          description="Trust score and metadata from backend trust endpoints. Explorer presentation: only labels and layout."
+          description="Trust score and related metadata returned for this profile."
         >
           {trustScoreValue !== undefined ? (
             <div className="grid gap-3 sm:max-w-sm">
@@ -716,27 +715,25 @@ export default async function ProfilePage({
       {details.length > 0 ? (
         <SectionCard
           title="Identity metadata"
-          description="Identifiers and public profile metadata fields."
+          description="Identifiers and public metadata for this profile."
         >
           <MetadataList items={details} columns={2} />
         </SectionCard>
       ) : null}
 
       {profileTimestamps.length > 0 ? (
-        <SectionCard title="Freshness" description="Any timestamp fields returned by the backend.">
+        <SectionCard title="Freshness" description="Timestamps returned for this profile.">
           <MetadataList items={profileTimestamps} columns={2} />
         </SectionCard>
       ) : null}
 
       <div id="authored-notes">
         {notes.length > 0 ? (
-          <SectionCard title="Authored notes" description="Latest notes authored by this profile.">
+          <SectionCard title="Authored notes" description="Recent notes from this profile.">
             <NotesList notes={notes} authorsByPubkey={notesAuthorMap} />
             {typeof notesNextCursor === "string" && notesNextCursor.length > 0 ? (
               <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
-                <p className="text-xs text-indigo-100">
-                  More authored notes are available from the continuation cursor.
-                </p>
+                <p className="text-xs text-indigo-100">More notes are available.</p>
                 <Link
                   href={notesContinuationHref}
                   className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
@@ -747,23 +744,18 @@ export default async function ProfilePage({
             ) : null}
           </SectionCard>
         ) : (
-          <SectionCard title="Authored notes" description="Latest notes authored by this profile.">
+          <SectionCard title="Authored notes" description="Recent notes from this profile.">
             <EmptyState message="No authored notes were returned for this profile." />
           </SectionCard>
         )}
       </div>
 
       {replies.length > 0 ? (
-        <SectionCard
-          title="Authored replies"
-          description="Latest replies authored by this profile."
-        >
+        <SectionCard title="Authored replies" description="Recent replies from this profile.">
           <NotesList notes={replies} authorsByPubkey={notesAuthorMap} />
           {typeof repliesNextCursor === "string" && repliesNextCursor.length > 0 ? (
             <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
-              <p className="text-xs text-indigo-100">
-                More authored replies are available from the continuation cursor.
-              </p>
+              <p className="text-xs text-indigo-100">More replies are available.</p>
               <Link
                 href={repliesContinuationHref}
                 className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
@@ -776,18 +768,12 @@ export default async function ProfilePage({
       ) : null}
 
       {replies.length === 0 ? (
-        <SectionCard
-          title="Authored replies"
-          description="Latest replies authored by this profile."
-        >
+        <SectionCard title="Authored replies" description="Recent replies from this profile.">
           <EmptyState message="No authored replies were returned for this profile." />
         </SectionCard>
       ) : null}
 
-      <SectionCard
-        title="Followers"
-        description="Profiles currently connected to this account through follow relationships."
-      >
+      <SectionCard title="Followers" description="Profiles following this account.">
         {uniqueFollowers.length > 0 ? (
           <>
             <ProfilesList profiles={uniqueFollowers} />
@@ -801,13 +787,13 @@ export default async function ProfilePage({
             ) : null}
           </>
         ) : (
-          <EmptyState message="No follower relationships were returned for this profile window." />
+          <EmptyState message="No followers were returned for this profile." />
         )}
       </SectionCard>
 
       <SectionCard
         title="Mentions"
-        description="Profiles that mention or frequently intersect with this identity."
+        description="Profiles that mention or frequently overlap with this one."
       >
         {uniqueMentions.length > 0 ? (
           <>
@@ -822,14 +808,14 @@ export default async function ProfilePage({
             ) : null}
           </>
         ) : (
-          <EmptyState message="No mention relationships were returned for this profile window." />
+          <EmptyState message="No mentions were returned for this profile." />
         )}
       </SectionCard>
 
       <div id="related-profiles">
         <SectionCard
           title="Related profiles"
-          description="Profiles identified as graph-adjacent or behaviorally related."
+          description="Profiles connected to this one by network or behavior."
         >
           {uniqueRelatedProfiles.length > 0 ? (
             <>
@@ -852,7 +838,7 @@ export default async function ProfilePage({
 
       <SectionCard
         title="Contact list context"
-        description="Public contact-list relationships and relay hints attached to this profile."
+        description="Public contact relationships and relay hints for this profile."
       >
         {uniqueContactProfiles.length > 0 ? (
           <ProfilesList profiles={uniqueContactProfiles} />
@@ -878,13 +864,13 @@ export default async function ProfilePage({
         {uniqueContactProfiles.length === 0 &&
         uniqueContactRelays.length === 0 &&
         contactListScopeMetadata.length === 0 ? (
-          <EmptyState message="No contact-list context was available for this profile." />
+          <EmptyState message="No contact list data was available for this profile." />
         ) : null}
       </SectionCard>
 
       <SectionCard
         title="Relay list context"
-        description="Relays this profile advertises and where to continue graph exploration."
+        description="Relays this profile publishes and where to follow up."
       >
         {relayEntries.length > 0 ? (
           <ul className="space-y-2">
@@ -926,13 +912,13 @@ export default async function ProfilePage({
           </div>
         ) : null}
         {relayEntries.length === 0 && relayListScopeMetadata.length === 0 ? (
-          <EmptyState message="No relay-list context was available for this profile." />
+          <EmptyState message="No relay list data was available for this profile." />
         ) : null}
       </SectionCard>
 
       <SectionCard
         title="Topic and interest context"
-        description="Hashtag topics and profile-level interests linked to this identity."
+        description="Topics and interests linked to this profile."
       >
         {interestTopics.length > 0 ? (
           <div className="space-y-2">
@@ -949,14 +935,14 @@ export default async function ProfilePage({
           </div>
         ) : null}
         {interestTopics.length === 0 && uniqueInterestProfiles.length === 0 ? (
-          <EmptyState message="No topic or profile-interest context was available for this profile." />
+          <EmptyState message="No topic or interest data was available for this profile." />
         ) : null}
       </SectionCard>
 
       {publicSummaryMetadata.length > 0 ? (
         <SectionCard
           title="Public summary metadata"
-          description="Non-identity fields from summary payload."
+          description="Additional public fields returned with the profile summary."
         >
           <MetadataList items={publicSummaryMetadata} columns={2} />
         </SectionCard>

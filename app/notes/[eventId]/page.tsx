@@ -82,12 +82,12 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       title: author
         ? `Note by ${truncateMiddle(author, 20)}`
         : `Note ${truncateMiddle(eventId, 18)}`,
-      description: `NostrMash note explorer: ${preview}`,
+      description: `View the note, thread, and related activity: ${preview}`,
     };
   } catch {
     return {
       title: `Note ${truncateMiddle(eventId, 18)}`,
-      description: "NostrMash note explorer page.",
+      description: "View the note, thread, and related activity.",
     };
   }
 }
@@ -430,7 +430,7 @@ export default async function NotePage({
     <div className="space-y-8">
       <PageHero
         title="Note explorer"
-        subtitle="Inspect note payload, ancestor context, continuation replies, thread activity, and related notes."
+        subtitle="View the note, its thread, and the activity around it."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <NativeSemanticsBadges semantics={semantics} />
@@ -448,7 +448,7 @@ export default async function NotePage({
 
       {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
 
-      <SectionCard title="Focal note" description="Canonical note content and key identity fields.">
+      <SectionCard title="Focal note" description="The note itself and its core fields.">
         {focal ? (
           <NoteCard
             note={focal}
@@ -465,7 +465,7 @@ export default async function NotePage({
       </SectionCard>
 
       {resolvedAuthor ? (
-        <SectionCard title="Author identity" description="Profile identity for this note author.">
+        <SectionCard title="Author identity" description="The profile behind this note.">
           <ProfileCard
             profile={resolvedAuthor}
             summary={isRecord(noteSummary?.author) ? noteSummary.author : undefined}
@@ -496,7 +496,7 @@ export default async function NotePage({
       ) : null}
 
       {noteDetails.length > 0 ? (
-        <SectionCard title="Note metadata" description="Core event fields for this note.">
+        <SectionCard title="Note metadata" description="Core fields returned for this event.">
           <MetadataList items={noteDetails} columns={2} />
         </SectionCard>
       ) : null}
@@ -504,7 +504,7 @@ export default async function NotePage({
       <div id="note-provenance">
         <SectionCard
           title="Provenance"
-          description="Relay observations and trust metadata for this event."
+          description="Where this event was seen and the trust data returned with it."
         >
           {provenanceDetails.length > 0 ? (
             <MetadataList items={provenanceDetails} columns={2} />
@@ -548,7 +548,7 @@ export default async function NotePage({
             </div>
           ) : null}
           {provenanceDetails.length === 0 && provenanceRelayLinks.length === 0 ? (
-            <EmptyState message="No relay observations or trust metadata were returned for this event." />
+            <EmptyState message="No relay observations or trust data were returned for this event." />
           ) : null}
         </SectionCard>
       </div>
@@ -556,7 +556,7 @@ export default async function NotePage({
       {mediaDetails.length > 0 ? (
         <SectionCard
           title="Media summary"
-          description="Media and attachment details from note summary."
+          description="Media and attachment details returned for this note."
         >
           <MetadataList items={mediaDetails} columns={2} />
         </SectionCard>
@@ -565,7 +565,7 @@ export default async function NotePage({
       {quoteDetails.length > 0 ? (
         <SectionCard
           title="Quote or repost context"
-          description="Context fields for quoted or reposted note relationships."
+          description="Quoted or reposted note context returned with this event."
         >
           <MetadataList items={quoteDetails} columns={2} />
         </SectionCard>
@@ -585,7 +585,7 @@ export default async function NotePage({
       <div id="conversation-context">
         <SectionCard
           title="Conversation context"
-          description="Ancestor context, focal note, and direct continuation replies."
+          description="The notes around this one in the thread."
         >
           <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
             <Link
@@ -637,10 +637,7 @@ export default async function NotePage({
       </div>
 
       <div id="thread-activity">
-        <SectionCard
-          title="Thread activity"
-          description="Recent conversation activity for this thread root."
-        >
+        <SectionCard title="Thread activity" description="Recent activity from this thread.">
           {activity.length > 0 ? (
             <div className="space-y-3">
               {activity.map((note, index) => (
@@ -656,13 +653,11 @@ export default async function NotePage({
               ))}
             </div>
           ) : (
-            <EmptyState message="No activity feed entries were returned for this thread." />
+            <EmptyState message="No activity entries were returned for this thread." />
           )}
           {typeof activityNextCursor === "string" && activityNextCursor.length > 0 ? (
             <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
-              <p className="text-xs text-indigo-100">
-                More thread activity is available. Continue with the backend cursor.
-              </p>
+              <p className="text-xs text-indigo-100">More thread activity is available.</p>
               <Link
                 href={activityContinuationHref}
                 className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
@@ -675,10 +670,7 @@ export default async function NotePage({
       </div>
 
       <div id="related-notes">
-        <SectionCard
-          title="Related notes"
-          description="Backend-provided notes connected to this note."
-        >
+        <SectionCard title="Related notes" description="Other notes connected to this one.">
           {relatedNotes.length > 0 ? (
             <div className="space-y-3">
               {relatedNotes.map((note, index) => (
@@ -698,9 +690,7 @@ export default async function NotePage({
           )}
           {typeof relatedNextCursor === "string" && relatedNextCursor.length > 0 ? (
             <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
-              <p className="text-xs text-indigo-100">
-                More related notes are available from the continuation cursor.
-              </p>
+              <p className="text-xs text-indigo-100">More related notes are available.</p>
               <Link
                 href={relatedContinuationHref}
                 className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"

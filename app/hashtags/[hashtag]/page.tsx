@@ -30,8 +30,8 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const { hashtag } = await params;
   const label = hashtagTitle(hashtag);
   return {
-    title: `${label} explorer`,
-    description: `NostrMash hashtag explorer for ${label}, including note activity and related hashtags.`,
+    title: `${label}`,
+    description: `See notes and related hashtags for ${label}.`,
   };
 }
 
@@ -112,7 +112,7 @@ export default async function HashtagPage({ params }: { params: Params }) {
       <PageHero
         eyebrow="Hashtag explorer"
         title={hashtagTitle(normalizedHashtag)}
-        subtitle="Inspect hashtag-level trends, related tags, and connected notes."
+        subtitle="See related notes and nearby topics for this hashtag."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <NativeSemanticsBadges semantics={semantics} />
@@ -161,10 +161,7 @@ export default async function HashtagPage({ params }: { params: Params }) {
         ) : null}
       </section>
 
-      <SectionCard
-        title="Notes snapshot"
-        description="A short preview of notes currently associated with this hashtag."
-      >
+      <SectionCard title="Notes snapshot" description="A preview of notes using this hashtag.">
         {notes.length > 0 ? (
           <div className="space-y-3">
             <NotesList notes={notes.slice(0, 8)} authorsByPubkey={authorsByPubkey} />
@@ -177,10 +174,7 @@ export default async function HashtagPage({ params }: { params: Params }) {
         )}
       </SectionCard>
 
-      <SectionCard
-        title="Related hashtags"
-        description="Related tags from backend discovery relationships."
-      >
+      <SectionCard title="Related hashtags" description="Nearby topics connected to this hashtag.">
         {relatedHashtags.length > 0 ? (
           <HashtagsList hashtags={relatedHashtags} searchable />
         ) : (

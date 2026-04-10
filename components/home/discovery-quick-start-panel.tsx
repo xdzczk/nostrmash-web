@@ -19,7 +19,7 @@ export function DiscoveryQuickStartPanel({
         Discovery quick start
       </p>
       <p className="mt-2 text-base font-semibold tracking-tight text-zinc-100 sm:text-lg">
-        Open a live surface.
+        Start with a live view.
       </p>
 
       <div className="mt-3 space-y-2 sm:space-y-2">

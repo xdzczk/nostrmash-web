@@ -20,8 +20,7 @@ import type { Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = {
   title: "Hot Conversations",
-  description:
-    "Conversation-heavy notes with current interaction velocity across discovery windows.",
+  description: "Notes driving active conversation right now.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -76,7 +75,7 @@ export default async function HotConversationsPage({
       <PageHero
         eyebrow="Discovery depth"
         title="Hot conversations"
-        subtitle="Notes currently driving active conversation loops, so you can jump from signal to thread context quickly."
+        subtitle="Notes driving active threads, so you can move from signal to conversation context quickly."
         badges={
           hasSemantics ? (
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -86,10 +85,7 @@ export default async function HotConversationsPage({
         }
       />
 
-      <SectionCard
-        title="Conversation feed"
-        description="Prioritized by live interaction momentum rather than static top-note ranking."
-      >
+      <SectionCard title="Conversation feed" description="Ranked by live conversation activity.">
         {errorMessage ? (
           <ErrorPanel message={errorMessage} />
         ) : notes.length > 0 ? (
@@ -97,7 +93,7 @@ export default async function HotConversationsPage({
         ) : (
           <EmptyState
             title="No hot conversations available"
-            message="The API did not return conversation entries for this discovery window."
+            message="The API did not return conversation entries for this window."
           />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
@@ -109,25 +105,25 @@ export default async function HotConversationsPage({
 
       <SectionCard
         title="Conversation participants"
-        description="Profiles currently active in the same conversation slice."
+        description="Profiles active in these conversations."
       >
         {activeProfiles.length > 0 ? (
           <ProfilesList profiles={activeProfiles} />
         ) : (
-          <EmptyState message="No participant profiles could be hydrated for this conversation window." />
+          <EmptyState message="No participant profiles were available for this window." />
         )}
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
           <Link
             href="/discovery/profiles/rising"
             className="rounded-full border border-zinc-700 px-2.5 py-1 text-zinc-300 hover:text-zinc-100"
           >
-            Explore rising profiles
+            Open rising profiles
           </Link>
           <Link
             href="/trending/notes"
             className="rounded-full border border-zinc-700 px-2.5 py-1 text-zinc-300 hover:text-zinc-100"
           >
-            Compare against trending notes
+            See trending notes
           </Link>
         </div>
       </SectionCard>
