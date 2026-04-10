@@ -6,6 +6,7 @@ import { Timestamp } from "@/components/explorer/timestamp";
 import {
   extractPrimitiveStats,
   formatMetricLabel,
+  noteInlineAuthorProfile,
   noteAuthorIdentifier,
   profileFallbackAvatarDataUrl,
   profileIdentifier,
@@ -34,6 +35,7 @@ export function NoteCard({
   showFullContent?: boolean;
   discoverySignals?: boolean;
 }) {
+  const resolvedAuthor = author ?? noteInlineAuthorProfile(note);
   const resolvedNoteId =
     (typeof note.id === "string" && note.id.length > 0
       ? note.id
@@ -44,13 +46,16 @@ export function NoteCard({
           : undefined) ?? undefined;
   const noteHref =
     href ?? (resolvedNoteId ? `/notes/${encodeURIComponent(resolvedNoteId)}` : undefined);
-  const authorLabel = author ? profileLabel(author) : noteAuthorIdentifier(note);
-  const authorSecondaryLabel = author ? profileSecondaryLabel(author) : noteAuthorIdentifier(note);
-  const authorPictureUrl = author ? profilePictureUrl(author) : null;
-  const authorAvatarSrc = author && (authorPictureUrl ?? profileFallbackAvatarDataUrl(author));
+  const authorLabel = resolvedAuthor ? profileLabel(resolvedAuthor) : noteAuthorIdentifier(note);
+  const authorSecondaryLabel = resolvedAuthor
+    ? profileSecondaryLabel(resolvedAuthor)
+    : noteAuthorIdentifier(note);
+  const authorPictureUrl = resolvedAuthor ? profilePictureUrl(resolvedAuthor) : null;
+  const authorAvatarSrc =
+    resolvedAuthor && (authorPictureUrl ?? profileFallbackAvatarDataUrl(resolvedAuthor));
   const authorHref =
-    author && profileIdentifier(author) !== "unknown"
-      ? `/profiles/${encodeURIComponent(profileIdentifier(author))}`
+    resolvedAuthor && profileIdentifier(resolvedAuthor) !== "unknown"
+      ? `/profiles/${encodeURIComponent(profileIdentifier(resolvedAuthor))}`
       : undefined;
   const content =
     typeof note.content === "string" && note.content.length > 0 ? note.content : "(no content)";

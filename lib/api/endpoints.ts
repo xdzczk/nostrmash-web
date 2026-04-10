@@ -445,9 +445,9 @@ export async function getSearch(
         ? currentOffset + profiles.length
         : undefined;
     let directProfileMatch: Profile[] = [];
-    if (profiles.length === 0 && looksLikeProfileIdentifier(normalizedQueryText)) {
+    if (profiles.length === 0 && looksLikeProfileIdentifier(normalizedProfileQueryText)) {
       try {
-        const profile = await getProfile(normalizedQueryText, cacheClass);
+        const profile = await getProfile(normalizedProfileQueryText, cacheClass);
         directProfileMatch = [profile];
       } catch {
         directProfileMatch = [];
@@ -516,8 +516,8 @@ export async function getSearch(
       },
       cacheClass
     ),
-    looksLikeProfileIdentifier(normalizedQueryText)
-      ? getProfile(normalizedQueryText, cacheClass)
+    looksLikeProfileIdentifier(normalizedProfileQueryText)
+      ? getProfile(normalizedProfileQueryText, cacheClass)
       : Promise.resolve(null),
     looksLikeEventIdentifier(normalizedQueryText)
       ? getEvent(normalizedQueryText, cacheClass)

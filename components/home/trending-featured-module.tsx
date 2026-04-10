@@ -10,6 +10,7 @@ import {
   extractRelayHostsFromNote,
   formatMetricLabel,
   formatValue,
+  noteInlineAuthorProfile,
   noteAuthorIdentifier,
   profileIdentifier,
   profileInitial,
@@ -38,8 +39,11 @@ const AUDIO_EXTENSIONS = new Set([".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac
 
 function getAuthorByPubkey(
   authorsByPubkey: Record<string, Profile> | undefined,
-  pubkey: unknown
+  note: EventRecord
 ): Profile | undefined {
+  const inlineAuthor = noteInlineAuthorProfile(note);
+  if (inlineAuthor) return inlineAuthor;
+  const pubkey = note.pubkey;
   if (!authorsByPubkey || typeof pubkey !== "string") return undefined;
   const normalized = pubkey.trim().toLowerCase();
   return authorsByPubkey[normalized] ?? authorsByPubkey[pubkey];
@@ -428,7 +432,7 @@ export function TrendingFeaturedModule({
     return (
       <FeaturedNoteCard
         note={featuredNote}
-        author={getAuthorByPubkey(authorsByPubkey, featuredNote.pubkey)}
+        author={getAuthorByPubkey(authorsByPubkey, featuredNote)}
         rank={1}
       />
     );
@@ -438,7 +442,7 @@ export function TrendingFeaturedModule({
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.42fr)_minmax(280px,0.9fr)] xl:items-start">
       <FeaturedNoteCard
         note={featuredNote}
-        author={getAuthorByPubkey(authorsByPubkey, featuredNote.pubkey)}
+        author={getAuthorByPubkey(authorsByPubkey, featuredNote)}
         rank={1}
       />
 
@@ -447,7 +451,7 @@ export function TrendingFeaturedModule({
           <SecondaryNoteCard
             key={resolveNoteId(note) ?? `trending-secondary-${index}`}
             note={note}
-            author={getAuthorByPubkey(authorsByPubkey, note.pubkey)}
+            author={getAuthorByPubkey(authorsByPubkey, note)}
             rank={index + 2}
           />
         ))}

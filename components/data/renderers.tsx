@@ -1,13 +1,17 @@
 import { DomainChip } from "@/components/explorer/domain-chip";
 import { HashtagChip } from "@/components/explorer/hashtag-chip";
 import { NoteCard } from "@/components/explorer/note-card";
+import { noteInlineAuthorProfile } from "@/components/explorer/utils";
 import { ProfileCard } from "@/components/explorer/profile-card";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
 function getAuthorByPubkey(
   authorsByPubkey: Record<string, Profile> | undefined,
-  pubkey: unknown
+  note: EventRecord
 ): Profile | undefined {
+  const inlineAuthor = noteInlineAuthorProfile(note);
+  if (inlineAuthor) return inlineAuthor;
+  const pubkey = note.pubkey;
   if (!authorsByPubkey || typeof pubkey !== "string") return undefined;
   const normalized = pubkey.trim().toLowerCase();
   return authorsByPubkey[normalized] ?? authorsByPubkey[pubkey];
@@ -32,7 +36,7 @@ export function NotesList({
         <li key={note.id ?? `note-${index}`} className="min-w-0">
           <NoteCard
             note={note}
-            author={getAuthorByPubkey(authorsByPubkey, note.pubkey)}
+            author={getAuthorByPubkey(authorsByPubkey, note)}
             rank={ranked ? index + 1 : undefined}
             showFullContent={showFullContent}
             discoverySignals={discoverySignals}

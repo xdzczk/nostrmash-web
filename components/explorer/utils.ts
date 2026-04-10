@@ -250,6 +250,24 @@ export function noteAuthorIdentifier(note: EventRecord): string {
   return "unknown author";
 }
 
+export function noteInlineAuthorProfile(note: EventRecord): Profile | undefined {
+  const root = note as Record<string, unknown>;
+  const rawAuthor = isRecord(root.author) ? root.author : null;
+  const rawProfile =
+    (rawAuthor && isRecord(rawAuthor.profile) ? rawAuthor.profile : null) ??
+    (isRecord(root.profile) ? root.profile : null);
+  const candidate = rawProfile ?? rawAuthor;
+  if (!candidate) return undefined;
+  if (
+    typeof candidate.pubkey !== "string" &&
+    typeof note.pubkey === "string" &&
+    note.pubkey.trim().length > 0
+  ) {
+    return { ...candidate, pubkey: note.pubkey } as Profile;
+  }
+  return candidate as Profile;
+}
+
 export function normalizeDomainForRoute(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim().toLowerCase();
