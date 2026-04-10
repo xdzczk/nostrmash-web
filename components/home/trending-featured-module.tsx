@@ -114,6 +114,12 @@ function extractMediaAttachment(note: EventRecord): MediaAttachment | null {
   );
 }
 
+function truncateNotePreview(content: string, maxLength: number): string {
+  const normalized = content.trim().replace(/\n{3,}/g, "\n\n");
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength).trimEnd()}…`;
+}
+
 function buildDiscoverySignals(note: EventRecord): DiscoverySignal[] {
   const rawMetrics = extractPrimitiveStats(note, [
     "id",
@@ -325,11 +331,12 @@ function FeaturedNoteCard({
 }) {
   const noteId = resolveNoteId(note);
   const noteHref = noteId ? `/notes/${encodeURIComponent(noteId)}` : undefined;
-  const content =
+  const rawContent =
     typeof note.content === "string" && note.content.trim().length > 0
       ? note.content.trim()
       : "Media-only note with no text body.";
   const mediaAttachment = extractMediaAttachment(note);
+  const content = truncateNotePreview(rawContent, mediaAttachment ? 900 : 1400);
   const signals = buildDiscoverySignals(note);
   const reason = buildSurfacedReason(note, signals);
   const statusLabel = buildStatusLabel(rank, signals);
@@ -349,9 +356,7 @@ function FeaturedNoteCard({
 
       <div
         className={`mt-5 grid gap-5 ${
-          mediaAttachment
-            ? "xl:grid-cols-[minmax(0,1fr)_minmax(300px,0.78fr)] 2xl:grid-cols-[minmax(0,1.14fr)_minmax(320px,0.76fr)]"
-            : ""
+          mediaAttachment ? "2xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.82fr)]" : ""
         }`}
       >
         <div className="max-w-[50rem] min-w-0 space-y-[1.125rem]">
