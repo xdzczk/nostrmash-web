@@ -24,7 +24,7 @@ import { extractNativeApiSemantics } from "@/lib/api/normalize";
 
 export const metadata: Metadata = {
   title: "Relay explorer",
-  description: "Explore relay activity dominance and current health posture.",
+  description: "Explore relay activity rankings and current health status.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -74,7 +74,7 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
       <PageHero
         eyebrow="Relay exploration"
         title="Relay explorer"
-        subtitle="Trace active relays, inspect health posture, and open relay detail routes from one place."
+        subtitle="Track active relays, inspect current health status, and open relay detail routes from one place."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <NativeSemanticsBadges semantics={semantics} />
@@ -88,7 +88,7 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
               href="/relays/health"
               className="rounded-full border border-zinc-700 px-2 py-1 text-indigo-300 hover:border-indigo-400/40"
             >
-              Open health posture
+              Open relay health
             </Link>
           </div>
         }

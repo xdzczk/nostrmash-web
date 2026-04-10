@@ -135,7 +135,7 @@ export default async function HashtagPage({ params }: { params: Params }) {
               href={notesSurfaceHref}
               className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:text-zinc-100"
             >
-              Open full notes surface
+              Open full note list
             </Link>
             <Link
               href={`/search?q=${encodeURIComponent(`#${normalizedHashtag}`)}&tab=all`}
@@ -157,7 +157,7 @@ export default async function HashtagPage({ params }: { params: Params }) {
           <StatCard label="unique_authors" value={uniqueAuthors} />
         ) : null}
         {typeof hashtagNotesPayload?.total === "number" ? (
-          <StatCard label="notes_surface_total" value={hashtagNotesPayload.total} />
+          <StatCard label="notes_total" value={hashtagNotesPayload.total} />
         ) : null}
       </section>
 
@@ -169,7 +169,7 @@ export default async function HashtagPage({ params }: { params: Params }) {
           <div className="space-y-3">
             <NotesList notes={notes.slice(0, 8)} authorsByPubkey={authorsByPubkey} />
             <Link href={notesSurfaceHref} className="inline-block text-sm text-indigo-300">
-              Open hashtag notes surface
+              Open all hashtag notes
             </Link>
           </div>
         ) : (

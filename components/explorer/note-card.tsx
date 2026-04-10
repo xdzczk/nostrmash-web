@@ -25,12 +25,14 @@ export function NoteCard({
   href,
   rank,
   showFullContent = false,
+  discoverySignals = false,
 }: {
   note: EventRecord;
   author?: Profile;
   href?: string;
   rank?: number;
   showFullContent?: boolean;
+  discoverySignals?: boolean;
 }) {
   const resolvedNoteId =
     (typeof note.id === "string" && note.id.length > 0
@@ -64,6 +66,31 @@ export function NoteCard({
   const noteDomains = extractDomainsFromNote(note, 4);
   const noteHashtags = extractHashtagsFromNote(note, 4);
   const relayHosts = extractRelayHostsFromNote(note, 3);
+  const hasRecentPublishSignal =
+    typeof note.created_at === "number" && Number.isFinite(note.created_at);
+  const hasEngagementSignal = metrics.some((metric) =>
+    /(like|reply|zap|boost|reaction|engagement|score|count)/i.test(metric.label)
+  );
+  const hasReplySignal = metrics.some((metric) => /repl(y|ies)/i.test(metric.label));
+  const trendReasons: string[] = [];
+  if (hasEngagementSignal) {
+    trendReasons.push("Engagement is rising");
+  }
+  if (relayHosts.length > 0) {
+    trendReasons.push(
+      relayHosts.length > 1 ? `Seen on ${relayHosts.length} relays` : "Seen on active relay path"
+    );
+  }
+  if (hasReplySignal) {
+    trendReasons.push("Reply velocity");
+  }
+  if (hasRecentPublishSignal) {
+    trendReasons.push("Recently published");
+  }
+  if (trendReasons.length === 0) {
+    trendReasons.push("Momentum in current window");
+  }
+  const showSpikeMarker = isTopRank;
 
   return (
     <article
@@ -99,6 +126,11 @@ export function NoteCard({
                 #{rank}
               </span>
             ) : null}
+            {discoverySignals && showSpikeMarker ? (
+              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-emerald-300">
+                Spike now
+              </span>
+            ) : null}
             {authorHref ? (
               <Link href={authorHref} className="font-medium text-zinc-200 hover:text-white">
                 {authorLabel}
@@ -121,7 +153,7 @@ export function NoteCard({
       </div>
 
       <p
-        className={`mt-2.5 text-sm leading-5 text-zinc-100 sm:mt-3 sm:leading-6 ${
+        className={`mt-2.5 text-sm leading-5 [overflow-wrap:anywhere] text-zinc-100 sm:mt-3 sm:leading-6 ${
           showFullContent ? "whitespace-pre-wrap" : "line-clamp-4"
         }`}
       >
@@ -166,11 +198,27 @@ export function NoteCard({
             <Link
               key={relayHost}
               href={`/relays/${encodeURIComponent(relayHost)}`}
-              className="rounded-full border border-zinc-700 px-2.5 py-1 text-xs text-indigo-300 hover:border-indigo-400/40"
+              className="rounded-full border border-zinc-700 px-2.5 py-1 text-xs break-all text-indigo-300 hover:border-indigo-400/40"
             >
               relay: {relayHost}
             </Link>
           ))}
+        </div>
+      ) : null}
+
+      {discoverySignals ? (
+        <div className="mt-2.5 space-y-1 sm:mt-3">
+          <p className="text-[11px] tracking-[0.14em] text-zinc-500 uppercase">Why this note</p>
+          <div className="flex flex-wrap items-center gap-2">
+            {trendReasons.slice(0, 3).map((reason) => (
+              <span
+                key={reason}
+                className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1 text-[11px] text-zinc-300"
+              >
+                {reason}
+              </span>
+            ))}
+          </div>
         </div>
       ) : null}
 
@@ -201,12 +249,20 @@ export function NoteCard({
               Open note
             </Link>
           ) : null}
+          {authorHref ? (
+            <>
+              <span className="text-zinc-600">•</span>
+              <Link href={authorHref} className="text-indigo-300 hover:text-indigo-200">
+                View profile
+              </Link>
+            </>
+          ) : null}
           <span className="text-zinc-600">•</span>
           <Link
             href={`/notes/${encodeURIComponent(resolvedNoteId)}#conversation-context`}
             className="text-indigo-300 hover:text-indigo-200"
           >
-            View thread
+            Inspect thread
           </Link>
           <span className="text-zinc-600">•</span>
           <Link
@@ -220,7 +276,11 @@ export function NoteCard({
             href={`/notes/${encodeURIComponent(resolvedNoteId)}#note-provenance`}
             className="text-indigo-300 hover:text-indigo-200"
           >
-            Seen-on relays
+            Seen on relays
+          </Link>
+          <span className="text-zinc-600">•</span>
+          <Link href="/trending/notes" className="text-indigo-300 hover:text-indigo-200">
+            Open trend view
           </Link>
         </div>
       ) : null}

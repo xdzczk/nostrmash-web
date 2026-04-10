@@ -10,7 +10,7 @@ export function BrandLogo({
   priority?: boolean;
 }) {
   return (
-    <span className={`relative block h-8 w-[132px] sm:w-[168px] ${className}`.trim()}>
+    <span className={`relative block h-8 w-[132px] shrink-0 sm:w-[168px] ${className}`.trim()}>
       <Image
         src={LOGO_SRC}
         alt="NostrMash"

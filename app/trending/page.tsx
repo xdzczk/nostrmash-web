@@ -40,7 +40,7 @@ const sections = [
   {
     href: "/trending/domains",
     title: "Trending domains",
-    description: "Domain trends by surfaced notes and discovery activity.",
+    description: "Domains gaining traction from currently ranked notes.",
   },
   {
     href: "/discovery/conversations/hot",
@@ -59,18 +59,32 @@ const sections = [
   },
   {
     href: "/relays/health",
-    title: "Relay health posture",
-    description: "Review backend relay health posture without client-side scoring.",
+    title: "Relay health",
+    description: "Review relay availability and backend health signals.",
   },
 ];
 
 export const metadata: Metadata = {
   title: "Trending",
   description:
-    "Overview of trending notes, profiles, hashtags, domains, and relay lookup entry points.",
+    "Explore what is trending now across notes, profiles, hashtags, domains, and relays.",
 };
 
 export default async function TrendingPage() {
+  const normalizeUnixSeconds = (value: unknown): number | null => {
+    if (typeof value !== "number" || !Number.isFinite(value)) return null;
+    if (value > 1_000_000_000_000) return Math.floor(value / 1000);
+    if (value > 1_000_000_000) return Math.floor(value);
+    return null;
+  };
+  const formatFreshness = (value: unknown): string | null => {
+    const unixSeconds = normalizeUnixSeconds(value);
+    if (!unixSeconds) return null;
+    const observedAt = new Date(unixSeconds * 1000);
+    if (Number.isNaN(observedAt.getTime())) return null;
+    return `Updated ${observedAt.toLocaleString()}`;
+  };
+  const trendWindowLabel = "24h trend window";
   let errorMessage = "";
   let authorsByPubkey: Record<string, Profile> = {};
   let hydratedProfiles: Profile[] = [];
@@ -129,14 +143,34 @@ export default async function TrendingPage() {
     typeof domains?.next_cursor === "string" && domains.next_cursor.length > 0
       ? `/trending/domains?cursor=${encodeURIComponent(domains.next_cursor)}`
       : null;
+  const notesFreshness = formatFreshness(notes?.notes?.[0]?.created_at) ?? "Updated recently";
+  const profileActivityCandidates = hydratedProfiles
+    .map((profile) =>
+      [
+        profile.recent_activity_at,
+        profile.last_activity_at,
+        profile.updated_at,
+        profile.created_at,
+      ].map(normalizeUnixSeconds)
+    )
+    .flat()
+    .filter((value): value is number => typeof value === "number");
+  const latestProfileActivity =
+    profileActivityCandidates.length > 0 ? Math.max(...profileActivityCandidates) : null;
+  const profilesFreshness =
+    formatFreshness(latestProfileActivity) ??
+    formatFreshness(notes?.notes?.[0]?.created_at) ??
+    "Updated recently";
+  const hashtagsFreshness = formatFreshness(notes?.notes?.[0]?.created_at) ?? "Updated recently";
+  const domainsFreshness = formatFreshness(notes?.notes?.[0]?.created_at) ?? "Updated recently";
   const semantics = extractNativeApiSemantics(notes, profiles, hashtags, domains);
 
   return (
     <div className="space-y-8">
       <PageHero
-        eyebrow="Trending surfaces"
-        title="Trending surfaces"
-        subtitle="Compare top-ranked notes, profiles, and hashtag movement in one observability entry point."
+        eyebrow="Trending now"
+        title="Trending now"
+        subtitle="Compare top-ranked notes, profiles, hashtags, and domains in one explorer view."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <NativeSemanticsBadges semantics={semantics} />
@@ -158,20 +192,42 @@ export default async function TrendingPage() {
       {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
       <div className="space-y-6">
         <SectionCard
-          title="Trending notes snapshot"
-          description="Top ranked notes from the current discovery trend window."
+          title="Trending now"
+          description="Top ranked notes in the current trend window with direct thread and relay pivots."
         >
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300 sm:mb-4">
+            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
+              {trendWindowLabel}
+            </span>
+            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
+              {notesFreshness}
+            </span>
+            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-emerald-300">
+              Live rank movers
+            </span>
+          </div>
           {notes?.notes && notes.notes.length > 0 ? (
-            <NotesList notes={notes.notes.slice(0, 3)} authorsByPubkey={authorsByPubkey} ranked />
+            <NotesList
+              notes={notes.notes.slice(0, 3)}
+              authorsByPubkey={authorsByPubkey}
+              ranked
+              discoverySignals
+            />
           ) : (
             <EmptyState
               title="Notes snapshot unavailable"
               message="No ranked notes were returned for the current trend window."
             />
           )}
-          <Link href="/trending/notes" className="mt-3 inline-block text-sm text-indigo-300">
-            Open full notes ranking
-          </Link>
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-indigo-300">
+            <Link href="/trending/notes" className="hover:text-indigo-200">
+              Open trend view
+            </Link>
+            <span className="text-zinc-600">•</span>
+            <Link href="/trending/notes" className="hover:text-indigo-200">
+              Compare note ranks
+            </Link>
+          </div>
           {trendingNotesContinuationHref ? (
             <Link
               href={trendingNotesContinuationHref}
@@ -183,20 +239,37 @@ export default async function TrendingPage() {
         </SectionCard>
 
         <SectionCard
-          title="Trending profiles snapshot"
-          description="Profiles currently surfacing with the strongest trend signals."
+          title="Profiles in motion"
+          description="Profiles gaining visibility across recent activity with direct authored-note pivots."
         >
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300 sm:mb-4">
+            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
+              {trendWindowLabel}
+            </span>
+            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
+              {profilesFreshness}
+            </span>
+            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-emerald-300">
+              Visibility movers
+            </span>
+          </div>
           {hydratedProfiles.length > 0 ? (
-            <ProfilesList profiles={hydratedProfiles.slice(0, 5)} ranked />
+            <ProfilesList profiles={hydratedProfiles.slice(0, 5)} ranked discoverySignals />
           ) : (
             <EmptyState
               title="Profiles snapshot unavailable"
               message="No ranked profiles were returned for the current trend window."
             />
           )}
-          <Link href="/trending/profiles" className="mt-3 inline-block text-sm text-indigo-300">
-            Open full profile ranking
-          </Link>
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-indigo-300">
+            <Link href="/trending/profiles" className="hover:text-indigo-200">
+              Open trend view
+            </Link>
+            <span className="text-zinc-600">•</span>
+            <Link href="/discovery/profiles/rising" className="hover:text-indigo-200">
+              Inspect rising profiles
+            </Link>
+          </div>
           {trendingProfilesContinuationHref ? (
             <Link
               href={trendingProfilesContinuationHref}
@@ -208,9 +281,20 @@ export default async function TrendingPage() {
         </SectionCard>
 
         <SectionCard
-          title="Trending hashtags snapshot"
-          description="Top hashtags by current mention counts."
+          title="Hashtags accelerating"
+          description="Hashtags rising faster than baseline in the active discovery window."
         >
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300 sm:mb-4">
+            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
+              {trendWindowLabel}
+            </span>
+            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
+              {hashtagsFreshness}
+            </span>
+            <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1 text-indigo-300">
+              Mention-lift rank
+            </span>
+          </div>
           {hashtags?.hashtags && hashtags.hashtags.length > 0 ? (
             <HashtagsList hashtags={hashtags.hashtags.slice(0, 10)} ranked searchable />
           ) : (
@@ -219,9 +303,15 @@ export default async function TrendingPage() {
               message="No ranked hashtags were returned for the current trend window."
             />
           )}
-          <Link href="/trending/hashtags" className="mt-3 inline-block text-sm text-indigo-300">
-            Open full hashtag ranking
-          </Link>
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-indigo-300">
+            <Link href="/trending/hashtags" className="hover:text-indigo-200">
+              Open trend view
+            </Link>
+            <span className="text-zinc-600">•</span>
+            <Link href="/search?tab=all" className="hover:text-indigo-200">
+              Search related notes
+            </Link>
+          </div>
           {trendingHashtagsContinuationHref ? (
             <Link
               href={trendingHashtagsContinuationHref}
@@ -233,9 +323,20 @@ export default async function TrendingPage() {
         </SectionCard>
 
         <SectionCard
-          title="Trending domains snapshot"
-          description="Top domains by surfaced note counts."
+          title="Links gaining traction"
+          description="Domains ranking higher in current note discovery with cross-note spread signals."
         >
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300 sm:mb-4">
+            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
+              {trendWindowLabel}
+            </span>
+            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
+              {domainsFreshness}
+            </span>
+            <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1 text-indigo-300">
+              Cross-note spread rank
+            </span>
+          </div>
           {domains?.domains && domains.domains.length > 0 ? (
             <DomainsList domains={domains.domains.slice(0, 10)} ranked searchable />
           ) : (
@@ -244,9 +345,15 @@ export default async function TrendingPage() {
               message="No ranked domains were returned for the current trend window."
             />
           )}
-          <Link href="/trending/domains" className="mt-3 inline-block text-sm text-indigo-300">
-            Open full domain ranking
-          </Link>
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-indigo-300">
+            <Link href="/trending/domains" className="hover:text-indigo-200">
+              Open trend view
+            </Link>
+            <span className="text-zinc-600">•</span>
+            <Link href="/search?tab=all" className="hover:text-indigo-200">
+              Search linked notes
+            </Link>
+          </div>
           {trendingDomainsContinuationHref ? (
             <Link
               href={trendingDomainsContinuationHref}

@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const label = domainTitle(domain);
   return {
     title: `${label} notes`,
-    description: `NostrMash notes surface for ${label}.`,
+    description: `NostrMash note explorer for ${label}.`,
   };
 }
 
@@ -140,7 +140,7 @@ export default async function DomainNotesPage({
 
       <SectionCard
         title="Domain notes"
-        description="Notes in this domain surface, suitable for thread and author exploration."
+        description="Notes tied to this domain, ready for thread and author exploration."
       >
         {notes.length > 0 ? (
           <>

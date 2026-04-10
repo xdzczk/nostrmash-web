@@ -18,7 +18,7 @@ import { extractNativeApiSemantics } from "@/lib/api/normalize";
 
 export const metadata: Metadata = {
   title: "Trending Domains",
-  description: "Domain pulse and ranked note counts from NostrMash discovery data.",
+  description: "Explore ranked domain momentum and note counts from current discovery data.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;

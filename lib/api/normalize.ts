@@ -59,6 +59,24 @@ function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
+function parseJsonRecord(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== "string") return null;
+  try {
+    const parsed = JSON.parse(value);
+    return asRecord(parsed);
+  } catch {
+    return null;
+  }
+}
+
+function firstString(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    const candidate = asString(value);
+    if (candidate) return candidate;
+  }
+  return undefined;
+}
+
 function compactDefined<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined)) as T;
 }
@@ -136,10 +154,62 @@ export function normalizeProfile(value: unknown): Profile | null {
   if (!record) return null;
 
   const embeddedProfile = asRecord(record.profile);
-  const normalized = {
+  const metadataRecord =
+    asRecord(record.metadata) ??
+    parseJsonRecord(record.metadata) ??
+    asRecord(embeddedProfile?.metadata) ??
+    parseJsonRecord(embeddedProfile?.metadata);
+  const metadataFromContent =
+    parseJsonRecord(record.content) ?? parseJsonRecord(embeddedProfile?.content);
+  const profilePayload = {
+    ...(metadataRecord ?? {}),
+    ...(metadataFromContent ?? {}),
     ...(embeddedProfile ?? {}),
     ...record,
-    pubkey: asString(record.pubkey) ?? asString(embeddedProfile?.pubkey) ?? "",
+  };
+  const asProfileRecord = profilePayload as Record<string, unknown>;
+  const normalized = {
+    ...profilePayload,
+    pubkey:
+      firstString(
+        asProfileRecord.pubkey,
+        asProfileRecord.author_pubkey,
+        asProfileRecord.authorPubkey
+      ) ?? "",
+    npub: firstString(asProfileRecord.npub, asProfileRecord.npub_hex, asProfileRecord.npubHex),
+    display_name: firstString(
+      asProfileRecord.display_name,
+      asProfileRecord.displayName,
+      asProfileRecord.display,
+      asProfileRecord.displayname
+    ),
+    name: firstString(
+      asProfileRecord.name,
+      asProfileRecord.username,
+      asProfileRecord.user_name,
+      asProfileRecord.handle
+    ),
+    picture: firstString(
+      asProfileRecord.picture,
+      asProfileRecord.image,
+      asProfileRecord.avatar,
+      asProfileRecord.avatar_url,
+      asProfileRecord.avatarUrl,
+      asProfileRecord.pfp,
+      asProfileRecord.picture_url,
+      asProfileRecord.pictureUrl,
+      asProfileRecord.profile_image,
+      asProfileRecord.profile_picture
+    ),
+    about: firstString(asProfileRecord.about, asProfileRecord.description, asProfileRecord.bio),
+    nip05: firstString(asProfileRecord.nip05, asProfileRecord.nip_05),
+    lud16: firstString(asProfileRecord.lud16, asProfileRecord.lightning, asProfileRecord.lnurl),
+    website: firstString(
+      asProfileRecord.website,
+      asProfileRecord.url,
+      asProfileRecord.web,
+      asProfileRecord.homepage
+    ),
   };
 
   return normalized as Profile;

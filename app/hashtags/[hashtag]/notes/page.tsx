@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const label = hashtagTitle(hashtag);
   return {
     title: `${label} notes`,
-    description: `NostrMash notes surface for ${label}.`,
+    description: `NostrMash note explorer for ${label}.`,
   };
 }
 
@@ -147,7 +147,7 @@ export default async function HashtagNotesPage({
 
       <SectionCard
         title="Hashtag notes"
-        description="Notes in this hashtag surface, suitable for further thread exploration."
+        description="Notes in this hashtag, suitable for deeper thread exploration."
       >
         {notes.length > 0 ? (
           <>

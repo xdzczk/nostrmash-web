@@ -16,10 +16,12 @@ export function ProfileCard({
   profile,
   rank,
   summary,
+  discoverySignals = false,
 }: {
   profile: Profile;
   rank?: number;
   summary?: Record<string, unknown>;
+  discoverySignals?: boolean;
 }) {
   const label = profileLabel(profile);
   const secondaryLabel = profileSecondaryLabel(profile);
@@ -42,6 +44,28 @@ export function ProfileCard({
     .slice(0, 3);
   const isTopRank = typeof rank === "number" && rank <= 3;
   const rankLabel = typeof rank === "number" ? `#${rank}` : null;
+  const hasMomentumSignal = metrics.some((metric) =>
+    /(activity|note|event|recent|author)/i.test(metric.label)
+  );
+  const hasVisibilitySignal = metrics.some((metric) =>
+    /(relay|mention|visibility|impression|cross|reach)/i.test(metric.label)
+  );
+  const hasNetworkAttentionSignal = metrics.some((metric) =>
+    /(follower|following|score|rank|trust)/i.test(metric.label)
+  );
+  const profileReasons: string[] = [];
+  if (hasMomentumSignal) {
+    profileReasons.push("Authoring momentum");
+  }
+  if (hasVisibilitySignal) {
+    profileReasons.push("Cross-note visibility");
+  }
+  if (hasNetworkAttentionSignal) {
+    profileReasons.push("Network attention");
+  }
+  if (profileReasons.length === 0) {
+    profileReasons.push("Active in current trend window");
+  }
 
   return (
     <article
@@ -79,12 +103,31 @@ export function ProfileCard({
               </span>
             ) : null}
           </div>
+          {discoverySignals && isTopRank ? (
+            <p className="text-[11px] text-emerald-300">Visibility spike</p>
+          ) : null}
           <p className="text-xs break-all text-zinc-500">{secondaryLabel ?? identifier}</p>
           {typeof profile.about === "string" && profile.about.length > 0 ? (
             <p className="line-clamp-2 text-sm text-zinc-300">{profile.about}</p>
           ) : null}
         </div>
       </div>
+
+      {discoverySignals ? (
+        <div className="mt-2.5 space-y-1 sm:mt-3">
+          <p className="text-[11px] tracking-[0.14em] text-zinc-500 uppercase">Why this profile</p>
+          <div className="flex flex-wrap items-center gap-2">
+            {profileReasons.slice(0, 3).map((reason) => (
+              <span
+                key={reason}
+                className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1 text-[11px] text-zinc-300"
+              >
+                {reason}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-2.5 grid gap-2 text-xs text-zinc-300 sm:mt-3 sm:grid-cols-3">
         {metrics.map((metric) => (
@@ -109,15 +152,19 @@ export function ProfileCard({
       {href ? (
         <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
           <Link href={href} className="text-indigo-300 hover:text-indigo-200">
-            Open profile
+            View profile
           </Link>
           <span className="text-zinc-600">•</span>
           <Link href={`${href}#authored-notes`} className="text-indigo-300 hover:text-indigo-200">
-            Authored notes
+            Inspect authored notes
           </Link>
           <span className="text-zinc-600">•</span>
           <Link href={`${href}#related-profiles`} className="text-indigo-300 hover:text-indigo-200">
             Related profiles
+          </Link>
+          <span className="text-zinc-600">•</span>
+          <Link href="/trending/profiles" className="text-indigo-300 hover:text-indigo-200">
+            Open trend view
           </Link>
         </div>
       ) : null}

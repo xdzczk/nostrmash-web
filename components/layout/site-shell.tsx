@@ -12,7 +12,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
           <Link
             href="/"
             aria-label="NostrMash home"
-            className="rounded-md border border-transparent px-2 py-1.5 transition hover:border-zinc-800 hover:bg-zinc-900/40 focus-visible:ring-2 focus-visible:ring-indigo-400/70 focus-visible:outline-none"
+            className="shrink-0 rounded-md border border-transparent px-2 py-1.5 transition hover:border-zinc-800 hover:bg-zinc-900/40 focus-visible:ring-2 focus-visible:ring-indigo-400/70 focus-visible:outline-none"
           >
             <BrandLogo priority />
           </Link>

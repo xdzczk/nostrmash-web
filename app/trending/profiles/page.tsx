@@ -20,7 +20,7 @@ import type { Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = {
   title: "Trending Profiles",
-  description: "Ranked profile activity from the NostrMash discovery trending surface.",
+  description: "Explore ranked profile activity from the current NostrMash trend window.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;

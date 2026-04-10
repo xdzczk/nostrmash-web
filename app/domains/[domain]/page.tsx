@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const label = domainTitle(domain);
   return {
     title: `${label} explorer`,
-    description: `NostrMash domain explorer for ${label}, including note activity surfaces.`,
+    description: `NostrMash domain explorer for ${label}, including note activity and discovery context.`,
   };
 }
 
@@ -103,7 +103,7 @@ export default async function DomainPage({ params }: { params: Params }) {
       <PageHero
         eyebrow="Domain explorer"
         title={domainTitle(normalizedDomain)}
-        subtitle="Inspect domain-level note trends and currently surfaced notes."
+        subtitle="Inspect domain-level note trends and currently ranked notes."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <NativeSemanticsBadges semantics={semantics} />
@@ -126,7 +126,7 @@ export default async function DomainPage({ params }: { params: Params }) {
               href={notesSurfaceHref}
               className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:text-zinc-100"
             >
-              Open full notes surface
+              Open full note list
             </Link>
             <Link
               href={`/search?q=${encodeURIComponent(normalizedDomain)}&tab=notes`}
@@ -148,7 +148,7 @@ export default async function DomainPage({ params }: { params: Params }) {
           <StatCard label="unique_authors" value={uniqueAuthors} />
         ) : null}
         {typeof domainNotesPayload?.total === "number" ? (
-          <StatCard label="notes_surface_total" value={domainNotesPayload.total} />
+          <StatCard label="notes_total" value={domainNotesPayload.total} />
         ) : null}
       </section>
 
@@ -160,7 +160,7 @@ export default async function DomainPage({ params }: { params: Params }) {
           <div className="space-y-3">
             <NotesList notes={notes.slice(0, 8)} authorsByPubkey={authorsByPubkey} />
             <Link href={notesSurfaceHref} className="inline-block text-sm text-indigo-300">
-              Open domain notes surface
+              Open all domain notes
             </Link>
           </div>
         ) : (

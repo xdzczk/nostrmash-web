@@ -18,7 +18,7 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export const metadata: Metadata = {
   title: "Search",
-  description: "Search notes, profiles, and hashtag activity across NostrMash indexed data.",
+  description: "Search notes, profiles, hashtags, and relays across NostrMash discovery data.",
 };
 
 type SearchTab = NonNullable<Awaited<ReturnType<typeof parseSearchQuery>>["tab"]>;
@@ -135,7 +135,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
     <div className="space-y-8">
       <PageHero
         title="Search"
-        subtitle="Explore notes, profiles, and query suggestions with native search surfaces."
+        subtitle="Search notes, profiles, hashtags, and relays from one focused explorer workflow."
         badges={
           canQuery ? (
             <div className="flex flex-wrap gap-2 text-xs">
@@ -219,7 +219,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
           {visibleSections.notes ? (
             <SectionCard title="Notes" description="Notes matching the current query.">
               {surfaceErrors.notes ? (
-                <ErrorPanel message={`Notes surface unavailable: ${surfaceErrors.notes}`} />
+                <ErrorPanel message={`Notes results unavailable: ${surfaceErrors.notes}`} />
               ) : null}
               {notesAvailable ? (
                 <NotesList notes={payload?.notes ?? []} authorsByPubkey={noteAuthorsByPubkey} />
@@ -242,7 +242,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
           {visibleSections.profiles ? (
             <SectionCard title="Profiles" description="Profiles relevant to the current query.">
               {surfaceErrors.profiles ? (
-                <ErrorPanel message={`Profiles surface unavailable: ${surfaceErrors.profiles}`} />
+                <ErrorPanel message={`Profile results unavailable: ${surfaceErrors.profiles}`} />
               ) : null}
               {profilesAvailable ? (
                 <ProfilesList profiles={hydratedProfiles} />
@@ -268,7 +268,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               description="Additional profile candidates returned by search suggestions."
             >
               {surfaceErrors.suggest ? (
-                <ErrorPanel message={`Suggestions surface unavailable: ${surfaceErrors.suggest}`} />
+                <ErrorPanel message={`Suggestions unavailable: ${surfaceErrors.suggest}`} />
               ) : null}
               {suggestedProfilesAvailable ? (
                 <ProfilesList profiles={hydratedSuggestedProfiles} />
@@ -289,7 +289,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
                   href={searchHref({ tab: "all", cursor: suggestCursor })}
                   className="mt-3 inline-block text-sm text-indigo-300"
                 >
-                  Continue suggestion surface
+                  Continue suggestions
                 </Link>
               ) : null}
             </SectionCard>
@@ -302,7 +302,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               ) : fallbackSuggestedHashtags.length > 0 ? (
                 <div className="space-y-3">
                   <p className="text-xs text-zinc-500">
-                    No query hashtags returned; showing active trending hashtags.
+                    No hashtags matched this query; showing trending hashtags now.
                   </p>
                   <HashtagsList hashtags={fallbackSuggestedHashtags} searchable />
                 </div>
@@ -314,8 +314,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
 
           {visibleSections.relays ? (
             <SectionCard
-              title="Relay hints"
-              description="Relay entities associated with this query scope."
+              title="Relay matches"
+              description="Relay entities connected to this query."
             >
               {payload?.relays && payload.relays.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
@@ -330,7 +330,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
                   ))}
                 </div>
               ) : (
-                <EmptyState message={`No relay hints returned for "${query.q}".`} />
+                <EmptyState message={`No relay matches returned for "${query.q}".`} />
               )}
             </SectionCard>
           ) : null}

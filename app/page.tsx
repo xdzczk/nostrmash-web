@@ -5,9 +5,9 @@ import { EmptyState } from "@/components/explorer/empty-state";
 import { extractPrimitiveStats, isRecord } from "@/components/explorer/utils";
 import { MetadataList } from "@/components/explorer/metadata-list";
 import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
+import { DiscoveryQuickStartPanel } from "@/components/home/discovery-quick-start-panel";
 import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
 import { QuickEntryGrid } from "@/components/home/quick-entry-grid";
-import { SystemPosturePanel } from "@/components/home/system-posture-panel";
 import { SearchForm } from "@/components/search/search-form";
 import { NotesList, ProfilesList, HashtagsList, DomainsList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
@@ -30,7 +30,7 @@ import type { Profile } from "@/lib/types/api";
 export const metadata: Metadata = {
   title: "NostrMash",
   description:
-    "Durable Nostr read layer for compatible search, trend observability, and calm operations.",
+    "Explore Nostr notes, profiles, relays, and trends through a public discovery surface backed by durable ingest.",
 };
 
 export default async function HomePage() {
@@ -87,6 +87,35 @@ export default async function HomePage() {
     "relay_count",
     "total_relays",
   ];
+  const formatScopeValue = (value: unknown): string => {
+    if (typeof value === "string") return value;
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  };
+  const formatResultScope = (value: unknown): string | null => {
+    if (typeof value === "string" && value.trim().length > 0) return value.trim();
+    if (!isRecord(value)) return null;
+    const entries = Object.entries(value).slice(0, 2);
+    if (entries.length === 0) return null;
+    return entries.map(([key, entry]) => `${key}: ${formatScopeValue(entry)}`).join(" • ");
+  };
+  const normalizeUnixSeconds = (value: unknown): number | null => {
+    if (typeof value !== "number" || !Number.isFinite(value)) return null;
+    if (value > 1_000_000_000_000) return Math.floor(value / 1000);
+    if (value > 1_000_000_000) return Math.floor(value);
+    return null;
+  };
+  const formatFreshness = (value: unknown): string | null => {
+    const unixSeconds = normalizeUnixSeconds(value);
+    if (!unixSeconds) return null;
+    const observedAt = new Date(unixSeconds * 1000);
+    if (Number.isNaN(observedAt.getTime())) return null;
+    return `Updated ${observedAt.toLocaleString()}`;
+  };
 
   const hasRichIdentity = (profile: Profile | undefined): boolean => {
     if (!profile) return false;
@@ -391,6 +420,90 @@ export default async function HomePage() {
       value: homeDomains[0]?.domain ?? "Unavailable in this window",
     },
   ];
+  const topHashtag = homeHashtags[0]?.hashtag;
+  const topRelay = relayLeaders[0]?.relay;
+  const topEventId = homeNotes[0]?.id ?? "0".repeat(64);
+  const topProfile = hydratedHomeProfiles[0]?.pubkey ?? homeProfiles[0]?.pubkey;
+  const currentScope = formatResultScope(semantics.result_scope) ?? "Current discovery scope";
+  const freshness = formatFreshness(homeNotes[0]?.created_at) ?? "Live ingest active";
+  const notesFreshness = formatFreshness(homeNotes[0]?.created_at) ?? "Updated recently";
+  const profileActivityCandidates = hydratedHomeProfiles
+    .map((profile) =>
+      [
+        profile.recent_activity_at,
+        profile.last_activity_at,
+        profile.updated_at,
+        profile.created_at,
+      ].map(normalizeUnixSeconds)
+    )
+    .flat()
+    .filter((value): value is number => typeof value === "number");
+  const latestProfileActivity =
+    profileActivityCandidates.length > 0 ? Math.max(...profileActivityCandidates) : null;
+  const profilesFreshness =
+    formatFreshness(latestProfileActivity) ??
+    formatFreshness(homeNotes[0]?.created_at) ??
+    "Updated recently";
+  const hashtagsFreshness = formatFreshness(homeNotes[0]?.created_at) ?? "Updated recently";
+  const domainsFreshness = formatFreshness(homeNotes[0]?.created_at) ?? "Updated recently";
+  const trendWindowLabel = "24h trend window";
+  const quickStartActions = [
+    {
+      href: "/trending/notes",
+      label: "Explore trending notes",
+      description: "Open ranked notes and inspect current high-signal activity.",
+    },
+    {
+      href: "/trending/profiles",
+      label: "View active profiles",
+      description: "Inspect profiles rising in the current discovery window.",
+    },
+    {
+      href: "/trending/hashtags",
+      label: "Inspect current hashtags",
+      description: "Jump into hashtags with the strongest live momentum.",
+    },
+    {
+      href: topRelay ? `/relays/${encodeURIComponent(topRelay)}` : "/relays",
+      label: "Open relay activity",
+      description: "Check where ingest and relay-side activity are concentrated.",
+    },
+    {
+      href: `/search?q=${encodeURIComponent(topEventId)}`,
+      label: "Search raw event by ID",
+      description: "Use the top event as a starter, then pivot to any note ID.",
+    },
+    {
+      href: topHashtag ? `/hashtags/${encodeURIComponent(topHashtag)}` : "/trending",
+      label: "Browse current discovery window",
+      description: "Start from a live anchor and expand into related entities.",
+    },
+  ];
+  const quickStartMetadata = [
+    { label: "Freshness", value: freshness },
+    { label: "Time window", value: currentScope },
+    {
+      label: "Indexed entities",
+      value:
+        `${homeNotes.length.toLocaleString()} notes • ` +
+        `${homeProfiles.length.toLocaleString()} profiles • ` +
+        `${homeHashtags.length.toLocaleString()} hashtags`,
+    },
+  ];
+  const heroSearchShortcuts = [
+    { label: "#bitcoin", query: "#bitcoin" },
+    { label: "relay URL", query: "wss://relay.damus.io" },
+    { label: "npub", query: "npub1..." },
+    { label: "note ID", query: topEventId },
+    {
+      label: "trending hashtag",
+      href: topHashtag ? `/hashtags/${encodeURIComponent(topHashtag)}` : "/trending/hashtags",
+    },
+    {
+      label: "example profile",
+      href: topProfile ? `/profiles/${encodeURIComponent(topProfile)}` : "/trending/profiles",
+    },
+  ];
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -399,14 +512,14 @@ export default async function HomePage() {
           <div className="space-y-4 sm:space-y-5">
             <div className="space-y-2.5 sm:space-y-3">
               <p className="text-[11px] font-medium tracking-[0.2em] text-zinc-500 uppercase">
-                Public observability
+                Nostr explorer
               </p>
               <h1 className="max-w-3xl text-3xl font-semibold tracking-tight text-zinc-100 sm:text-4xl">
-                Durable index. Compatible reads.
+                Search, discover, inspect, and analyze what is moving across Nostr.
               </h1>
               <p className="max-w-3xl text-sm leading-5 text-zinc-300 sm:text-base sm:leading-6">
-                NostrMash keeps canonical ingest in durable storage and serves calm explorer reads
-                for search, trends, and relay inspection.
+                Track ranked notes, rising profiles, relay activity, and hashtag momentum from one
+                focused surface.
               </p>
             </div>
             {hasSemantics ? (
@@ -416,29 +529,49 @@ export default async function HomePage() {
             ) : null}
             <SearchForm
               variant="hero"
-              helperText="Search the public index, inspect current trend windows, or jump to relay entities."
+              helperText="Search across notes, profiles, hashtags, relays, and event IDs to jump straight into explorer routes."
+              shortcuts={heroSearchShortcuts}
             />
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-500">
-              <span>Durable core stays separate from explorer views.</span>
+              <span>
+                Explore current discovery windows across notes, profiles, hashtags, domains, and
+                relays.
+              </span>
               <span className="text-zinc-700">•</span>
-              <span>Trend outputs reflect current public API ranking windows.</span>
+              <span>Powered by durable ingest and rebuildable derived views.</span>
             </div>
           </div>
-          <SystemPosturePanel />
+          <DiscoveryQuickStartPanel actions={quickStartActions} metadata={quickStartMetadata} />
         </div>
       </section>
 
-      <NetworkPulseStrip title="Network now" stats={networkNowStats} />
+      <NetworkPulseStrip title="Network snapshot" stats={networkNowStats} />
 
-      <NetworkPulseStrip title="Network pulse" stats={pulseStats} />
+      <NetworkPulseStrip title="Current discovery pulse" stats={pulseStats} />
 
       <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">
         <SectionCard
           title="Trending now"
-          description="Top ranked notes from current discovery outputs."
+          description="Top ranked notes in the current trend window with direct thread and relay pivots."
         >
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300 sm:mb-4">
+            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
+              {trendWindowLabel}
+            </span>
+            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
+              {notesFreshness}
+            </span>
+            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-emerald-300">
+              Live rank movers
+            </span>
+          </div>
           {homeNotes.length > 0 ? (
-            <NotesList notes={homeNotes.slice(0, 5)} authorsByPubkey={noteAuthorsByPubkey} ranked />
+            <NotesList
+              notes={homeNotes.slice(0, 5)}
+              authorsByPubkey={noteAuthorsByPubkey}
+              ranked
+              discoverySignals
+            />
           ) : errorMessage ? (
             <ErrorPanel message={errorMessage} />
           ) : (
@@ -447,17 +580,34 @@ export default async function HomePage() {
               message="No ranked notes were returned for the current trend window."
             />
           )}
-          <Link href="/trending/notes" className="mt-3 inline-block text-sm text-indigo-300">
-            View all trending notes
-          </Link>
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-indigo-300">
+            <Link href="/trending/notes" className="hover:text-indigo-200">
+              Open trend view
+            </Link>
+            <span className="text-zinc-600">•</span>
+            <Link href="/trending/notes" className="hover:text-indigo-200">
+              Compare note ranks
+            </Link>
+          </div>
         </SectionCard>
 
         <SectionCard
           title="Profiles in motion"
-          description="Profiles surfacing with current trend momentum."
+          description="Profiles gaining visibility across recent activity with direct authored-note pivots."
         >
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300 sm:mb-4">
+            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
+              {trendWindowLabel}
+            </span>
+            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
+              {profilesFreshness}
+            </span>
+            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-emerald-300">
+              Visibility movers
+            </span>
+          </div>
           {hydratedHomeProfiles.length > 0 ? (
-            <ProfilesList profiles={hydratedHomeProfiles.slice(0, 5)} ranked />
+            <ProfilesList profiles={hydratedHomeProfiles.slice(0, 5)} ranked discoverySignals />
           ) : errorMessage ? (
             <ErrorPanel message={errorMessage} />
           ) : (
@@ -466,16 +616,33 @@ export default async function HomePage() {
               message="No ranked profiles were returned for the current trend window."
             />
           )}
-          <Link href="/trending/profiles" className="mt-3 inline-block text-sm text-indigo-300">
-            View all trending profiles
-          </Link>
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-indigo-300">
+            <Link href="/trending/profiles" className="hover:text-indigo-200">
+              Open trend view
+            </Link>
+            <span className="text-zinc-600">•</span>
+            <Link href="/discovery/profiles/rising" className="hover:text-indigo-200">
+              Inspect rising profiles
+            </Link>
+          </div>
         </SectionCard>
       </div>
 
       <SectionCard
-        title="Hashtag pulse"
-        description="Hashtag movement from the active index window."
+        title="Hashtags accelerating"
+        description="Hashtags rising faster than baseline in the active discovery window."
       >
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300 sm:mb-4">
+          <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
+            {trendWindowLabel}
+          </span>
+          <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
+            {hashtagsFreshness}
+          </span>
+          <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1 text-indigo-300">
+            Mention-lift rank
+          </span>
+        </div>
         {homeHashtags.length > 0 ? (
           <HashtagsList hashtags={homeHashtags.slice(0, 12)} ranked searchable />
         ) : errorMessage ? (
@@ -486,12 +653,32 @@ export default async function HomePage() {
             message="No ranked hashtag activity was returned for the active window."
           />
         )}
-        <Link href="/trending/hashtags" className="mt-3 inline-block text-sm text-indigo-300">
-          View all trending hashtags
-        </Link>
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-indigo-300">
+          <Link href="/trending/hashtags" className="hover:text-indigo-200">
+            Open trend view
+          </Link>
+          <span className="text-zinc-600">•</span>
+          <Link href="/search?tab=all" className="hover:text-indigo-200">
+            Search related notes
+          </Link>
+        </div>
       </SectionCard>
 
-      <SectionCard title="Domain pulse" description="Domain movement from the active index window.">
+      <SectionCard
+        title="Links gaining traction"
+        description="Domains ranking higher in current note discovery with cross-note spread signals."
+      >
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300 sm:mb-4">
+          <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
+            {trendWindowLabel}
+          </span>
+          <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
+            {domainsFreshness}
+          </span>
+          <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1 text-indigo-300">
+            Cross-note spread rank
+          </span>
+        </div>
         {homeDomains.length > 0 ? (
           <DomainsList domains={homeDomains.slice(0, 12)} ranked searchable />
         ) : errorMessage ? (
@@ -502,15 +689,21 @@ export default async function HomePage() {
             message="No ranked domain activity was returned for the active window."
           />
         )}
-        <Link href="/trending/domains" className="mt-3 inline-block text-sm text-indigo-300">
-          View all trending domains
-        </Link>
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-indigo-300">
+          <Link href="/trending/domains" className="hover:text-indigo-200">
+            Open trend view
+          </Link>
+          <span className="text-zinc-600">•</span>
+          <Link href="/search?tab=all" className="hover:text-indigo-200">
+            Search linked notes
+          </Link>
+        </div>
       </SectionCard>
 
       {discoverySnippetGroups.length > 0 ? (
         <SectionCard
-          title="Discovery snippets"
-          description="Hashtag, domain, and home snippets surfaced by discovery home sections."
+          title="Current discovery windows"
+          description="Representative snippets surfaced by hashtag, domain, and home discovery outputs."
         >
           <div className="space-y-3">
             {discoverySnippetGroups.map((group) => (
@@ -533,8 +726,8 @@ export default async function HomePage() {
       ) : null}
 
       <SectionCard
-        title="Quick entry points"
-        description="Navigate directly to high-signal explorer routes."
+        title="Explorer jump points"
+        description="Open high-signal routes directly from the current discovery surface."
       >
         <QuickEntryGrid links={quickLinks} leadingSignals={leadingSignals} />
       </SectionCard>

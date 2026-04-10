@@ -42,10 +42,7 @@ export default async function HotConversationsPage({
   try {
     payload = await getHotConversations("shortTtl", { cursor });
   } catch (error) {
-    errorMessage =
-      error instanceof Error
-        ? error.message
-        : "Failed to load hot conversations discovery surface.";
+    errorMessage = error instanceof Error ? error.message : "Failed to load hot conversations.";
   }
 
   const notes = payload?.notes ?? [];

@@ -18,8 +18,8 @@ import {
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 
 export const metadata: Metadata = {
-  title: "Relay health posture",
-  description: "Inspect relay health signals returned by backend health surfaces.",
+  title: "Relay health",
+  description: "Inspect relay health signals returned by the backend health endpoint.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -55,8 +55,8 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
   return (
     <div className="space-y-8">
       <PageHero
-        eyebrow="Health posture"
-        title="Relay health posture"
+        eyebrow="Relay health"
+        title="Relay health"
         subtitle="Backend health data only: no frontend scoring, just current relay health facts."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -84,7 +84,7 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
 
       <SectionCard
         title="Health observations"
-        description="Relay-level health rows as returned by /api/v1/relays/health."
+        description="Relay-level health rows returned by /api/v1/relays/health."
       >
         {rows.length > 0 ? (
           <ul className="space-y-2">

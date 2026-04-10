@@ -605,7 +605,7 @@ export default async function ProfilePage({
 
       <SectionCard
         title="Discovery loops"
-        description="Jump from this profile into momentum surfaces, then back into note/profile detail views."
+        description="Jump from this profile into momentum views, then back into note and profile detail."
       >
         <div className="flex flex-wrap gap-2 text-xs">
           <Link
@@ -632,10 +632,7 @@ export default async function ProfilePage({
       </SectionCard>
 
       {profile ? (
-        <SectionCard
-          title="Profile header"
-          description="Primary identity and profile card surface."
-        >
+        <SectionCard title="Profile header" description="Primary identity and profile card.">
           <ProfileCard profile={profile} summary={isRecord(summary) ? summary : undefined} />
         </SectionCard>
       ) : null}
@@ -654,7 +651,7 @@ export default async function ProfilePage({
       {authorActivityStatCards.length > 0 || authorActivityMetadata.length > 0 ? (
         <SectionCard
           title="Author activity analytics"
-          description="Backend-provided author analytics surface. Explorer presents returned fields without deriving extra formulas."
+          description="Backend-provided author analytics. Explorer presents returned fields without deriving extra formulas."
         >
           {authorActivityStatCards.length > 0 ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -693,7 +690,7 @@ export default async function ProfilePage({
 
       {trustScoreValue !== undefined || trustMetadata.length > 0 ? (
         <SectionCard
-          title="Trust surface"
+          title="Trust signals"
           description="Trust score and metadata from backend trust endpoints. Explorer presentation: only labels and layout."
         >
           {trustScoreValue !== undefined ? (
@@ -832,7 +829,7 @@ export default async function ProfilePage({
       <div id="related-profiles">
         <SectionCard
           title="Related profiles"
-          description="Profiles surfaced as graph-adjacent or behaviorally related."
+          description="Profiles identified as graph-adjacent or behaviorally related."
         >
           {uniqueRelatedProfiles.length > 0 ? (
             <>

@@ -18,21 +18,24 @@ export function NotesList({
   authorsByPubkey,
   ranked = false,
   showFullContent = false,
+  discoverySignals = false,
 }: {
   notes: EventRecord[];
   authorsByPubkey?: Record<string, Profile>;
   ranked?: boolean;
   showFullContent?: boolean;
+  discoverySignals?: boolean;
 }) {
   return (
-    <ul className="space-y-3">
+    <ul className="min-w-0 space-y-3">
       {notes.map((note, index) => (
-        <li key={note.id ?? `note-${index}`}>
+        <li key={note.id ?? `note-${index}`} className="min-w-0">
           <NoteCard
             note={note}
             author={getAuthorByPubkey(authorsByPubkey, note.pubkey)}
             rank={ranked ? index + 1 : undefined}
             showFullContent={showFullContent}
+            discoverySignals={discoverySignals}
           />
         </li>
       ))}
@@ -43,15 +46,21 @@ export function NotesList({
 export function ProfilesList({
   profiles,
   ranked = false,
+  discoverySignals = false,
 }: {
   profiles: Profile[];
   ranked?: boolean;
+  discoverySignals?: boolean;
 }) {
   return (
     <ul className="space-y-3">
       {profiles.map((profile, index) => (
         <li key={profile.pubkey ?? profile.npub ?? `profile-${index}`}>
-          <ProfileCard profile={profile} rank={ranked ? index + 1 : undefined} />
+          <ProfileCard
+            profile={profile}
+            rank={ranked ? index + 1 : undefined}
+            discoverySignals={discoverySignals}
+          />
         </li>
       ))}
     </ul>

@@ -19,7 +19,8 @@ export const metadata: Metadata = {
     default: appConfig.siteName,
     template: `%s · ${appConfig.siteName}`,
   },
-  description: "Durable read layer for Nostr search, trends, and relay observability.",
+  description:
+    "Explore Nostr search, trends, profiles, and relay activity from one discovery surface.",
 };
 
 export const viewport: Viewport = {
@@ -35,6 +36,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+      </head>
       <body className="bg-background text-foreground flex min-h-full flex-col">
         <SiteShell>{children}</SiteShell>
       </body>

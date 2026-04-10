@@ -11,6 +11,7 @@
     "lint": "eslint --cache --cache-location ./.next/cache/eslint .",
     "lint:fix": "eslint --cache --cache-location ./.next/cache/eslint . --fix",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "format": "prettier --write . --ignore-unknown",
     "format:check": "prettier --check . --ignore-unknown",
     "precheck": "pnpm lint && pnpm typecheck",
@@ -42,6 +43,7 @@
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "vitest": "^4.1.4",
     "wrangler": "^4.81.0"
   },
   "lint-staged": {

@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 const navItems = [
   { href: "/", label: "Home", mobileLabel: "Home" },
   { href: "/search", label: "Search", mobileLabel: "Search" },
-  { href: "/trending", label: "Trending", mobileLabel: "Trends" },
-  { href: "/stats", label: "Stats", mobileLabel: "Stats" },
+  { href: "/trending", label: "Trends", mobileLabel: "Trends" },
+  { href: "/relays", label: "Relays", mobileLabel: "Relays" },
   { href: "/methodology", label: "Methodology", mobileLabel: "Guide" },
 ];
 
@@ -31,7 +31,7 @@ export function SiteNav() {
               aria-current={active ? "page" : undefined}
               className={`min-h-11 rounded-md border px-3 py-2 text-[13px] font-medium tracking-[0.01em] transition focus-visible:ring-2 focus-visible:ring-indigo-400/70 focus-visible:outline-none ${
                 active
-                  ? "border-zinc-700 bg-zinc-900/90 text-zinc-100"
+                  ? "border-indigo-400/40 bg-indigo-500/10 text-indigo-100"
                   : "border-transparent text-zinc-400 hover:border-zinc-800 hover:bg-zinc-900/55 hover:text-zinc-100"
               }`}
             >
@@ -53,9 +53,9 @@ export function SiteNav() {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-12 min-w-0 flex-1 items-center justify-center rounded-xl px-2 py-2 text-[11px] font-medium transition focus-visible:ring-2 focus-visible:ring-indigo-400/70 focus-visible:outline-none ${
+                className={`flex min-h-12 min-w-0 flex-1 items-center justify-center rounded-xl border border-transparent px-2 py-2 text-[11px] font-medium transition focus-visible:ring-2 focus-visible:ring-indigo-400/70 focus-visible:outline-none ${
                   active
-                    ? "bg-zinc-100 text-zinc-950"
+                    ? "border-indigo-400/45 bg-indigo-500/15 text-indigo-100"
                     : "text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100"
                 }`}
               >

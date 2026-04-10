@@ -18,7 +18,7 @@ import { extractNativeApiSemantics } from "@/lib/api/normalize";
 
 export const metadata: Metadata = {
   title: "Trending Hashtags",
-  description: "Hashtag pulse and ranked mention counts from NostrMash trending data.",
+  description: "Explore ranked hashtag momentum and mention counts from current trending data.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
