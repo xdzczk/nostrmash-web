@@ -77,10 +77,55 @@ export function formatValue(value: unknown): string {
   return String(value);
 }
 
+function readProfileText(profile: Profile, keys: string[]): string | undefined {
+  const record = profile as Record<string, unknown>;
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return undefined;
+}
+
+function normalizeImageSrc(value: string | undefined): string | null {
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value) || /^data:image\//i.test(value) || /^blob:/i.test(value)) {
+    return value;
+  }
+  if (value.startsWith("//")) {
+    return `https:${value}`;
+  }
+  if (/^[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i.test(value)) {
+    return `https://${value}`;
+  }
+  return null;
+}
+
+export function profilePictureUrl(profile: Profile): string | null {
+  const raw = readProfileText(profile, [
+    "picture",
+    "image",
+    "avatar",
+    "avatar_url",
+    "avatarUrl",
+    "pfp",
+    "picture_url",
+    "pictureUrl",
+    "profile_image",
+    "profile_picture",
+  ]);
+  return normalizeImageSrc(raw);
+}
+
 export function profileLabel(profile: Profile): string {
-  const displayName =
-    typeof profile.display_name === "string" ? profile.display_name.trim() : undefined;
-  const name = typeof profile.name === "string" ? profile.name.trim() : undefined;
+  const displayName = readProfileText(profile, [
+    "display_name",
+    "displayName",
+    "display",
+    "displayname",
+  ]);
+  const name = readProfileText(profile, ["name", "username", "user_name", "handle"]);
   const npub = typeof profile.npub === "string" ? profile.npub.trim() : undefined;
   const pubkey = typeof profile.pubkey === "string" ? profile.pubkey.trim() : undefined;
 
@@ -102,16 +147,14 @@ export function profileIdentifier(profile: Profile): string {
 }
 
 export function profileSecondaryLabel(profile: Profile): string | null {
-  const displayName =
-    typeof profile.display_name === "string" && profile.display_name.trim().length > 0
-      ? profile.display_name.trim()
-      : null;
-  const name =
-    typeof profile.name === "string" && profile.name.trim().length > 0 ? profile.name.trim() : null;
-  const nip05 =
-    typeof profile.nip05 === "string" && profile.nip05.trim().length > 0
-      ? profile.nip05.trim()
-      : null;
+  const displayName = readProfileText(profile, [
+    "display_name",
+    "displayName",
+    "display",
+    "displayname",
+  ]);
+  const name = readProfileText(profile, ["name", "username", "user_name", "handle"]);
+  const nip05 = readProfileText(profile, ["nip05", "nip_05"]) ?? null;
   const identifier = profileIdentifier(profile);
 
   if (displayName && name && displayName !== name) {

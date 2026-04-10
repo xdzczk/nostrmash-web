@@ -3,8 +3,6 @@ import type { Metadata } from "next";
 
 import { EmptyState } from "@/components/explorer/empty-state";
 import { extractPrimitiveStats, isRecord } from "@/components/explorer/utils";
-import { MetadataList } from "@/components/explorer/metadata-list";
-import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
 import { DiscoveryQuickStartPanel } from "@/components/home/discovery-quick-start-panel";
 import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
 import { QuickEntryGrid } from "@/components/home/quick-entry-grid";
@@ -15,7 +13,6 @@ import { ErrorPanel } from "@/components/ui/status-panels";
 import { extractRelayRows } from "@/components/explorer/stats-utils";
 import {
   getDiscoveryHome,
-  getContentStats,
   getNetworkStats,
   getRelayStats,
   getTrendingDomains,
@@ -23,7 +20,6 @@ import {
   getTrendingNotes,
   getTrendingProfiles,
 } from "@/lib/api/endpoints";
-import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import type { Profile } from "@/lib/types/api";
 
@@ -36,8 +32,6 @@ export const metadata: Metadata = {
 export default async function HomePage() {
   const asRecord = (value: unknown): Record<string, unknown> | null =>
     isRecord(value) ? value : null;
-  const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
-  const isNonNull = <T,>(value: T | null): value is T => value !== null;
   const pickPreferredStats = (
     sources: Array<Record<string, unknown> | null | undefined>,
     preferredKeys: string[],
@@ -73,36 +67,6 @@ export default async function HomePage() {
     "relays_active_24h",
     "unique_authors_24h",
   ];
-  const networkNowPreferredKeys = [
-    "events_ingested",
-    "projected_profiles",
-    "active_24h",
-    "active_relays",
-    "active_authors",
-    "active_authors_24h",
-    "note_volume_24h",
-    "total_nodes",
-    "event_count",
-    "note_count",
-    "relay_count",
-    "total_relays",
-  ];
-  const formatScopeValue = (value: unknown): string => {
-    if (typeof value === "string") return value;
-    if (typeof value === "number" || typeof value === "boolean") return String(value);
-    try {
-      return JSON.stringify(value);
-    } catch {
-      return String(value);
-    }
-  };
-  const formatResultScope = (value: unknown): string | null => {
-    if (typeof value === "string" && value.trim().length > 0) return value.trim();
-    if (!isRecord(value)) return null;
-    const entries = Object.entries(value).slice(0, 2);
-    if (entries.length === 0) return null;
-    return entries.map(([key, entry]) => `${key}: ${formatScopeValue(entry)}`).join(" • ");
-  };
   const normalizeUnixSeconds = (value: unknown): number | null => {
     if (typeof value !== "number" || !Number.isFinite(value)) return null;
     if (value > 1_000_000_000_000) return Math.floor(value / 1000);
@@ -128,7 +92,6 @@ export default async function HomePage() {
   const failedMessages: string[] = [];
   let payload: Awaited<ReturnType<typeof getDiscoveryHome>> | null = null;
   let networkStats: Awaited<ReturnType<typeof getNetworkStats>> | null = null;
-  let contentStats: Awaited<ReturnType<typeof getContentStats>> | null = null;
   let relayStats: Awaited<ReturnType<typeof getRelayStats>> | null = null;
   let trendingNotes: Awaited<ReturnType<typeof getTrendingNotes>> | null = null;
   let trendingProfiles: Awaited<ReturnType<typeof getTrendingProfiles>> | null = null;
@@ -250,33 +213,19 @@ export default async function HomePage() {
 
   const sections = asRecord(payload?.sections);
   const networkSummary = asRecord(sections?.network_summary);
-  const networkTotals = asRecord(networkSummary?.totals);
-  const networkActivity = asRecord(networkSummary?.activity);
-  const networkRelays = asRecord(networkSummary?.relays);
 
   const homeStats = isRecord(payload?.stats) ? payload.stats : {};
-  let pulseStats = pickPreferredStats([homeStats], networkPulsePreferredKeys, 4);
-  let networkNowStats = pickPreferredStats(
-    [networkTotals, networkRelays, networkActivity, homeStats],
-    networkNowPreferredKeys,
-    6
-  );
-  if (networkNowStats.length === 0) {
-    networkNowStats = pickPreferredStats([homeStats], networkNowPreferredKeys, 6);
-  }
+  let pulseStats = pickPreferredStats([homeStats], networkPulsePreferredKeys, 3);
 
   let relayLeaders = extractRelayRows(networkSummary ?? payload, 1);
-  const needsNetworkFallback =
-    networkNowStats.length === 0 || pulseStats.length === 0 || relayLeaders.length === 0;
+  const needsNetworkFallback = pulseStats.length === 0 || relayLeaders.length === 0;
   if (needsNetworkFallback) {
     const fallbackStatsResults = await Promise.allSettled([
       getNetworkStats("shortTtl"),
-      getContentStats("shortTtl"),
       getRelayStats("shortTtl"),
     ]);
-    const [networkResult, contentResult, relayResult] = fallbackStatsResults;
+    const [networkResult, relayResult] = fallbackStatsResults;
     networkStats = networkResult.status === "fulfilled" ? networkResult.value : null;
-    contentStats = contentResult.status === "fulfilled" ? contentResult.value : null;
     relayStats = relayResult.status === "fulfilled" ? relayResult.value : null;
 
     for (const result of fallbackStatsResults) {
@@ -288,22 +237,11 @@ export default async function HomePage() {
         );
       }
     }
-    if (networkNowStats.length === 0) {
-      networkNowStats = pickPreferredStats(
-        [
-          isRecord(networkStats) ? networkStats : {},
-          isRecord(contentStats) ? contentStats : {},
-          isRecord(relayStats) ? relayStats : {},
-        ],
-        networkNowPreferredKeys,
-        6
-      );
-    }
     if (pulseStats.length === 0) {
       pulseStats = pickPreferredStats(
         [isRecord(networkStats) ? networkStats : {}],
         networkPulsePreferredKeys,
-        4
+        3
       );
     }
     if (relayLeaders.length === 0) {
@@ -311,52 +249,7 @@ export default async function HomePage() {
     }
   }
 
-  const discoverySnippetSources = [
-    { key: "hashtags", title: "Hashtag discovery" },
-    { key: "domains", title: "Domain discovery" },
-    { key: "home_discovery", title: "Home discovery" },
-  ] as const;
-  const extractSnippetText = (entry: unknown): string => {
-    if (typeof entry === "string" && entry.trim().length > 0) return entry.trim();
-    const record = asRecord(entry);
-    if (!record) return "";
-    for (const key of [
-      "label",
-      "name",
-      "domain",
-      "host",
-      "hashtag",
-      "tag",
-      "value",
-      "query",
-      "text",
-    ]) {
-      const value = record[key];
-      if (typeof value === "string" && value.trim().length > 0) return value.trim();
-    }
-    return "";
-  };
-  const discoverySnippetGroups = discoverySnippetSources
-    .map((source) => {
-      const sectionValue =
-        asArray(sections?.[source.key]).length > 0
-          ? asArray(sections?.[source.key])
-          : asArray(payload?.[source.key]);
-      const snippets = sectionValue
-        .map(extractSnippetText)
-        .filter((entry) => entry.length > 0)
-        .slice(0, 8);
-      return snippets.length > 0 ? { title: source.title, snippets } : null;
-    })
-    .filter(isNonNull);
-
   const errorMessage = failedMessages.length > 0 ? failedMessages.join(" | ") : "";
-  const semantics = extractNativeApiSemantics(payload, networkStats, contentStats, relayStats);
-  const hasSemantics =
-    semantics.consistency !== undefined ||
-    semantics.trust_mode !== undefined ||
-    semantics.trust_applied !== undefined ||
-    semantics.result_scope !== undefined;
 
   const quickLinks = [
     {
@@ -420,11 +313,8 @@ export default async function HomePage() {
       value: homeDomains[0]?.domain ?? "Unavailable in this window",
     },
   ];
-  const topHashtag = homeHashtags[0]?.hashtag;
   const topRelay = relayLeaders[0]?.relay;
   const topEventId = homeNotes[0]?.id ?? "0".repeat(64);
-  const topProfile = hydratedHomeProfiles[0]?.pubkey ?? homeProfiles[0]?.pubkey;
-  const currentScope = formatResultScope(semantics.result_scope) ?? "Current discovery scope";
   const freshness = formatFreshness(homeNotes[0]?.created_at) ?? "Live ingest active";
   const notesFreshness = formatFreshness(homeNotes[0]?.created_at) ?? "Updated recently";
   const profileActivityCandidates = hydratedHomeProfiles
@@ -451,66 +341,33 @@ export default async function HomePage() {
     {
       href: "/trending/notes",
       label: "Explore trending notes",
-      description: "Open ranked notes and inspect current high-signal activity.",
+      description: "Ranked notes and thread pivots",
     },
     {
       href: "/trending/profiles",
       label: "View active profiles",
-      description: "Inspect profiles rising in the current discovery window.",
-    },
-    {
-      href: "/trending/hashtags",
-      label: "Inspect current hashtags",
-      description: "Jump into hashtags with the strongest live momentum.",
+      description: "Profiles gaining visibility",
     },
     {
       href: topRelay ? `/relays/${encodeURIComponent(topRelay)}` : "/relays",
       label: "Open relay activity",
-      description: "Check where ingest and relay-side activity are concentrated.",
-    },
-    {
-      href: `/search?q=${encodeURIComponent(topEventId)}`,
-      label: "Search raw event by ID",
-      description: "Use the top event as a starter, then pivot to any note ID.",
-    },
-    {
-      href: topHashtag ? `/hashtags/${encodeURIComponent(topHashtag)}` : "/trending",
-      label: "Browse current discovery window",
-      description: "Start from a live anchor and expand into related entities.",
+      description: "Where relay-side activity is concentrated",
     },
   ];
-  const quickStartMetadata = [
-    { label: "Freshness", value: freshness },
-    { label: "Time window", value: currentScope },
-    {
-      label: "Indexed entities",
-      value:
-        `${homeNotes.length.toLocaleString()} notes • ` +
-        `${homeProfiles.length.toLocaleString()} profiles • ` +
-        `${homeHashtags.length.toLocaleString()} hashtags`,
-    },
-  ];
+  const quickStartFooter = `${freshness} · Window: ${trendWindowLabel}`;
   const heroSearchShortcuts = [
     { label: "#bitcoin", query: "#bitcoin" },
-    { label: "relay URL", query: "wss://relay.damus.io" },
     { label: "npub", query: "npub1..." },
+    { label: "relay URL", query: "wss://relay.damus.io" },
     { label: "note ID", query: topEventId },
-    {
-      label: "trending hashtag",
-      href: topHashtag ? `/hashtags/${encodeURIComponent(topHashtag)}` : "/trending/hashtags",
-    },
-    {
-      label: "example profile",
-      href: topProfile ? `/profiles/${encodeURIComponent(topProfile)}` : "/trending/profiles",
-    },
   ];
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="space-y-8 sm:space-y-10">
       <section className="rounded-2xl border border-zinc-800 bg-zinc-900/55 p-4 sm:p-6 lg:p-7">
-        <div className="grid gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
-          <div className="space-y-4 sm:space-y-5">
-            <div className="space-y-2.5 sm:space-y-3">
+        <div className="grid gap-6 sm:gap-7 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+          <div className="space-y-5 sm:space-y-6">
+            <div className="space-y-3 sm:space-y-4">
               <p className="text-[11px] font-medium tracking-[0.2em] text-zinc-500 uppercase">
                 Nostr explorer
               </p>
@@ -522,34 +379,22 @@ export default async function HomePage() {
                 focused surface.
               </p>
             </div>
-            {hasSemantics ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <NativeSemanticsBadges semantics={semantics} />
-              </div>
-            ) : null}
             <SearchForm
               variant="hero"
-              helperText="Search across notes, profiles, hashtags, relays, and event IDs to jump straight into explorer routes."
+              helperText="Search notes, profiles, hashtags, relays, and event IDs from one public discovery index."
               shortcuts={heroSearchShortcuts}
             />
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-500">
-              <span>
-                Explore current discovery windows across notes, profiles, hashtags, domains, and
-                relays.
-              </span>
-              <span className="text-zinc-700">•</span>
-              <span>Powered by durable ingest and rebuildable derived views.</span>
-            </div>
+            <p className="text-xs text-zinc-500">
+              Built on durable ingest with rebuildable, explorer-grade discovery views.
+            </p>
           </div>
-          <DiscoveryQuickStartPanel actions={quickStartActions} metadata={quickStartMetadata} />
+          <DiscoveryQuickStartPanel actions={quickStartActions} footerText={quickStartFooter} />
         </div>
       </section>
 
-      <NetworkPulseStrip title="Network snapshot" stats={networkNowStats} />
-
       <NetworkPulseStrip title="Current discovery pulse" stats={pulseStats} />
 
-      <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 sm:gap-7 lg:grid-cols-2">
         <SectionCard
           title="Trending now"
           description="Top ranked notes in the current trend window with direct thread and relay pivots."
@@ -560,9 +405,6 @@ export default async function HomePage() {
             </span>
             <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
               {notesFreshness}
-            </span>
-            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-emerald-300">
-              Live rank movers
             </span>
           </div>
           {homeNotes.length > 0 ? (
@@ -601,9 +443,6 @@ export default async function HomePage() {
             </span>
             <span className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1">
               {profilesFreshness}
-            </span>
-            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-emerald-300">
-              Visibility movers
             </span>
           </div>
           {hydratedHomeProfiles.length > 0 ? (
@@ -699,31 +538,6 @@ export default async function HomePage() {
           </Link>
         </div>
       </SectionCard>
-
-      {discoverySnippetGroups.length > 0 ? (
-        <SectionCard
-          title="Current discovery windows"
-          description="Representative snippets surfaced by hashtag, domain, and home discovery outputs."
-        >
-          <div className="space-y-3">
-            {discoverySnippetGroups.map((group) => (
-              <div key={group.title} className="space-y-2">
-                <p className="text-[11px] tracking-[0.14em] text-zinc-500 uppercase">
-                  {group.title}
-                </p>
-                <MetadataList
-                  items={group.snippets.map((snippet, index) => ({
-                    label: `snippet ${index + 1}`,
-                    value: snippet,
-                  }))}
-                  columns={2}
-                  normalizeLabels={false}
-                />
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-      ) : null}
 
       <SectionCard
         title="Explorer jump points"

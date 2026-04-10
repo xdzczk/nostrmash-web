@@ -11,6 +11,7 @@ import {
   profileIdentifier,
   profileInitial,
   profileLabel,
+  profilePictureUrl,
   profileSecondaryLabel,
   extractDomainsFromNote,
   extractHashtagsFromNote,
@@ -46,26 +47,30 @@ export function NoteCard({
     href ?? (resolvedNoteId ? `/notes/${encodeURIComponent(resolvedNoteId)}` : undefined);
   const authorLabel = author ? profileLabel(author) : noteAuthorIdentifier(note);
   const authorSecondaryLabel = author ? profileSecondaryLabel(author) : noteAuthorIdentifier(note);
+  const authorPictureUrl = author ? profilePictureUrl(author) : null;
   const authorHref =
     author && profileIdentifier(author) !== "unknown"
       ? `/profiles/${encodeURIComponent(profileIdentifier(author))}`
       : undefined;
   const content =
     typeof note.content === "string" && note.content.length > 0 ? note.content : "(no content)";
-  const metrics = extractPrimitiveStats(note, [
+  const rawMetrics = extractPrimitiveStats(note, [
     "id",
     "pubkey",
     "kind",
     "created_at",
     "content",
     "tags",
-  ])
-    .filter((entry) => /(count|score|rank|likes|replies|zaps|boosts)/i.test(entry.label))
+  ]).filter((entry) => /(reply|repost|boost|zap|like|reaction)/i.test(entry.label));
+  const noteMetricPriority = [/repl(y|ies)/i, /(repost|boost)/i, /zap/i, /(like|reaction)/i];
+  const metrics = noteMetricPriority
+    .map((matcher) => rawMetrics.find((entry) => matcher.test(entry.label)))
+    .filter((entry): entry is (typeof rawMetrics)[number] => Boolean(entry))
     .slice(0, 3);
   const isTopRank = typeof rank === "number" && rank <= 3;
-  const noteDomains = extractDomainsFromNote(note, 4);
-  const noteHashtags = extractHashtagsFromNote(note, 4);
-  const relayHosts = extractRelayHostsFromNote(note, 3);
+  const noteDomains = extractDomainsFromNote(note, 2);
+  const noteHashtags = extractHashtagsFromNote(note, 2);
+  const relayHosts = extractRelayHostsFromNote(note, 2);
   const hasRecentPublishSignal =
     typeof note.created_at === "number" && Number.isFinite(note.created_at);
   const hasEngagementSignal = metrics.some((metric) =>
@@ -74,21 +79,21 @@ export function NoteCard({
   const hasReplySignal = metrics.some((metric) => /repl(y|ies)/i.test(metric.label));
   const trendReasons: string[] = [];
   if (hasEngagementSignal) {
-    trendReasons.push("Engagement is rising");
+    trendReasons.push("rising engagement");
   }
   if (relayHosts.length > 0) {
     trendReasons.push(
-      relayHosts.length > 1 ? `Seen on ${relayHosts.length} relays` : "Seen on active relay path"
+      relayHosts.length > 1 ? `relay spread: ${relayHosts.length}` : "relay spread"
     );
   }
   if (hasReplySignal) {
-    trendReasons.push("Reply velocity");
+    trendReasons.push("recent replies");
   }
   if (hasRecentPublishSignal) {
-    trendReasons.push("Recently published");
+    trendReasons.push("recently published");
   }
   if (trendReasons.length === 0) {
-    trendReasons.push("Momentum in current window");
+    trendReasons.push("momentum in current window");
   }
   const showSpikeMarker = isTopRank;
 
@@ -99,9 +104,9 @@ export function NoteCard({
       }`}
     >
       <div className="flex items-start gap-3">
-        {author?.picture ? (
+        {authorPictureUrl ? (
           <Image
-            src={author.picture}
+            src={authorPictureUrl}
             alt={authorLabel}
             width={44}
             height={44}
@@ -127,7 +132,7 @@ export function NoteCard({
               </span>
             ) : null}
             {discoverySignals && showSpikeMarker ? (
-              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-emerald-300">
+              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-emerald-300">
                 Spike now
               </span>
             ) : null}
@@ -143,11 +148,6 @@ export function NoteCard({
             ) : null}
             <span className="text-zinc-600">•</span>
             <Timestamp unixSeconds={note.created_at} />
-            {typeof note.kind === "number" ? (
-              <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
-                kind {note.kind}
-              </span>
-            ) : null}
           </div>
         </div>
       </div>
@@ -209,13 +209,11 @@ export function NoteCard({
       {discoverySignals ? (
         <div className="mt-2.5 space-y-1 sm:mt-3">
           <p className="text-[11px] tracking-[0.14em] text-zinc-500 uppercase">Why this note</p>
-          <div className="flex flex-wrap items-center gap-2">
-            {trendReasons.slice(0, 3).map((reason) => (
-              <span
-                key={reason}
-                className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1 text-[11px] text-zinc-300"
-              >
-                {reason}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+            {trendReasons.slice(0, 2).map((reason, index) => (
+              <span key={reason} className="inline-flex items-center gap-2">
+                {index > 0 ? <span className="text-zinc-600">•</span> : null}
+                <span>{reason}</span>
               </span>
             ))}
           </div>
@@ -249,14 +247,6 @@ export function NoteCard({
               Open note
             </Link>
           ) : null}
-          {authorHref ? (
-            <>
-              <span className="text-zinc-600">•</span>
-              <Link href={authorHref} className="text-indigo-300 hover:text-indigo-200">
-                View profile
-              </Link>
-            </>
-          ) : null}
           <span className="text-zinc-600">•</span>
           <Link
             href={`/notes/${encodeURIComponent(resolvedNoteId)}#conversation-context`}
@@ -266,21 +256,10 @@ export function NoteCard({
           </Link>
           <span className="text-zinc-600">•</span>
           <Link
-            href={`/notes/${encodeURIComponent(resolvedNoteId)}#related-notes`}
-            className="text-indigo-300 hover:text-indigo-200"
-          >
-            Related notes
-          </Link>
-          <span className="text-zinc-600">•</span>
-          <Link
             href={`/notes/${encodeURIComponent(resolvedNoteId)}#note-provenance`}
             className="text-indigo-300 hover:text-indigo-200"
           >
             Seen on relays
-          </Link>
-          <span className="text-zinc-600">•</span>
-          <Link href="/trending/notes" className="text-indigo-300 hover:text-indigo-200">
-            Open trend view
           </Link>
         </div>
       ) : null}

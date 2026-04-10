@@ -8,6 +8,7 @@ import {
   profileIdentifier,
   profileInitial,
   profileLabel,
+  profilePictureUrl,
   profileSecondaryLabel,
 } from "@/components/explorer/utils";
 import type { Profile } from "@/lib/types/api";
@@ -26,8 +27,9 @@ export function ProfileCard({
   const label = profileLabel(profile);
   const secondaryLabel = profileSecondaryLabel(profile);
   const identifier = profileIdentifier(profile);
+  const pictureUrl = profilePictureUrl(profile);
   const href = identifier !== "unknown" ? `/profiles/${encodeURIComponent(identifier)}` : undefined;
-  const metrics = extractPrimitiveStats(summary ?? profile, [
+  const rawMetrics = extractPrimitiveStats(summary ?? profile, [
     "pubkey",
     "npub",
     "name",
@@ -41,6 +43,15 @@ export function ProfileCard({
     .filter((entry) =>
       /(count|score|rank|followers|following|note|activity|relay)/i.test(entry.label)
     )
+    .slice(0, 6);
+  const profileMetricPriority = [
+    /recent|activity|active/i,
+    /note|author|event/i,
+    /visibility|reach|relay|mention/i,
+  ];
+  const metrics = profileMetricPriority
+    .map((matcher) => rawMetrics.find((entry) => matcher.test(entry.label)))
+    .filter((entry): entry is (typeof rawMetrics)[number] => Boolean(entry))
     .slice(0, 3);
   const isTopRank = typeof rank === "number" && rank <= 3;
   const rankLabel = typeof rank === "number" ? `#${rank}` : null;
@@ -55,16 +66,16 @@ export function ProfileCard({
   );
   const profileReasons: string[] = [];
   if (hasMomentumSignal) {
-    profileReasons.push("Authoring momentum");
+    profileReasons.push("authoring momentum");
   }
   if (hasVisibilitySignal) {
-    profileReasons.push("Cross-note visibility");
+    profileReasons.push("cross-note visibility");
   }
   if (hasNetworkAttentionSignal) {
-    profileReasons.push("Network attention");
+    profileReasons.push("network attention");
   }
   if (profileReasons.length === 0) {
-    profileReasons.push("Active in current trend window");
+    profileReasons.push("active in current trend window");
   }
 
   return (
@@ -74,9 +85,9 @@ export function ProfileCard({
       }`}
     >
       <div className="flex items-start gap-3">
-        {typeof profile.picture === "string" && profile.picture.length > 0 ? (
+        {pictureUrl ? (
           <Image
-            src={profile.picture}
+            src={pictureUrl}
             alt={label}
             width={44}
             height={44}
@@ -103,9 +114,6 @@ export function ProfileCard({
               </span>
             ) : null}
           </div>
-          {discoverySignals && isTopRank ? (
-            <p className="text-[11px] text-emerald-300">Visibility spike</p>
-          ) : null}
           <p className="text-xs break-all text-zinc-500">{secondaryLabel ?? identifier}</p>
           {typeof profile.about === "string" && profile.about.length > 0 ? (
             <p className="line-clamp-2 text-sm text-zinc-300">{profile.about}</p>
@@ -116,13 +124,11 @@ export function ProfileCard({
       {discoverySignals ? (
         <div className="mt-2.5 space-y-1 sm:mt-3">
           <p className="text-[11px] tracking-[0.14em] text-zinc-500 uppercase">Why this profile</p>
-          <div className="flex flex-wrap items-center gap-2">
-            {profileReasons.slice(0, 3).map((reason) => (
-              <span
-                key={reason}
-                className="rounded-full border border-zinc-700/80 bg-zinc-950/40 px-2.5 py-1 text-[11px] text-zinc-300"
-              >
-                {reason}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+            {profileReasons.slice(0, 2).map((reason, index) => (
+              <span key={reason} className="inline-flex items-center gap-2">
+                {index > 0 ? <span className="text-zinc-600">•</span> : null}
+                <span>{reason}</span>
               </span>
             ))}
           </div>
@@ -156,15 +162,11 @@ export function ProfileCard({
           </Link>
           <span className="text-zinc-600">•</span>
           <Link href={`${href}#authored-notes`} className="text-indigo-300 hover:text-indigo-200">
-            Inspect authored notes
+            Authored notes
           </Link>
           <span className="text-zinc-600">•</span>
           <Link href={`${href}#related-profiles`} className="text-indigo-300 hover:text-indigo-200">
             Related profiles
-          </Link>
-          <span className="text-zinc-600">•</span>
-          <Link href="/trending/profiles" className="text-indigo-300 hover:text-indigo-200">
-            Open trend view
           </Link>
         </div>
       ) : null}

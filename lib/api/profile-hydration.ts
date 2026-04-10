@@ -1,4 +1,4 @@
-import { getProfilesBatch } from "@/lib/api/endpoints";
+import { getProfile, getProfilesBatch } from "@/lib/api/endpoints";
 import type { CacheClass } from "@/lib/caching/policies";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
@@ -22,6 +22,18 @@ export function mapProfilesByPubkey(profiles: Profile[]): ProfilesByPubkey {
   );
 }
 
+function hasRichIdentity(profile: Profile | undefined): boolean {
+  if (!profile) return false;
+  const fields = [
+    profile.display_name,
+    profile.name,
+    profile.picture,
+    profile.about,
+    profile.nip05,
+  ];
+  return fields.some((value) => typeof value === "string" && value.trim().length > 0);
+}
+
 export async function fetchProfilesByPubkey(
   pubkeys: Array<string | null | undefined>,
   cacheClass: CacheClass = "requestTime"
@@ -29,7 +41,26 @@ export async function fetchProfilesByPubkey(
   const normalizedPubkeys = listHydratablePubkeys(pubkeys);
   if (normalizedPubkeys.length === 0) return {};
   const profiles = await getProfilesBatch(normalizedPubkeys, cacheClass);
-  return mapProfilesByPubkey(profiles);
+  const hydratedByPubkey = mapProfilesByPubkey(profiles);
+  const missingOrSparsePubkeys = normalizedPubkeys.filter(
+    (pubkey) => !hasRichIdentity(hydratedByPubkey[pubkey])
+  );
+
+  if (missingOrSparsePubkeys.length === 0) {
+    return hydratedByPubkey;
+  }
+
+  const fallbackProfiles = await Promise.allSettled(
+    missingOrSparsePubkeys.map((pubkey) => getProfile(pubkey, cacheClass))
+  );
+  for (const result of fallbackProfiles) {
+    if (result.status !== "fulfilled") continue;
+    const profile = result.value;
+    if (typeof profile.pubkey !== "string" || profile.pubkey.length === 0) continue;
+    hydratedByPubkey[profile.pubkey.toLowerCase()] = profile;
+  }
+
+  return hydratedByPubkey;
 }
 
 export async function hydrateProfiles(

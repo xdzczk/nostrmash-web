@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { normalizeProfile } from "./normalize";
+import { profileLabel, profilePictureUrl } from "../../components/explorer/utils";
 
 describe("normalizeProfile", () => {
   it("maps camelCase identity aliases to canonical fields", () => {
@@ -88,5 +89,27 @@ describe("normalizeProfile", () => {
     expect(profile?.pubkey).toBe("112233");
     expect(profile?.display_name).toBe("Fallback Name");
     expect(profile?.picture).toBe("https://cdn.example.com/fallback.png");
+  });
+});
+
+describe("profile display helpers", () => {
+  it("resolves alias display names and normalizes schemeless picture urls", () => {
+    const profile = {
+      pubkey: "abc",
+      displayName: "Alias Display",
+      image: "//cdn.example.com/pfp.png",
+    } as const;
+
+    expect(profileLabel(profile)).toBe("Alias Display");
+    expect(profilePictureUrl(profile)).toBe("https://cdn.example.com/pfp.png");
+  });
+
+  it("rejects unsupported image protocols", () => {
+    const profile = {
+      pubkey: "def",
+      picture: "javascript:alert(1)",
+    } as const;
+
+    expect(profilePictureUrl(profile)).toBeNull();
   });
 });
