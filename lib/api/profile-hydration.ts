@@ -22,7 +22,7 @@ export function mapProfilesByPubkey(profiles: Profile[]): ProfilesByPubkey {
   );
 }
 
-function hasRichIdentity(profile: Profile | undefined): boolean {
+export function hasRichIdentity(profile: Profile | undefined): boolean {
   if (!profile) return false;
   const fields = [
     profile.display_name,
@@ -68,8 +68,12 @@ export async function hydrateProfiles(
   cacheClass: CacheClass = "requestTime"
 ): Promise<Profile[]> {
   if (profiles.length === 0) return [];
+  const sparseProfiles = profiles.filter((profile) => !hasRichIdentity(profile));
+  if (sparseProfiles.length === 0) {
+    return profiles;
+  }
   const hydratedByPubkey = await fetchProfilesByPubkey(
-    profiles.map((profile) => profile.pubkey),
+    sparseProfiles.map((profile) => profile.pubkey),
     cacheClass
   );
   const hydratedByNpub: Record<string, Profile> = Object.fromEntries(
@@ -80,7 +84,7 @@ export async function hydrateProfiles(
 
   const npubOnlyIdentifiers = Array.from(
     new Set(
-      profiles
+      sparseProfiles
         .filter((profile) => {
           const hasPubkey = typeof profile.pubkey === "string" && profile.pubkey.length > 0;
           const hasNpub = typeof profile.npub === "string" && profile.npub.length > 0;
