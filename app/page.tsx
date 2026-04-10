@@ -287,7 +287,7 @@ export default async function HomePage() {
   const domainHighlights = homeDomains.slice(0, 8);
 
   return (
-    <div className="relative right-1/2 left-1/2 -mx-[50vw] w-screen -translate-x-1/2 px-4 sm:px-5 xl:px-8 2xl:px-10">
+    <div className="relative left-1/2 w-screen max-w-none -translate-x-1/2 px-4 sm:px-5 xl:px-8 2xl:px-10">
       <div className="mx-auto w-full max-w-[92rem] space-y-12 sm:space-y-16 xl:space-y-[5.1rem]">
         <section className="relative overflow-hidden rounded-[2rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.12),transparent_34%),linear-gradient(180deg,rgba(24,24,27,0.94),rgba(14,14,16,0.98))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.28)] sm:p-7 xl:p-9 2xl:px-10">
           <div className="grid gap-7 sm:gap-8 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.72fr)] xl:items-start xl:gap-10 2xl:grid-cols-[minmax(0,1.52fr)_360px] 2xl:gap-12">
