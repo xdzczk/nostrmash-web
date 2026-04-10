@@ -174,7 +174,11 @@ export function normalizeProfile(value: unknown): Profile | null {
       firstString(
         asProfileRecord.pubkey,
         asProfileRecord.author_pubkey,
-        asProfileRecord.authorPubkey
+        asProfileRecord.authorPubkey,
+        asProfileRecord.profile_pubkey,
+        asProfileRecord.profilePubkey,
+        asProfileRecord.user_pubkey,
+        asProfileRecord.userPubkey
       ) ?? "",
     npub: firstString(asProfileRecord.npub, asProfileRecord.npub_hex, asProfileRecord.npubHex),
     display_name: firstString(

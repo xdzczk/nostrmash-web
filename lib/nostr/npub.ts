@@ -31,6 +31,23 @@ function bech32VerifyChecksum(hrp: string, data: number[]): boolean {
   return bech32Polymod([...bech32HrpExpand(hrp), ...data]) === 1;
 }
 
+function bech32CreateChecksum(hrp: string, data: number[]): number[] {
+  const values = [...bech32HrpExpand(hrp), ...data, 0, 0, 0, 0, 0, 0];
+  const mod = bech32Polymod(values) ^ 1;
+  const checksum: number[] = [];
+  for (let index = 0; index < 6; index += 1) {
+    checksum.push((mod >> (5 * (5 - index))) & 31);
+  }
+  return checksum;
+}
+
+function bech32Encode(hrp: string, data: number[]): string {
+  const checksum = bech32CreateChecksum(hrp, data);
+  const combined = [...data, ...checksum];
+  const encoded = combined.map((value) => BECH32_CHARSET[value] ?? "").join("");
+  return `${hrp}1${encoded}`;
+}
+
 function bech32Decode(value: string): { hrp: string; data: number[] } | null {
   if (!value || value.length < 8) return null;
   const lower = value.toLowerCase();
@@ -91,4 +108,15 @@ export function npubToHex(npub: string): string | null {
   const bytes = convertBits(decoded.data, 5, 8, false);
   if (!bytes || bytes.length === 0) return null;
   return bytes.map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export function hexToNpub(hex: string): string | null {
+  const normalized = hex.trim().toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(normalized)) return null;
+  const bytes = Array.from({ length: normalized.length / 2 }, (_, index) =>
+    Number.parseInt(normalized.slice(index * 2, index * 2 + 2), 16)
+  );
+  const words = convertBits(bytes, 8, 5, true);
+  if (!words || words.length === 0) return null;
+  return bech32Encode("npub", words);
 }

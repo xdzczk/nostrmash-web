@@ -1,4 +1,5 @@
 import type { EventRecord, Profile } from "@/lib/types/api";
+import { hexToNpub } from "../../lib/nostr/npub";
 
 const LABEL_ALIASES: Record<string, string> = {
   created_at: "Created",
@@ -42,6 +43,16 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function parseJsonRecord(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== "string") return null;
+  try {
+    const parsed = JSON.parse(value);
+    return isRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export function formatMetricLabel(value: string): string {
   if (!value) return "Unknown";
   const normalized = value.trim().toLowerCase();
@@ -77,12 +88,33 @@ export function formatValue(value: unknown): string {
   return String(value);
 }
 
+function getProfileCandidateRecords(profile: Profile): Record<string, unknown>[] {
+  const root = profile as Record<string, unknown>;
+  const nestedProfile = isRecord(root.profile) ? root.profile : null;
+  const metadata =
+    (isRecord(root.metadata) ? root.metadata : null) ??
+    parseJsonRecord(root.metadata) ??
+    (nestedProfile && isRecord(nestedProfile.metadata) ? nestedProfile.metadata : null) ??
+    (nestedProfile ? parseJsonRecord(nestedProfile.metadata) : null);
+  const content =
+    (isRecord(root.content) ? root.content : null) ??
+    parseJsonRecord(root.content) ??
+    (nestedProfile && isRecord(nestedProfile.content) ? nestedProfile.content : null) ??
+    (nestedProfile ? parseJsonRecord(nestedProfile.content) : null);
+
+  return [root, nestedProfile, metadata, content].filter(
+    (entry): entry is Record<string, unknown> => Boolean(entry)
+  );
+}
+
 function readProfileText(profile: Profile, keys: string[]): string | undefined {
-  const record = profile as Record<string, unknown>;
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value.trim();
+  const records = getProfileCandidateRecords(profile);
+  for (const record of records) {
+    for (const key of keys) {
+      const value = record[key];
+      if (typeof value === "string" && value.trim().length > 0) {
+        return value.trim();
+      }
     }
   }
   return undefined;
@@ -100,6 +132,26 @@ function normalizeImageSrc(value: string | undefined): string | null {
     return `https://${value}`;
   }
   return null;
+}
+
+function hashString(value: string): number {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+  return hash >>> 0;
+}
+
+export function profileFallbackAvatarDataUrl(profile: Profile): string {
+  const seed = profileIdentifier(profile);
+  const label = profileInitial(profile);
+  const hash = hashString(seed);
+  const hueA = hash % 360;
+  const hueB = (hash >>> 8) % 360;
+  const gradient = `hsl(${hueA} 78% 42%)`;
+  const gradientEnd = `hsl(${hueB} 72% 28%)`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='88' height='88' viewBox='0 0 88 88'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0%' stop-color='${gradient}'/><stop offset='100%' stop-color='${gradientEnd}'/></linearGradient></defs><rect width='88' height='88' rx='44' fill='url(#g)'/><text x='50%' y='54%' text-anchor='middle' dominant-baseline='middle' font-family='Inter, system-ui, sans-serif' font-size='34' font-weight='700' fill='rgba(255,255,255,0.94)'>${label}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
 export function profilePictureUrl(profile: Profile): string | null {
@@ -126,24 +178,44 @@ export function profileLabel(profile: Profile): string {
     "displayname",
   ]);
   const name = readProfileText(profile, ["name", "username", "user_name", "handle"]);
-  const npub = typeof profile.npub === "string" ? profile.npub.trim() : undefined;
-  const pubkey = typeof profile.pubkey === "string" ? profile.pubkey.trim() : undefined;
+  const npub = readProfileText(profile, ["npub", "npub_hex", "npubHex"]);
+  const pubkey = readProfileText(profile, [
+    "pubkey",
+    "author_pubkey",
+    "authorPubkey",
+    "profile_pubkey",
+    "profilePubkey",
+    "user_pubkey",
+    "userPubkey",
+  ]);
 
   const isHexLike = (value: string | undefined): boolean =>
     typeof value === "string" && /^[0-9a-f]{40,}$/i.test(value);
+  const npubFromPubkey = pubkey ? hexToNpub(pubkey) : null;
 
   return (
     (displayName && !isHexLike(displayName) ? displayName : undefined) ??
     (name && !isHexLike(name) ? name : undefined) ??
     npub ??
+    npubFromPubkey ??
     truncateMiddle(pubkey ?? "unknown")
   );
 }
 
 export function profileIdentifier(profile: Profile): string {
-  const npub = typeof profile.npub === "string" ? profile.npub.trim() : "";
-  const pubkey = typeof profile.pubkey === "string" ? profile.pubkey.trim() : "";
-  return npub || pubkey || "unknown";
+  const npub = readProfileText(profile, ["npub", "npub_hex", "npubHex"]) ?? "";
+  const pubkey =
+    readProfileText(profile, [
+      "pubkey",
+      "author_pubkey",
+      "authorPubkey",
+      "profile_pubkey",
+      "profilePubkey",
+      "user_pubkey",
+      "userPubkey",
+    ]) ?? "";
+  const encoded = !npub && pubkey ? hexToNpub(pubkey) : null;
+  return npub || encoded || pubkey || "unknown";
 }
 
 export function profileSecondaryLabel(profile: Profile): string | null {

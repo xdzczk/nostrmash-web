@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { normalizeProfile } from "./normalize";
 import { profileLabel, profilePictureUrl } from "../../components/explorer/utils";
+import type { Profile } from "../types/api";
+import { hexToNpub, npubToHex } from "../nostr/npub";
 
 describe("normalizeProfile", () => {
   it("maps camelCase identity aliases to canonical fields", () => {
@@ -111,5 +113,36 @@ describe("profile display helpers", () => {
     } as const;
 
     expect(profilePictureUrl(profile)).toBeNull();
+  });
+
+  it("resolves identity fields from nested profile wrappers", () => {
+    const profile = {
+      profile: {
+        profile_pubkey: "001122",
+        content: {
+          display_name: "Nested Display",
+          picture: "https://cdn.example.com/nested.png",
+        },
+      },
+    } as unknown as Profile;
+
+    expect(profileLabel(profile)).toBe("Nested Display");
+    expect(profilePictureUrl(profile)).toBe("https://cdn.example.com/nested.png");
+  });
+
+  it("formats pubkey fallback label as npub when possible", () => {
+    const pubkey = "2d9873b25bf2dda6141684d44d5eb76af59f167788a58e363ab1671fefee87f2";
+    const profile = { pubkey } as Profile;
+    const label = profileLabel(profile);
+    expect(label.startsWith("npub1")).toBe(true);
+  });
+});
+
+describe("npub helpers", () => {
+  it("round-trips hex pubkey through npub encoding", () => {
+    const pubkey = "2d9873b25bf2dda6141684d44d5eb76af59f167788a58e363ab1671fefee87f2";
+    const npub = hexToNpub(pubkey);
+    expect(npub).not.toBeNull();
+    expect(npubToHex(npub ?? "")).toBe(pubkey);
   });
 });

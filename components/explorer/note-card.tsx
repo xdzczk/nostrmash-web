@@ -7,8 +7,8 @@ import {
   extractPrimitiveStats,
   formatMetricLabel,
   noteAuthorIdentifier,
+  profileFallbackAvatarDataUrl,
   profileIdentifier,
-  profileInitial,
   profileLabel,
   profilePictureUrl,
   profileSecondaryLabel,
@@ -47,6 +47,7 @@ export function NoteCard({
   const authorLabel = author ? profileLabel(author) : noteAuthorIdentifier(note);
   const authorSecondaryLabel = author ? profileSecondaryLabel(author) : noteAuthorIdentifier(note);
   const authorPictureUrl = author ? profilePictureUrl(author) : null;
+  const authorAvatarSrc = author && (authorPictureUrl ?? profileFallbackAvatarDataUrl(author));
   const authorHref =
     author && profileIdentifier(author) !== "unknown"
       ? `/profiles/${encodeURIComponent(profileIdentifier(author))}`
@@ -103,9 +104,9 @@ export function NoteCard({
       }`}
     >
       <div className="flex items-start gap-3">
-        {authorPictureUrl ? (
+        {authorAvatarSrc ? (
           <Image
-            src={authorPictureUrl}
+            src={authorAvatarSrc}
             alt={authorLabel}
             width={44}
             height={44}
@@ -114,7 +115,7 @@ export function NoteCard({
           />
         ) : (
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-950/70 text-xs text-zinc-500 sm:h-11 sm:w-11">
-            {author ? profileInitial(author) : "?"}
+            ?
           </div>
         )}
         <div className="min-w-0 flex-1">

@@ -4,8 +4,8 @@ import Link from "next/link";
 import {
   extractPrimitiveStats,
   formatMetricLabel,
+  profileFallbackAvatarDataUrl,
   profileIdentifier,
-  profileInitial,
   profileLabel,
   profilePictureUrl,
   profileSecondaryLabel,
@@ -27,6 +27,7 @@ export function ProfileCard({
   const secondaryLabel = profileSecondaryLabel(profile);
   const identifier = profileIdentifier(profile);
   const pictureUrl = profilePictureUrl(profile);
+  const avatarSrc = pictureUrl ?? profileFallbackAvatarDataUrl(profile);
   const href = identifier !== "unknown" ? `/profiles/${encodeURIComponent(identifier)}` : undefined;
   const rawMetrics = extractPrimitiveStats(summary ?? profile, [
     "pubkey",
@@ -84,20 +85,14 @@ export function ProfileCard({
       }`}
     >
       <div className="flex items-start gap-3">
-        {pictureUrl ? (
-          <Image
-            src={pictureUrl}
-            alt={label}
-            width={44}
-            height={44}
-            unoptimized
-            className="h-10 w-10 rounded-full border border-zinc-700 object-cover sm:h-11 sm:w-11"
-          />
-        ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-950/70 text-xs text-zinc-500 sm:h-11 sm:w-11">
-            {profileInitial(profile)}
-          </div>
-        )}
+        <Image
+          src={avatarSrc}
+          alt={label}
+          width={44}
+          height={44}
+          unoptimized
+          className="h-10 w-10 rounded-full border border-zinc-700 object-cover sm:h-11 sm:w-11"
+        />
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex items-start justify-between gap-2">
             <p className="truncate text-base font-semibold text-zinc-100">{label}</p>
