@@ -45,6 +45,7 @@ export function ProfileCard({
     )
     .slice(0, 6);
   const profileMetricPriority = [
+    /new.*follower|follower.*new/i,
     /recent|activity|active/i,
     /note|author|event/i,
     /visibility|reach|relay|mention/i,
@@ -64,7 +65,13 @@ export function ProfileCard({
   const hasNetworkAttentionSignal = metrics.some((metric) =>
     /(follower|following|score|rank|trust)/i.test(metric.label)
   );
+  const hasFollowerGrowthSignal = metrics.some((metric) =>
+    /(new.*follower|follower.*new)/i.test(metric.label)
+  );
   const profileReasons: string[] = [];
+  if (hasFollowerGrowthSignal) {
+    profileReasons.push("new followers");
+  }
   if (hasMomentumSignal) {
     profileReasons.push("posting momentum");
   }

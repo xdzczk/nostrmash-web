@@ -34,6 +34,13 @@ export interface Profile {
   nip05?: string;
   lud16?: string;
   website?: string;
+  recent_post_count?: number;
+  recent_reply_count?: number;
+  recent_engagement_received?: number;
+  recent_new_followers?: number;
+  recent_zap_volume_msats?: number;
+  recent_active_days?: number;
+  recent_activity_at?: number;
   [key: string]: unknown;
 }
 

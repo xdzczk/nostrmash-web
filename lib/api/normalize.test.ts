@@ -47,6 +47,21 @@ describe("normalizeProfile", () => {
     expect(profile?.about).toBe("from content json");
   });
 
+  it("preserves discovery profile metrics from API payloads", () => {
+    const profile = normalizeProfile({
+      pubkey: "metric123",
+      display_name: "Metric Profile",
+      recent_new_followers: 14,
+      recent_engagement_received: 37,
+      recent_post_count: 9,
+    });
+
+    expect(profile).not.toBeNull();
+    expect(profile?.recent_new_followers).toBe(14);
+    expect(profile?.recent_engagement_received).toBe(37);
+    expect(profile?.recent_post_count).toBe(9);
+  });
+
   it("merges nested metadata and profile wrappers", () => {
     const profile = normalizeProfile({
       profile: {

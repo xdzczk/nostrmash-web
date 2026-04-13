@@ -41,6 +41,7 @@ const PROFILE_STAT_EXCLUDE = [
 ];
 
 const PROFILE_METRIC_PRIORITY = [
+  /new.*follower|follower.*new/i,
   /note|event|author|activity|recent/i,
   /reply|mention|visibility|reach/i,
   /relay|follower|following|score|rank|trust|cross/i,
@@ -112,6 +113,9 @@ function buildReasons(
 ): string[] {
   const reasons: string[] = [];
 
+  if (metrics.some((metric) => /(new.*follower|follower.*new)/i.test(metric.label))) {
+    reasons.push("new followers");
+  }
   if (metrics.some((metric) => /(note|event|author|activity|recent)/i.test(metric.label))) {
     reasons.push("posting more");
   }
