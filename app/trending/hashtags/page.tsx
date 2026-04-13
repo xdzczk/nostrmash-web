@@ -72,8 +72,8 @@ export default async function TrendingHashtagsPage({
           <HashtagsList hashtags={payload.hashtags} ranked searchable />
         ) : (
           <EmptyState
-            title="No hashtag ranking available"
-            message="The API did not return ranked hashtags for this window."
+            title="No ranked hashtags yet"
+            message="Ranked hashtags have not populated for this window."
           />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (

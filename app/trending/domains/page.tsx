@@ -72,8 +72,8 @@ export default async function TrendingDomainsPage({
           <DomainsList domains={payload.domains} ranked searchable />
         ) : (
           <EmptyState
-            title="No domain ranking available"
-            message="The API did not return ranked domains for this window."
+            title="No ranked domains yet"
+            message="Ranked domains have not populated for this window."
           />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (

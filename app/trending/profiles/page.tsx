@@ -81,11 +81,11 @@ export default async function TrendingProfilesPage({
         {errorMessage ? (
           <ErrorPanel message={errorMessage} />
         ) : hydratedProfiles.length > 0 ? (
-          <ProfilesList profiles={hydratedProfiles} ranked />
+          <ProfilesList profiles={hydratedProfiles} ranked discoverySignals />
         ) : (
           <EmptyState
-            title="No profile ranking available"
-            message="The API did not return ranked profiles for this window."
+            title="No ranked profiles yet"
+            message="Ranked profiles have not populated for this window."
           />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (

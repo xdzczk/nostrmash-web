@@ -3,20 +3,28 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { Timestamp } from "@/components/explorer/timestamp";
 import {
-  extractHashtagsFromNote,
+  DiscoveryActionLinks,
+  DiscoveryPill,
+  DiscoveryStatPills,
+} from "@/components/explorer/card-grammar";
+import { IdBadge } from "@/components/explorer/id-badge";
+import { Timestamp } from "@/components/explorer/timestamp";
+import { mapNoteWhyNow, WhyNow } from "@/components/explorer/why-now";
+import {
   extractPrimitiveStats,
   extractRelayHostsFromNote,
   formatMetricLabel,
   formatValue,
   noteInlineAuthorProfile,
   noteAuthorIdentifier,
+  profileFallbackAvatarDataUrl,
   profileIdentifier,
   profileInitial,
   profileLabel,
   profilePictureUrl,
   profileSecondaryLabel,
+  truncateIdentifier,
   truncateMiddle,
 } from "@/components/explorer/utils";
 import type { EventRecord, Profile } from "@/lib/types/api";
@@ -153,34 +161,6 @@ function buildDiscoverySignals(note: EventRecord): DiscoverySignal[] {
   return signals.slice(0, 3);
 }
 
-function buildSurfacedReason(note: EventRecord, signals: DiscoverySignal[]): string {
-  const signalLabels = signals.map((signal) => signal.label.toLowerCase());
-  if (signalLabels.some((label) => label.includes("repl"))) {
-    return "Reply volume is climbing.";
-  }
-  if (signalLabels.some((label) => label.includes("boost") || label.includes("repost"))) {
-    return "It is spreading quickly.";
-  }
-  if (signalLabels.some((label) => label.includes("zap"))) {
-    return "Support activity is picking up.";
-  }
-  if (signalLabels.some((label) => label.includes("like") || label.includes("reaction"))) {
-    return "Engagement is building.";
-  }
-
-  const relayHosts = extractRelayHostsFromNote(note, 3);
-  if (relayHosts.length > 1) {
-    return `Seen on ${relayHosts.length.toLocaleString()} relays in this window.`;
-  }
-
-  const hashtags = extractHashtagsFromNote(note, 1);
-  if (hashtags.length > 0) {
-    return `Moving with current ${`#${hashtags[0]}`} activity.`;
-  }
-
-  return "It stands out in the current window.";
-}
-
 function buildStatusLabel(rank: number, signals: DiscoverySignal[]): string {
   if (rank === 1) return "Leading now";
   if (signals.some((signal) => signal.label.toLowerCase().includes("repl"))) return "Reply lift";
@@ -188,10 +168,23 @@ function buildStatusLabel(rank: number, signals: DiscoverySignal[]): string {
   return "In view";
 }
 
-function NoteAuthor({ note, author }: { note: EventRecord; author?: Profile }) {
+function NoteAuthor({
+  note,
+  author,
+  compact = false,
+  showSecondaryLabel = true,
+}: {
+  note: EventRecord;
+  author?: Profile;
+  compact?: boolean;
+  showSecondaryLabel?: boolean;
+}) {
   const authorLabel = author ? profileLabel(author) : noteAuthorIdentifier(note);
   const authorSecondaryLabel = author ? profileSecondaryLabel(author) : null;
   const authorPictureUrl = author ? profilePictureUrl(author) : null;
+  const authorAvatarSrc = author
+    ? (authorPictureUrl ?? profileFallbackAvatarDataUrl(author))
+    : null;
   const authorIdentifier = author ? profileIdentifier(author) : "";
   const authorHref =
     authorIdentifier && authorIdentifier !== "unknown"
@@ -202,86 +195,128 @@ function NoteAuthor({ note, author }: { note: EventRecord; author?: Profile }) {
     : authorLabel.slice(0, 1).toUpperCase() || "?";
 
   return (
-    <div className="flex items-center gap-3">
-      {authorPictureUrl ? (
+    <div className={compact ? "flex items-center gap-2.5" : "flex items-center gap-3.5"}>
+      {authorAvatarSrc ? (
         <Image
-          src={authorPictureUrl}
+          src={authorAvatarSrc}
           alt={authorLabel}
-          width={48}
-          height={48}
+          width={compact ? 40 : 48}
+          height={compact ? 40 : 48}
           unoptimized
-          className="h-12 w-12 rounded-full border border-white/10 object-cover"
+          className={
+            compact
+              ? "h-10 w-10 rounded-full border border-white/10 object-cover"
+              : "h-12 w-12 rounded-full border border-white/10 object-cover"
+          }
         />
       ) : (
-        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-zinc-950/60 text-sm font-medium text-zinc-300">
+        <div
+          className={
+            compact
+              ? "flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-zinc-950/60 text-xs font-medium text-zinc-300"
+              : "flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-zinc-950/60 text-sm font-medium text-zinc-300"
+          }
+        >
           {authorInitial}
         </div>
       )}
       <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+        <div
+          className={
+            compact
+              ? "flex flex-wrap items-center gap-x-2 gap-y-1 text-xs"
+              : "flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
+          }
+        >
           {authorHref ? (
-            <Link href={authorHref} className="font-medium text-zinc-50 hover:text-white">
+            <Link
+              href={authorHref}
+              className={
+                compact
+                  ? "font-medium text-zinc-200 hover:text-zinc-100"
+                  : "font-medium text-zinc-50 hover:text-white"
+              }
+            >
               {authorLabel}
             </Link>
           ) : (
-            <span className="font-medium text-zinc-50">{authorLabel}</span>
+            <span className={compact ? "font-medium text-zinc-200" : "font-medium text-zinc-50"}>
+              {authorLabel}
+            </span>
           )}
-          {authorSecondaryLabel ? (
-            <span className="truncate text-zinc-500">
-              {truncateMiddle(authorSecondaryLabel, 28)}
+          {showSecondaryLabel && authorSecondaryLabel ? (
+            <span
+              className={compact ? "truncate text-zinc-600" : "truncate text-zinc-500"}
+              title={authorSecondaryLabel}
+            >
+              {truncateIdentifier(authorSecondaryLabel, "npub", "secondary")}
             </span>
           ) : null}
         </div>
-        <Timestamp unixSeconds={note.created_at} className="text-xs" />
+        <Timestamp unixSeconds={note.created_at} className={compact ? "text-[11px]" : "text-xs"} />
       </div>
     </div>
   );
 }
 
-function SignalRow({ signals }: { signals: DiscoverySignal[] }) {
+function SignalRow({
+  signals,
+  compact = false,
+}: {
+  signals: DiscoverySignal[];
+  compact?: boolean;
+}) {
   if (signals.length === 0) return null;
 
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-zinc-300">
-      {signals.map((signal) => (
-        <span
-          key={`${signal.label}-${signal.value}`}
-          className="inline-flex items-center gap-1.5 rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1"
-        >
-          <span className="text-[11px] tracking-[0.14em] text-zinc-500 uppercase">
-            {signal.label}
-          </span>
-          <span className="font-medium text-zinc-100">{signal.value}</span>
-        </span>
-      ))}
-    </div>
-  );
+  const stats = signals.map((signal) => ({ label: signal.label, value: signal.value }));
+  return <DiscoveryStatPills stats={stats} compact={compact} />;
 }
 
-function QuietActionLinks({ noteId, noteHref }: { noteId?: string; noteHref?: string }) {
+function QuietActionLinks({
+  noteId,
+  noteHref,
+  featured = false,
+}: {
+  noteId?: string;
+  noteHref?: string;
+  featured?: boolean;
+}) {
   if (!noteId) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-      {noteHref ? (
-        <Link href={noteHref} className="transition hover:text-indigo-200">
-          Open note
-        </Link>
+    <div
+      className={
+        featured
+          ? "flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs text-zinc-400"
+          : "flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-500"
+      }
+    >
+      {!featured ? (
+        <>
+          <IdBadge
+            id={noteId}
+            label="event"
+            kind="event"
+            surface="secondary"
+            className="border-zinc-800 bg-zinc-950/50"
+          />
+          <span className="text-zinc-700">•</span>
+        </>
       ) : null}
-      <span className="text-zinc-700">•</span>
-      <Link
-        href={`/notes/${encodeURIComponent(noteId)}#conversation-context`}
-        className="transition hover:text-indigo-200"
-      >
-        Open thread
-      </Link>
-      <span className="text-zinc-700">•</span>
-      <Link
-        href={`/notes/${encodeURIComponent(noteId)}#note-provenance`}
-        className="transition hover:text-indigo-200"
-      >
-        Seen on relays
-      </Link>
+      <DiscoveryActionLinks
+        actions={[
+          { label: "Open note", href: noteHref },
+          {
+            label: "Inspect thread",
+            href: `/notes/${encodeURIComponent(noteId)}#conversation-context`,
+          },
+          {
+            label: "Seen on relays",
+            href: `/notes/${encodeURIComponent(noteId)}#note-provenance`,
+          },
+        ]}
+        className={featured ? "text-zinc-300" : "text-zinc-400"}
+      />
     </div>
   );
 }
@@ -298,7 +333,9 @@ function NoteMediaFrame({
     : "aspect-[16/11] rounded-[1.35rem]";
 
   return (
-    <div className={`overflow-hidden border border-white/10 bg-zinc-950/70 ${frameClassName}`}>
+    <div
+      className={`overflow-hidden ${compact ? "border border-white/8 bg-zinc-950/50" : "border border-white/10 bg-zinc-950/70"} ${frameClassName}`}
+    >
       {attachment.kind === "image" ? (
         <img src={attachment.url} alt="" className="h-full w-full object-cover" />
       ) : null}
@@ -338,41 +375,37 @@ function FeaturedNoteCard({
   const mediaAttachment = extractMediaAttachment(note);
   const content = truncateNotePreview(rawContent, mediaAttachment ? 900 : 1400);
   const signals = buildDiscoverySignals(note);
-  const reason = buildSurfacedReason(note, signals);
+  const reasons = mapNoteWhyNow(note);
   const statusLabel = buildStatusLabel(rank, signals);
 
   return (
-    <article className="rounded-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(39,39,42,0.94),rgba(24,24,27,0.92))] p-5 shadow-[0_30px_90px_rgba(15,23,42,0.24)] sm:p-6 xl:p-7">
+    <article className="rounded-[1.7rem] border border-indigo-300/20 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.14),transparent_44%),linear-gradient(180deg,rgba(40,40,46,0.96),rgba(23,23,27,0.95))] p-6 shadow-[0_34px_110px_rgba(30,64,175,0.26)] ring-1 ring-white/10 sm:p-7 xl:p-8">
       <div className="flex flex-wrap items-center gap-2.5 text-sm">
-        <span className="inline-flex items-center rounded-full border border-indigo-400/20 bg-indigo-400/10 px-2.5 py-1 text-[11px] font-medium tracking-[0.18em] text-indigo-200 uppercase">
-          Featured note
+        <span className="inline-flex items-center rounded-full border border-indigo-300/30 bg-indigo-400/15 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-indigo-100 uppercase">
+          Lead note
         </span>
-        <span className="text-[11px] font-medium tracking-[0.18em] text-zinc-500 uppercase">
+        <DiscoveryPill tone="entity" className="tracking-[0.16em] uppercase">
           #{rank}
-        </span>
+        </DiscoveryPill>
         <span className="text-zinc-600">•</span>
-        <span className="text-zinc-400">{statusLabel}</span>
+        <span className="text-zinc-300">{statusLabel}</span>
       </div>
 
       <div
-        className={`mt-5 grid gap-5 ${
+        className={`mt-6 grid gap-6 ${
           mediaAttachment ? "2xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.82fr)]" : ""
         }`}
       >
-        <div className="max-w-[50rem] min-w-0 space-y-[1.125rem]">
-          <NoteAuthor note={note} author={author} />
-          <p className="max-w-[44rem] text-base leading-7 [overflow-wrap:anywhere] whitespace-pre-wrap text-zinc-100 sm:text-[1.05rem]">
+        <div className="max-w-[52rem] min-w-0 space-y-5">
+          <NoteAuthor note={note} author={author} showSecondaryLabel={false} />
+          <p className="max-w-[46rem] text-base leading-7 [overflow-wrap:anywhere] whitespace-pre-wrap text-zinc-100 sm:text-[1.07rem]">
             {content}
           </p>
-          <p className="max-w-3xl text-sm leading-6 text-zinc-300">
-            <span className="text-[11px] font-medium tracking-[0.18em] text-zinc-500 uppercase">
-              Why now
-            </span>
-            <span className="mx-2 text-zinc-600">•</span>
-            {reason}
-          </p>
+          <WhyNow reasons={reasons} tone="highlight" className="max-w-3xl" />
           <SignalRow signals={signals} />
-          <QuietActionLinks noteId={noteId} noteHref={noteHref} />
+          <div className="border-t border-white/10 pt-3">
+            <QuietActionLinks noteId={noteId} noteHref={noteHref} featured />
+          </div>
         </div>
 
         {mediaAttachment ? <NoteMediaFrame attachment={mediaAttachment} /> : null}
@@ -398,25 +431,25 @@ function SecondaryNoteCard({
       : "Media-only note with no text body.";
   const mediaAttachment = extractMediaAttachment(note);
   const signals = buildDiscoverySignals(note).slice(0, 2);
-  const reason = buildSurfacedReason(note, signals);
+  const reasons = mapNoteWhyNow(note);
   const statusLabel = buildStatusLabel(rank, signals);
 
   return (
-    <article className="rounded-[1.35rem] border border-white/8 bg-zinc-950/28 p-4 xl:p-5">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="font-medium tracking-[0.16em] text-zinc-300 uppercase">#{rank}</span>
+    <article className="rounded-[1.35rem] border border-white/6 bg-zinc-950/20 p-4 xl:p-[1.125rem]">
+      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+        <span className="font-medium tracking-[0.16em] text-zinc-400 uppercase">#{rank}</span>
         <span className="text-zinc-600">•</span>
-        <span className="text-zinc-500">{statusLabel}</span>
+        <span className="text-zinc-600">{statusLabel}</span>
       </div>
 
-      <div className="mt-3 space-y-3">
+      <div className="mt-2.5 space-y-2.5">
         {mediaAttachment ? <NoteMediaFrame attachment={mediaAttachment} compact /> : null}
-        <NoteAuthor note={note} author={author} />
-        <p className="line-clamp-5 text-sm leading-6 [overflow-wrap:anywhere] whitespace-pre-wrap text-zinc-200">
+        <NoteAuthor note={note} author={author} compact />
+        <p className="line-clamp-4 text-sm leading-6 [overflow-wrap:anywhere] whitespace-pre-wrap text-zinc-300">
           {content}
         </p>
-        <p className="text-sm leading-6 text-zinc-400">{reason}</p>
-        <SignalRow signals={signals} />
+        <WhyNow reasons={reasons} />
+        <SignalRow signals={signals} compact />
         <QuietActionLinks noteId={noteId} noteHref={noteHref} />
       </div>
     </article>
@@ -446,14 +479,14 @@ export function TrendingFeaturedModule({
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.62fr)_minmax(300px,0.78fr)] xl:items-start xl:gap-5 2xl:grid-cols-[minmax(0,1.76fr)_minmax(320px,0.72fr)]">
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(290px,0.72fr)] xl:items-start xl:gap-6 2xl:grid-cols-[minmax(0,1.82fr)_minmax(310px,0.68fr)]">
       <FeaturedNoteCard
         note={featuredNote}
         author={getAuthorByPubkey(authorsByPubkey, featuredNote)}
         rank={1}
       />
 
-      <div className="grid gap-4 xl:gap-5">
+      <div className="grid gap-3.5 xl:gap-4">
         {secondaryNotes.map((note, index) => (
           <SecondaryNoteCard
             key={resolveNoteId(note) ?? `trending-secondary-${index}`}

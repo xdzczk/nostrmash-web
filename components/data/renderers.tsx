@@ -1,7 +1,8 @@
 import { DomainChip } from "@/components/explorer/domain-chip";
 import { HashtagChip } from "@/components/explorer/hashtag-chip";
 import { NoteCard } from "@/components/explorer/note-card";
-import { noteInlineAuthorProfile } from "@/components/explorer/utils";
+import { mapDomainWhyNow, mapHashtagWhyNow } from "@/components/explorer/why-now";
+import { normalizeDomainLabel, noteInlineAuthorProfile } from "@/components/explorer/utils";
 import { ProfileCard } from "@/components/explorer/profile-card";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
@@ -82,9 +83,17 @@ export function HashtagsList({
   searchable?: boolean;
   linkMode?: "explorer" | "search";
 }) {
-  const normalized = hashtags.map((entry, index) => {
+  const normalized: Array<{
+    hashtag: string;
+    count?: number;
+    href?: string;
+    rank?: number;
+    whyNow: ReturnType<typeof mapHashtagWhyNow>;
+  }> = [];
+  hashtags.forEach((entry, index) => {
     const hashtag = typeof entry === "string" ? entry : (entry.hashtag ?? "");
     const normalizedHashtag = hashtag.trim().replace(/^#/, "");
+    if (normalizedHashtag.length === 0) return;
     const count = typeof entry === "string" ? undefined : (entry.count ?? entry.event_count);
     const href =
       searchable && normalizedHashtag.length > 0
@@ -92,12 +101,13 @@ export function HashtagsList({
           ? `/search?q=${encodeURIComponent(`#${normalizedHashtag}`)}&tab=all`
           : `/hashtags/${encodeURIComponent(normalizedHashtag)}`
         : undefined;
-    return {
-      hashtag: normalizedHashtag || "unknown",
+    normalized.push({
+      hashtag: normalizedHashtag,
       count,
       href,
       rank: ranked ? index + 1 : undefined,
-    };
+      whyNow: typeof entry === "string" ? [] : mapHashtagWhyNow(entry),
+    });
   });
   const top = ranked ? normalized.slice(0, 3) : [];
   const rest = ranked ? normalized.slice(3) : normalized;
@@ -113,6 +123,7 @@ export function HashtagsList({
                 count={entry.count}
                 href={entry.href}
                 rank={entry.rank}
+                whyNow={entry.whyNow}
               />
             </li>
           ))}
@@ -126,6 +137,7 @@ export function HashtagsList({
               count={entry.count}
               href={entry.href}
               rank={entry.rank}
+              whyNow={entry.whyNow}
             />
           </li>
         ))}
@@ -143,23 +155,29 @@ export function DomainsList({
   ranked?: boolean;
   searchable?: boolean;
 }) {
-  const normalized = domains.map((entry, index) => {
+  const normalized: Array<{
+    domain: string;
+    count?: number;
+    href?: string;
+    rank?: number;
+    whyNow: ReturnType<typeof mapDomainWhyNow>;
+  }> = [];
+  domains.forEach((entry, index) => {
     const domain = typeof entry === "string" ? entry : (entry.domain ?? "");
-    const normalizedDomain = domain
-      .trim()
-      .toLowerCase()
-      .replace(/^www\./, "");
+    const normalizedDomain = normalizeDomainLabel(domain);
+    if (normalizedDomain.length === 0) return;
     const count = typeof entry === "string" ? undefined : (entry.count ?? entry.event_count);
     const href =
       searchable && normalizedDomain.length > 0
         ? `/domains/${encodeURIComponent(normalizedDomain)}`
         : undefined;
-    return {
-      domain: normalizedDomain || "unknown.domain",
+    normalized.push({
+      domain: normalizedDomain,
       count,
       href,
       rank: ranked ? index + 1 : undefined,
-    };
+      whyNow: typeof entry === "string" ? [] : mapDomainWhyNow(entry),
+    });
   });
   const top = ranked ? normalized.slice(0, 3) : [];
   const rest = ranked ? normalized.slice(3) : normalized;
@@ -175,6 +193,7 @@ export function DomainsList({
                 count={entry.count}
                 href={entry.href}
                 rank={entry.rank}
+                whyNow={entry.whyNow}
               />
             </li>
           ))}
@@ -188,6 +207,7 @@ export function DomainsList({
               count={entry.count}
               href={entry.href}
               rank={entry.rank}
+              whyNow={entry.whyNow}
             />
           </li>
         ))}

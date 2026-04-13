@@ -1,14 +1,21 @@
 import Image from "next/image";
-import Link from "next/link";
 
+import { IdBadge } from "@/components/explorer/id-badge";
+import {
+  cardTierClassName,
+  DiscoveryActionLinks,
+  DiscoveryPill,
+  DiscoveryStatPills,
+} from "@/components/explorer/card-grammar";
+import { mapProfileWhyNow, WhyNow } from "@/components/explorer/why-now";
 import {
   extractPrimitiveStats,
-  formatMetricLabel,
   profileFallbackAvatarDataUrl,
   profileIdentifier,
   profileLabel,
   profilePictureUrl,
   profileSecondaryLabel,
+  truncateIdentifier,
 } from "@/components/explorer/utils";
 import type { Profile } from "@/lib/types/api";
 
@@ -56,38 +63,13 @@ export function ProfileCard({
     .slice(0, 3);
   const isTopRank = typeof rank === "number" && rank <= 3;
   const rankLabel = typeof rank === "number" ? `#${rank}` : null;
-  const hasMomentumSignal = metrics.some((metric) =>
-    /(activity|note|event|recent|author)/i.test(metric.label)
-  );
-  const hasVisibilitySignal = metrics.some((metric) =>
-    /(relay|mention|visibility|impression|cross|reach)/i.test(metric.label)
-  );
-  const hasNetworkAttentionSignal = metrics.some((metric) =>
-    /(follower|following|score|rank|trust)/i.test(metric.label)
-  );
-  const hasFollowerGrowthSignal = metrics.some((metric) =>
-    /(new.*follower|follower.*new)/i.test(metric.label)
-  );
-  const profileReasons: string[] = [];
-  if (hasFollowerGrowthSignal) {
-    profileReasons.push("new followers");
-  }
-  if (hasMomentumSignal) {
-    profileReasons.push("posting momentum");
-  }
-  if (hasVisibilitySignal) {
-    profileReasons.push("wider visibility");
-  }
-  if (hasNetworkAttentionSignal) {
-    profileReasons.push("network attention");
-  }
-  if (profileReasons.length === 0) {
-    profileReasons.push("gaining traction");
-  }
+  const identifierKind = identifier.startsWith("npub") ? "npub" : "pubkey";
+  const secondaryIdentity = secondaryLabel ?? (identifier !== "unknown" ? identifier : null);
+  const profileReasons = mapProfileWhyNow(profile);
 
   return (
     <article
-      className={`rounded-[1.15rem] border p-4 sm:p-5 ${
+      className={`${cardTierClassName("standard")} ${
         isTopRank ? "border-emerald-500/20 bg-zinc-900/60" : "border-zinc-800/85 bg-zinc-900/45"
       }`}
     >
@@ -104,65 +86,49 @@ export function ProfileCard({
           <div className="flex items-start justify-between gap-2">
             <p className="truncate text-base font-semibold text-zinc-100">{label}</p>
             {rankLabel ? (
-              <span
-                className={`shrink-0 text-[11px] font-medium ${
-                  isTopRank ? "text-emerald-300" : "text-zinc-500"
-                }`}
+              <DiscoveryPill
+                tone={isTopRank ? "rank" : "freshness"}
+                className="shrink-0 px-2 py-0.5 text-[10px]"
               >
                 {rankLabel}
-              </span>
+              </DiscoveryPill>
             ) : null}
           </div>
-          <p className="text-xs break-all text-zinc-500">{secondaryLabel ?? identifier}</p>
+          {secondaryIdentity ? (
+            <p className="truncate text-xs text-zinc-500" title={secondaryIdentity}>
+              {truncateIdentifier(secondaryIdentity, identifierKind, "secondary")}
+            </p>
+          ) : null}
           {typeof profile.about === "string" && profile.about.length > 0 ? (
             <p className="line-clamp-2 text-sm text-zinc-300">{profile.about}</p>
           ) : null}
         </div>
       </div>
 
-      {discoverySignals ? (
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400 sm:mt-3">
-          <span className="text-zinc-500">Why now</span>
-          <span className="text-zinc-600">•</span>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            {profileReasons.slice(0, 2).map((reason, index) => (
-              <span key={reason} className="inline-flex items-center gap-2">
-                {index > 0 ? <span className="text-zinc-600">•</span> : null}
-                <span>{reason}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      ) : null}
+      {discoverySignals ? <WhyNow reasons={profileReasons} className="mt-2.5 sm:mt-3" /> : null}
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-300 sm:mt-3">
-        {metrics.map((metric) => (
-          <span key={metric.label} className="inline-flex items-center gap-1.5">
-            <span className="text-zinc-500">{formatMetricLabel(metric.label)}</span>
-            <span className="font-medium text-zinc-100">{String(metric.value)}</span>
-          </span>
-        ))}
-      </div>
-
-      {identifier !== "unknown" ? (
-        <div className="mt-2.5 text-xs text-zinc-500 sm:mt-3">
-          {identifier.startsWith("npub") ? "npub" : "pubkey"} {identifier}
-        </div>
-      ) : null}
+      <DiscoveryStatPills stats={metrics} className="mt-2.5 sm:mt-3" />
 
       {href ? (
         <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
-          <Link href={href} className="text-indigo-300 hover:text-indigo-200">
-            View profile
-          </Link>
-          <span className="text-zinc-600">•</span>
-          <Link href={`${href}#authored-notes`} className="text-indigo-300 hover:text-indigo-200">
-            Recent notes
-          </Link>
-          <span className="text-zinc-600">•</span>
-          <Link href={`${href}#related-profiles`} className="text-indigo-300 hover:text-indigo-200">
-            Related profiles
-          </Link>
+          {identifier !== "unknown" ? (
+            <>
+              <IdBadge
+                id={identifier}
+                label={identifierKind}
+                kind={identifierKind}
+                surface="secondary"
+                className="border-zinc-800 bg-zinc-950/60"
+              />
+            </>
+          ) : null}
+          <DiscoveryActionLinks
+            actions={[
+              { label: "View profile", href },
+              { label: "Recent notes", href: `${href}#authored-notes` },
+              { label: "Related profiles", href: `${href}#related-profiles` },
+            ]}
+          />
         </div>
       ) : null}
     </article>

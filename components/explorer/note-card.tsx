@@ -3,9 +3,17 @@ import Link from "next/link";
 
 import { NoteMedia } from "@/components/explorer/note-media";
 import { Timestamp } from "@/components/explorer/timestamp";
+import { IdBadge } from "@/components/explorer/id-badge";
+import {
+  cardTierClassName,
+  DiscoveryActionLinks,
+  DiscoveryPill,
+  DiscoveryStatPills,
+} from "@/components/explorer/card-grammar";
+import { mapNoteWhyNow, WhyNow } from "@/components/explorer/why-now";
 import {
   extractPrimitiveStats,
-  formatMetricLabel,
+  normalizeDomainLabel,
   noteInlineAuthorProfile,
   noteAuthorIdentifier,
   profileFallbackAvatarDataUrl,
@@ -16,7 +24,7 @@ import {
   extractDomainsFromNote,
   extractHashtagsFromNote,
   extractRelayHostsFromNote,
-  truncateMiddle,
+  truncateIdentifier,
 } from "@/components/explorer/utils";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
@@ -73,38 +81,21 @@ export function NoteCard({
     .filter((entry): entry is (typeof rawMetrics)[number] => Boolean(entry))
     .slice(0, 3);
   const isTopRank = typeof rank === "number" && rank <= 3;
-  const noteDomains = extractDomainsFromNote(note, 2);
+  const noteDomains = extractDomainsFromNote(note, 2).map((domain) => ({
+    raw: domain,
+    label: truncateIdentifier(normalizeDomainLabel(domain), "domain", "primary"),
+  }));
   const noteHashtags = extractHashtagsFromNote(note, 2);
-  const relayHosts = extractRelayHostsFromNote(note, 2);
-  const hasRecentPublishSignal =
-    typeof note.created_at === "number" && Number.isFinite(note.created_at);
-  const hasEngagementSignal = metrics.some((metric) =>
-    /(like|reply|zap|boost|reaction|engagement|score|count)/i.test(metric.label)
-  );
-  const hasReplySignal = metrics.some((metric) => /repl(y|ies)/i.test(metric.label));
-  const trendReasons: string[] = [];
-  if (hasEngagementSignal) {
-    trendReasons.push("rising engagement");
-  }
-  if (relayHosts.length > 0) {
-    trendReasons.push(
-      relayHosts.length > 1 ? `relay spread: ${relayHosts.length}` : "relay spread"
-    );
-  }
-  if (hasReplySignal) {
-    trendReasons.push("recent replies");
-  }
-  if (hasRecentPublishSignal) {
-    trendReasons.push("recently published");
-  }
-  if (trendReasons.length === 0) {
-    trendReasons.push("standing out now");
-  }
+  const relayHosts = extractRelayHostsFromNote(note, 2).map((relayHost) => ({
+    raw: relayHost,
+    label: truncateIdentifier(relayHost, "relay", "primary"),
+  }));
+  const reasonCandidates = mapNoteWhyNow(note);
   const rankLabel = typeof rank === "number" ? `#${rank}` : null;
 
   return (
     <article
-      className={`rounded-[1.15rem] border p-4 sm:p-5 ${
+      className={`${cardTierClassName("standard")} ${
         isTopRank ? "border-indigo-500/20 bg-zinc-900/60" : "border-zinc-800/85 bg-zinc-900/45"
       }`}
     >
@@ -126,11 +117,12 @@ export function NoteCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {rankLabel ? (
-              <span
-                className={isTopRank ? "font-medium text-indigo-300" : "font-medium text-zinc-500"}
+              <DiscoveryPill
+                tone={isTopRank ? "entity" : "rank"}
+                className="px-2 py-0.5 text-[10px]"
               >
                 {rankLabel}
-              </span>
+              </DiscoveryPill>
             ) : null}
             {authorHref ? (
               <Link href={authorHref} className="font-medium text-zinc-200 hover:text-white">
@@ -140,7 +132,9 @@ export function NoteCard({
               <span className="font-medium text-zinc-200">{authorLabel}</span>
             )}
             {authorSecondaryLabel ? (
-              <span className="text-zinc-500">{truncateMiddle(authorSecondaryLabel, 28)}</span>
+              <span className="text-zinc-500" title={authorSecondaryLabel}>
+                {truncateIdentifier(authorSecondaryLabel, "npub", "secondary")}
+              </span>
             ) : null}
             <span className="text-zinc-600">•</span>
             <Timestamp unixSeconds={note.created_at} />
@@ -164,13 +158,14 @@ export function NoteCard({
         <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
           <span className="text-zinc-500">Links</span>
           {noteDomains.map((domain) => (
-            <span key={domain} className="inline-flex items-center gap-2">
+            <span key={domain.raw} className="inline-flex items-center gap-2">
               <span className="text-zinc-600">•</span>
               <Link
-                href={`/domains/${encodeURIComponent(domain)}`}
+                href={`/domains/${encodeURIComponent(domain.raw)}`}
+                title={domain.raw}
                 className="text-zinc-300 transition hover:text-zinc-100"
               >
-                {domain}
+                {domain.label}
               </Link>
             </span>
           ))}
@@ -198,72 +193,46 @@ export function NoteCard({
         <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
           <span className="text-zinc-500">Relays</span>
           {relayHosts.map((relayHost) => (
-            <span key={relayHost} className="inline-flex items-center gap-2">
+            <span key={relayHost.raw} className="inline-flex items-center gap-2">
               <span className="text-zinc-600">•</span>
               <Link
-                href={`/relays/${encodeURIComponent(relayHost)}`}
-                className="break-all text-zinc-300 transition hover:text-indigo-200"
+                href={`/relays/${encodeURIComponent(relayHost.raw)}`}
+                title={relayHost.raw}
+                className="text-zinc-300 transition hover:text-indigo-200"
               >
-                {relayHost}
+                {relayHost.label}
               </Link>
             </span>
           ))}
         </div>
       ) : null}
 
-      {discoverySignals ? (
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400 sm:mt-3">
-          <span className="text-zinc-500">Why now</span>
-          <span className="text-zinc-600">•</span>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            {trendReasons.slice(0, 2).map((reason, index) => (
-              <span key={reason} className="inline-flex items-center gap-2">
-                {index > 0 ? <span className="text-zinc-600">•</span> : null}
-                <span>{reason}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      ) : null}
+      {discoverySignals ? <WhyNow reasons={reasonCandidates} className="mt-2.5 sm:mt-3" /> : null}
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-300 sm:mt-3">
-        {metrics.map((metric) => (
-          <span key={metric.label} className="inline-flex items-center gap-1.5">
-            <span className="text-zinc-500">{formatMetricLabel(metric.label)}</span>
-            <span className="font-medium text-zinc-100">
-              {truncateMiddle(String(metric.value), 18)}
-            </span>
-          </span>
-        ))}
-      </div>
+      <DiscoveryStatPills stats={metrics} className="mt-2.5 sm:mt-3" />
 
       {resolvedNoteId ? (
-        <div className="mt-2.5 text-xs text-zinc-500 sm:mt-3">
-          Event {truncateMiddle(resolvedNoteId, 24)}
-        </div>
-      ) : null}
-
-      {resolvedNoteId ? (
-        <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
-          {noteHref ? (
-            <Link href={noteHref} className="text-indigo-300 hover:text-indigo-200">
-              Open note
-            </Link>
-          ) : null}
-          <span className="text-zinc-600">•</span>
-          <Link
-            href={`/notes/${encodeURIComponent(resolvedNoteId)}#conversation-context`}
-            className="text-indigo-300 hover:text-indigo-200"
-          >
-            Inspect thread
-          </Link>
-          <span className="text-zinc-600">•</span>
-          <Link
-            href={`/notes/${encodeURIComponent(resolvedNoteId)}#note-provenance`}
-            className="text-indigo-300 hover:text-indigo-200"
-          >
-            Seen on relays
-          </Link>
+        <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-zinc-400 sm:mt-3">
+          <IdBadge
+            id={resolvedNoteId}
+            label="event"
+            kind="event"
+            surface="secondary"
+            className="border-zinc-800 bg-zinc-950/60"
+          />
+          <DiscoveryActionLinks
+            actions={[
+              { label: "Open note", href: noteHref },
+              {
+                label: "Inspect thread",
+                href: `/notes/${encodeURIComponent(resolvedNoteId)}#conversation-context`,
+              },
+              {
+                label: "Seen on relays",
+                href: `/notes/${encodeURIComponent(resolvedNoteId)}#note-provenance`,
+              },
+            ]}
+          />
         </div>
       ) : null}
     </article>

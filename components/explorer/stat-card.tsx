@@ -1,3 +1,4 @@
+import { cardTierClassName } from "@/components/explorer/card-grammar";
 import { formatMetricLabel, formatValue } from "@/components/explorer/utils";
 
 export function StatCard({
@@ -10,7 +11,7 @@ export function StatCard({
   description?: string;
 }) {
   return (
-    <article className="rounded-lg border border-zinc-800/95 bg-zinc-900/50 p-4">
+    <article className={cardTierClassName("utility")}>
       <p className="text-[11px] font-medium tracking-[0.14em] text-zinc-500 uppercase">
         {formatMetricLabel(label)}
       </p>

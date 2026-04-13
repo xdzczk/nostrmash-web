@@ -1,5 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 
+import { formatUrlForDisplay } from "@/components/explorer/utils";
+
 type MediaKind = "image" | "video" | "audio";
 
 interface MediaAttachment {
@@ -96,9 +98,10 @@ export function NoteMedia({ content }: { content: string }) {
               href={attachment.url}
               target="_blank"
               rel="noreferrer"
-              className="break-all hover:text-zinc-200"
+              title={attachment.url}
+              className="hover:text-zinc-200"
             >
-              {attachment.url}
+              {formatUrlForDisplay(attachment.url, "secondary")}
             </a>
           </div>
         </div>

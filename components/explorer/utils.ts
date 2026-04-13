@@ -60,13 +60,13 @@ function parseJsonRecord(value: unknown): Record<string, unknown> | null {
 }
 
 export function formatMetricLabel(value: string): string {
-  if (!value) return "Unknown";
+  if (!value) return "Metric";
   const normalized = value.trim().toLowerCase();
   const aliased = LABEL_ALIASES[normalized];
   if (aliased) return aliased;
 
   const words = value.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
-  if (words.length === 0) return "Unknown";
+  if (words.length === 0) return "Metric";
 
   return words
     .map((word) => {
@@ -84,11 +84,110 @@ export function truncateMiddle(value: string, maxLength = 36): string {
   return `${value.slice(0, head)}...${value.slice(-tail)}`;
 }
 
+export type IdentifierKind =
+  | "npub"
+  | "pubkey"
+  | "note"
+  | "event"
+  | "relay"
+  | "domain"
+  | "path"
+  | "url";
+
+export type IdentifierSurface = "primary" | "secondary" | "detail";
+
+const IDENTIFIER_POLICY: Record<IdentifierSurface, Record<IdentifierKind, number>> = {
+  primary: {
+    npub: 18,
+    pubkey: 18,
+    note: 18,
+    event: 18,
+    relay: 28,
+    domain: 28,
+    path: 30,
+    url: 30,
+  },
+  secondary: {
+    npub: 26,
+    pubkey: 26,
+    note: 26,
+    event: 26,
+    relay: 34,
+    domain: 34,
+    path: 36,
+    url: 36,
+  },
+  detail: {
+    npub: 42,
+    pubkey: 42,
+    note: 42,
+    event: 42,
+    relay: 44,
+    domain: 44,
+    path: 52,
+    url: 52,
+  },
+};
+
+function truncateByPolicy(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value;
+  const trimmed = value.trim();
+  if (trimmed.length <= maxLength) return trimmed;
+  const ellipsis = "...";
+  const room = Math.max(0, maxLength - ellipsis.length);
+  if (room <= 0) return ellipsis;
+  const head = Math.max(4, Math.ceil(room * 0.58));
+  const tail = Math.max(4, room - head);
+  return `${trimmed.slice(0, head)}${ellipsis}${trimmed.slice(-tail)}`;
+}
+
+export function truncateIdentifier(
+  value: string,
+  kind: IdentifierKind,
+  surface: IdentifierSurface = "primary"
+): string {
+  const limit = IDENTIFIER_POLICY[surface][kind];
+  return truncateByPolicy(value, limit);
+}
+
+export function normalizeDomainLabel(value: string): string {
+  const normalized = normalizeDomainForRoute(value);
+  return (
+    normalized ??
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/^www\./, "")
+  );
+}
+
+function compactPathForDisplay(pathname: string, maxLength: number): string {
+  const cleanedPath = pathname.replace(/\/{2,}/g, "/");
+  if (cleanedPath === "/") return "";
+  return truncateIdentifier(cleanedPath, "path", maxLength <= 34 ? "primary" : "secondary");
+}
+
+export function formatUrlForDisplay(value: string, surface: IdentifierSurface = "primary"): string {
+  const trimmed = value.trim();
+  if (!trimmed) return value;
+  try {
+    const parsed = new URL(trimmed);
+    const host = normalizeDomainLabel(parsed.hostname);
+    const path = compactPathForDisplay(parsed.pathname, IDENTIFIER_POLICY[surface].url);
+    const hasQuery = parsed.search.length > 0 || parsed.hash.length > 0;
+    const suffix = hasQuery ? "?" : "";
+    const candidate = `${host}${path}${suffix}`;
+    return truncateIdentifier(candidate, "url", surface);
+  } catch {
+    return truncateIdentifier(trimmed, "url", surface);
+  }
+}
+
 export function formatValue(value: unknown): string {
-  if (value === null || value === undefined) return "n/a";
-  if (typeof value === "number") return Number.isFinite(value) ? value.toLocaleString() : "n/a";
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "number") return Number.isFinite(value) ? value.toLocaleString() : "—";
   if (typeof value === "boolean") return value ? "yes" : "no";
-  if (typeof value === "string") return value.length > 0 ? value : "n/a";
+  if (typeof value === "string") return value.length > 0 ? value : "—";
   if (Array.isArray(value)) return `${value.length} items`;
   if (isRecord(value)) return `${Object.keys(value).length} fields`;
   return String(value);
@@ -204,7 +303,7 @@ export function profileLabel(profile: Profile): string {
     (name && !isHexLike(name) ? name : undefined) ??
     npub ??
     npubFromPubkey ??
-    truncateMiddle(pubkey ?? "unknown")
+    (pubkey ? truncateMiddle(pubkey) : "Profile")
   );
 }
 
@@ -241,7 +340,7 @@ export function profileSecondaryLabel(profile: Profile): string | null {
   if (nip05) {
     return nip05;
   }
-  return identifier !== "unknown" ? truncateMiddle(identifier) : null;
+  return identifier !== "unknown" ? truncateIdentifier(identifier, "npub", "secondary") : null;
 }
 
 export function profileInitial(profile: Profile): string {
@@ -251,9 +350,9 @@ export function profileInitial(profile: Profile): string {
 
 export function noteAuthorIdentifier(note: EventRecord): string {
   if (typeof note.pubkey === "string" && note.pubkey.length > 0) {
-    return truncateMiddle(note.pubkey);
+    return truncateIdentifier(note.pubkey, "pubkey", "primary");
   }
-  return "unknown author";
+  return "Author";
 }
 
 export function noteInlineAuthorProfile(note: EventRecord): Profile | undefined {

@@ -1,7 +1,14 @@
 import Link from "next/link";
 
+import { DiscoveryActionLinks } from "@/components/explorer/card-grammar";
 import { EmptyState } from "@/components/explorer/empty-state";
-import { ErrorPanel } from "@/components/ui/status-panels";
+import { normalizeDomainLabel, truncateIdentifier } from "@/components/explorer/utils";
+import {
+  mapDomainWhyNow,
+  mapHashtagWhyNow,
+  WhyNow,
+  type WhyNowReason,
+} from "@/components/explorer/why-now";
 import type { DomainEntry, HashtagEntry } from "@/lib/types/api";
 
 type DiscoveryMetric = {
@@ -13,12 +20,15 @@ type NormalizedHashtag = {
   label: string;
   href: string;
   metric: DiscoveryMetric | null;
+  whyNow: WhyNowReason[];
 };
 
 type NormalizedDomain = {
+  rawLabel: string;
   label: string;
   href: string;
   metric: DiscoveryMetric | null;
+  whyNow: WhyNowReason[];
 };
 
 function splitIntoColumns<T>(items: T[], columnCount: number): T[][] {
@@ -94,6 +104,7 @@ function normalizeHashtags(hashtags: HashtagEntry[]): NormalizedHashtag[] {
         label: hashtag,
         href: `/hashtags/${encodeURIComponent(hashtag)}`,
         metric: buildHashtagMetric(entry),
+        whyNow: mapHashtagWhyNow(entry),
       };
     })
     .filter((entry): entry is NormalizedHashtag => entry !== null);
@@ -112,9 +123,11 @@ function normalizeDomains(domains: DomainEntry[]): NormalizedDomain[] {
       if (!domain) return null;
 
       return {
-        label: domain,
+        rawLabel: domain,
+        label: truncateIdentifier(normalizeDomainLabel(domain), "domain", "primary"),
         href: `/domains/${encodeURIComponent(domain)}`,
         metric: buildDomainMetric(entry),
+        whyNow: mapDomainWhyNow(entry),
       };
     })
     .filter((entry): entry is NormalizedDomain => entry !== null);
@@ -124,12 +137,10 @@ function HashtagDiscoveryModule({
   hashtags,
   trendWindowLabel,
   freshnessLabel,
-  errorMessage,
 }: {
   hashtags: HashtagEntry[];
   trendWindowLabel: string;
   freshnessLabel: string;
-  errorMessage?: string;
 }) {
   const items = normalizeHashtags(hashtags);
   const columns = splitIntoColumns(items, 2);
@@ -143,10 +154,10 @@ function HashtagDiscoveryModule({
         <h3 className="text-lg font-semibold tracking-tight text-zinc-50">
           Hashtags gaining speed
         </h3>
-        <p className="max-w-lg text-sm leading-6 text-zinc-300">
-          The topics picking up fastest right now.
+        <p className="max-w-lg text-sm leading-6 text-zinc-400">
+          The topics accelerating fastest right now.
         </p>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-300">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
           <span>{trendWindowLabel}</span>
           <span className="text-zinc-600">•</span>
           <span>{freshnessLabel}</span>
@@ -184,6 +195,7 @@ function HashtagDiscoveryModule({
                                 </span>
                               ) : null}
                             </div>
+                            <WhyNow reasons={item.whyNow} className="mt-1.5" />
                           </div>
                         </Link>
                       </li>
@@ -192,10 +204,6 @@ function HashtagDiscoveryModule({
                 </ol>
               );
             })}
-          </div>
-        ) : errorMessage ? (
-          <div className="flex h-full items-center">
-            <ErrorPanel message={errorMessage} />
           </div>
         ) : (
           <div className="flex h-full items-center">
@@ -211,10 +219,6 @@ function HashtagDiscoveryModule({
         <Link href="/trending/hashtags" className="hover:text-fuchsia-200">
           See all hashtags
         </Link>
-        <span className="text-zinc-600">•</span>
-        <Link href="/search?tab=all" className="hover:text-fuchsia-200">
-          Search related notes
-        </Link>
       </div>
     </section>
   );
@@ -224,12 +228,10 @@ function DomainDiscoveryModule({
   domains,
   trendWindowLabel,
   freshnessLabel,
-  errorMessage,
 }: {
   domains: DomainEntry[];
   trendWindowLabel: string;
   freshnessLabel: string;
-  errorMessage?: string;
 }) {
   const items = normalizeDomains(domains);
   const columns = splitIntoColumns(items, 2);
@@ -243,10 +245,10 @@ function DomainDiscoveryModule({
         <h3 className="text-lg font-semibold tracking-tight text-zinc-50">
           Links gaining traction
         </h3>
-        <p className="max-w-lg text-sm leading-6 text-zinc-300">
-          Domains showing up repeatedly across active notes.
+        <p className="max-w-lg text-sm leading-6 text-zinc-400">
+          Domains appearing across the strongest notes.
         </p>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-300">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
           <span>{trendWindowLabel}</span>
           <span className="text-zinc-600">•</span>
           <span>{freshnessLabel}</span>
@@ -262,7 +264,7 @@ function DomainDiscoveryModule({
               return (
                 <ol key={`domains-column-${columnIndex}`} className="divide-y divide-zinc-800/80">
                   {column.map((item, index) => (
-                    <li key={item.label}>
+                    <li key={item.rawLabel}>
                       <Link
                         href={item.href}
                         className="group flex items-center gap-3 py-3 transition first:pt-0 last:pb-0 hover:text-white"
@@ -273,7 +275,7 @@ function DomainDiscoveryModule({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-3">
                             <p className="truncate text-sm font-semibold text-zinc-100 sm:text-[0.97rem]">
-                              {item.label}
+                              <span title={item.rawLabel}>{item.label}</span>
                             </p>
                             {item.metric ? (
                               <span className="shrink-0 text-xs text-zinc-500">
@@ -281,6 +283,7 @@ function DomainDiscoveryModule({
                               </span>
                             ) : null}
                           </div>
+                          <WhyNow reasons={item.whyNow} className="mt-1.5" />
                         </div>
                       </Link>
                     </li>
@@ -288,10 +291,6 @@ function DomainDiscoveryModule({
                 </ol>
               );
             })}
-          </div>
-        ) : errorMessage ? (
-          <div className="flex h-full items-center">
-            <ErrorPanel message={errorMessage} />
           </div>
         ) : (
           <div className="flex h-full items-center">
@@ -307,10 +306,6 @@ function DomainDiscoveryModule({
         <Link href="/trending/domains" className="hover:text-sky-200">
           See all domains
         </Link>
-        <span className="text-zinc-600">•</span>
-        <Link href="/search?tab=all" className="hover:text-sky-200">
-          Search linked notes
-        </Link>
       </div>
     </section>
   );
@@ -322,27 +317,21 @@ export function ClosingDiscoveryRail({
   trendWindowLabel,
   hashtagsFreshness,
   domainsFreshness,
-  errorMessage,
 }: {
   hashtags: HashtagEntry[];
   domains: DomainEntry[];
   trendWindowLabel: string;
   hashtagsFreshness: string;
   domainsFreshness: string;
-  errorMessage?: string;
 }) {
   return (
     <section className="relative overflow-hidden rounded-[1.7rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_bottom_center,rgba(99,102,241,0.08),transparent_40%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(15,15,17,0.98))] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.22)] sm:p-7 xl:p-8 2xl:px-9">
       <header className="max-w-3xl space-y-3">
-        <div className="inline-flex items-center rounded-full border border-indigo-400/15 bg-indigo-400/8 px-2.5 py-1 text-[11px] font-medium tracking-[0.18em] text-indigo-200 uppercase">
-          Keep exploring
-        </div>
         <h2 className="text-[1.5rem] font-semibold tracking-tight text-zinc-50 sm:text-[1.9rem]">
-          Follow the threads around what is surfacing now
+          Follow what gains speed next
         </h2>
-        <p className="max-w-2xl text-sm leading-6 text-zinc-300 sm:text-base">
-          Move from the strongest note into the topics and domains it travels with, then continue
-          into search when you want the wider graph.
+        <p className="max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base">
+          Track the hashtags and links shaping the current window.
         </p>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
           <span>{trendWindowLabel}</span>
@@ -356,30 +345,19 @@ export function ClosingDiscoveryRail({
           hashtags={hashtags}
           trendWindowLabel={trendWindowLabel}
           freshnessLabel={hashtagsFreshness}
-          errorMessage={errorMessage}
         />
         <DomainDiscoveryModule
           domains={domains}
           trendWindowLabel={trendWindowLabel}
           freshnessLabel={domainsFreshness}
-          errorMessage={errorMessage}
         />
       </div>
 
       <div className="mt-7 flex flex-col gap-4 border-t border-zinc-800/80 pt-5 sm:flex-row sm:items-end sm:justify-between">
-        <p className="max-w-2xl text-sm leading-6 text-zinc-400">
-          A quieter ending keeps the page from feeling abrupt while still giving one clear next
-          move.
-        </p>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-zinc-500">
-          <Link href="/search?tab=all" className="hover:text-indigo-200">
-            Open search
-          </Link>
-          <span className="text-zinc-700">•</span>
-          <Link href="/methodology" className="hover:text-indigo-200">
-            Read methodology
-          </Link>
-        </div>
+        <DiscoveryActionLinks
+          actions={[{ label: "Open search", href: "/search?tab=all" }]}
+          className="text-sm text-zinc-500"
+        />
       </div>
     </section>
   );

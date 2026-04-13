@@ -79,11 +79,16 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
         {errorMessage ? (
           <ErrorPanel message={errorMessage} />
         ) : payload?.notes && payload.notes.length > 0 ? (
-          <NotesList notes={payload.notes} authorsByPubkey={authorsByPubkey} ranked />
+          <NotesList
+            notes={payload.notes}
+            authorsByPubkey={authorsByPubkey}
+            ranked
+            discoverySignals
+          />
         ) : (
           <EmptyState
-            title="No note ranking available"
-            message="The API did not return ranked notes for this window."
+            title="No ranked notes yet"
+            message="Ranked notes have not populated for this window."
           />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
