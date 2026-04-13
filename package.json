@@ -19,7 +19,8 @@
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "wrangler dev",
     "cf:deploy": "wrangler deploy --keep-vars",
-    "cf:typegen": "wrangler types"
+    "cf:typegen": "wrangler types",
+    "generate-icons": "tsx scripts/generate-icons.ts"
   },
   "dependencies": {
     "next": "16.2.3",
@@ -41,7 +42,9 @@
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^4.1.4",
     "wrangler": "^4.81.0"
