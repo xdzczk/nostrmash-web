@@ -129,6 +129,7 @@ export function extractNativeApiSemantics(...values: unknown[]): NativeApiSemant
 export function normalizeEventRecord(value: unknown): EventRecord | null {
   const record = asRecord(value);
   if (!record) return null;
+  const counts = asRecord(record.counts);
 
   return {
     ...record,
@@ -140,6 +141,16 @@ export function normalizeEventRecord(value: unknown): EventRecord | null {
       asString(record.noteId) ??
       "",
     pubkey: asString(record.pubkey) ?? asString(record.author_pubkey),
+    reply_count:
+      asNumber(record.reply_count) ?? asNumber(record.replies) ?? asNumber(counts?.reply_count),
+    reaction_count:
+      asNumber(record.reaction_count) ??
+      asNumber(record.reactions) ??
+      asNumber(counts?.reaction_count),
+    repost_count:
+      asNumber(record.repost_count) ?? asNumber(record.reposts) ?? asNumber(counts?.repost_count),
+    zap_count: asNumber(record.zap_count) ?? asNumber(record.zaps) ?? asNumber(counts?.zap_count),
+    zap_msats: asNumber(record.zap_msats) ?? asNumber(counts?.zap_msats),
   };
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeProfile } from "./normalize";
+import { normalizeEventRecord, normalizeProfile } from "./normalize";
 import { profileLabel, profilePictureUrl } from "../../components/explorer/utils";
 import type { Profile } from "../types/api";
 import { hexToNpub, npubToHex } from "../nostr/npub";
@@ -91,6 +91,32 @@ describe("normalizeProfile", () => {
     expect(profile?.pubkey).toBe("112233");
     expect(profile?.display_name).toBe("Fallback Name");
     expect(profile?.picture).toBe("https://cdn.example.com/fallback.png");
+  });
+});
+
+describe("normalizeEventRecord", () => {
+  it("lifts nested counts aliases to top-level engagement fields", () => {
+    const note = normalizeEventRecord({
+      event_id: "event_123",
+      author_pubkey: "pubkey_abc",
+      content: "hello nostr",
+      counts: {
+        reply_count: 3,
+        reaction_count: 5,
+        repost_count: 2,
+        zap_count: 7,
+        zap_msats: 42000,
+      },
+    });
+
+    expect(note).not.toBeNull();
+    expect(note?.id).toBe("event_123");
+    expect(note?.pubkey).toBe("pubkey_abc");
+    expect(note?.reply_count).toBe(3);
+    expect(note?.reaction_count).toBe(5);
+    expect(note?.repost_count).toBe(2);
+    expect(note?.zap_count).toBe(7);
+    expect(note?.zap_msats).toBe(42000);
   });
 });
 
