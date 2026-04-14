@@ -1,4 +1,1777 @@
 import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { cache } from "react";
+
+import { NotesList, ProfilesList } from "@/components/data/renderers";
+import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
+import { EmptyState } from "@/components/explorer/empty-state";
+import { IdBadge } from "@/components/explorer/id-badge";
+import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
+import {
+  isRecord,
+  profileFallbackAvatarDataUrl,
+  profileLabel,
+  profilePictureUrl,
+  truncateMiddle,
+} from "@/components/explorer/utils";
+import { SectionCard } from "@/components/ui/section-card";
+import { ErrorPanel } from "@/components/ui/status-panels";
+import {
+  getAuthorEvents,
+  getProfile,
+  getProfileSummary,
+  getRelatedProfiles,
+  getRisingProfiles,
+} from "@/lib/api/endpoints";
+import {
+  extractNativeApiSemantics,
+  normalizeEventRecords,
+  normalizeProfiles,
+} from "@/lib/api/normalize";
+import {
+  buildContinuationHref,
+  readSearchParam,
+  toUrlSearchParams,
+} from "@/lib/search-params/pagination";
+import type { Profile, ProfileStats } from "@/lib/types/api";
+
+type Params = Promise<{ pubkeyOrNpub: string }>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+type MetadataPrimitiveValue = {
+  raw?: string;
+  display?: string;
+  copyable?: boolean;
+  truncated?: boolean;
+};
+
+type HeroAction = {
+  id: string;
+  label: string;
+  href: string;
+};
+
+const getProfileSummaryCached = cache(async (pubkeyOrNpub: string) =>
+  getProfileSummary(pubkeyOrNpub, "requestTime")
+);
+
+function hasIdentityMetadata(profile: Profile | null | undefined): boolean {
+  if (!profile) return false;
+  return [
+    profile.display_name,
+    profile.name,
+    profile.about,
+    profile.picture,
+    profile.nip05,
+    profile.lud16,
+    profile.website,
+  ].some((value) => typeof value === "string" && value.trim().length > 0);
+}
+
+function isNotFoundReason(reason: unknown): boolean {
+  return reason instanceof Error && /API 404:/i.test(reason.message);
+}
+
+function mergeProfile(
+  summaryProfile: Profile | null,
+  enrichedProfile: Profile | null
+): Profile | null {
+  if (!summaryProfile && !enrichedProfile) return null;
+  if (!summaryProfile) return enrichedProfile;
+  if (!enrichedProfile) return summaryProfile;
+  return {
+    ...enrichedProfile,
+    ...summaryProfile,
+    pubkey: summaryProfile.pubkey || enrichedProfile.pubkey,
+  };
+}
+
+function asMetadataPrimitiveValue(value: unknown): MetadataPrimitiveValue | null {
+  if (!isRecord(value)) return null;
+  const raw = typeof value.raw === "string" ? value.raw : undefined;
+  const display = typeof value.display === "string" ? value.display : undefined;
+  const copyable = typeof value.copyable === "boolean" ? value.copyable : undefined;
+  const truncated = typeof value.truncated === "boolean" ? value.truncated : undefined;
+  if (!raw && !display) return null;
+  return { raw, display, copyable, truncated };
+}
+
+function normalizeHeroActions(value: unknown): HeroAction[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (!isRecord(entry)) return null;
+      const id = typeof entry.id === "string" ? entry.id : "";
+      const label = typeof entry.label === "string" ? entry.label : "";
+      const href = typeof entry.href === "string" ? entry.href : "";
+      if (!label || !href) return null;
+      return {
+        id: id || label.toLowerCase().replace(/\s+/g, "_"),
+        label,
+        href,
+      } satisfies HeroAction;
+    })
+    .filter((entry): entry is HeroAction => Boolean(entry));
+}
+
+function toCounterRows(
+  stats: ProfileStats | undefined
+): Array<{ key: string; label: string; value: number }> {
+  if (!stats) return [];
+  const rows = [
+    { key: "follower_count", label: "Followers", value: stats.follower_count },
+    { key: "following_count", label: "Following", value: stats.following_count },
+    { key: "note_count", label: "Notes", value: stats.note_count },
+    { key: "reply_count", label: "Replies", value: stats.reply_count },
+  ];
+  return rows.filter(
+    (row): row is { key: string; label: string; value: number } => typeof row.value === "number"
+  );
+}
+
+function fallbackIdentityDetails(
+  profile: Profile | null,
+  summary: Record<string, unknown> | null
+): Array<{ key: string; label: string; value: MetadataPrimitiveValue }> {
+  if (!profile) return [];
+  const rows: Array<{ key: string; label: string; value: MetadataPrimitiveValue }> = [];
+  const push = (key: string, label: string, raw: unknown, max = 56) => {
+    if (typeof raw !== "string" || raw.trim().length === 0) return;
+    const value = raw.trim();
+    const display = value.length > max ? `${value.slice(0, max - 3)}...` : value;
+    rows.push({
+      key,
+      label,
+      value: { raw: value, display, copyable: true, truncated: display !== value },
+    });
+  };
+  push("npub", "Npub", profile.npub);
+  push("pubkey", "Pubkey", profile.pubkey);
+  push("nip05", "NIP-05", profile.nip05);
+  push("website", "Website", profile.website);
+  push("lud16", "LUD-16", profile.lud16);
+  push("about", "About", profile.about, 120);
+  push("metadata_event_id", "Metadata event", summary?.metadata_event_id);
+  return rows;
+}
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { pubkeyOrNpub } = await params;
+  try {
+    const summary = await getProfileSummaryCached(pubkeyOrNpub);
+    const profile = summary.profile ?? (summary as unknown as Profile);
+    const label =
+      profile.display_name ?? profile.name ?? profile.npub ?? profile.pubkey ?? pubkeyOrNpub;
+    return {
+      title: label,
+      description: `View profile activity, notes, and network context for ${label}.`,
+    };
+  } catch {
+    return {
+      title: `Profile ${pubkeyOrNpub}`,
+      description: `View profile activity, notes, and network context for ${pubkeyOrNpub}.`,
+    };
+  }
+}
+
+export default async function ProfilePage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
+  const { pubkeyOrNpub } = await params;
+  const resolvedSearchParams = await searchParams;
+  const notesCursor = readSearchParam(resolvedSearchParams, "notes_cursor");
+  const relatedProfilesCursor = readSearchParam(resolvedSearchParams, "related_profiles_cursor");
+  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
+
+  const errors: string[] = [];
+  let summary: Awaited<ReturnType<typeof getProfileSummary>> | null = null;
+  let profileEnrichment: Awaited<ReturnType<typeof getProfile>> | null = null;
+  let recentNotesFallbackPayload: Awaited<ReturnType<typeof getAuthorEvents>> | null = null;
+  let relatedProfilesFallbackPayload: Awaited<ReturnType<typeof getRelatedProfiles>> | null = null;
+  let risingProfilesPayload: Awaited<ReturnType<typeof getRisingProfiles>> | null = null;
+
+  const summaryResult = await Promise.allSettled([getProfileSummaryCached(pubkeyOrNpub)]);
+  if (summaryResult[0].status === "fulfilled") {
+    summary = summaryResult[0].value;
+  } else {
+    errors.push(
+      summaryResult[0].reason instanceof Error
+        ? summaryResult[0].reason.message
+        : "Failed to load profile summary."
+    );
+  }
+
+  const summaryRecord = isRecord(summary) ? summary : null;
+  const summaryProfile = summary ? (summary.profile ?? (summary as unknown as Profile)) : null;
+  const lookupKey = summaryProfile?.pubkey ?? summary?.pubkey ?? pubkeyOrNpub;
+
+  const summaryRecentNotes = normalizeEventRecords(summaryRecord?.recent_notes);
+  const summaryRelatedDiscovery = isRecord(summaryRecord?.related_discovery)
+    ? summaryRecord.related_discovery
+    : null;
+  const summaryRelatedProfiles = normalizeProfiles(summaryRelatedDiscovery?.related_profiles);
+  const summaryRisingProfiles = normalizeProfiles(summaryRelatedDiscovery?.rising_profiles);
+
+  const shouldEnrichProfile = !hasIdentityMetadata(summaryProfile);
+  const shouldLoadRecentNotesFallback =
+    typeof notesCursor === "string" || summaryRecentNotes.length === 0;
+  const shouldLoadRelatedProfilesFallback =
+    typeof relatedProfilesCursor === "string" || summaryRelatedProfiles.length === 0;
+  const shouldLoadRisingProfilesFallback = summaryRisingProfiles.length === 0;
+
+  const [profileResult, notesFallbackResult, relatedFallbackResult, risingProfilesResult] =
+    await Promise.allSettled([
+      shouldEnrichProfile ? getProfile(lookupKey, "requestTime") : Promise.resolve(null),
+      shouldLoadRecentNotesFallback
+        ? getAuthorEvents(lookupKey, "requestTime", { cursor: notesCursor })
+        : Promise.resolve(null),
+      shouldLoadRelatedProfilesFallback
+        ? getRelatedProfiles(lookupKey, "requestTime", { cursor: relatedProfilesCursor })
+        : Promise.resolve(null),
+      shouldLoadRisingProfilesFallback ? getRisingProfiles("shortTtl") : Promise.resolve(null),
+    ]);
+
+  if (profileResult.status === "fulfilled") {
+    profileEnrichment = profileResult.value;
+  } else if (shouldEnrichProfile) {
+    errors.push(
+      profileResult.reason instanceof Error
+        ? profileResult.reason.message
+        : "Failed to enrich profile metadata."
+    );
+  }
+  if (notesFallbackResult.status === "fulfilled") {
+    recentNotesFallbackPayload = notesFallbackResult.value;
+  } else if (shouldLoadRecentNotesFallback && !isNotFoundReason(notesFallbackResult.reason)) {
+    errors.push(
+      notesFallbackResult.reason instanceof Error
+        ? notesFallbackResult.reason.message
+        : "Failed to load recent notes."
+    );
+  }
+  if (relatedFallbackResult.status === "fulfilled") {
+    relatedProfilesFallbackPayload = relatedFallbackResult.value;
+  } else if (shouldLoadRelatedProfilesFallback && !isNotFoundReason(relatedFallbackResult.reason)) {
+    errors.push(
+      relatedFallbackResult.reason instanceof Error
+        ? relatedFallbackResult.reason.message
+        : "Failed to load related profiles."
+    );
+  }
+  if (risingProfilesResult.status === "fulfilled") {
+    risingProfilesPayload = risingProfilesResult.value;
+  } else if (shouldLoadRisingProfilesFallback && !isNotFoundReason(risingProfilesResult.reason)) {
+    errors.push(
+      risingProfilesResult.reason instanceof Error
+        ? risingProfilesResult.reason.message
+        : "Failed to load rising profiles."
+    );
+  }
+
+  const profile = mergeProfile(summaryProfile, profileEnrichment);
+  const semantics = extractNativeApiSemantics(
+    summary,
+    profileEnrichment,
+    recentNotesFallbackPayload
+  );
+  const notes =
+    summaryRecentNotes.length > 0 ? summaryRecentNotes : (recentNotesFallbackPayload?.events ?? []);
+  const relatedProfiles =
+    summaryRelatedProfiles.length > 0
+      ? summaryRelatedProfiles
+      : (relatedProfilesFallbackPayload?.related_profiles ?? []);
+  const risingProfiles =
+    summaryRisingProfiles.length > 0
+      ? summaryRisingProfiles
+      : (risingProfilesPayload?.profiles ?? []);
+
+  const notesNextCursor = extractNativeApiSemantics(recentNotesFallbackPayload).next_cursor;
+  const relatedProfilesNextCursor = extractNativeApiSemantics(
+    relatedProfilesFallbackPayload
+  ).next_cursor;
+  const notesContinuationHref = buildContinuationHref(
+    `/profiles/${encodeURIComponent(pubkeyOrNpub)}`,
+    currentSearchParams,
+    "notes_cursor",
+    notesNextCursor
+  );
+  const relatedProfilesContinuationHref = buildContinuationHref(
+    `/profiles/${encodeURIComponent(pubkeyOrNpub)}`,
+    currentSearchParams,
+    "related_profiles_cursor",
+    relatedProfilesNextCursor
+  );
+
+  const hero = isRecord(summaryRecord?.hero) ? summaryRecord.hero : null;
+  const heroMetadata = isRecord(hero?.metadata) ? hero.metadata : null;
+  const heroCounters = toCounterRows(
+    (isRecord(hero?.counters) ? hero.counters : summary?.stats) as ProfileStats
+  );
+  const parsedHeroActions = normalizeHeroActions(hero?.actions);
+  const heroActions =
+    parsedHeroActions.length > 0
+      ? parsedHeroActions
+      : [
+          {
+            id: "recent_notes",
+            label: "Recent notes",
+            href: `/profiles/${encodeURIComponent(pubkeyOrNpub)}#authored-notes`,
+          },
+          {
+            id: "related_profiles",
+            label: "Related profiles",
+            href: `/profiles/${encodeURIComponent(pubkeyOrNpub)}#related-profiles`,
+          },
+          { id: "rising_profiles", label: "Rising profiles", href: "/discovery/profiles/rising" },
+        ];
+
+  const heroNpubOrPubkey =
+    asMetadataPrimitiveValue(heroMetadata?.npub_or_pubkey) ??
+    (profile?.npub
+      ? { raw: profile.npub, display: profile.npub, copyable: true, truncated: false }
+      : profile?.pubkey
+        ? {
+            raw: profile.pubkey,
+            display: truncateMiddle(profile.pubkey, 24),
+            copyable: true,
+            truncated: true,
+          }
+        : null);
+  const heroWebsite = asMetadataPrimitiveValue(heroMetadata?.website) ?? null;
+  const heroLud16 = asMetadataPrimitiveValue(heroMetadata?.lud16) ?? null;
+
+  const identityDetailsFromSummary = (() => {
+    const details = isRecord(summaryRecord?.identity_details)
+      ? summaryRecord.identity_details
+      : null;
+    const fields = Array.isArray(details?.fields) ? details.fields : [];
+    return fields
+      .map((entry) => {
+        if (!isRecord(entry)) return null;
+        const key = typeof entry.key === "string" ? entry.key : "";
+        const label = typeof entry.label === "string" ? entry.label : key;
+        const value = asMetadataPrimitiveValue(entry.value);
+        if (!label || !value) return null;
+        return { key, label, value };
+      })
+      .filter((entry): entry is { key: string; label: string; value: MetadataPrimitiveValue } =>
+        Boolean(entry)
+      );
+  })();
+  const identityDetails =
+    identityDetailsFromSummary.length > 0
+      ? identityDetailsFromSummary
+      : fallbackIdentityDetails(profile, summaryRecord);
+
+  const heroDisplayName =
+    (typeof hero?.display_name === "string" ? hero.display_name : undefined) ??
+    profile?.display_name ??
+    profile?.name ??
+    (profile?.pubkey ? truncateMiddle(profile.pubkey, 24) : "Profile");
+  const heroHandle =
+    (typeof hero?.handle === "string" ? hero.handle : undefined) ??
+    profile?.nip05 ??
+    profile?.name ??
+    undefined;
+  const heroBio =
+    (typeof hero?.bio === "string" ? hero.bio : undefined) ??
+    (typeof profile?.about === "string" ? profile.about : undefined) ??
+    "Explore public identity, activity, and discovery context for this profile.";
+  const avatar =
+    (typeof hero?.avatar === "string" ? hero.avatar : undefined) ??
+    (profile ? profilePictureUrl(profile) : null) ??
+    (profile
+      ? profileFallbackAvatarDataUrl(profile)
+      : profileFallbackAvatarDataUrl({ pubkey: lookupKey }));
+
+  const notesAuthorMap =
+    profile?.pubkey && profile.pubkey.length > 0
+      ? { [profile.pubkey.toLowerCase()]: profile }
+      : undefined;
+  const errorMessage = errors.length > 0 ? errors.join(" | ") : "";
+
+  return (
+    <div className="space-y-8">
+      {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
+
+      <SectionCard title="Profile" description="Identity-first explorer surface for this account.">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <Image
+              src={avatar}
+              alt={profile ? profileLabel(profile) : heroDisplayName}
+              width={72}
+              height={72}
+              unoptimized
+              className="h-16 w-16 rounded-full border border-zinc-700 object-cover sm:h-[72px] sm:w-[72px]"
+            />
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="truncate text-xl font-semibold tracking-tight text-zinc-100">
+                {heroDisplayName}
+              </p>
+              {heroHandle ? <p className="truncate text-sm text-zinc-400">{heroHandle}</p> : null}
+              <p className="text-sm leading-6 text-zinc-300">{heroBio}</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <NativeSemanticsBadges semantics={semantics} />
+            {heroNpubOrPubkey?.raw ? (
+              <IdBadge
+                id={heroNpubOrPubkey.raw}
+                label={heroNpubOrPubkey.raw.startsWith("npub1") ? "npub" : "pubkey"}
+              />
+            ) : null}
+            {heroWebsite?.raw ? (
+              <Link
+                href={heroWebsite.raw}
+                className="rounded-full border border-zinc-700 bg-zinc-900/80 px-2 py-1 text-zinc-300 hover:text-zinc-100"
+              >
+                {heroWebsite.display ?? truncateMiddle(heroWebsite.raw, 28)}
+              </Link>
+            ) : null}
+            {heroLud16?.raw ? (
+              <a
+                href={`lightning:${heroLud16.raw}`}
+                className="rounded-full border border-zinc-700 bg-zinc-900/80 px-2 py-1 text-zinc-300 hover:text-zinc-100"
+              >
+                {heroLud16.display ?? heroLud16.raw}
+              </a>
+            ) : null}
+          </div>
+
+          {heroCounters.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {heroCounters.map((counter) => (
+                <div
+                  key={counter.key}
+                  className="rounded-full border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-300"
+                >
+                  <span className="mr-2 text-zinc-500">{counter.label}</span>
+                  <span className="font-medium text-zinc-100">{counter.value}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap gap-2 text-xs">
+            {heroActions.map((action) => (
+              <Link
+                key={action.id}
+                href={action.href}
+                className="rounded-full border border-zinc-700 px-2.5 py-1 text-zinc-300 hover:text-zinc-100"
+              >
+                {action.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </SectionCard>
+
+      <div id="authored-notes">
+        <SectionCard title="Recent notes" description="Latest authored notes from this profile.">
+          {notes.length > 0 ? (
+            <>
+              <NotesList notes={notes} authorsByPubkey={notesAuthorMap} />
+              {typeof notesNextCursor === "string" && notesNextCursor.length > 0 ? (
+                <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
+                  <p className="text-xs text-indigo-100">More notes are available.</p>
+                  <Link
+                    href={notesContinuationHref}
+                    className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+                  >
+                    Continue notes
+                  </Link>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <EmptyState message="No recent notes were returned for this profile." />
+          )}
+        </SectionCard>
+      </div>
+
+      <div id="related-profiles">
+        <SectionCard
+          title="Related discovery"
+          description="Connected profiles and rising discovery surfaces related to this profile."
+        >
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-xs font-medium tracking-wide text-zinc-400 uppercase">
+                Related profiles
+              </p>
+              {relatedProfiles.length > 0 ? (
+                <>
+                  <ProfilesList profiles={relatedProfiles.slice(0, 8)} />
+                  {typeof relatedProfilesNextCursor === "string" &&
+                  relatedProfilesNextCursor.length > 0 ? (
+                    <Link
+                      href={relatedProfilesContinuationHref}
+                      className="inline-block text-sm text-indigo-300"
+                    >
+                      Continue related profiles
+                    </Link>
+                  ) : null}
+                </>
+              ) : (
+                <EmptyState message="No related profiles were returned for this profile yet." />
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-medium tracking-wide text-zinc-400 uppercase">
+                Rising profiles
+              </p>
+              {risingProfiles.length > 0 ? (
+                <ProfilesList profiles={risingProfiles.slice(0, 8)} />
+              ) : (
+                <EmptyState message="No rising profiles are available right now." />
+              )}
+            </div>
+          </div>
+        </SectionCard>
+      </div>
+
+      <SectionCard
+        title="Identity details"
+        description="Public metadata primitives with compact display and full-value access."
+      >
+        {identityDetails.length > 0 ? (
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {identityDetails.map((field) => {
+              const raw = field.value.raw ?? "";
+              const display = field.value.display ?? raw;
+              const isUrl = /^https?:\/\//i.test(raw);
+              const isLud16 = field.key.toLowerCase() === "lud16";
+              return (
+                <li
+                  key={`${field.key}-${field.label}`}
+                  className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3"
+                >
+                  <p className="mb-1 text-[11px] tracking-wide text-zinc-500 uppercase">
+                    {field.label}
+                  </p>
+                  {isUrl ? (
+                    <Link
+                      href={raw}
+                      className="text-sm break-all text-indigo-300 hover:text-indigo-200"
+                    >
+                      {display}
+                    </Link>
+                  ) : isLud16 ? (
+                    <a
+                      href={`lightning:${raw}`}
+                      className="text-sm break-all text-indigo-300 hover:text-indigo-200"
+                    >
+                      {display}
+                    </a>
+                  ) : (
+                    <p className="text-sm break-all text-zinc-200" title={raw || display}>
+                      {display}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <EmptyState message="No lower-level identity details were returned for this profile." />
+        )}
+      </SectionCard>
+
+      <div className="space-y-3">
+        <DebugDisclosure title="Debug payload: profile summary" data={summary ?? {}} />
+        <DebugDisclosure title="Debug payload: profile enrichment" data={profileEnrichment ?? {}} />
+        <DebugDisclosure
+          title="Debug payload: recent notes fallback"
+          data={recentNotesFallbackPayload ?? {}}
+        />
+        <DebugDisclosure
+          title="Debug payload: related profiles fallback"
+          data={relatedProfilesFallbackPayload ?? {}}
+        />
+        <DebugDisclosure
+          title="Debug payload: rising profiles fallback"
+          data={risingProfilesPayload ?? {}}
+        />
+      </div>
+    </div>
+  );
+}
+/*
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Profile",
+  };
+}
+
+export default function ProfilePage() {
+  return <div>Profile</div>;
+}
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { cache } from "react";
+
+import { NotesList, ProfilesList } from "@/components/data/renderers";
+import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
+import { EmptyState } from "@/components/explorer/empty-state";
+import { IdBadge } from "@/components/explorer/id-badge";
+import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
+import {
+  isRecord,
+  profileFallbackAvatarDataUrl,
+  profileLabel,
+  profilePictureUrl,
+  truncateMiddle,
+} from "@/components/explorer/utils";
+import { SectionCard } from "@/components/ui/section-card";
+import { ErrorPanel } from "@/components/ui/status-panels";
+import {
+  getAuthorEvents,
+  getProfile,
+  getProfileSummary,
+  getRelatedProfiles,
+  getRisingProfiles,
+} from "@/lib/api/endpoints";
+import {
+  extractNativeApiSemantics,
+  normalizeEventRecords,
+  normalizeProfiles,
+} from "@/lib/api/normalize";
+import {
+  buildContinuationHref,
+  readSearchParam,
+  toUrlSearchParams,
+} from "@/lib/search-params/pagination";
+import type { Profile, ProfileStats } from "@/lib/types/api";
+
+type Params = Promise<{ pubkeyOrNpub: string }>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+type MetadataPrimitiveValue = {
+  raw?: string;
+  display?: string;
+  copyable?: boolean;
+  truncated?: boolean;
+};
+
+type HeroAction = {
+  id: string;
+  label: string;
+  href: string;
+};
+
+const getProfileSummaryCached = cache(async (pubkeyOrNpub: string) =>
+  getProfileSummary(pubkeyOrNpub, "requestTime")
+);
+
+function hasIdentityMetadata(profile: Profile | null | undefined): boolean {
+  if (!profile) return false;
+  return [
+    profile.display_name,
+    profile.name,
+    profile.about,
+    profile.picture,
+    profile.nip05,
+    profile.lud16,
+    profile.website,
+  ].some((value) => typeof value === "string" && value.trim().length > 0);
+}
+
+function isNotFoundReason(reason: unknown): boolean {
+  return reason instanceof Error && /API 404:/i.test(reason.message);
+}
+
+function mergeProfile(summaryProfile: Profile | null, enrichedProfile: Profile | null): Profile | null {
+  if (!summaryProfile && !enrichedProfile) return null;
+  if (!summaryProfile) return enrichedProfile;
+  if (!enrichedProfile) return summaryProfile;
+  return {
+    ...enrichedProfile,
+    ...summaryProfile,
+    pubkey: summaryProfile.pubkey || enrichedProfile.pubkey,
+  };
+}
+
+function asMetadataPrimitiveValue(value: unknown): MetadataPrimitiveValue | null {
+  if (!isRecord(value)) return null;
+  const raw = typeof value.raw === "string" ? value.raw : undefined;
+  const display = typeof value.display === "string" ? value.display : undefined;
+  const copyable = typeof value.copyable === "boolean" ? value.copyable : undefined;
+  const truncated = typeof value.truncated === "boolean" ? value.truncated : undefined;
+  if (!raw && !display) return null;
+  return { raw, display, copyable, truncated };
+}
+
+function normalizeHeroActions(value: unknown): HeroAction[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (!isRecord(entry)) return null;
+      const id = typeof entry.id === "string" ? entry.id : "";
+      const label = typeof entry.label === "string" ? entry.label : "";
+      const href = typeof entry.href === "string" ? entry.href : "";
+      if (!label || !href) return null;
+      return {
+        id: id || label.toLowerCase().replace(/\s+/g, "_"),
+        label,
+        href,
+      } satisfies HeroAction;
+    })
+    .filter((entry): entry is HeroAction => Boolean(entry));
+}
+
+function toCounterRows(stats: ProfileStats | undefined): Array<{ key: string; label: string; value: number }> {
+  if (!stats) return [];
+  const rows = [
+    { key: "follower_count", label: "Followers", value: stats.follower_count },
+    { key: "following_count", label: "Following", value: stats.following_count },
+    { key: "note_count", label: "Notes", value: stats.note_count },
+    { key: "reply_count", label: "Replies", value: stats.reply_count },
+  ];
+  return rows.filter((row): row is { key: string; label: string; value: number } => typeof row.value === "number");
+}
+
+function fallbackIdentityDetails(
+  profile: Profile | null,
+  summary: Record<string, unknown> | null
+): Array<{ key: string; label: string; value: MetadataPrimitiveValue }> {
+  if (!profile) return [];
+  const rows: Array<{ key: string; label: string; value: MetadataPrimitiveValue }> = [];
+  const push = (key: string, label: string, raw: unknown, max = 56) => {
+    if (typeof raw !== "string" || raw.trim().length === 0) return;
+    const value = raw.trim();
+    const display = value.length > max ? `${value.slice(0, max - 3)}...` : value;
+    rows.push({
+      key,
+      label,
+      value: { raw: value, display, copyable: true, truncated: display !== value },
+    });
+  };
+  push("npub", "Npub", profile.npub);
+  push("pubkey", "Pubkey", profile.pubkey);
+  push("nip05", "NIP-05", profile.nip05);
+  push("website", "Website", profile.website);
+  push("lud16", "LUD-16", profile.lud16);
+  push("about", "About", profile.about, 120);
+  push("metadata_event_id", "Metadata event", summary?.metadata_event_id);
+  return rows;
+}
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { pubkeyOrNpub } = await params;
+  try {
+    const summary = await getProfileSummaryCached(pubkeyOrNpub);
+    const profile = summary.profile ?? (summary as unknown as Profile);
+    const label =
+      profile.display_name ?? profile.name ?? profile.npub ?? profile.pubkey ?? pubkeyOrNpub;
+    return {
+      title: label,
+      description: `View profile activity, notes, and network context for ${label}.`,
+    };
+  } catch {
+    return {
+      title: `Profile ${pubkeyOrNpub}`,
+      description: `View profile activity, notes, and network context for ${pubkeyOrNpub}.`,
+    };
+  }
+}
+
+export default async function ProfilePage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
+  const { pubkeyOrNpub } = await params;
+  const resolvedSearchParams = await searchParams;
+  const notesCursor = readSearchParam(resolvedSearchParams, "notes_cursor");
+  const relatedProfilesCursor = readSearchParam(resolvedSearchParams, "related_profiles_cursor");
+  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
+  const errors: string[] = [];
+
+  let summary: Awaited<ReturnType<typeof getProfileSummary>> | null = null;
+  let profileEnrichment: Awaited<ReturnType<typeof getProfile>> | null = null;
+  let recentNotesFallbackPayload: Awaited<ReturnType<typeof getAuthorEvents>> | null = null;
+  let relatedProfilesFallbackPayload: Awaited<ReturnType<typeof getRelatedProfiles>> | null = null;
+  let risingProfilesPayload: Awaited<ReturnType<typeof getRisingProfiles>> | null = null;
+
+  const summaryResult = await Promise.allSettled([getProfileSummaryCached(pubkeyOrNpub)]);
+  if (summaryResult[0].status === "fulfilled") {
+    summary = summaryResult[0].value;
+  } else {
+    errors.push(
+      summaryResult[0].reason instanceof Error
+        ? summaryResult[0].reason.message
+        : "Failed to load profile summary."
+    );
+  }
+
+  const summaryRecord = isRecord(summary) ? summary : null;
+  const summaryProfile = summary ? (summary.profile ?? (summary as unknown as Profile)) : null;
+  const lookupKey = summaryProfile?.pubkey ?? summary?.pubkey ?? pubkeyOrNpub;
+  const shouldEnrichProfile = !hasIdentityMetadata(summaryProfile);
+
+  const summaryRecentNotes = normalizeEventRecords(summaryRecord?.recent_notes);
+  const summaryRelatedDiscovery = isRecord(summaryRecord?.related_discovery)
+    ? summaryRecord.related_discovery
+    : null;
+  const summaryRelatedProfiles = normalizeProfiles(summaryRelatedDiscovery?.related_profiles);
+  const summaryRisingProfiles = normalizeProfiles(summaryRelatedDiscovery?.rising_profiles);
+  const shouldLoadRecentNotesFallback = typeof notesCursor === "string" || summaryRecentNotes.length === 0;
+  const shouldLoadRelatedProfilesFallback =
+    typeof relatedProfilesCursor === "string" || summaryRelatedProfiles.length === 0;
+  const shouldLoadRisingProfilesFallback = summaryRisingProfiles.length === 0;
+
+  const [profileResult, notesFallbackResult, relatedFallbackResult, risingProfilesResult] =
+    await Promise.allSettled([
+      shouldEnrichProfile ? getProfile(lookupKey, "requestTime") : Promise.resolve(null),
+      shouldLoadRecentNotesFallback
+        ? getAuthorEvents(lookupKey, "requestTime", { cursor: notesCursor })
+        : Promise.resolve(null),
+      shouldLoadRelatedProfilesFallback
+        ? getRelatedProfiles(lookupKey, "requestTime", { cursor: relatedProfilesCursor })
+        : Promise.resolve(null),
+      shouldLoadRisingProfilesFallback ? getRisingProfiles("shortTtl") : Promise.resolve(null),
+    ]);
+
+  if (profileResult.status === "fulfilled") {
+    profileEnrichment = profileResult.value;
+  } else if (shouldEnrichProfile) {
+    errors.push(
+      profileResult.reason instanceof Error
+        ? profileResult.reason.message
+        : "Failed to enrich profile metadata."
+    );
+  }
+
+  if (notesFallbackResult.status === "fulfilled") {
+    recentNotesFallbackPayload = notesFallbackResult.value;
+  } else if (shouldLoadRecentNotesFallback && !isNotFoundReason(notesFallbackResult.reason)) {
+    errors.push(
+      notesFallbackResult.reason instanceof Error
+        ? notesFallbackResult.reason.message
+        : "Failed to load recent notes."
+    );
+  }
+
+  if (relatedFallbackResult.status === "fulfilled") {
+    relatedProfilesFallbackPayload = relatedFallbackResult.value;
+  } else if (
+    shouldLoadRelatedProfilesFallback &&
+    !isNotFoundReason(relatedFallbackResult.reason)
+  ) {
+    errors.push(
+      relatedFallbackResult.reason instanceof Error
+        ? relatedFallbackResult.reason.message
+        : "Failed to load related profiles."
+    );
+  }
+
+  if (risingProfilesResult.status === "fulfilled") {
+    risingProfilesPayload = risingProfilesResult.value;
+  } else if (shouldLoadRisingProfilesFallback && !isNotFoundReason(risingProfilesResult.reason)) {
+    errors.push(
+      risingProfilesResult.reason instanceof Error
+        ? risingProfilesResult.reason.message
+        : "Failed to load rising profiles."
+    );
+  }
+
+  const profile = mergeProfile(summaryProfile, profileEnrichment);
+  const semantics = extractNativeApiSemantics(summary, profileEnrichment, recentNotesFallbackPayload);
+  const notes = summaryRecentNotes.length > 0 ? summaryRecentNotes : recentNotesFallbackPayload?.events ?? [];
+  const relatedProfiles =
+    summaryRelatedProfiles.length > 0
+      ? summaryRelatedProfiles
+      : relatedProfilesFallbackPayload?.related_profiles ?? [];
+  const risingProfiles =
+    summaryRisingProfiles.length > 0 ? summaryRisingProfiles : risingProfilesPayload?.profiles ?? [];
+
+  const notesNextCursor = extractNativeApiSemantics(recentNotesFallbackPayload).next_cursor;
+  const relatedProfilesNextCursor = extractNativeApiSemantics(relatedProfilesFallbackPayload).next_cursor;
+  const notesContinuationHref = buildContinuationHref(
+    `/profiles/${encodeURIComponent(pubkeyOrNpub)}`,
+    currentSearchParams,
+    "notes_cursor",
+    notesNextCursor
+  );
+  const relatedProfilesContinuationHref = buildContinuationHref(
+    `/profiles/${encodeURIComponent(pubkeyOrNpub)}`,
+    currentSearchParams,
+    "related_profiles_cursor",
+    relatedProfilesNextCursor
+  );
+
+  const hero = isRecord(summaryRecord?.hero) ? summaryRecord.hero : null;
+  const heroMetadata = isRecord(hero?.metadata) ? hero.metadata : null;
+  const heroCounters = toCounterRows((isRecord(hero?.counters) ? hero.counters : summary?.stats) as ProfileStats);
+  const parsedHeroActions = normalizeHeroActions(hero?.actions);
+  const heroActions =
+    parsedHeroActions.length > 0
+      ? parsedHeroActions
+      : [
+          {
+            id: "recent_notes",
+            label: "Recent notes",
+            href: `/profiles/${encodeURIComponent(pubkeyOrNpub)}#authored-notes`,
+          },
+          {
+            id: "related_profiles",
+            label: "Related profiles",
+            href: `/profiles/${encodeURIComponent(pubkeyOrNpub)}#related-profiles`,
+          },
+          { id: "rising_profiles", label: "Rising profiles", href: "/discovery/profiles/rising" },
+        ];
+
+  const heroNpubOrPubkey =
+    asMetadataPrimitiveValue(heroMetadata?.npub_or_pubkey) ??
+    (profile?.npub
+      ? { raw: profile.npub, display: profile.npub, copyable: true, truncated: false }
+      : profile?.pubkey
+        ? {
+            raw: profile.pubkey,
+            display: truncateMiddle(profile.pubkey, 24),
+            copyable: true,
+            truncated: true,
+          }
+        : null);
+  const heroWebsite = asMetadataPrimitiveValue(heroMetadata?.website) ?? null;
+  const heroLud16 = asMetadataPrimitiveValue(heroMetadata?.lud16) ?? null;
+
+  const identityDetailsFromSummary = (() => {
+    const details = isRecord(summaryRecord?.identity_details) ? summaryRecord.identity_details : null;
+    const fields = Array.isArray(details?.fields) ? details.fields : [];
+    return fields
+      .map((entry) => {
+        if (!isRecord(entry)) return null;
+        const key = typeof entry.key === "string" ? entry.key : "";
+        const label = typeof entry.label === "string" ? entry.label : key;
+        const value = asMetadataPrimitiveValue(entry.value);
+        if (!label || !value) return null;
+        return { key, label, value };
+      })
+      .filter(
+        (entry): entry is { key: string; label: string; value: MetadataPrimitiveValue } =>
+          Boolean(entry)
+      );
+  })();
+  const identityDetails =
+    identityDetailsFromSummary.length > 0
+      ? identityDetailsFromSummary
+      : fallbackIdentityDetails(profile, summaryRecord);
+
+  const heroDisplayName =
+    (typeof hero?.display_name === "string" ? hero.display_name : undefined) ??
+    profile?.display_name ??
+    profile?.name ??
+    (profile?.pubkey ? truncateMiddle(profile.pubkey, 24) : "Profile");
+  const heroHandle =
+    (typeof hero?.handle === "string" ? hero.handle : undefined) ??
+    profile?.nip05 ??
+    profile?.name ??
+    undefined;
+  const heroBio =
+    (typeof hero?.bio === "string" ? hero.bio : undefined) ??
+    (typeof profile?.about === "string" ? profile.about : undefined) ??
+    "Explore public identity, activity, and discovery context for this profile.";
+  const avatar =
+    (typeof hero?.avatar === "string" ? hero.avatar : undefined) ??
+    (profile ? profilePictureUrl(profile) : null) ??
+    (profile ? profileFallbackAvatarDataUrl(profile) : profileFallbackAvatarDataUrl({ pubkey: lookupKey }));
+
+  const notesAuthorMap =
+    profile?.pubkey && profile.pubkey.length > 0
+      ? { [profile.pubkey.toLowerCase()]: profile }
+      : undefined;
+  const errorMessage = errors.length > 0 ? errors.join(" | ") : "";
+
+  return (
+    <div className="space-y-8">
+      {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
+
+      <SectionCard title="Profile" description="Identity-first explorer surface for this account.">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <Image
+              src={avatar}
+              alt={profile ? profileLabel(profile) : heroDisplayName}
+              width={72}
+              height={72}
+              unoptimized
+              className="h-16 w-16 rounded-full border border-zinc-700 object-cover sm:h-[72px] sm:w-[72px]"
+            />
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="truncate text-xl font-semibold tracking-tight text-zinc-100">{heroDisplayName}</p>
+              {heroHandle ? <p className="truncate text-sm text-zinc-400">{heroHandle}</p> : null}
+              <p className="text-sm leading-6 text-zinc-300">{heroBio}</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <NativeSemanticsBadges semantics={semantics} />
+            {heroNpubOrPubkey?.raw ? (
+              <IdBadge
+                id={heroNpubOrPubkey.raw}
+                label={heroNpubOrPubkey.raw.startsWith("npub1") ? "npub" : "pubkey"}
+              />
+            ) : null}
+            {heroWebsite?.raw ? (
+              <Link
+                href={heroWebsite.raw}
+                className="rounded-full border border-zinc-700 bg-zinc-900/80 px-2 py-1 text-zinc-300 hover:text-zinc-100"
+              >
+                {heroWebsite.display ?? truncateMiddle(heroWebsite.raw, 28)}
+              </Link>
+            ) : null}
+            {heroLud16?.raw ? (
+              <a
+                href={`lightning:${heroLud16.raw}`}
+                className="rounded-full border border-zinc-700 bg-zinc-900/80 px-2 py-1 text-zinc-300 hover:text-zinc-100"
+              >
+                {heroLud16.display ?? heroLud16.raw}
+              </a>
+            ) : null}
+          </div>
+
+          {heroCounters.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {heroCounters.map((counter) => (
+                <div
+                  key={counter.key}
+                  className="rounded-full border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-300"
+                >
+                  <span className="mr-2 text-zinc-500">{counter.label}</span>
+                  <span className="font-medium text-zinc-100">{counter.value}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap gap-2 text-xs">
+            {heroActions.map((action) => (
+              <Link
+                key={action.id}
+                href={action.href}
+                className="rounded-full border border-zinc-700 px-2.5 py-1 text-zinc-300 hover:text-zinc-100"
+              >
+                {action.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </SectionCard>
+
+      <div id="authored-notes">
+        <SectionCard title="Recent notes" description="Latest authored notes from this profile.">
+          {notes.length > 0 ? (
+            <>
+              <NotesList notes={notes} authorsByPubkey={notesAuthorMap} />
+              {typeof notesNextCursor === "string" && notesNextCursor.length > 0 ? (
+                <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
+                  <p className="text-xs text-indigo-100">More notes are available.</p>
+                  <Link
+                    href={notesContinuationHref}
+                    className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+                  >
+                    Continue notes
+                  </Link>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <EmptyState message="No recent notes were returned for this profile." />
+          )}
+        </SectionCard>
+      </div>
+
+      <div id="related-profiles">
+        <SectionCard
+          title="Related discovery"
+          description="Connected profiles and rising discovery surfaces related to this profile."
+        >
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-xs font-medium tracking-wide text-zinc-400 uppercase">Related profiles</p>
+              {relatedProfiles.length > 0 ? (
+                <>
+                  <ProfilesList profiles={relatedProfiles.slice(0, 8)} />
+                  {typeof relatedProfilesNextCursor === "string" &&
+                  relatedProfilesNextCursor.length > 0 ? (
+                    <Link
+                      href={relatedProfilesContinuationHref}
+                      className="inline-block text-sm text-indigo-300"
+                    >
+                      Continue related profiles
+                    </Link>
+                  ) : null}
+                </>
+              ) : (
+                <EmptyState message="No related profiles were returned for this profile yet." />
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-medium tracking-wide text-zinc-400 uppercase">Rising profiles</p>
+              {risingProfiles.length > 0 ? (
+                <ProfilesList profiles={risingProfiles.slice(0, 8)} />
+              ) : (
+                <EmptyState message="No rising profiles are available right now." />
+              )}
+            </div>
+          </div>
+        </SectionCard>
+      </div>
+
+      <SectionCard
+        title="Identity details"
+        description="Public metadata primitives with compact display and full-value access."
+      >
+        {identityDetails.length > 0 ? (
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {identityDetails.map((field) => {
+              const raw = field.value.raw ?? "";
+              const display = field.value.display ?? raw;
+              const isUrl = /^https?:\/\//i.test(raw);
+              const isLud16 = field.key.toLowerCase() === "lud16";
+              return (
+                <li
+                  key={`${field.key}-${field.label}`}
+                  className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3"
+                >
+                  <p className="mb-1 text-[11px] uppercase tracking-wide text-zinc-500">{field.label}</p>
+                  {isUrl ? (
+                    <Link href={raw} className="break-all text-sm text-indigo-300 hover:text-indigo-200">
+                      {display}
+                    </Link>
+                  ) : isLud16 ? (
+                    <a
+                      href={`lightning:${raw}`}
+                      className="break-all text-sm text-indigo-300 hover:text-indigo-200"
+                    >
+                      {display}
+                    </a>
+                  ) : (
+                    <p className="break-all text-sm text-zinc-200" title={raw || display}>
+                      {display}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <EmptyState message="No lower-level identity details were returned for this profile." />
+        )}
+      </SectionCard>
+
+      <div className="space-y-3">
+        <DebugDisclosure title="Debug payload: profile summary" data={summary ?? {}} />
+        <DebugDisclosure title="Debug payload: profile enrichment" data={profileEnrichment ?? {}} />
+        <DebugDisclosure title="Debug payload: recent notes fallback" data={recentNotesFallbackPayload ?? {}} />
+        <DebugDisclosure
+          title="Debug payload: related profiles fallback"
+          data={relatedProfilesFallbackPayload ?? {}}
+        />
+        <DebugDisclosure title="Debug payload: rising profiles fallback" data={risingProfilesPayload ?? {}} />
+      </div>
+    </div>
+  );
+}
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { cache } from "react";
+
+import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
+import { EmptyState } from "@/components/explorer/empty-state";
+import { IdBadge } from "@/components/explorer/id-badge";
+import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
+import {
+  isRecord,
+  profileFallbackAvatarDataUrl,
+  profileLabel,
+  profilePictureUrl,
+  truncateMiddle,
+} from "@/components/explorer/utils";
+import { NotesList, ProfilesList } from "@/components/data/renderers";
+import { SectionCard } from "@/components/ui/section-card";
+import { ErrorPanel } from "@/components/ui/status-panels";
+import {
+  getAuthorEvents,
+  getProfile,
+  getProfileSummary,
+  getRelatedProfiles,
+  getRisingProfiles,
+} from "@/lib/api/endpoints";
+import { extractNativeApiSemantics, normalizeEventRecords, normalizeProfiles } from "@/lib/api/normalize";
+import {
+  buildContinuationHref,
+  readSearchParam,
+  toUrlSearchParams,
+} from "@/lib/search-params/pagination";
+import type { Profile, ProfileStats } from "@/lib/types/api";
+
+type Params = Promise<{ pubkeyOrNpub: string }>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+type MetadataPrimitiveValue = {
+  raw?: string;
+  display?: string;
+  copyable?: boolean;
+  truncated?: boolean;
+};
+
+type HeroAction = {
+  id: string;
+  label: string;
+  href: string;
+};
+
+const getProfileSummaryCached = cache(async (pubkeyOrNpub: string) =>
+  getProfileSummary(pubkeyOrNpub, "requestTime")
+);
+
+function hasIdentityMetadata(profile: Profile | null | undefined): boolean {
+  if (!profile) return false;
+  return [
+    profile.display_name,
+    profile.name,
+    profile.about,
+    profile.picture,
+    profile.nip05,
+    profile.lud16,
+    profile.website,
+  ].some((value) => typeof value === "string" && value.trim().length > 0);
+}
+
+function isNotFoundReason(reason: unknown): boolean {
+  return reason instanceof Error && /API 404:/i.test(reason.message);
+}
+
+function mergeProfile(summaryProfile: Profile | null, enrichedProfile: Profile | null): Profile | null {
+  if (!summaryProfile && !enrichedProfile) return null;
+  if (!summaryProfile) return enrichedProfile;
+  if (!enrichedProfile) return summaryProfile;
+  return {
+    ...enrichedProfile,
+    ...summaryProfile,
+    pubkey: summaryProfile.pubkey || enrichedProfile.pubkey,
+  };
+}
+
+function asMetadataPrimitiveValue(value: unknown): MetadataPrimitiveValue | null {
+  if (!isRecord(value)) return null;
+  const raw = typeof value.raw === "string" ? value.raw : undefined;
+  const display = typeof value.display === "string" ? value.display : undefined;
+  const copyable = typeof value.copyable === "boolean" ? value.copyable : undefined;
+  const truncated = typeof value.truncated === "boolean" ? value.truncated : undefined;
+  if (!raw && !display) return null;
+  return { raw, display, copyable, truncated };
+}
+
+function normalizeHeroActions(value: unknown): HeroAction[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      if (!isRecord(entry)) return null;
+      const id = typeof entry.id === "string" ? entry.id : "";
+      const label = typeof entry.label === "string" ? entry.label : "";
+      const href = typeof entry.href === "string" ? entry.href : "";
+      if (!label || !href) return null;
+      return {
+        id: id || label.toLowerCase().replace(/\s+/g, "_"),
+        label,
+        href,
+      } satisfies HeroAction;
+    })
+    .filter((entry): entry is HeroAction => Boolean(entry));
+}
+
+function fallbackIdentityDetails(
+  profile: Profile | null,
+  summary: Record<string, unknown> | null
+): Array<{ key: string; label: string; value: MetadataPrimitiveValue }> {
+  if (!profile) return [];
+  const entries: Array<{ key: string; label: string; value: MetadataPrimitiveValue }> = [];
+  const push = (key: string, label: string, rawValue: unknown) => {
+    if (typeof rawValue !== "string" || rawValue.trim().length === 0) return;
+    const trimmed = rawValue.trim();
+    const max = key === "about" ? 120 : 56;
+    const display = trimmed.length > max ? `${trimmed.slice(0, max - 3)}...` : trimmed;
+    entries.push({
+      key,
+      label,
+      value: {
+        raw: trimmed,
+        display,
+        copyable: true,
+        truncated: display !== trimmed,
+      },
+    });
+  };
+
+  push("npub", "Npub", profile.npub);
+  push("pubkey", "Pubkey", profile.pubkey);
+  push("nip05", "NIP-05", profile.nip05);
+  push("website", "Website", profile.website);
+  push("lud16", "LUD-16", profile.lud16);
+  push("about", "About", profile.about);
+  push("metadata_event_id", "Metadata event", summary?.metadata_event_id);
+  return entries;
+}
+
+function toCounterRows(stats: ProfileStats | undefined): Array<{ key: string; label: string; value: number }> {
+  if (!stats) return [];
+  const rows = [
+    { key: "follower_count", label: "Followers", value: stats.follower_count },
+    { key: "following_count", label: "Following", value: stats.following_count },
+    { key: "note_count", label: "Notes", value: stats.note_count },
+    { key: "reply_count", label: "Replies", value: stats.reply_count },
+  ];
+  return rows.filter((row): row is { key: string; label: string; value: number } => typeof row.value === "number");
+}
+
+function profileLabelOrFallback(profile: Profile | null, fallback: string): string {
+  if (!profile) return fallback;
+  return profileLabel(profile);
+}
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { pubkeyOrNpub } = await params;
+  try {
+    const summary = await getProfileSummaryCached(pubkeyOrNpub);
+    const profile = summary.profile ?? (summary as unknown as Profile);
+    const label =
+      profile.display_name ?? profile.name ?? profile.npub ?? profile.pubkey ?? pubkeyOrNpub;
+    return {
+      title: label,
+      description: `View profile activity, notes, and network context for ${label}.`,
+    };
+  } catch {
+    return {
+      title: `Profile ${pubkeyOrNpub}`,
+      description: `View profile activity, notes, and network context for ${pubkeyOrNpub}.`,
+    };
+  }
+}
+
+export default async function ProfilePage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
+  const { pubkeyOrNpub } = await params;
+  const resolvedSearchParams = await searchParams;
+  const notesCursor = readSearchParam(resolvedSearchParams, "notes_cursor");
+  const relatedProfilesCursor = readSearchParam(resolvedSearchParams, "related_profiles_cursor");
+  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
+  const errors: string[] = [];
+
+  let summary: Awaited<ReturnType<typeof getProfileSummary>> | null = null;
+  let profileEnrichment: Awaited<ReturnType<typeof getProfile>> | null = null;
+  let recentNotesFallbackPayload: Awaited<ReturnType<typeof getAuthorEvents>> | null = null;
+  let relatedProfilesFallbackPayload: Awaited<ReturnType<typeof getRelatedProfiles>> | null = null;
+  let risingProfilesPayload: Awaited<ReturnType<typeof getRisingProfiles>> | null = null;
+
+  const summaryResult = await Promise.allSettled([getProfileSummaryCached(pubkeyOrNpub)]);
+  if (summaryResult[0].status === "fulfilled") {
+    summary = summaryResult[0].value;
+  } else {
+    errors.push(
+      summaryResult[0].reason instanceof Error
+        ? summaryResult[0].reason.message
+        : "Failed to load profile summary."
+    );
+  }
+
+  const summaryRecord = isRecord(summary) ? summary : null;
+  const summaryProfile = summary ? (summary.profile ?? (summary as unknown as Profile)) : null;
+  const lookupKey = summaryProfile?.pubkey ?? summary?.pubkey ?? pubkeyOrNpub;
+  const shouldEnrichProfile = !hasIdentityMetadata(summaryProfile);
+
+  const summaryRecentNotes = normalizeEventRecords(summaryRecord?.recent_notes);
+  const summaryRelatedDiscovery = isRecord(summaryRecord?.related_discovery)
+    ? summaryRecord.related_discovery
+    : null;
+  const summaryRelatedProfiles = normalizeProfiles(summaryRelatedDiscovery?.related_profiles);
+  const summaryRisingProfiles = normalizeProfiles(summaryRelatedDiscovery?.rising_profiles);
+  const shouldLoadRecentNotesFallback = typeof notesCursor === "string" || summaryRecentNotes.length === 0;
+  const shouldLoadRelatedProfilesFallback =
+    typeof relatedProfilesCursor === "string" || summaryRelatedProfiles.length === 0;
+  const shouldLoadRisingProfilesFallback = summaryRisingProfiles.length === 0;
+
+  const [profileResult, notesFallbackResult, relatedFallbackResult, risingProfilesResult] =
+    await Promise.allSettled([
+      shouldEnrichProfile ? getProfile(lookupKey, "requestTime") : Promise.resolve(null),
+      shouldLoadRecentNotesFallback
+        ? getAuthorEvents(lookupKey, "requestTime", { cursor: notesCursor })
+        : Promise.resolve(null),
+      shouldLoadRelatedProfilesFallback
+        ? getRelatedProfiles(lookupKey, "requestTime", { cursor: relatedProfilesCursor })
+        : Promise.resolve(null),
+      shouldLoadRisingProfilesFallback ? getRisingProfiles("shortTtl") : Promise.resolve(null),
+    ]);
+
+  if (profileResult.status === "fulfilled") {
+    profileEnrichment = profileResult.value;
+  } else if (shouldEnrichProfile) {
+    errors.push(
+      profileResult.reason instanceof Error
+        ? profileResult.reason.message
+        : "Failed to enrich profile metadata."
+    );
+  }
+
+  if (notesFallbackResult.status === "fulfilled") {
+    recentNotesFallbackPayload = notesFallbackResult.value;
+  } else if (shouldLoadRecentNotesFallback && !isNotFoundReason(notesFallbackResult.reason)) {
+    errors.push(
+      notesFallbackResult.reason instanceof Error
+        ? notesFallbackResult.reason.message
+        : "Failed to load recent notes."
+    );
+  }
+
+  if (relatedFallbackResult.status === "fulfilled") {
+    relatedProfilesFallbackPayload = relatedFallbackResult.value;
+  } else if (
+    shouldLoadRelatedProfilesFallback &&
+    !isNotFoundReason(relatedFallbackResult.reason)
+  ) {
+    errors.push(
+      relatedFallbackResult.reason instanceof Error
+        ? relatedFallbackResult.reason.message
+        : "Failed to load related profiles."
+    );
+  }
+
+  if (risingProfilesResult.status === "fulfilled") {
+    risingProfilesPayload = risingProfilesResult.value;
+  } else if (
+    shouldLoadRisingProfilesFallback &&
+    !isNotFoundReason(risingProfilesResult.reason)
+  ) {
+    errors.push(
+      risingProfilesResult.reason instanceof Error
+        ? risingProfilesResult.reason.message
+        : "Failed to load rising profiles."
+    );
+  }
+
+  const profile = mergeProfile(summaryProfile, profileEnrichment);
+  const semantics = extractNativeApiSemantics(summary, profileEnrichment, recentNotesFallbackPayload);
+  const notes = summaryRecentNotes.length > 0 ? summaryRecentNotes : recentNotesFallbackPayload?.events ?? [];
+  const relatedProfiles =
+    summaryRelatedProfiles.length > 0
+      ? summaryRelatedProfiles
+      : relatedProfilesFallbackPayload?.related_profiles ?? [];
+  const risingProfiles =
+    summaryRisingProfiles.length > 0 ? summaryRisingProfiles : risingProfilesPayload?.profiles ?? [];
+
+  const notesNextCursor = extractNativeApiSemantics(recentNotesFallbackPayload).next_cursor;
+  const relatedProfilesNextCursor = extractNativeApiSemantics(relatedProfilesFallbackPayload).next_cursor;
+  const notesContinuationHref = buildContinuationHref(
+    `/profiles/${encodeURIComponent(pubkeyOrNpub)}`,
+    currentSearchParams,
+    "notes_cursor",
+    notesNextCursor
+  );
+  const relatedProfilesContinuationHref = buildContinuationHref(
+    `/profiles/${encodeURIComponent(pubkeyOrNpub)}`,
+    currentSearchParams,
+    "related_profiles_cursor",
+    relatedProfilesNextCursor
+  );
+
+  const hero = isRecord(summaryRecord?.hero) ? summaryRecord.hero : null;
+  const heroMetadata = isRecord(hero?.metadata) ? hero.metadata : null;
+  const heroCounters = toCounterRows((isRecord(hero?.counters) ? hero.counters : summary?.stats) as ProfileStats);
+  const heroActions =
+    normalizeHeroActions(hero?.actions).length > 0
+      ? normalizeHeroActions(hero?.actions)
+      : [
+          {
+            id: "recent_notes",
+            label: "Recent notes",
+            href: `/profiles/${encodeURIComponent(pubkeyOrNpub)}#authored-notes`,
+          },
+          {
+            id: "related_profiles",
+            label: "Related profiles",
+            href: `/profiles/${encodeURIComponent(pubkeyOrNpub)}#related-profiles`,
+          },
+          {
+            id: "rising_profiles",
+            label: "Rising profiles",
+            href: "/discovery/profiles/rising",
+          },
+        ];
+
+  const heroNpubOrPubkey =
+    asMetadataPrimitiveValue(heroMetadata?.npub_or_pubkey) ??
+    (profile?.npub
+      ? { raw: profile.npub, display: profile.npub, copyable: true, truncated: false }
+      : profile?.pubkey
+        ? {
+            raw: profile.pubkey,
+            display: truncateMiddle(profile.pubkey, 24),
+            copyable: true,
+            truncated: true,
+          }
+        : null);
+  const heroWebsite = asMetadataPrimitiveValue(heroMetadata?.website) ?? null;
+  const heroLud16 = asMetadataPrimitiveValue(heroMetadata?.lud16) ?? null;
+
+  const identityDetailsFromSummary = (() => {
+    const container = isRecord(summaryRecord?.identity_details) ? summaryRecord.identity_details : null;
+    const fields = Array.isArray(container?.fields) ? container.fields : [];
+    return fields
+      .map((entry) => {
+        if (!isRecord(entry)) return null;
+        const key = typeof entry.key === "string" ? entry.key : "";
+        const label = typeof entry.label === "string" ? entry.label : key;
+        const value = asMetadataPrimitiveValue(entry.value);
+        if (!label || !value) return null;
+        return { key, label, value };
+      })
+      .filter(
+        (entry): entry is { key: string; label: string; value: MetadataPrimitiveValue } =>
+          Boolean(entry)
+      );
+  })();
+  const identityDetails =
+    identityDetailsFromSummary.length > 0
+      ? identityDetailsFromSummary
+      : fallbackIdentityDetails(profile, summaryRecord);
+
+  const heroDisplayName =
+    (typeof hero?.display_name === "string" ? hero.display_name : undefined) ??
+    profile?.display_name ??
+    profile?.name ??
+    (profile?.pubkey ? truncateMiddle(profile.pubkey, 24) : "Profile");
+  const heroHandle =
+    (typeof hero?.handle === "string" ? hero.handle : undefined) ??
+    profile?.nip05 ??
+    profile?.name ??
+    undefined;
+  const heroBio =
+    (typeof hero?.bio === "string" ? hero.bio : undefined) ??
+    (typeof profile?.about === "string" ? profile.about : undefined) ??
+    "Explore public identity, activity, and discovery context for this profile.";
+  const avatar =
+    (typeof hero?.avatar === "string" ? hero.avatar : undefined) ??
+    (profile ? profilePictureUrl(profile) : null) ??
+    (profile ? profileFallbackAvatarDataUrl(profile) : profileFallbackAvatarDataUrl({ pubkey: lookupKey }));
+
+  const notesAuthorMap =
+    profile?.pubkey && profile.pubkey.length > 0
+      ? { [profile.pubkey.toLowerCase()]: profile }
+      : undefined;
+  const errorMessage = errors.length > 0 ? errors.join(" | ") : "";
+
+  return (
+    <div className="space-y-8">
+      {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
+
+      <SectionCard title="Profile" description="Identity-first explorer surface for this account.">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <Image
+              src={avatar}
+              alt={profileLabelOrFallback(profile, heroDisplayName)}
+              width={72}
+              height={72}
+              unoptimized
+              className="h-16 w-16 rounded-full border border-zinc-700 object-cover sm:h-[72px] sm:w-[72px]"
+            />
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="truncate text-xl font-semibold tracking-tight text-zinc-100">{heroDisplayName}</p>
+              {heroHandle ? <p className="truncate text-sm text-zinc-400">{heroHandle}</p> : null}
+              <p className="text-sm leading-6 text-zinc-300">{heroBio}</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <NativeSemanticsBadges semantics={semantics} />
+            {heroNpubOrPubkey?.raw ? (
+              <IdBadge id={heroNpubOrPubkey.raw} label={heroNpubOrPubkey.raw.startsWith("npub1") ? "npub" : "pubkey"} />
+            ) : null}
+            {heroWebsite?.raw ? (
+              <Link
+                href={heroWebsite.raw}
+                className="rounded-full border border-zinc-700 bg-zinc-900/80 px-2 py-1 text-zinc-300 hover:text-zinc-100"
+              >
+                {heroWebsite.display ?? truncateMiddle(heroWebsite.raw, 28)}
+              </Link>
+            ) : null}
+            {heroLud16?.raw ? (
+              <a
+                href={`lightning:${heroLud16.raw}`}
+                className="rounded-full border border-zinc-700 bg-zinc-900/80 px-2 py-1 text-zinc-300 hover:text-zinc-100"
+              >
+                {heroLud16.display ?? heroLud16.raw}
+              </a>
+            ) : null}
+          </div>
+
+          {heroCounters.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {heroCounters.map((counter) => (
+                <div
+                  key={counter.key}
+                  className="rounded-full border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-300"
+                >
+                  <span className="mr-2 text-zinc-500">{counter.label}</span>
+                  <span className="font-medium text-zinc-100">{counter.value}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap gap-2 text-xs">
+            {heroActions.map((action) => (
+              <Link
+                key={action.id}
+                href={action.href}
+                className="rounded-full border border-zinc-700 px-2.5 py-1 text-zinc-300 hover:text-zinc-100"
+              >
+                {action.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </SectionCard>
+
+      <div id="authored-notes">
+        <SectionCard title="Recent notes" description="Latest authored notes from this profile.">
+          {notes.length > 0 ? (
+            <>
+              <NotesList notes={notes} authorsByPubkey={notesAuthorMap} />
+              {typeof notesNextCursor === "string" && notesNextCursor.length > 0 ? (
+                <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
+                  <p className="text-xs text-indigo-100">More notes are available.</p>
+                  <Link
+                    href={notesContinuationHref}
+                    className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+                  >
+                    Continue notes
+                  </Link>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <EmptyState message="No recent notes were returned for this profile." />
+          )}
+        </SectionCard>
+      </div>
+
+      <div id="related-profiles">
+        <SectionCard
+          title="Related discovery"
+          description="Connected profiles and rising discovery surfaces related to this profile."
+        >
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-xs font-medium tracking-wide text-zinc-400 uppercase">Related profiles</p>
+              {relatedProfiles.length > 0 ? (
+                <>
+                  <ProfilesList profiles={relatedProfiles.slice(0, 8)} />
+                  {typeof relatedProfilesNextCursor === "string" &&
+                  relatedProfilesNextCursor.length > 0 ? (
+                    <Link
+                      href={relatedProfilesContinuationHref}
+                      className="inline-block text-sm text-indigo-300"
+                    >
+                      Continue related profiles
+                    </Link>
+                  ) : null}
+                </>
+              ) : (
+                <EmptyState message="No related profiles were returned for this profile yet." />
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-medium tracking-wide text-zinc-400 uppercase">Rising profiles</p>
+              {risingProfiles.length > 0 ? (
+                <ProfilesList profiles={risingProfiles.slice(0, 8)} />
+              ) : (
+                <EmptyState message="No rising profiles are available right now." />
+              )}
+            </div>
+          </div>
+        </SectionCard>
+      </div>
+
+      <SectionCard
+        title="Identity details"
+        description="Public metadata primitives with compact display and full-value access."
+      >
+        {identityDetails.length > 0 ? (
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {identityDetails.map((field) => {
+              const raw = field.value.raw ?? "";
+              const display = field.value.display ?? raw;
+              const isUrl = /^https?:\/\//i.test(raw);
+              const isLud16 = field.key.toLowerCase() === "lud16";
+              return (
+                <li
+                  key={`${field.key}-${field.label}`}
+                  className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3"
+                >
+                  <p className="mb-1 text-[11px] uppercase tracking-wide text-zinc-500">{field.label}</p>
+                  {isUrl ? (
+                    <Link href={raw} className="break-all text-sm text-indigo-300 hover:text-indigo-200">
+                      {display}
+                    </Link>
+                  ) : isLud16 ? (
+                    <a
+                      href={`lightning:${raw}`}
+                      className="break-all text-sm text-indigo-300 hover:text-indigo-200"
+                    >
+                      {display}
+                    </a>
+                  ) : (
+                    <p className="break-all text-sm text-zinc-200" title={raw || display}>
+                      {display}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <EmptyState message="No lower-level identity details were returned for this profile." />
+        )}
+      </SectionCard>
+
+      <div className="space-y-3">
+        <DebugDisclosure title="Debug payload: profile summary" data={summary ?? {}} />
+        <DebugDisclosure title="Debug payload: profile enrichment" data={profileEnrichment ?? {}} />
+        <DebugDisclosure title="Debug payload: recent notes fallback" data={recentNotesFallbackPayload ?? {}} />
+        <DebugDisclosure
+          title="Debug payload: related profiles fallback"
+          data={relatedProfilesFallbackPayload ?? {}}
+        />
+        <DebugDisclosure title="Debug payload: rising profiles fallback" data={risingProfilesPayload ?? {}} />
+      </div>
+    </div>
+  );
+}
+import type { Metadata } from "next";
 import Link from "next/link";
 import { cache } from "react";
 
@@ -342,7 +2115,11 @@ export default async function ProfilePage({
     authoredRepliesPayload,
     profileEnrichment
   );
-  const notes = authoredEventsPayload?.events ?? [];
+  const summaryRecentNotePreviews = summary?.recent_note_previews ?? [];
+  const notes =
+    authoredEventsPayload?.events && authoredEventsPayload.events.length > 0
+      ? authoredEventsPayload.events
+      : summaryRecentNotePreviews;
   const replies = authoredRepliesPayload?.replies ?? [];
   const followers = followersPayload?.followers ?? [];
   const mentions = mentionsPayload?.mentions ?? [];
@@ -978,3 +2755,4 @@ export default async function ProfilePage({
     </div>
   );
 }
+*/

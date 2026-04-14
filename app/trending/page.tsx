@@ -6,6 +6,7 @@ import { DiscoveryActionLinks, DiscoveryPill } from "@/components/explorer/card-
 import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
 import { PageHero } from "@/components/explorer/page-hero";
 import { NoteCard } from "@/components/explorer/note-card";
+import { getNotePreviewPresentation } from "@/components/explorer/note-preview";
 import {
   mapDomainWhyNow,
   mapHashtagWhyNow,
@@ -89,12 +90,6 @@ export default async function TrendingPage() {
       hour: "numeric",
       minute: "2-digit",
     });
-  };
-  const compactNotePreview = (value: unknown): string => {
-    if (typeof value !== "string") return "(no content)";
-    const normalized = value.replace(/\s+/g, " ").trim();
-    if (normalized.length === 0) return "(no content)";
-    return normalized.length > 180 ? `${normalized.slice(0, 177)}...` : normalized;
   };
   const noteRouteId = (note: EventRecord): string | null => {
     const candidate =
@@ -319,6 +314,7 @@ export default async function TrendingPage() {
                       const author = resolveNoteAuthor(note, authorsByPubkey);
                       const noteId = noteRouteId(note);
                       const observedAt = formatObservedAt(note.created_at);
+                      const preview = getNotePreviewPresentation(note);
                       return (
                         <li
                           key={note.id ?? note.event_id ?? note.eventId ?? `note-followup-${rank}`}
@@ -336,8 +332,13 @@ export default async function TrendingPage() {
                                 ) : null}
                               </div>
                               <p className="text-sm leading-5 text-zinc-300">
-                                {compactNotePreview(note.content)}
+                                {preview.contentForCard}
                               </p>
+                              {preview.treatmentLabel ? (
+                                <p className="text-[10px] tracking-[0.14em] text-zinc-500 uppercase">
+                                  {preview.treatmentLabel}
+                                </p>
+                              ) : null}
                             </div>
                             {noteId ? (
                               <Link

@@ -498,6 +498,9 @@ export function normalizeProfileSummaryResponse(value: unknown): ProfileSummaryR
   const record = asRecord(value) ?? {};
   const profile = normalizeProfile(record);
   const stats = normalizeProfileStats(record.stats);
+  const recentNotePreviews = normalizeEventRecords(
+    record.recent_note_previews ?? record.recentNotes ?? record.recent_notes
+  );
 
   return {
     ...record,
@@ -506,6 +509,7 @@ export function normalizeProfileSummaryResponse(value: unknown): ProfileSummaryR
     pubkey: asString(record.pubkey) ?? profile?.pubkey,
     profile: profile ?? undefined,
     stats,
+    recent_note_previews: recentNotePreviews.length > 0 ? recentNotePreviews : undefined,
   };
 }
 

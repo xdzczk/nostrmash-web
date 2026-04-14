@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { NoteMedia } from "@/components/explorer/note-media";
+import { getNotePreviewPresentation } from "@/components/explorer/note-preview";
 import { Timestamp } from "@/components/explorer/timestamp";
 import { IdBadge } from "@/components/explorer/id-badge";
 import {
@@ -67,6 +68,14 @@ export function NoteCard({
       : undefined;
   const content =
     typeof note.content === "string" && note.content.length > 0 ? note.content : "(no content)";
+  const preview = getNotePreviewPresentation(note);
+  const presentationContent = preview.contentForCard || content;
+  const prefersCompactClamp = preview.isCompact || preview.mode === "long_identifier_heavy_preview";
+  const clampClassName = showFullContent
+    ? "whitespace-pre-wrap"
+    : prefersCompactClamp
+      ? "line-clamp-2"
+      : "line-clamp-4";
   const rawMetrics = extractPrimitiveStats(note, [
     "id",
     "pubkey",
@@ -142,15 +151,20 @@ export function NoteCard({
         </div>
       </div>
 
+      {preview.treatmentLabel ? (
+        <div className="mt-2.5 text-[11px] tracking-[0.14em] text-zinc-500 uppercase sm:mt-3">
+          {preview.treatmentLabel}
+        </div>
+      ) : null}
+      {preview.prefersMediaFirst && typeof note.content === "string" && note.content.length > 0 ? (
+        <NoteMedia content={note.content} />
+      ) : null}
       <p
-        className={`mt-2.5 text-sm leading-5 [overflow-wrap:anywhere] text-zinc-100 sm:mt-3 sm:leading-6 ${
-          showFullContent ? "whitespace-pre-wrap" : "line-clamp-4"
-        }`}
+        className={`mt-2.5 text-sm leading-5 [overflow-wrap:anywhere] text-zinc-100 sm:leading-6 ${clampClassName}`}
       >
-        {content}
+        {presentationContent}
       </p>
-
-      {typeof note.content === "string" && note.content.length > 0 ? (
+      {!preview.prefersMediaFirst && typeof note.content === "string" && note.content.length > 0 ? (
         <NoteMedia content={note.content} />
       ) : null}
 

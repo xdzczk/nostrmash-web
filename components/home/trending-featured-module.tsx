@@ -9,6 +9,7 @@ import {
   DiscoveryStatPills,
 } from "@/components/explorer/card-grammar";
 import { IdBadge } from "@/components/explorer/id-badge";
+import { getNotePreviewPresentation } from "@/components/explorer/note-preview";
 import { Timestamp } from "@/components/explorer/timestamp";
 import { mapNoteWhyNow, WhyNow } from "@/components/explorer/why-now";
 import {
@@ -120,12 +121,6 @@ function extractMediaAttachment(note: EventRecord): MediaAttachment | null {
       })
       .filter((entry): entry is MediaAttachment => entry !== null)[0] ?? null
   );
-}
-
-function truncateNotePreview(content: string, maxLength: number): string {
-  const normalized = content.trim().replace(/\n{3,}/g, "\n\n");
-  if (normalized.length <= maxLength) return normalized;
-  return `${normalized.slice(0, maxLength).trimEnd()}…`;
 }
 
 function buildDiscoverySignals(note: EventRecord): DiscoverySignal[] {
@@ -368,12 +363,10 @@ function FeaturedNoteCard({
 }) {
   const noteId = resolveNoteId(note);
   const noteHref = noteId ? `/notes/${encodeURIComponent(noteId)}` : undefined;
-  const rawContent =
-    typeof note.content === "string" && note.content.trim().length > 0
-      ? note.content.trim()
-      : "Media-only note with no text body.";
+  const preview = getNotePreviewPresentation(note);
+  const rawContent = preview.rawContent || "Media-only note with no text body.";
   const mediaAttachment = extractMediaAttachment(note);
-  const content = truncateNotePreview(rawContent, mediaAttachment ? 900 : 1400);
+  const content = preview.contentForCard || rawContent;
   const signals = buildDiscoverySignals(note);
   const reasons = mapNoteWhyNow(note);
   const statusLabel = buildStatusLabel(rank, signals);
@@ -398,6 +391,11 @@ function FeaturedNoteCard({
       >
         <div className="max-w-[52rem] min-w-0 space-y-5">
           <NoteAuthor note={note} author={author} showSecondaryLabel={false} />
+          {preview.treatmentLabel ? (
+            <p className="text-[11px] tracking-[0.14em] text-zinc-500 uppercase">
+              {preview.treatmentLabel}
+            </p>
+          ) : null}
           <p className="max-w-[46rem] text-base leading-7 [overflow-wrap:anywhere] whitespace-pre-wrap text-zinc-100 sm:text-[1.07rem]">
             {content}
           </p>
@@ -425,10 +423,8 @@ function SecondaryNoteCard({
 }) {
   const noteId = resolveNoteId(note);
   const noteHref = noteId ? `/notes/${encodeURIComponent(noteId)}` : undefined;
-  const content =
-    typeof note.content === "string" && note.content.trim().length > 0
-      ? note.content.trim()
-      : "Media-only note with no text body.";
+  const preview = getNotePreviewPresentation(note);
+  const content = preview.contentForCard || "Media-only note with no text body.";
   const mediaAttachment = extractMediaAttachment(note);
   const signals = buildDiscoverySignals(note).slice(0, 2);
   const reasons = mapNoteWhyNow(note);
@@ -445,7 +441,14 @@ function SecondaryNoteCard({
       <div className="mt-2.5 space-y-2.5">
         {mediaAttachment ? <NoteMediaFrame attachment={mediaAttachment} compact /> : null}
         <NoteAuthor note={note} author={author} compact />
-        <p className="line-clamp-4 text-sm leading-6 [overflow-wrap:anywhere] whitespace-pre-wrap text-zinc-300">
+        {preview.treatmentLabel ? (
+          <p className="text-[10px] tracking-[0.14em] text-zinc-500 uppercase">
+            {preview.treatmentLabel}
+          </p>
+        ) : null}
+        <p
+          className={`${preview.isCompact ? "line-clamp-2" : "line-clamp-4"} text-sm leading-6 [overflow-wrap:anywhere] whitespace-pre-wrap text-zinc-300`}
+        >
           {content}
         </p>
         <WhyNow reasons={reasons} />

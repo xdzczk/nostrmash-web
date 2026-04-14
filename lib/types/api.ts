@@ -61,6 +61,17 @@ export interface EventRecord {
   created_at?: number;
   content?: string;
   tags?: string[][];
+  preview?: {
+    mode?: string;
+    display_content?: string;
+    first_line?: string;
+    is_compact?: boolean;
+    contains_raw?: boolean;
+    domains?: string[];
+    open_note_url?: string;
+    contains_content?: boolean;
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 }
 
@@ -284,6 +295,7 @@ export interface ProfileSummaryResponse extends NativeApiSemantics {
   pubkey?: string;
   profile?: Profile;
   stats?: ProfileStats;
+  recent_note_previews?: EventRecord[];
   note_count?: number;
   follower_count?: number;
   following_count?: number;
