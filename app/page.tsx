@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-import { DiscoveryActionLinks, DiscoveryPill } from "@/components/explorer/card-grammar";
+import { DiscoveryActionLinks } from "@/components/explorer/card-grammar";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { extractPrimitiveStats, isRecord, truncateIdentifier } from "@/components/explorer/utils";
 import { ClosingDiscoveryRail } from "@/components/home/closing-discovery-rail";
@@ -320,8 +320,9 @@ export default async function HomePage() {
                 shortcuts={heroSearchShortcuts}
               />
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
-                <DiscoveryPill tone="freshness">{trendWindowLabel}</DiscoveryPill>
-                <DiscoveryPill tone="freshness">{freshness}</DiscoveryPill>
+                <span>{trendWindowLabel}</span>
+                <span className="text-zinc-600">•</span>
+                <span>{freshness}</span>
               </div>
             </div>
             <aside className="rounded-[1.5rem] border border-zinc-800/90 bg-zinc-950/35 p-4 sm:p-5 xl:self-stretch xl:justify-self-end xl:p-6">
@@ -388,8 +389,9 @@ export default async function HomePage() {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
-                <DiscoveryPill tone="freshness">{trendWindowLabel}</DiscoveryPill>
-                <DiscoveryPill tone="freshness">{notesFreshness}</DiscoveryPill>
+                <span>{trendWindowLabel}</span>
+                <span className="text-zinc-600">•</span>
+                <span>{notesFreshness}</span>
               </div>
             </header>
             {flagshipNotes.length > 0 ? (

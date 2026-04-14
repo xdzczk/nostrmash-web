@@ -1,4 +1,5 @@
 import { DomainChip } from "@/components/explorer/domain-chip";
+import { pickPrimaryDomainSupportingSignal } from "@/components/explorer/domain-supporting-signal";
 import { HashtagChip } from "@/components/explorer/hashtag-chip";
 import { NoteCard } from "@/components/explorer/note-card";
 import { mapDomainWhyNow, mapHashtagWhyNow } from "@/components/explorer/why-now";
@@ -151,60 +152,65 @@ export function DomainsList({
   ranked = false,
   searchable = false,
 }: {
-  domains: Array<string | { domain?: string; count?: number; event_count?: number }>;
+  domains: Array<
+    string | { domain?: string; count?: number; event_count?: number; unique_authors?: number }
+  >;
   ranked?: boolean;
   searchable?: boolean;
 }) {
   const normalized: Array<{
     domain: string;
-    count?: number;
     href?: string;
     rank?: number;
     whyNow: ReturnType<typeof mapDomainWhyNow>;
+    supportingSignal: ReturnType<typeof pickPrimaryDomainSupportingSignal>;
   }> = [];
   domains.forEach((entry, index) => {
     const domain = typeof entry === "string" ? entry : (entry.domain ?? "");
     const normalizedDomain = normalizeDomainLabel(domain);
     if (normalizedDomain.length === 0) return;
-    const count = typeof entry === "string" ? undefined : (entry.count ?? entry.event_count);
     const href =
       searchable && normalizedDomain.length > 0
         ? `/domains/${encodeURIComponent(normalizedDomain)}`
         : undefined;
+    const supportingSignal =
+      typeof entry === "string" ? null : pickPrimaryDomainSupportingSignal(entry);
     normalized.push({
       domain: normalizedDomain,
-      count,
       href,
       rank: ranked ? index + 1 : undefined,
       whyNow: typeof entry === "string" ? [] : mapDomainWhyNow(entry),
+      supportingSignal,
     });
   });
-  const top = ranked ? normalized.slice(0, 3) : [];
   const rest = ranked ? normalized.slice(3) : normalized;
+
+  if (ranked) {
+    return (
+      <ol className="divide-y divide-zinc-800/75 rounded-2xl border border-zinc-800/70 bg-zinc-950/25">
+        {normalized.map((entry, index) => (
+          <li key={`${entry.domain}-${index}`} className="px-3 py-2.5 sm:px-4">
+            <DomainChip
+              domain={entry.domain}
+              supportingSignal={entry.supportingSignal}
+              href={entry.href}
+              rank={entry.rank}
+              whyNow={entry.whyNow}
+            />
+          </li>
+        ))}
+      </ol>
+    );
+  }
 
   return (
     <div className="space-y-2">
-      {top.length > 0 ? (
-        <ul className="grid gap-2 sm:grid-cols-3">
-          {top.map((entry, index) => (
-            <li key={`${entry.domain}-${index}`}>
-              <DomainChip
-                domain={entry.domain}
-                count={entry.count}
-                href={entry.href}
-                rank={entry.rank}
-                whyNow={entry.whyNow}
-              />
-            </li>
-          ))}
-        </ul>
-      ) : null}
       <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {rest.map((entry, index) => (
           <li key={`${entry.domain}-${index}`}>
             <DomainChip
               domain={entry.domain}
-              count={entry.count}
+              supportingSignal={entry.supportingSignal}
               href={entry.href}
               rank={entry.rank}
               whyNow={entry.whyNow}

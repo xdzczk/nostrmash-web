@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { cardTierClassName, DiscoveryPill } from "@/components/explorer/card-grammar";
+import { cardTierClassName } from "@/components/explorer/card-grammar";
 import { WhyNow, type WhyNowReason } from "@/components/explorer/why-now";
 
 export function HashtagChip({
@@ -31,11 +31,9 @@ export function HashtagChip({
           ) : null}
           #{hashtag}
         </p>
-        <DiscoveryPill tone="stat" className="shrink-0 px-2 py-0.5 text-[10px]">
-          {countLabel}
-        </DiscoveryPill>
+        <span className="shrink-0 text-[11px] text-zinc-500">{countLabel}</span>
       </div>
-      <WhyNow reasons={whyNow} className="mt-2" />
+      <WhyNow reasons={whyNow} maxReasons={1} className="mt-2" />
     </div>
   );
 

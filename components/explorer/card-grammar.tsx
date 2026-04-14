@@ -61,13 +61,11 @@ export function DiscoveryStatPills({
     <div
       className={`flex flex-wrap items-center gap-x-2.5 gap-y-1.5 ${compact ? "text-[11px]" : "text-xs"} ${className}`.trim()}
     >
-      {stats.map((metric) => (
-        <span
-          key={metric.label}
-          className={`inline-flex items-center gap-1.5 rounded-full border border-zinc-700/80 bg-zinc-900/60 ${compact ? "px-2 py-0.5" : "px-2.5 py-1"}`}
-        >
+      {stats.map((metric, index) => (
+        <span key={metric.label} className="inline-flex items-center gap-1.5">
+          {index > 0 ? <span className="text-zinc-600">•</span> : null}
           <span className="text-zinc-500">{formatMetricLabel(metric.label)}</span>
-          <span className="font-medium text-zinc-100">
+          <span className="font-medium text-zinc-200">
             {truncateMiddle(formatValue(metric.value), compact ? 14 : 18)}
           </span>
         </span>

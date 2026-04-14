@@ -3,12 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import {
-  DiscoveryActionLinks,
-  DiscoveryPill,
-  DiscoveryStatPills,
-} from "@/components/explorer/card-grammar";
-import { IdBadge } from "@/components/explorer/id-badge";
+import { DiscoveryActionLinks, DiscoveryStatPills } from "@/components/explorer/card-grammar";
 import { getNotePreviewPresentation } from "@/components/explorer/note-preview";
 import { Timestamp } from "@/components/explorer/timestamp";
 import { mapNoteWhyNow, WhyNow } from "@/components/explorer/why-now";
@@ -288,14 +283,10 @@ function QuietActionLinks({
     >
       {!featured ? (
         <>
-          <IdBadge
-            id={noteId}
-            label="event"
-            kind="event"
-            surface="secondary"
-            className="border-zinc-800 bg-zinc-950/50"
-          />
-          <span className="text-zinc-700">•</span>
+          <span className="text-zinc-600">
+            event {truncateIdentifier(noteId, "event", "secondary")}
+          </span>
+          <span className="text-zinc-700">|</span>
         </>
       ) : null}
       <DiscoveryActionLinks
@@ -377,9 +368,7 @@ function FeaturedNoteCard({
         <span className="inline-flex items-center rounded-full border border-indigo-300/30 bg-indigo-400/15 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-indigo-100 uppercase">
           Lead note
         </span>
-        <DiscoveryPill tone="entity" className="tracking-[0.16em] uppercase">
-          #{rank}
-        </DiscoveryPill>
+        <span className="font-medium tracking-[0.16em] text-indigo-200 uppercase">#{rank}</span>
         <span className="text-zinc-600">•</span>
         <span className="text-zinc-300">{statusLabel}</span>
       </div>
@@ -451,7 +440,7 @@ function SecondaryNoteCard({
         >
           {content}
         </p>
-        <WhyNow reasons={reasons} />
+        <WhyNow reasons={reasons} maxReasons={1} />
         <SignalRow signals={signals} compact />
         <QuietActionLinks noteId={noteId} noteHref={noteHref} />
       </div>

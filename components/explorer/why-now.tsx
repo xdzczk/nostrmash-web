@@ -204,7 +204,7 @@ export function mapDomainWhyNow(entry: DomainEntry): WhyNowReason[] {
 
 export function WhyNow({
   reasons,
-  maxReasons = 2,
+  maxReasons = 1,
   tone = "default",
   className = "",
 }: {
@@ -230,26 +230,35 @@ export function WhyNow({
   const reasonClassName =
     tone === "highlight"
       ? "border-indigo-300/30 bg-indigo-300/10 text-indigo-100"
-      : "border-zinc-700/70 bg-zinc-900/70 text-zinc-300";
+      : "text-zinc-300";
   const supportClassName = tone === "highlight" ? "text-indigo-200/80" : "text-zinc-500";
   const dotClassName = tone === "highlight" ? "text-indigo-200/60" : "text-zinc-600";
 
   return (
     <div className={`${containerClassName} ${className}`.trim()}>
       <p className={titleClassName}>Why now</p>
-      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs leading-5">
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-5">
         {visibleReasons.map((reason, index) => (
           <span
             key={`${reason.text}-${reason.support ?? index}`}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 ${reasonClassName}`}
+            className="inline-flex items-center gap-2"
           >
-            <span>{reason.text}</span>
-            {reason.support && renderSupport(reason.support).length > 0 ? (
-              <>
-                <span className={dotClassName}>·</span>
-                <span className={supportClassName}>{renderSupport(reason.support)}</span>
-              </>
-            ) : null}
+            {index > 0 ? <span className={dotClassName}>•</span> : null}
+            <span
+              className={
+                tone === "highlight"
+                  ? `inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 ${reasonClassName}`
+                  : `inline-flex items-center gap-1.5 ${reasonClassName}`
+              }
+            >
+              <span>{reason.text}</span>
+              {reason.support && renderSupport(reason.support).length > 0 ? (
+                <>
+                  <span className={dotClassName}>·</span>
+                  <span className={supportClassName}>{renderSupport(reason.support)}</span>
+                </>
+              ) : null}
+            </span>
           </span>
         ))}
       </div>

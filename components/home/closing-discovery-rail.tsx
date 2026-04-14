@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { DiscoveryActionLinks } from "@/components/explorer/card-grammar";
+import { pickPrimaryDomainSupportingSignal } from "@/components/explorer/domain-supporting-signal";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { normalizeDomainLabel, truncateIdentifier } from "@/components/explorer/utils";
 import {
@@ -27,7 +28,7 @@ type NormalizedDomain = {
   rawLabel: string;
   label: string;
   href: string;
-  metric: DiscoveryMetric | null;
+  metric: ReturnType<typeof pickPrimaryDomainSupportingSignal>;
   whyNow: WhyNowReason[];
 };
 
@@ -68,31 +69,6 @@ function buildHashtagMetric(entry: HashtagEntry): DiscoveryMetric | null {
   return null;
 }
 
-function buildDomainMetric(entry: DomainEntry): DiscoveryMetric | null {
-  if (typeof entry.unique_authors === "number") {
-    return {
-      label: "Authors",
-      value: formatCount(entry.unique_authors, "author", "authors"),
-    };
-  }
-
-  if (typeof entry.count === "number") {
-    return {
-      label: "Linked notes",
-      value: formatCount(entry.count, "note", "notes"),
-    };
-  }
-
-  if (typeof entry.event_count === "number") {
-    return {
-      label: "Linked notes",
-      value: formatCount(entry.event_count, "note", "notes"),
-    };
-  }
-
-  return null;
-}
-
 function normalizeHashtags(hashtags: HashtagEntry[]): NormalizedHashtag[] {
   return hashtags
     .map((entry) => {
@@ -126,7 +102,7 @@ function normalizeDomains(domains: DomainEntry[]): NormalizedDomain[] {
         rawLabel: domain,
         label: truncateIdentifier(normalizeDomainLabel(domain), "domain", "primary"),
         href: `/domains/${encodeURIComponent(domain)}`,
-        metric: buildDomainMetric(entry),
+        metric: pickPrimaryDomainSupportingSignal(entry),
         whyNow: mapDomainWhyNow(entry),
       };
     })
@@ -148,7 +124,7 @@ function HashtagDiscoveryModule({
   return (
     <section className="flex h-full flex-col rounded-[1.4rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_left,rgba(217,70,239,0.08),transparent_42%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(20,20,23,0.88))] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.12)] sm:p-5 xl:p-6">
       <header className="space-y-2.5">
-        <div className="inline-flex items-center rounded-full border border-fuchsia-400/15 bg-fuchsia-400/8 px-2.5 py-1 text-[11px] font-medium tracking-[0.18em] text-fuchsia-200 uppercase">
+        <div className="text-[11px] font-medium tracking-[0.18em] text-fuchsia-300/90 uppercase">
           Hashtags
         </div>
         <h3 className="text-lg font-semibold tracking-tight text-zinc-50">
@@ -195,7 +171,9 @@ function HashtagDiscoveryModule({
                                 </span>
                               ) : null}
                             </div>
-                            <WhyNow reasons={item.whyNow} className="mt-1.5" />
+                            {rank <= 3 ? (
+                              <WhyNow reasons={item.whyNow} maxReasons={1} className="mt-1.5" />
+                            ) : null}
                           </div>
                         </Link>
                       </li>
@@ -239,7 +217,7 @@ function DomainDiscoveryModule({
   return (
     <section className="flex h-full flex-col rounded-[1.4rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.08),transparent_40%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(20,20,23,0.88))] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.12)] sm:p-5 xl:p-6">
       <header className="space-y-2.5">
-        <div className="inline-flex items-center rounded-full border border-sky-400/15 bg-sky-400/8 px-2.5 py-1 text-[11px] font-medium tracking-[0.18em] text-sky-200 uppercase">
+        <div className="text-[11px] font-medium tracking-[0.18em] text-sky-300/90 uppercase">
           Domains
         </div>
         <h3 className="text-lg font-semibold tracking-tight text-zinc-50">
@@ -267,23 +245,25 @@ function DomainDiscoveryModule({
                     <li key={item.rawLabel}>
                       <Link
                         href={item.href}
-                        className="group flex items-center gap-3 py-3 transition first:pt-0 last:pb-0 hover:text-white"
+                        className="group flex items-start gap-3 py-2.5 transition first:pt-0 last:pb-0 hover:text-white"
                       >
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-700/80 bg-zinc-950/70 text-[11px] font-medium text-zinc-300">
+                        <span className="mt-0.5 flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full border border-zinc-700/80 bg-zinc-950/70 px-1 text-[10px] font-semibold tracking-[0.14em] text-zinc-300 uppercase">
                           {columnOffset + index + 1}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="truncate text-sm font-semibold text-zinc-100 sm:text-[0.97rem]">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <p className="min-w-0 flex-1 truncate text-sm font-semibold text-zinc-100 sm:text-[0.97rem]">
                               <span title={item.rawLabel}>{item.label}</span>
                             </p>
                             {item.metric ? (
-                              <span className="shrink-0 text-xs text-zinc-500">
-                                {item.metric.value}
+                              <span className="inline-flex items-center rounded-full border border-sky-400/20 bg-sky-400/8 px-2 py-0.5 text-[10px] font-medium text-sky-100/90">
+                                {item.metric.valueLabel}
                               </span>
                             ) : null}
                           </div>
-                          <WhyNow reasons={item.whyNow} className="mt-1.5" />
+                          {columnOffset + index + 1 <= 3 ? (
+                            <WhyNow reasons={item.whyNow} maxReasons={1} className="mt-1.5" />
+                          ) : null}
                         </div>
                       </Link>
                     </li>

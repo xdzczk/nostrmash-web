@@ -1,18 +1,19 @@
 import Link from "next/link";
 
-import { cardTierClassName, DiscoveryPill } from "@/components/explorer/card-grammar";
+import { cardTierClassName } from "@/components/explorer/card-grammar";
+import type { DomainSupportingSignal } from "@/components/explorer/domain-supporting-signal";
 import { normalizeDomainLabel, truncateIdentifier } from "@/components/explorer/utils";
 import { WhyNow, type WhyNowReason } from "@/components/explorer/why-now";
 
 export function DomainChip({
   domain,
-  count,
+  supportingSignal,
   href,
   rank,
   whyNow = [],
 }: {
   domain: string;
-  count?: number;
+  supportingSignal?: DomainSupportingSignal | null;
   href?: string;
   rank?: number;
   whyNow?: WhyNowReason[];
@@ -20,26 +21,31 @@ export function DomainChip({
   const isTopRank = typeof rank === "number" && rank <= 3;
   const normalizedDomain = normalizeDomainLabel(domain);
   const displayDomain = truncateIdentifier(normalizedDomain, "domain", "primary");
-  const countLabel = typeof count === "number" ? `${count.toLocaleString()} notes` : "—";
   const content = (
     <div>
-      <div className="flex items-baseline justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        {typeof rank === "number" ? (
+          <span
+            className={`inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold tracking-[0.14em] uppercase ${
+              isTopRank
+                ? "border-indigo-400/60 bg-indigo-400/12 text-indigo-200"
+                : "border-zinc-700/80 bg-zinc-900/75 text-zinc-400"
+            }`}
+          >
+            {rank}
+          </span>
+        ) : null}
         <p
-          className={`min-w-0 truncate text-sm font-medium ${isTopRank ? "text-zinc-100" : "text-zinc-200"}`}
+          className={`min-w-0 flex-1 truncate text-sm font-medium ${isTopRank ? "text-zinc-100" : "text-zinc-200"}`}
           title={normalizedDomain}
         >
-          {typeof rank === "number" ? (
-            <span className={isTopRank ? "mr-1 text-indigo-300" : "mr-1 text-zinc-500"}>
-              #{rank}
-            </span>
-          ) : null}
           {displayDomain}
         </p>
-        <DiscoveryPill tone="stat" className="shrink-0 px-2 py-0.5 text-[10px]">
-          {countLabel}
-        </DiscoveryPill>
+        {supportingSignal ? (
+          <span className="shrink-0 text-[11px] text-zinc-500">{supportingSignal.valueLabel}</span>
+        ) : null}
       </div>
-      <WhyNow reasons={whyNow} className="mt-2" />
+      <WhyNow reasons={whyNow} maxReasons={1} className="mt-2" />
     </div>
   );
 

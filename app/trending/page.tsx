@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import { EmptyState } from "@/components/explorer/empty-state";
-import { DiscoveryActionLinks, DiscoveryPill } from "@/components/explorer/card-grammar";
+import { DiscoveryActionLinks } from "@/components/explorer/card-grammar";
 import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
 import { PageHero } from "@/components/explorer/page-hero";
 import { NoteCard } from "@/components/explorer/note-card";
@@ -270,19 +270,13 @@ export default async function TrendingPage() {
         subtitle="Scan the strongest note, profile, topic, and link signals in one pass."
         className="space-y-3 p-3.5 sm:p-4"
         badges={
-          <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
             <NativeSemanticsBadges semantics={semantics} />
-            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/55 px-2 py-0.5 text-zinc-300">
-              notes: {(notes?.notes?.length ?? 0).toLocaleString()}
-            </span>
-            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/55 px-2 py-0.5 text-zinc-300">
-              profiles: {(profiles?.profiles?.length ?? 0).toLocaleString()}
-            </span>
-            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/55 px-2 py-0.5 text-zinc-300">
-              hashtags: {(hashtags?.hashtags?.length ?? 0).toLocaleString()}
-            </span>
-            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/55 px-2 py-0.5 text-zinc-300">
-              domains: {(domains?.domains?.length ?? 0).toLocaleString()}
+            <span className="text-zinc-400">
+              Notes {(notes?.notes?.length ?? 0).toLocaleString()} • Profiles{" "}
+              {(profiles?.profiles?.length ?? 0).toLocaleString()} • Hashtags{" "}
+              {(hashtags?.hashtags?.length ?? 0).toLocaleString()} • Domains{" "}
+              {(domains?.domains?.length ?? 0).toLocaleString()}
             </span>
           </div>
         }
@@ -294,10 +288,10 @@ export default async function TrendingPage() {
             title="Notes setting the pace"
             description="Lead note spotlight with a tighter ranked follow-up list."
           >
-            <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300 sm:mb-4">
-              <DiscoveryPill tone="freshness">{trendWindowLabel}</DiscoveryPill>
-              <DiscoveryPill tone="freshness">{notesFreshness}</DiscoveryPill>
-              <DiscoveryPill tone="entity">Live note pressure</DiscoveryPill>
+            <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-400 sm:mb-4">
+              <span>{trendWindowLabel}</span>
+              <span className="text-zinc-600">•</span>
+              <span>{notesFreshness}</span>
             </div>
             {leadNote ? (
               <div className="space-y-3">
@@ -362,10 +356,7 @@ export default async function TrendingPage() {
               />
             )}
             <DiscoveryActionLinks
-              actions={[
-                { label: "See all notes", href: "/trending/notes" },
-                { label: "Open notes view", href: "/trending/notes" },
-              ]}
+              actions={[{ label: "See all notes", href: "/trending/notes" }]}
               className="mt-3"
             />
             {trendingNotesContinuationHref ? (
@@ -387,10 +378,10 @@ export default async function TrendingPage() {
                 Fast-ranked profile list for quick identity scanning.
               </p>
             </header>
-            <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
-              <DiscoveryPill tone="freshness">{trendWindowLabel}</DiscoveryPill>
-              <DiscoveryPill tone="freshness">{profilesFreshness}</DiscoveryPill>
-              <DiscoveryPill tone="rank">Rising profiles</DiscoveryPill>
+            <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-400">
+              <span>{trendWindowLabel}</span>
+              <span className="text-zinc-600">•</span>
+              <span>{profilesFreshness}</span>
             </div>
             {compactProfiles.length > 0 ? (
               <ol className="space-y-1.5">
@@ -424,7 +415,13 @@ export default async function TrendingPage() {
                         {secondary ? (
                           <p className="truncate text-xs text-zinc-500">{secondary}</p>
                         ) : null}
-                        <WhyNow reasons={mapProfileWhyNow(profile)} className="mt-1.5" />
+                        {rank <= 2 ? (
+                          <WhyNow
+                            reasons={mapProfileWhyNow(profile)}
+                            maxReasons={1}
+                            className="mt-1.5"
+                          />
+                        ) : null}
                       </div>
                       {profileHref ? (
                         <Link
@@ -472,9 +469,10 @@ export default async function TrendingPage() {
                 Ranked topic intelligence with quick jump links.
               </p>
             </header>
-            <div className="mb-2.5 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
-              <DiscoveryPill tone="freshness">{trendWindowLabel}</DiscoveryPill>
-              <DiscoveryPill tone="freshness">{hashtagsFreshness}</DiscoveryPill>
+            <div className="mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-400">
+              <span>{trendWindowLabel}</span>
+              <span className="text-zinc-600">•</span>
+              <span>{hashtagsFreshness}</span>
             </div>
             {hashtagEntries.length > 0 ? (
               <ol className="divide-y divide-zinc-800/70 rounded-lg border border-zinc-800/80 bg-zinc-950/45">
@@ -494,15 +492,18 @@ export default async function TrendingPage() {
                         {entry.count !== null ? entry.count.toLocaleString() : "—"}
                       </span>
                     </div>
-                    <WhyNow
-                      reasons={mapHashtagWhyNow({
-                        hashtag: entry.hashtag,
-                        count: entry.count ?? undefined,
-                        event_count: entry.eventCount ?? undefined,
-                        unique_authors: entry.uniqueAuthors ?? undefined,
-                      })}
-                      className="mt-1.5 ml-9"
-                    />
+                    {entry.rank <= 3 ? (
+                      <WhyNow
+                        reasons={mapHashtagWhyNow({
+                          hashtag: entry.hashtag,
+                          count: entry.count ?? undefined,
+                          event_count: entry.eventCount ?? undefined,
+                          unique_authors: entry.uniqueAuthors ?? undefined,
+                        })}
+                        maxReasons={1}
+                        className="mt-1.5 ml-9"
+                      />
+                    ) : null}
                   </li>
                 ))}
               </ol>
@@ -538,9 +539,10 @@ export default async function TrendingPage() {
                 Compact ranked links with cleaner right-side pickup counts.
               </p>
             </header>
-            <div className="mb-2.5 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
-              <DiscoveryPill tone="freshness">{trendWindowLabel}</DiscoveryPill>
-              <DiscoveryPill tone="freshness">{domainsFreshness}</DiscoveryPill>
+            <div className="mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-400">
+              <span>{trendWindowLabel}</span>
+              <span className="text-zinc-600">•</span>
+              <span>{domainsFreshness}</span>
             </div>
             {domainEntries.length > 0 ? (
               <ol className="divide-y divide-zinc-800/70 rounded-lg border border-zinc-800/80 bg-zinc-950/45">
@@ -560,15 +562,18 @@ export default async function TrendingPage() {
                         {entry.count !== null ? entry.count.toLocaleString() : "—"}
                       </span>
                     </div>
-                    <WhyNow
-                      reasons={mapDomainWhyNow({
-                        domain: entry.domain,
-                        count: entry.count ?? undefined,
-                        event_count: entry.eventCount ?? undefined,
-                        unique_authors: entry.uniqueAuthors ?? undefined,
-                      })}
-                      className="mt-1.5 ml-9"
-                    />
+                    {entry.rank <= 3 ? (
+                      <WhyNow
+                        reasons={mapDomainWhyNow({
+                          domain: entry.domain,
+                          count: entry.count ?? undefined,
+                          event_count: entry.eventCount ?? undefined,
+                          unique_authors: entry.uniqueAuthors ?? undefined,
+                        })}
+                        maxReasons={1}
+                        className="mt-1.5 ml-9"
+                      />
+                    ) : null}
                   </li>
                 ))}
               </ol>

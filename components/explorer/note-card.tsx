@@ -4,7 +4,6 @@ import Link from "next/link";
 import { NoteMedia } from "@/components/explorer/note-media";
 import { getNotePreviewPresentation } from "@/components/explorer/note-preview";
 import { Timestamp } from "@/components/explorer/timestamp";
-import { IdBadge } from "@/components/explorer/id-badge";
 import {
   cardTierClassName,
   DiscoveryActionLinks,
@@ -227,13 +226,6 @@ export function NoteCard({
 
       {resolvedNoteId ? (
         <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-zinc-400 sm:mt-3">
-          <IdBadge
-            id={resolvedNoteId}
-            label="event"
-            kind="event"
-            surface="secondary"
-            className="border-zinc-800 bg-zinc-950/60"
-          />
           <DiscoveryActionLinks
             actions={[
               { label: "Open note", href: noteHref },

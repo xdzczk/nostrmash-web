@@ -1,11 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import {
-  DiscoveryActionLinks,
-  DiscoveryPill,
-  DiscoveryStatPills,
-} from "@/components/explorer/card-grammar";
+import { DiscoveryActionLinks, DiscoveryStatPills } from "@/components/explorer/card-grammar";
 import { IdBadge } from "@/components/explorer/id-badge";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { mapProfileWhyNow, WhyNow } from "@/components/explorer/why-now";
@@ -157,7 +153,7 @@ function ProfileDiscoveryRow({ profile, rank }: { profile: Profile; rank: number
 
           <DiscoveryStatPills stats={metrics} className="mt-3" />
 
-          <WhyNow reasons={reasons} className="mt-3" />
+          <WhyNow reasons={reasons} maxReasons={1} className="mt-3" />
 
           <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
             {identifier !== "unknown" && !href ? (
@@ -205,8 +201,9 @@ export function ProfilesInMotionSpotlight({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
-            <DiscoveryPill tone="freshness">{trendWindowLabel}</DiscoveryPill>
-            <DiscoveryPill tone="freshness">{freshnessLabel}</DiscoveryPill>
+            <span>{trendWindowLabel}</span>
+            <span className="text-zinc-600">•</span>
+            <span>{freshnessLabel}</span>
           </div>
         </header>
 

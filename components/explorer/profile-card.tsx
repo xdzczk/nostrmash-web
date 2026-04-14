@@ -1,6 +1,5 @@
 import Image from "next/image";
 
-import { IdBadge } from "@/components/explorer/id-badge";
 import {
   cardTierClassName,
   DiscoveryActionLinks,
@@ -111,17 +110,6 @@ export function ProfileCard({
 
       {href ? (
         <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
-          {identifier !== "unknown" ? (
-            <>
-              <IdBadge
-                id={identifier}
-                label={identifierKind}
-                kind={identifierKind}
-                surface="secondary"
-                className="border-zinc-800 bg-zinc-950/60"
-              />
-            </>
-          ) : null}
           <DiscoveryActionLinks
             actions={[
               { label: "View profile", href },

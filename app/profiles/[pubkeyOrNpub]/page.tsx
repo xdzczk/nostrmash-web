@@ -2351,6 +2351,7 @@ export default async function ProfilePage({
       ? { [profile.pubkey.toLowerCase()]: profile }
       : undefined;
   const firstAuthoredNoteId = typeof notes[0]?.id === "string" ? notes[0].id : undefined;
+  const heroIdentifier = profile?.npub || profile?.pubkey || null;
 
   return (
     <div className="space-y-8">
@@ -2362,8 +2363,9 @@ export default async function ProfilePage({
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <NativeSemanticsBadges semantics={semantics} />
-            {profile?.pubkey ? <IdBadge id={profile.pubkey} label="pubkey" /> : null}
-            {profile?.npub ? <IdBadge id={profile.npub} label="npub" /> : null}
+            {heroIdentifier ? (
+              <IdBadge id={heroIdentifier} label={heroIdentifier.startsWith("npub") ? "npub" : "pubkey"} />
+            ) : null}
             <Timestamp
               unixSeconds={
                 typeof profile?.last_seen === "number"
@@ -2383,26 +2385,30 @@ export default async function ProfilePage({
         title="Discovery loops"
         description="Move from this profile into the views around it."
       >
-        <div className="flex flex-wrap gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
           <Link
             href="/discovery/profiles/rising"
-            className="rounded-full border border-zinc-700 px-2.5 py-1 text-zinc-300 hover:text-zinc-100"
+            className="text-zinc-300 hover:text-zinc-100"
           >
             Open rising profiles
           </Link>
+          <span className="text-zinc-600">•</span>
           <Link
             href="/discovery/conversations/hot"
-            className="rounded-full border border-zinc-700 px-2.5 py-1 text-zinc-300 hover:text-zinc-100"
+            className="text-zinc-300 hover:text-zinc-100"
           >
             Open hot conversations
           </Link>
           {firstAuthoredNoteId ? (
-            <Link
-              href={`/notes/${encodeURIComponent(firstAuthoredNoteId)}`}
-              className="rounded-full border border-zinc-700 px-2.5 py-1 text-zinc-300 hover:text-zinc-100"
-            >
-              Open latest authored note
-            </Link>
+            <>
+              <span className="text-zinc-600">•</span>
+              <Link
+                href={`/notes/${encodeURIComponent(firstAuthoredNoteId)}`}
+                className="text-zinc-300 hover:text-zinc-100"
+              >
+                Open latest authored note
+              </Link>
+            </>
           ) : null}
         </div>
       </SectionCard>
@@ -2513,7 +2519,7 @@ export default async function ProfilePage({
                 <p className="text-xs text-indigo-100">More notes are available.</p>
                 <Link
                   href={notesContinuationHref}
-                  className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+                  className="mt-2 inline-block text-xs text-indigo-200 hover:text-indigo-100"
                 >
                   Continue notes
                 </Link>
@@ -2535,7 +2541,7 @@ export default async function ProfilePage({
               <p className="text-xs text-indigo-100">More replies are available.</p>
               <Link
                 href={repliesContinuationHref}
-                className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+                className="mt-2 inline-block text-xs text-indigo-200 hover:text-indigo-100"
               >
                 Continue replies
               </Link>
@@ -2621,15 +2627,14 @@ export default async function ProfilePage({
           <ProfilesList profiles={uniqueContactProfiles} />
         ) : null}
         {uniqueContactRelays.length > 0 ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {uniqueContactRelays.map((relay) => (
-              <Link
-                key={relay}
-                href={`/relays/${encodeURIComponent(relay)}`}
-                className="rounded-full border border-zinc-700 px-2.5 py-1 text-xs text-zinc-300 hover:text-zinc-100"
-              >
-                {relay}
-              </Link>
+          <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+            {uniqueContactRelays.map((relay, index) => (
+              <span key={relay} className="inline-flex items-center gap-2">
+                {index > 0 ? <span className="text-zinc-600">•</span> : null}
+                <Link href={`/relays/${encodeURIComponent(relay)}`} className="text-zinc-300 hover:text-zinc-100">
+                  {relay}
+                </Link>
+              </span>
             ))}
           </div>
         ) : null}
@@ -2669,12 +2674,12 @@ export default async function ProfilePage({
                     {relay}
                   </Link>
                   {readFlag !== undefined ? (
-                    <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-zinc-400">
+                    <span className="text-zinc-500">
                       read: {readFlag ? "yes" : "no"}
                     </span>
                   ) : null}
                   {writeFlag !== undefined ? (
-                    <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-zinc-400">
+                    <span className="text-zinc-500">
                       write: {writeFlag ? "yes" : "no"}
                     </span>
                   ) : null}
