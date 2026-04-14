@@ -66,6 +66,8 @@ import type {
   TrendingProfilesResponse,
   TrustScoreApiResponse,
   TrustScoreResponse,
+  PopularRelaysResponse,
+  RelayProbeHealthResponse,
 } from "@/lib/types/api";
 import { fetchApiJson } from "@/lib/api/http";
 import {
@@ -174,6 +176,8 @@ const nativeApiV1Routes = {
   contentStats: "/api/v1/discovery/stats/content",
   relayStats: "/api/v1/discovery/stats/relays",
   relayHealth: "/api/v1/relays/health",
+  relayPopular: "/api/v1/relays/popular",
+  relayProbeHealth: "/api/v1/relays/probe-health",
 } as const;
 
 interface CursorQuery {
@@ -1410,4 +1414,24 @@ export async function getRelayHealth(
     query: buildCursorQuery(query),
   });
   return normalizeRelayHealthResponse(response);
+}
+
+export async function getPopularRelays(
+  cacheClass: CacheClass = "shortTtl",
+  options?: { limit?: number }
+): Promise<PopularRelaysResponse> {
+  return fetchApiJson<PopularRelaysResponse>(nativeApiV1Routes.relayPopular, {
+    cacheClass,
+    query: { limit: options?.limit },
+  });
+}
+
+export async function getRelayProbeHealth(
+  cacheClass: CacheClass = "shortTtl",
+  options?: { limit?: number }
+): Promise<RelayProbeHealthResponse> {
+  return fetchApiJson<RelayProbeHealthResponse>(nativeApiV1Routes.relayProbeHealth, {
+    cacheClass,
+    query: { limit: options?.limit },
+  });
 }

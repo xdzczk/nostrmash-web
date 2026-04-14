@@ -458,3 +458,31 @@ export type RelatedHashtagsApiResponse = NativeApiSemantics & Record<string, unk
 export type TrendingDomainsApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type DomainDetailApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type DomainNotesApiResponse = NativeApiSemantics & Record<string, unknown>;
+
+export interface PopularRelayEntry {
+  normalized_url: string;
+  distinct_users: number;
+  in_registry: boolean;
+  admission_state?: string;
+}
+
+export interface PopularRelaysResponse {
+  relays: PopularRelayEntry[];
+}
+
+export interface RelayProbeHealthEntry {
+  normalized_url: string;
+  admission_state: string;
+  last_probe_at?: string;
+  last_probe_status?: string;
+  probe_fail_rate: number;
+  avg_connect_latency_ms?: number;
+  avg_eose_latency_ms?: number;
+  last_connect_ok?: boolean;
+  last_subscribe_ok?: boolean;
+  last_eose_ok?: boolean;
+}
+
+export interface RelayProbeHealthResponse {
+  relays: RelayProbeHealthEntry[];
+}

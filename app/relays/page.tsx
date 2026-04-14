@@ -88,7 +88,19 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
               href="/relays/health"
               className="rounded-full border border-zinc-700 px-2 py-1 text-indigo-300 hover:border-indigo-400/40"
             >
-              Open relay health
+              Ingest health
+            </Link>
+            <Link
+              href="/relays/popular"
+              className="rounded-full border border-zinc-700 px-2 py-1 text-indigo-300 hover:border-indigo-400/40"
+            >
+              Popular relays
+            </Link>
+            <Link
+              href="/relays/probe-health"
+              className="rounded-full border border-zinc-700 px-2 py-1 text-indigo-300 hover:border-indigo-400/40"
+            >
+              Probe health
             </Link>
           </div>
         }
