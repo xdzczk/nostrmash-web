@@ -68,7 +68,7 @@ export default async function DomainNotesPage({
   let authorsByPubkey: Record<string, Profile> = {};
 
   try {
-    domainNotesPayload = await getDomainNotes(normalizedDomain, "requestTime", {
+    domainNotesPayload = await getDomainNotes(normalizedDomain, "shortTtl", {
       cursor: notesCursor,
     });
   } catch (error) {
@@ -87,10 +87,7 @@ export default async function DomainNotesPage({
 
   if (notes.length > 0) {
     try {
-      authorsByPubkey = await fetchProfilesByPubkey(
-        extractEventAuthorPubkeys(notes),
-        "requestTime"
-      );
+      authorsByPubkey = await fetchProfilesByPubkey(extractEventAuthorPubkeys(notes), "shortTtl");
     } catch {
       authorsByPubkey = {};
     }

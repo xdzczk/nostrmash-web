@@ -3,8 +3,11 @@ import { NextResponse } from "next/server";
 import { appConfig } from "@/lib/config";
 
 export async function GET(request: NextRequest) {
-  const q = request.nextUrl.searchParams.get("q") ?? "";
+  const q = (request.nextUrl.searchParams.get("q") ?? "").trim();
   const limit = request.nextUrl.searchParams.get("limit") ?? "8";
+  if (q.length < 2) {
+    return NextResponse.json({ profiles: [], hashtags: [] });
+  }
 
   const base = appConfig.apiBaseUrl.replace(/\/$/, "");
   const url = `${base}/api/v1/search/suggest?q=${encodeURIComponent(q)}&limit=${encodeURIComponent(limit)}`;
@@ -12,7 +15,7 @@ export async function GET(request: NextRequest) {
   try {
     const upstream = await fetch(url, {
       headers: { Accept: "application/json" },
-      cache: "no-store",
+      next: { revalidate: 10 },
     });
 
     if (!upstream.ok) {

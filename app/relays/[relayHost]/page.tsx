@@ -38,8 +38,8 @@ export default async function RelayPage({ params }: { params: Params }) {
   let healthPayload: Awaited<ReturnType<typeof getRelayHealth>> | null = null;
 
   const [statsResult, healthResult] = await Promise.allSettled([
-    getRelayStats("requestTime"),
-    getRelayHealth("requestTime"),
+    getRelayStats("shortTtl"),
+    getRelayHealth("shortTtl"),
   ]);
   if (statsResult.status === "fulfilled") {
     payload = statsResult.value;

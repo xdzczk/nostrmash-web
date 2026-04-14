@@ -55,8 +55,8 @@ export default async function DomainPage({ params }: { params: Params }) {
   let authorsByPubkey: Record<string, Profile> = {};
 
   const [detailResult, notesResult] = await Promise.allSettled([
-    getDomainDetail(normalizedDomain, "requestTime"),
-    getDomainNotes(normalizedDomain, "requestTime"),
+    getDomainDetail(normalizedDomain, "shortTtl"),
+    getDomainNotes(normalizedDomain, "shortTtl"),
   ]);
 
   if (detailResult.status === "fulfilled") {
@@ -89,10 +89,7 @@ export default async function DomainPage({ params }: { params: Params }) {
 
   if (notes.length > 0) {
     try {
-      authorsByPubkey = await fetchProfilesByPubkey(
-        extractEventAuthorPubkeys(notes),
-        "requestTime"
-      );
+      authorsByPubkey = await fetchProfilesByPubkey(extractEventAuthorPubkeys(notes), "shortTtl");
     } catch {
       authorsByPubkey = {};
     }

@@ -78,7 +78,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
 
   if (canQuery) {
     try {
-      payload = await getSearch(query, "requestTime");
+      payload = await getSearch(query, "shortTtl");
       suggestedProfiles = payload.profile_suggestions ?? [];
       hydratedProfiles = payload.profiles ?? [];
       hydratedSuggestedProfiles = suggestedProfiles;
@@ -91,7 +91,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
     try {
       noteAuthorsByPubkey = await fetchProfilesByPubkey(
         extractEventAuthorPubkeys(payload.notes ?? []),
-        "requestTime"
+        "shortTtl"
       );
     } catch {
       noteAuthorsByPubkey = {};

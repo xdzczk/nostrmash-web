@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   description:
     "Explore Nostr notes, profiles, relays, and live trends through a public discovery index.",
 };
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function HomePage() {
   const asRecord = (value: unknown): Record<string, unknown> | null =>
@@ -100,7 +100,7 @@ export default async function HomePage() {
   let trendingDomains: Awaited<ReturnType<typeof getTrendingDomains>> | null = null;
   let noteAuthorsByPubkey: Record<string, Profile> = {};
   try {
-    payload = await getDiscoveryHome("requestTime");
+    payload = await getDiscoveryHome("shortTtl");
   } catch (error) {
     failedMessages.push(
       error instanceof Error ? error.message : "Failed to load discovery home payload."
@@ -124,10 +124,10 @@ export default async function HomePage() {
     !payload
   ) {
     const fallbackRequests: Array<Promise<unknown>> = [];
-    if (needsNotesFallback) fallbackRequests.push(getTrendingNotes("requestTime"));
-    if (needsProfilesFallback) fallbackRequests.push(getTrendingProfiles("requestTime"));
-    if (needsHashtagsFallback) fallbackRequests.push(getTrendingHashtags("requestTime"));
-    if (needsDomainsFallback) fallbackRequests.push(getTrendingDomains("requestTime"));
+    if (needsNotesFallback) fallbackRequests.push(getTrendingNotes("shortTtl"));
+    if (needsProfilesFallback) fallbackRequests.push(getTrendingProfiles("shortTtl"));
+    if (needsHashtagsFallback) fallbackRequests.push(getTrendingHashtags("shortTtl"));
+    if (needsDomainsFallback) fallbackRequests.push(getTrendingDomains("shortTtl"));
     const fallbackResults = await Promise.allSettled(fallbackRequests);
     let fallbackIndex = 0;
     if (needsNotesFallback) {
@@ -200,7 +200,7 @@ export default async function HomePage() {
   );
   if (pubkeysToHydrate.length > 0) {
     try {
-      noteAuthorsByPubkey = await fetchProfilesByPubkey(pubkeysToHydrate, "requestTime");
+      noteAuthorsByPubkey = await fetchProfilesByPubkey(pubkeysToHydrate, "shortTtl");
       hydratedHomeProfiles = homeProfiles.map((profile) => {
         const key = typeof profile.pubkey === "string" ? profile.pubkey.toLowerCase() : "";
         const hydrated = key ? noteAuthorsByPubkey[key] : undefined;
@@ -222,8 +222,8 @@ export default async function HomePage() {
   const needsNetworkFallback = pulseStats.length === 0 || relayLeaders.length === 0;
   if (needsNetworkFallback) {
     const fallbackStatsResults = await Promise.allSettled([
-      getNetworkStats("requestTime"),
-      getRelayStats("requestTime"),
+      getNetworkStats("shortTtl"),
+      getRelayStats("shortTtl"),
     ]);
     const [networkResult, relayResult] = fallbackStatsResults;
     networkStats = networkResult.status === "fulfilled" ? networkResult.value : null;

@@ -45,9 +45,9 @@ export default async function HashtagPage({ params }: { params: Params }) {
   let authorsByPubkey: Record<string, Profile> = {};
 
   const [detailResult, notesResult, relatedResult] = await Promise.allSettled([
-    getHashtagDetail(normalizedHashtag, "requestTime"),
-    getHashtagNotes(normalizedHashtag, "requestTime"),
-    getRelatedHashtags(normalizedHashtag, "requestTime"),
+    getHashtagDetail(normalizedHashtag, "shortTtl"),
+    getHashtagNotes(normalizedHashtag, "shortTtl"),
+    getRelatedHashtags(normalizedHashtag, "shortTtl"),
   ]);
 
   if (detailResult.status === "fulfilled") {
@@ -98,10 +98,7 @@ export default async function HashtagPage({ params }: { params: Params }) {
       : notesSurfaceBaseHref;
   if (notes.length > 0) {
     try {
-      authorsByPubkey = await fetchProfilesByPubkey(
-        extractEventAuthorPubkeys(notes),
-        "requestTime"
-      );
+      authorsByPubkey = await fetchProfilesByPubkey(extractEventAuthorPubkeys(notes), "shortTtl");
     } catch {
       authorsByPubkey = {};
     }

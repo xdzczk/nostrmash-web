@@ -64,9 +64,7 @@ function toThreadRoute(eventId: string): string {
   return `/search?q=${encodeURIComponent(eventId)}&tab=notes`;
 }
 
-const getNoteSummaryCached = cache(async (eventId: string) =>
-  getNoteSummary(eventId, "requestTime")
-);
+const getNoteSummaryCached = cache(async (eventId: string) => getNoteSummary(eventId, "shortTtl"));
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { eventId } = await params;
@@ -104,6 +102,10 @@ export default async function NotePage({
   const repliesCursor = readSearchParam(resolvedSearchParams, "replies_cursor");
   const activityCursor = readSearchParam(resolvedSearchParams, "activity_cursor");
   const relatedCursor = readSearchParam(resolvedSearchParams, "related_cursor");
+  const viewMode = readSearchParam(resolvedSearchParams, "view");
+  const includeExtendedContext = viewMode === "full";
+  const includeThreadActivity = includeExtendedContext || typeof activityCursor === "string";
+  const includeRelatedNotes = includeExtendedContext || typeof relatedCursor === "string";
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
 
   let errorMessage = "";
@@ -122,10 +124,12 @@ export default async function NotePage({
   const [noteSummaryResult, threadResult, ancestorsResult, repliesResult, relatedResult] =
     await Promise.allSettled([
       getNoteSummaryCached(eventId),
-      getThread(eventId, "requestTime"),
-      getEventAncestors(eventId, "requestTime"),
-      getEventReplies(eventId, "requestTime", { cursor: repliesCursor }),
-      getRelatedNotes(eventId, "requestTime", { cursor: relatedCursor }),
+      getThread(eventId, "shortTtl"),
+      getEventAncestors(eventId, "shortTtl"),
+      getEventReplies(eventId, "shortTtl", { cursor: repliesCursor }),
+      includeRelatedNotes
+        ? getRelatedNotes(eventId, "shortTtl", { cursor: relatedCursor })
+        : Promise.resolve(null),
     ]);
 
   if (noteSummaryResult.status === "fulfilled") {
@@ -156,9 +160,9 @@ export default async function NotePage({
   const enrichmentErrors: string[] = [];
 
   const [eventResult, seenOnResult, countsResult] = await Promise.allSettled([
-    shouldFetchCanonicalEvent ? getEvent(eventId, "requestTime") : Promise.resolve(null),
-    shouldFetchSeenOn ? getEventSeenOn(eventId, "requestTime") : Promise.resolve(null),
-    shouldFetchCounts ? getEventCounts(eventId, "requestTime") : Promise.resolve(null),
+    shouldFetchCanonicalEvent ? getEvent(eventId, "shortTtl") : Promise.resolve(null),
+    shouldFetchSeenOn ? getEventSeenOn(eventId, "shortTtl") : Promise.resolve(null),
+    shouldFetchCounts ? getEventCounts(eventId, "shortTtl") : Promise.resolve(null),
   ]);
 
   if (eventResult.status === "fulfilled") {
@@ -226,10 +230,10 @@ export default async function NotePage({
     threadPayload?.root?.id ??
     ancestorsPayload?.ancestors?.[0]?.id;
 
-  if (rootEventIdCandidate) {
+  if (rootEventIdCandidate && includeThreadActivity) {
     const [threadSummaryResult, threadActivityResult] = await Promise.allSettled([
-      getThreadSummary(rootEventIdCandidate, "requestTime"),
-      getThreadActivity(rootEventIdCandidate, "requestTime", { cursor: activityCursor }),
+      getThreadSummary(rootEventIdCandidate, "shortTtl"),
+      getThreadActivity(rootEventIdCandidate, "shortTtl", { cursor: activityCursor }),
     ]);
     if (threadSummaryResult.status === "fulfilled") {
       threadSummaryPayload = threadSummaryResult.value;
@@ -270,7 +274,7 @@ export default async function NotePage({
           authorProfileFromSummary,
         ].flatMap((note) => (note?.pubkey ? [note.pubkey] : []))
       ),
-      "requestTime"
+      "shortTtl"
     );
   } catch {
     authorsByPubkey = {};
@@ -425,6 +429,12 @@ export default async function NotePage({
     currentSearchParams,
     "related_cursor",
     relatedNextCursor
+  );
+  const extendedContextHref = buildContinuationHref(
+    `/notes/${encodeURIComponent(eventId)}`,
+    currentSearchParams,
+    "view",
+    "full"
   );
   return (
     <div className="space-y-8">
@@ -637,69 +647,101 @@ export default async function NotePage({
       </div>
 
       <div id="thread-activity">
-        <SectionCard title="Thread activity" description="Recent activity from this thread.">
-          {activity.length > 0 ? (
-            <div className="space-y-3">
-              {activity.map((note, index) => (
-                <NoteCard
-                  key={note.id ?? `activity-${index}`}
-                  note={note}
-                  author={
-                    typeof note.pubkey === "string"
-                      ? authorsByPubkey[note.pubkey.toLowerCase()]
-                      : undefined
-                  }
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyState message="No activity entries were returned for this thread." />
-          )}
-          {typeof activityNextCursor === "string" && activityNextCursor.length > 0 ? (
-            <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
-              <p className="text-xs text-indigo-100">More thread activity is available.</p>
+        {includeThreadActivity ? (
+          <SectionCard title="Thread activity" description="Recent activity from this thread.">
+            {activity.length > 0 ? (
+              <div className="space-y-3">
+                {activity.map((note, index) => (
+                  <NoteCard
+                    key={note.id ?? `activity-${index}`}
+                    note={note}
+                    author={
+                      typeof note.pubkey === "string"
+                        ? authorsByPubkey[note.pubkey.toLowerCase()]
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState message="No activity entries were returned for this thread." />
+            )}
+            {typeof activityNextCursor === "string" && activityNextCursor.length > 0 ? (
+              <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
+                <p className="text-xs text-indigo-100">More thread activity is available.</p>
+                <Link
+                  href={activityContinuationHref}
+                  className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+                >
+                  Continue activity
+                </Link>
+              </div>
+            ) : null}
+          </SectionCard>
+        ) : (
+          <SectionCard title="Thread activity" description="Recent activity from this thread.">
+            <div className="rounded-md border border-zinc-800 bg-zinc-900/40 p-3">
+              <p className="text-xs text-zinc-300">
+                Extended thread context is skipped for faster initial loads.
+              </p>
               <Link
-                href={activityContinuationHref}
-                className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+                href={extendedContextHref}
+                className="mt-2 inline-block text-xs text-indigo-300"
               >
-                Continue activity
+                Load full context
               </Link>
             </div>
-          ) : null}
-        </SectionCard>
+          </SectionCard>
+        )}
       </div>
 
       <div id="related-notes">
-        <SectionCard title="Related notes" description="Other notes linked to this one.">
-          {relatedNotes.length > 0 ? (
-            <div className="space-y-3">
-              {relatedNotes.map((note, index) => (
-                <NoteCard
-                  key={note.id ?? `related-${index}`}
-                  note={note}
-                  author={
-                    typeof note.pubkey === "string"
-                      ? authorsByPubkey[note.pubkey.toLowerCase()]
-                      : undefined
-                  }
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyState message="No related notes were returned for this event." />
-          )}
-          {typeof relatedNextCursor === "string" && relatedNextCursor.length > 0 ? (
-            <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
-              <p className="text-xs text-indigo-100">More related notes are available.</p>
+        {includeRelatedNotes ? (
+          <SectionCard title="Related notes" description="Other notes linked to this one.">
+            {relatedNotes.length > 0 ? (
+              <div className="space-y-3">
+                {relatedNotes.map((note, index) => (
+                  <NoteCard
+                    key={note.id ?? `related-${index}`}
+                    note={note}
+                    author={
+                      typeof note.pubkey === "string"
+                        ? authorsByPubkey[note.pubkey.toLowerCase()]
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState message="No related notes were returned for this event." />
+            )}
+            {typeof relatedNextCursor === "string" && relatedNextCursor.length > 0 ? (
+              <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
+                <p className="text-xs text-indigo-100">More related notes are available.</p>
+                <Link
+                  href={relatedContinuationHref}
+                  className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+                >
+                  Continue related notes
+                </Link>
+              </div>
+            ) : null}
+          </SectionCard>
+        ) : (
+          <SectionCard title="Related notes" description="Other notes linked to this one.">
+            <div className="rounded-md border border-zinc-800 bg-zinc-900/40 p-3">
+              <p className="text-xs text-zinc-300">
+                Related-note expansion is skipped for faster initial loads.
+              </p>
               <Link
-                href={relatedContinuationHref}
-                className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+                href={extendedContextHref}
+                className="mt-2 inline-block text-xs text-indigo-300"
               >
-                Continue related notes
+                Load full context
               </Link>
             </div>
-          ) : null}
-        </SectionCard>
+          </SectionCard>
+        )}
       </div>
 
       <div className="space-y-3">

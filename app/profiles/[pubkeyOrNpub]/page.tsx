@@ -53,7 +53,7 @@ type HeroAction = {
 };
 
 const getProfileSummaryCached = cache(async (pubkeyOrNpub: string) =>
-  getProfileSummary(pubkeyOrNpub, "requestTime")
+  getProfileSummary(pubkeyOrNpub, "shortTtl")
 );
 
 function hasIdentityMetadata(profile: Profile | null | undefined): boolean {
@@ -226,12 +226,12 @@ export default async function ProfilePage({
 
   const [profileResult, notesFallbackResult, relatedFallbackResult, risingProfilesResult] =
     await Promise.allSettled([
-      shouldEnrichProfile ? getProfile(lookupKey, "requestTime") : Promise.resolve(null),
+      shouldEnrichProfile ? getProfile(lookupKey, "shortTtl") : Promise.resolve(null),
       shouldLoadRecentNotesFallback
-        ? getAuthorEvents(lookupKey, "requestTime", { cursor: notesCursor })
+        ? getAuthorEvents(lookupKey, "shortTtl", { cursor: notesCursor })
         : Promise.resolve(null),
       shouldLoadRelatedProfilesFallback
-        ? getRelatedProfiles(lookupKey, "requestTime", { cursor: relatedProfilesCursor })
+        ? getRelatedProfiles(lookupKey, "shortTtl", { cursor: relatedProfilesCursor })
         : Promise.resolve(null),
       shouldLoadRisingProfilesFallback ? getRisingProfiles("shortTtl") : Promise.resolve(null),
     ]);
@@ -671,7 +671,7 @@ type HeroAction = {
 };
 
 const getProfileSummaryCached = cache(async (pubkeyOrNpub: string) =>
-  getProfileSummary(pubkeyOrNpub, "requestTime")
+  getProfileSummary(pubkeyOrNpub, "shortTtl")
 );
 
 function hasIdentityMetadata(profile: Profile | null | undefined): boolean {
@@ -835,12 +835,12 @@ export default async function ProfilePage({
 
   const [profileResult, notesFallbackResult, relatedFallbackResult, risingProfilesResult] =
     await Promise.allSettled([
-      shouldEnrichProfile ? getProfile(lookupKey, "requestTime") : Promise.resolve(null),
+      shouldEnrichProfile ? getProfile(lookupKey, "shortTtl") : Promise.resolve(null),
       shouldLoadRecentNotesFallback
-        ? getAuthorEvents(lookupKey, "requestTime", { cursor: notesCursor })
+        ? getAuthorEvents(lookupKey, "shortTtl", { cursor: notesCursor })
         : Promise.resolve(null),
       shouldLoadRelatedProfilesFallback
-        ? getRelatedProfiles(lookupKey, "requestTime", { cursor: relatedProfilesCursor })
+        ? getRelatedProfiles(lookupKey, "shortTtl", { cursor: relatedProfilesCursor })
         : Promise.resolve(null),
       shouldLoadRisingProfilesFallback ? getRisingProfiles("shortTtl") : Promise.resolve(null),
     ]);
@@ -1239,7 +1239,7 @@ type HeroAction = {
 };
 
 const getProfileSummaryCached = cache(async (pubkeyOrNpub: string) =>
-  getProfileSummary(pubkeyOrNpub, "requestTime")
+  getProfileSummary(pubkeyOrNpub, "shortTtl")
 );
 
 function hasIdentityMetadata(profile: Profile | null | undefined): boolean {
@@ -1415,12 +1415,12 @@ export default async function ProfilePage({
 
   const [profileResult, notesFallbackResult, relatedFallbackResult, risingProfilesResult] =
     await Promise.allSettled([
-      shouldEnrichProfile ? getProfile(lookupKey, "requestTime") : Promise.resolve(null),
+      shouldEnrichProfile ? getProfile(lookupKey, "shortTtl") : Promise.resolve(null),
       shouldLoadRecentNotesFallback
-        ? getAuthorEvents(lookupKey, "requestTime", { cursor: notesCursor })
+        ? getAuthorEvents(lookupKey, "shortTtl", { cursor: notesCursor })
         : Promise.resolve(null),
       shouldLoadRelatedProfilesFallback
-        ? getRelatedProfiles(lookupKey, "requestTime", { cursor: relatedProfilesCursor })
+        ? getRelatedProfiles(lookupKey, "shortTtl", { cursor: relatedProfilesCursor })
         : Promise.resolve(null),
       shouldLoadRisingProfilesFallback ? getRisingProfiles("shortTtl") : Promise.resolve(null),
     ]);
@@ -1820,7 +1820,7 @@ type Params = Promise<{ pubkeyOrNpub: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const getProfileSummaryCached = cache(async (pubkeyOrNpub: string) =>
-  getProfileSummary(pubkeyOrNpub, "requestTime")
+  getProfileSummary(pubkeyOrNpub, "shortTtl")
 );
 
 function hasIdentityMetadata(profile: Profile | null | undefined): boolean {
@@ -1952,7 +1952,18 @@ export default async function ProfilePage({
   const followersCursor = readSearchParam(resolvedSearchParams, "followers_cursor");
   const mentionsCursor = readSearchParam(resolvedSearchParams, "mentions_cursor");
   const relatedProfilesCursor = readSearchParam(resolvedSearchParams, "related_profiles_cursor");
+  const viewMode = readSearchParam(resolvedSearchParams, "view");
+  const includeExtendedContext = viewMode === "full";
+  const includeReplies = includeExtendedContext || typeof repliesCursor === "string";
+  const includeFollowers = includeExtendedContext || typeof followersCursor === "string";
+  const includeMentions = includeExtendedContext || typeof mentionsCursor === "string";
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
+  const fullContextHref = buildContinuationHref(
+    `/profiles/${encodeURIComponent(pubkeyOrNpub)}`,
+    currentSearchParams,
+    "view",
+    "full"
+  );
   const errors: string[] = [];
 
   let summary: Awaited<ReturnType<typeof getProfileSummary>> | null = null;
@@ -2002,18 +2013,28 @@ export default async function ProfilePage({
     postingBehaviorAnalyticsResult,
     trustScoreResult,
   ] = await Promise.allSettled([
-    shouldEnrichProfile ? getProfile(lookupKey, "requestTime") : Promise.resolve(null),
-    getAuthorEvents(lookupKey, "requestTime", { cursor: notesCursor }),
-    getAuthorReplies(lookupKey, "requestTime", { cursor: repliesCursor }),
-    getProfileFollowers(lookupKey, "requestTime", { cursor: followersCursor }),
-    getProfileMentions(lookupKey, "requestTime", { cursor: mentionsCursor }),
-    getRelatedProfiles(lookupKey, "requestTime", { cursor: relatedProfilesCursor }),
-    getContactListContext(lookupKey, "requestTime"),
-    getRelayListContext(lookupKey, "requestTime"),
-    getProfileTopics(lookupKey, "requestTime"),
-    getAuthorActivityAnalytics(lookupKey, "requestTime"),
-    getAuthorPostingBehaviorAnalytics(lookupKey, "requestTime"),
-    getTrustScore(lookupKey, "requestTime"),
+    shouldEnrichProfile ? getProfile(lookupKey, "shortTtl") : Promise.resolve(null),
+    getAuthorEvents(lookupKey, "shortTtl", { cursor: notesCursor }),
+    includeReplies
+      ? getAuthorReplies(lookupKey, "shortTtl", { cursor: repliesCursor })
+      : Promise.resolve(null),
+    includeFollowers
+      ? getProfileFollowers(lookupKey, "shortTtl", { cursor: followersCursor })
+      : Promise.resolve(null),
+    includeMentions
+      ? getProfileMentions(lookupKey, "shortTtl", { cursor: mentionsCursor })
+      : Promise.resolve(null),
+    getRelatedProfiles(lookupKey, "shortTtl", { cursor: relatedProfilesCursor }),
+    includeExtendedContext ? getContactListContext(lookupKey, "shortTtl") : Promise.resolve(null),
+    includeExtendedContext ? getRelayListContext(lookupKey, "shortTtl") : Promise.resolve(null),
+    includeExtendedContext ? getProfileTopics(lookupKey, "shortTtl") : Promise.resolve(null),
+    includeExtendedContext
+      ? getAuthorActivityAnalytics(lookupKey, "shortTtl")
+      : Promise.resolve(null),
+    includeExtendedContext
+      ? getAuthorPostingBehaviorAnalytics(lookupKey, "shortTtl")
+      : Promise.resolve(null),
+    includeExtendedContext ? getTrustScore(lookupKey, "shortTtl") : Promise.resolve(null),
   ]);
 
   if (profileResult.status === "fulfilled") {
@@ -2413,6 +2434,20 @@ export default async function ProfilePage({
         </div>
       </SectionCard>
 
+      {!includeExtendedContext ? (
+        <SectionCard
+          title="Performance mode"
+          description="Secondary context is deferred on first load to keep this page fast."
+        >
+          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-300">
+            <span>Load analytics, trust, contact, relay, and topic context on demand.</span>
+            <Link href={fullContextHref} className="text-indigo-300 hover:text-indigo-200">
+              Load full profile context
+            </Link>
+          </div>
+        </SectionCard>
+      ) : null}
+
       {profile ? (
         <SectionCard title="Profile header" description="Core identity details for this profile.">
           <ProfileCard profile={profile} summary={isRecord(summary) ? summary : undefined} />
@@ -2533,67 +2568,71 @@ export default async function ProfilePage({
         )}
       </div>
 
-      {replies.length > 0 ? (
-        <SectionCard title="Authored replies" description="Recent replies from this profile.">
-          <NotesList notes={replies} authorsByPubkey={notesAuthorMap} />
-          {typeof repliesNextCursor === "string" && repliesNextCursor.length > 0 ? (
-            <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
-              <p className="text-xs text-indigo-100">More replies are available.</p>
-              <Link
-                href={repliesContinuationHref}
-                className="mt-2 inline-block text-xs text-indigo-200 hover:text-indigo-100"
-              >
-                Continue replies
-              </Link>
-            </div>
-          ) : null}
+      {includeReplies ? (
+        replies.length > 0 ? (
+          <SectionCard title="Authored replies" description="Recent replies from this profile.">
+            <NotesList notes={replies} authorsByPubkey={notesAuthorMap} />
+            {typeof repliesNextCursor === "string" && repliesNextCursor.length > 0 ? (
+              <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
+                <p className="text-xs text-indigo-100">More replies are available.</p>
+                <Link
+                  href={repliesContinuationHref}
+                  className="mt-2 inline-block text-xs text-indigo-200 hover:text-indigo-100"
+                >
+                  Continue replies
+                </Link>
+              </div>
+            ) : null}
+          </SectionCard>
+        ) : (
+          <SectionCard title="Authored replies" description="Recent replies from this profile.">
+            <EmptyState message="No authored replies were returned for this profile." />
+          </SectionCard>
+        )
+      ) : null}
+
+      {includeFollowers ? (
+        <SectionCard title="Followers" description="Profiles following this account.">
+          {uniqueFollowers.length > 0 ? (
+            <>
+              <ProfilesList profiles={uniqueFollowers} />
+              {typeof followersNextCursor === "string" && followersNextCursor.length > 0 ? (
+                <Link
+                  href={followersContinuationHref}
+                  className="mt-3 inline-block text-sm text-indigo-300"
+                >
+                  Continue followers
+                </Link>
+              ) : null}
+            </>
+          ) : (
+            <EmptyState message="No followers were returned for this profile." />
+          )}
         </SectionCard>
       ) : null}
 
-      {replies.length === 0 ? (
-        <SectionCard title="Authored replies" description="Recent replies from this profile.">
-          <EmptyState message="No authored replies were returned for this profile." />
+      {includeMentions ? (
+        <SectionCard
+          title="Mentions"
+          description="Profiles that mention or frequently overlap with this one."
+        >
+          {uniqueMentions.length > 0 ? (
+            <>
+              <ProfilesList profiles={uniqueMentions} />
+              {typeof mentionsNextCursor === "string" && mentionsNextCursor.length > 0 ? (
+                <Link
+                  href={mentionsContinuationHref}
+                  className="mt-3 inline-block text-sm text-indigo-300"
+                >
+                  Continue mentions
+                </Link>
+              ) : null}
+            </>
+          ) : (
+            <EmptyState message="No mentions were returned for this profile." />
+          )}
         </SectionCard>
       ) : null}
-
-      <SectionCard title="Followers" description="Profiles following this account.">
-        {uniqueFollowers.length > 0 ? (
-          <>
-            <ProfilesList profiles={uniqueFollowers} />
-            {typeof followersNextCursor === "string" && followersNextCursor.length > 0 ? (
-              <Link
-                href={followersContinuationHref}
-                className="mt-3 inline-block text-sm text-indigo-300"
-              >
-                Continue followers
-              </Link>
-            ) : null}
-          </>
-        ) : (
-          <EmptyState message="No followers were returned for this profile." />
-        )}
-      </SectionCard>
-
-      <SectionCard
-        title="Mentions"
-        description="Profiles that mention or frequently overlap with this one."
-      >
-        {uniqueMentions.length > 0 ? (
-          <>
-            <ProfilesList profiles={uniqueMentions} />
-            {typeof mentionsNextCursor === "string" && mentionsNextCursor.length > 0 ? (
-              <Link
-                href={mentionsContinuationHref}
-                className="mt-3 inline-block text-sm text-indigo-300"
-              >
-                Continue mentions
-              </Link>
-            ) : null}
-          </>
-        ) : (
-          <EmptyState message="No mentions were returned for this profile." />
-        )}
-      </SectionCard>
 
       <div id="related-profiles">
         <SectionCard
@@ -2619,107 +2658,111 @@ export default async function ProfilePage({
         </SectionCard>
       </div>
 
-      <SectionCard
-        title="Contact list context"
-        description="Public contact relationships and relay hints for this profile."
-      >
-        {uniqueContactProfiles.length > 0 ? (
-          <ProfilesList profiles={uniqueContactProfiles} />
-        ) : null}
-        {uniqueContactRelays.length > 0 ? (
-          <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
-            {uniqueContactRelays.map((relay, index) => (
-              <span key={relay} className="inline-flex items-center gap-2">
-                {index > 0 ? <span className="text-zinc-600">•</span> : null}
-                <Link href={`/relays/${encodeURIComponent(relay)}`} className="text-zinc-300 hover:text-zinc-100">
-                  {relay}
-                </Link>
-              </span>
-            ))}
-          </div>
-        ) : null}
-        {contactListScopeMetadata.length > 0 ? (
-          <div className="mt-4">
-            <MetadataList items={contactListScopeMetadata} columns={2} />
-          </div>
-        ) : null}
-        {uniqueContactProfiles.length === 0 &&
-        uniqueContactRelays.length === 0 &&
-        contactListScopeMetadata.length === 0 ? (
-          <EmptyState message="No contact list data was available for this profile." />
-        ) : null}
-      </SectionCard>
-
-      <SectionCard
-        title="Relay list context"
-        description="Relays this profile publishes and where to follow up."
-      >
-        {relayEntries.length > 0 ? (
-          <ul className="space-y-2">
-            {relayEntries.slice(0, 12).map((relayEntry, index) => {
-              const relay = relayLabel(relayEntry);
-              if (!relay) return null;
-              const readFlag = typeof relayEntry.read === "boolean" ? relayEntry.read : undefined;
-              const writeFlag =
-                typeof relayEntry.write === "boolean" ? relayEntry.write : undefined;
-              return (
-                <li
-                  key={`${relay}-${index}`}
-                  className="flex flex-wrap items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/45 px-3 py-2 text-xs"
-                >
+      {includeExtendedContext ? (
+        <SectionCard
+          title="Contact list context"
+          description="Public contact relationships and relay hints for this profile."
+        >
+          {uniqueContactProfiles.length > 0 ? (
+            <ProfilesList profiles={uniqueContactProfiles} />
+          ) : null}
+          {uniqueContactRelays.length > 0 ? (
+            <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+              {uniqueContactRelays.map((relay, index) => (
+                <span key={relay} className="inline-flex items-center gap-2">
+                  {index > 0 ? <span className="text-zinc-600">•</span> : null}
                   <Link
                     href={`/relays/${encodeURIComponent(relay)}`}
-                    className="text-indigo-300 hover:text-indigo-200"
+                    className="text-zinc-300 hover:text-zinc-100"
                   >
                     {relay}
                   </Link>
-                  {readFlag !== undefined ? (
-                    <span className="text-zinc-500">
-                      read: {readFlag ? "yes" : "no"}
-                    </span>
-                  ) : null}
-                  {writeFlag !== undefined ? (
-                    <span className="text-zinc-500">
-                      write: {writeFlag ? "yes" : "no"}
-                    </span>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
-        {relayListScopeMetadata.length > 0 ? (
-          <div className="mt-4">
-            <MetadataList items={relayListScopeMetadata} columns={2} />
-          </div>
-        ) : null}
-        {relayEntries.length === 0 && relayListScopeMetadata.length === 0 ? (
-          <EmptyState message="No relay list data was available for this profile." />
-        ) : null}
-      </SectionCard>
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {contactListScopeMetadata.length > 0 ? (
+            <div className="mt-4">
+              <MetadataList items={contactListScopeMetadata} columns={2} />
+            </div>
+          ) : null}
+          {uniqueContactProfiles.length === 0 &&
+          uniqueContactRelays.length === 0 &&
+          contactListScopeMetadata.length === 0 ? (
+            <EmptyState message="No contact list data was available for this profile." />
+          ) : null}
+        </SectionCard>
+      ) : null}
 
-      <SectionCard
-        title="Topic and interest context"
-        description="Topics and interests linked to this profile."
-      >
-        {interestTopics.length > 0 ? (
-          <div className="space-y-2">
-            <p className="text-xs font-medium tracking-wide text-zinc-400 uppercase">Topics</p>
-            <HashtagsList hashtags={interestTopics.slice(0, 12)} searchable />
-          </div>
-        ) : null}
-        {uniqueInterestProfiles.length > 0 ? (
-          <div className="mt-4 space-y-2">
-            <p className="text-xs font-medium tracking-wide text-zinc-400 uppercase">
-              Related interest profiles
-            </p>
-            <ProfilesList profiles={uniqueInterestProfiles} />
-          </div>
-        ) : null}
-        {interestTopics.length === 0 && uniqueInterestProfiles.length === 0 ? (
-          <EmptyState message="No topic or interest data was available for this profile." />
-        ) : null}
-      </SectionCard>
+      {includeExtendedContext ? (
+        <SectionCard
+          title="Relay list context"
+          description="Relays this profile publishes and where to follow up."
+        >
+          {relayEntries.length > 0 ? (
+            <ul className="space-y-2">
+              {relayEntries.slice(0, 12).map((relayEntry, index) => {
+                const relay = relayLabel(relayEntry);
+                if (!relay) return null;
+                const readFlag = typeof relayEntry.read === "boolean" ? relayEntry.read : undefined;
+                const writeFlag = typeof relayEntry.write === "boolean" ? relayEntry.write : undefined;
+                return (
+                  <li
+                    key={`${relay}-${index}`}
+                    className="flex flex-wrap items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/45 px-3 py-2 text-xs"
+                  >
+                    <Link
+                      href={`/relays/${encodeURIComponent(relay)}`}
+                      className="text-indigo-300 hover:text-indigo-200"
+                    >
+                      {relay}
+                    </Link>
+                    {readFlag !== undefined ? (
+                      <span className="text-zinc-500">read: {readFlag ? "yes" : "no"}</span>
+                    ) : null}
+                    {writeFlag !== undefined ? (
+                      <span className="text-zinc-500">write: {writeFlag ? "yes" : "no"}</span>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+          {relayListScopeMetadata.length > 0 ? (
+            <div className="mt-4">
+              <MetadataList items={relayListScopeMetadata} columns={2} />
+            </div>
+          ) : null}
+          {relayEntries.length === 0 && relayListScopeMetadata.length === 0 ? (
+            <EmptyState message="No relay list data was available for this profile." />
+          ) : null}
+        </SectionCard>
+      ) : null}
+
+      {includeExtendedContext ? (
+        <SectionCard
+          title="Topic and interest context"
+          description="Topics and interests linked to this profile."
+        >
+          {interestTopics.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-xs font-medium tracking-wide text-zinc-400 uppercase">Topics</p>
+              <HashtagsList hashtags={interestTopics.slice(0, 12)} searchable />
+            </div>
+          ) : null}
+          {uniqueInterestProfiles.length > 0 ? (
+            <div className="mt-4 space-y-2">
+              <p className="text-xs font-medium tracking-wide text-zinc-400 uppercase">
+                Related interest profiles
+              </p>
+              <ProfilesList profiles={uniqueInterestProfiles} />
+            </div>
+          ) : null}
+          {interestTopics.length === 0 && uniqueInterestProfiles.length === 0 ? (
+            <EmptyState message="No topic or interest data was available for this profile." />
+          ) : null}
+        </SectionCard>
+      ) : null}
 
       {publicSummaryMetadata.length > 0 ? (
         <SectionCard
