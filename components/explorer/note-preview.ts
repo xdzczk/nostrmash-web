@@ -121,6 +121,13 @@ function isConfigLike(content: string, urls: string[]): boolean {
   return false;
 }
 
+const SYNTHETIC_PREVIEW_SUMMARY_PATTERN =
+  /^(?:raw )?(?:config-like|identifier-heavy) note(?:\s*[-—]\s*|\s+)from\b/i;
+
+function isSyntheticPreviewSummary(value: string): boolean {
+  return SYNTHETIC_PREVIEW_SUMMARY_PATTERN.test(value.trim());
+}
+
 function isIdentifierHeavy(content: string): boolean {
   const tokens = content.split(/\s+/).filter((token) => token.length > 0);
   if (tokens.length === 0) return false;
@@ -238,7 +245,9 @@ export function getNotePreviewPresentation(note: EventRecord): NotePreviewPresen
   const isCompact = asBoolean(previewPayload.is_compact) ?? fallback.isCompact;
   const containsRaw = asBoolean(previewPayload.contains_raw) ?? fallback.containsRaw;
   const resolvedMode = mode ?? fallback.mode;
-  const normalizedDisplay = displayContent
+  const useDisplayContent =
+    displayContent !== undefined && !isSyntheticPreviewSummary(displayContent);
+  const normalizedDisplay = useDisplayContent
     ? clampText(
         normalizeLinksForDisplay(displayContent),
         resolvedMode === "standard_text_preview" ? 500 : 280
