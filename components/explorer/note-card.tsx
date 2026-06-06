@@ -133,7 +133,7 @@ export function NoteCard({
               </DiscoveryPill>
             ) : null}
             {authorHref ? (
-              <Link href={authorHref} className="text-ink-soft font-medium hover:text-white">
+              <Link href={authorHref} className="text-ink-soft hover:text-ink-strong font-medium">
                 {authorLabel}
               </Link>
             ) : (

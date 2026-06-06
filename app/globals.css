@@ -1,38 +1,129 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Theme tokens
+   Values live as CSS variables so they can flip per theme. Dark is the default
+   (`:root`); light is applied via `[data-theme="light"]` or the system
+   preference when the user hasn't chosen. Components only read the semantic
+   `--color-*` utilities below, so theming touches values in one place.
+--------------------------------------------------------------------------- */
+
 :root {
+  color-scheme: dark;
+
   --background: #09090b;
   --foreground: #f4f4f5;
+
+  --surface: #18181b; /* zinc-900 */
+  --surface-sunken: #09090b; /* zinc-950 */
+  --edge: #27272a; /* zinc-800 */
+  --edge-strong: #3f3f46; /* zinc-700 */
+
+  --accent: #6366f1; /* indigo-500 */
+  --accent-soft: #818cf8; /* indigo-400 */
+  --accent-ink: #e0e7ff; /* bright text on accent-tinted surfaces */
+
+  --ink-strong: #fafafa; /* zinc-50  — strongest headlines */
+  --ink: #f4f4f5; /* zinc-100 — default headings / key text */
+  --ink-soft: #e4e4e7; /* zinc-200 — emphasized labels */
+  --ink-dim: #d4d4d8; /* zinc-300 — body copy */
+  --ink-muted: #a1a1aa; /* zinc-400 — secondary */
+  --ink-faint: #83838c; /* tertiary labels (AA-compliant) */
+
+  --link: #a5b4fc; /* indigo-300 */
+  --link-hover: #c7d2fe; /* indigo-200 */
+
+  /* Decorative panel base + elevation (theme-aware). */
+  --panel-base: linear-gradient(180deg, rgba(24, 24, 27, 0.94), rgba(14, 14, 16, 0.98));
+  --panel-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
+  --panel-glow: 0 30px 95px rgba(30, 64, 175, 0.18);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --background: #fafafb;
+  --foreground: #18181b;
+
+  --surface: #ffffff;
+  --surface-sunken: #f4f4f5;
+  --edge: #e4e4e7;
+  --edge-strong: #d4d4d8;
+
+  --accent: #4f46e5; /* indigo-600 — AA white text on buttons */
+  --accent-soft: #6366f1; /* indigo-500 */
+  --accent-ink: #3730a3; /* indigo-800 — dark accent text on light tint */
+
+  --ink-strong: #09090b;
+  --ink: #18181b;
+  --ink-soft: #27272a;
+  --ink-dim: #3f3f46;
+  --ink-muted: #52525b;
+  --ink-faint: #71717a; /* AA on white */
+
+  --link: #4f46e5; /* indigo-600 */
+  --link-hover: #4338ca; /* indigo-700 */
+
+  --panel-base: linear-gradient(180deg, #ffffff, #f6f6f8);
+  --panel-shadow: 0 16px 44px rgba(30, 30, 60, 0.1);
+  --panel-glow: 0 18px 50px rgba(79, 70, 229, 0.12);
+}
+
+/* Follow the system when the user hasn't explicitly chosen dark. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+
+    --background: #fafafb;
+    --foreground: #18181b;
+
+    --surface: #ffffff;
+    --surface-sunken: #f4f4f5;
+    --edge: #e4e4e7;
+    --edge-strong: #d4d4d8;
+
+    --accent: #4f46e5;
+    --accent-soft: #6366f1;
+    --accent-ink: #3730a3;
+
+    --ink-strong: #09090b;
+    --ink: #18181b;
+    --ink-soft: #27272a;
+    --ink-dim: #3f3f46;
+    --ink-muted: #52525b;
+    --ink-faint: #71717a;
+
+    --link: #4f46e5;
+    --link-hover: #4338ca;
+
+    --panel-base: linear-gradient(180deg, #ffffff, #f6f6f8);
+    --panel-shadow: 0 16px 44px rgba(30, 30, 60, 0.1);
+    --panel-glow: 0 18px 50px rgba(79, 70, 229, 0.12);
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  /* Semantic surface + line tokens. Use with opacity modifiers, e.g.
-     `bg-surface/55`, `border-edge`, to replace scattered raw zinc values. */
-  --color-surface: #18181b; /* zinc-900 */
-  --color-surface-sunken: #09090b; /* zinc-950 */
-  --color-edge: #27272a; /* zinc-800 */
-  --color-edge-strong: #3f3f46; /* zinc-700 */
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-edge: var(--edge);
+  --color-edge-strong: var(--edge-strong);
 
-  /* Brand accent + muted text. */
-  --color-accent: #6366f1; /* indigo-500 */
-  --color-accent-soft: #818cf8; /* indigo-400 */
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
 
-  /* Ink scale — text emphasis ladder (use as `text-ink`, `text-ink-soft`, …).
-     One coherent family so themes redefine text in six places. All tiers from
-     `ink-faint` up meet WCAG AA on every app surface. */
-  --color-ink-strong: #fafafa; /* zinc-50  — strongest headlines */
-  --color-ink: #f4f4f5; /* zinc-100 — default headings / key text */
-  --color-ink-soft: #e4e4e7; /* zinc-200 — emphasized labels */
-  --color-ink-dim: #d4d4d8; /* zinc-300 — body copy */
-  --color-ink-muted: #a1a1aa; /* zinc-400 — secondary */
-  --color-ink-faint: #83838c; /* tertiary labels (AA-compliant) */
+  --color-ink-strong: var(--ink-strong);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-dim: var(--ink-dim);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
 
-  /* Interactive text (links) + hover. */
-  --color-link: #a5b4fc; /* indigo-300 */
-  --color-link-hover: #c7d2fe; /* indigo-200 */
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -276,6 +367,73 @@ p {
   .nm-spark-trace,
   .nm-spark-dot {
     animation: none;
+  }
+}
+
+/* Decorative gradient panels. Dark/light share one themeable base + elevation;
+   each keeps its own faint hue tint (which reads fine on either theme). */
+.nm-panel-hero {
+  background:
+    radial-gradient(circle at top left, rgba(99, 102, 241, 0.12), transparent 34%),
+    var(--panel-base);
+  box-shadow: var(--panel-shadow);
+}
+.nm-panel-feature {
+  background:
+    radial-gradient(circle at top left, rgba(99, 102, 241, 0.16), transparent 40%),
+    var(--panel-base);
+  box-shadow: var(--panel-glow);
+}
+.nm-panel-featured {
+  background:
+    radial-gradient(circle at top left, rgba(99, 102, 241, 0.14), transparent 44%),
+    var(--panel-base);
+  box-shadow: var(--panel-glow);
+}
+.nm-panel-emerald {
+  background:
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.1), transparent 38%),
+    var(--panel-base);
+  box-shadow: var(--panel-shadow);
+}
+.nm-panel-fuchsia {
+  background:
+    radial-gradient(circle at top left, rgba(217, 70, 239, 0.08), transparent 42%),
+    var(--panel-base);
+  box-shadow: var(--panel-shadow);
+}
+.nm-panel-sky {
+  background:
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.08), transparent 40%),
+    var(--panel-base);
+  box-shadow: var(--panel-shadow);
+}
+.nm-panel-close {
+  background:
+    radial-gradient(circle at bottom center, rgba(99, 102, 241, 0.08), transparent 40%),
+    var(--panel-base);
+  box-shadow: var(--panel-shadow);
+}
+
+/* Theme-conditional visibility (used to swap the logo asset without JS). */
+.theme-dark-only {
+  display: var(--show-dark, block);
+}
+.theme-light-only {
+  display: var(--show-light, none);
+}
+:root {
+  --show-dark: block;
+  --show-light: none;
+}
+:root[data-theme="light"] {
+  --show-dark: none;
+  --show-light: block;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --show-dark: none;
+    --show-light: block;
   }
 }
 

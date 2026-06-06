@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/branding/brand-logo";
 import { SiteNav } from "@/components/layout/site-nav";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export function SiteShell({ children }: { children: ReactNode }) {
   return (
@@ -23,6 +24,9 @@ export function SiteShell({ children }: { children: ReactNode }) {
             <BrandLogo className="h-8 w-[138px] sm:w-[174px]" priority />
           </Link>
           <SiteNav />
+          <div className="ml-auto sm:ml-0">
+            <ThemeToggle />
+          </div>
         </div>
         <div
           aria-hidden

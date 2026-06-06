@@ -189,7 +189,7 @@ export function ProfilesInMotionSpotlight({
   freshnessLabel: string;
 }) {
   return (
-    <section className="border-edge/90 relative overflow-hidden rounded-[1.6rem] border bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.1),transparent_38%),linear-gradient(180deg,rgba(24,24,27,0.96),rgba(20,20,23,0.92))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.16)] sm:p-6 xl:p-7">
+    <section className="border-edge/90 nm-panel-emerald relative overflow-hidden rounded-[1.6rem] border p-5 sm:p-6 xl:p-7">
       <div className="flex h-full flex-col">
         <header className="space-y-3">
           <div className="space-y-2">

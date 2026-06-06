@@ -91,11 +91,11 @@ export function ThreadView({
 
       {typeof nextCursor === "string" && nextCursor.length > 0 ? (
         <div className="border-accent/30 bg-accent/10 rounded-md border p-3">
-          <p className="text-xs text-indigo-100">More replies are available.</p>
+          <p className="text-accent-ink text-xs">More replies are available.</p>
           {continuationHref ? (
             <Link
               href={continuationHref}
-              className="border-accent/40 text-link-hover mt-2 inline-block rounded-full border px-3 py-1 text-xs hover:text-indigo-100"
+              className="border-accent/40 text-link-hover hover:text-accent-ink mt-2 inline-block rounded-full border px-3 py-1 text-xs"
             >
               {continuationLabel}
             </Link>

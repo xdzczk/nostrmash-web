@@ -223,10 +223,10 @@ export function WhyNow({
     tone === "highlight" ? "rounded-xl border border-link/20 bg-accent/[0.07] px-3.5 py-2.5" : "";
   const titleClassName =
     tone === "highlight"
-      ? "text-[10px] font-semibold tracking-[0.16em] text-indigo-100 uppercase"
+      ? "text-[10px] font-semibold tracking-[0.16em] text-accent-ink uppercase"
       : "text-[10px] font-semibold tracking-[0.16em] text-ink-faint uppercase";
   const reasonClassName =
-    tone === "highlight" ? "border-link/30 bg-link/10 text-indigo-100" : "text-ink-dim";
+    tone === "highlight" ? "border-link/30 bg-link/10 text-accent-ink" : "text-ink-dim";
   const supportClassName = tone === "highlight" ? "text-link-hover/80" : "text-ink-faint";
   const dotClassName = tone === "highlight" ? "text-link-hover/60" : "text-zinc-600";
 

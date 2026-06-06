@@ -403,7 +403,7 @@ export default async function TrendingPage() {
                           {profileHref ? (
                             <Link
                               href={profileHref}
-                              className="text-ink-soft truncate hover:text-white"
+                              className="text-ink-soft hover:text-ink-strong truncate"
                             >
                               {profileLabel(profile)}
                             </Link>
@@ -485,7 +485,7 @@ export default async function TrendingPage() {
                       </span>
                       <Link
                         href={entry.href}
-                        className="text-ink-soft min-w-0 flex-1 truncate hover:text-white"
+                        className="text-ink-soft hover:text-ink-strong min-w-0 flex-1 truncate"
                       >
                         #{entry.hashtag}
                       </Link>
@@ -557,7 +557,7 @@ export default async function TrendingPage() {
                       </span>
                       <Link
                         href={entry.href}
-                        className="text-ink-soft min-w-0 flex-1 truncate hover:text-white"
+                        className="text-ink-soft hover:text-ink-strong min-w-0 flex-1 truncate"
                       >
                         {entry.domain}
                       </Link>

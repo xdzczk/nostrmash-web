@@ -141,10 +141,10 @@ export default async function DomainNotesPage({
             <NotesList notes={notes} authorsByPubkey={authorsByPubkey} />
             {typeof notesNextCursor === "string" && notesNextCursor.length > 0 ? (
               <div className="border-accent/30 bg-accent/10 mt-4 rounded-md border p-3">
-                <p className="text-xs text-indigo-100">More notes are available.</p>
+                <p className="text-accent-ink text-xs">More notes are available.</p>
                 <Link
                   href={notesContinuationHref}
-                  className="border-accent/40 text-link-hover mt-2 inline-block rounded-full border px-3 py-1 text-xs hover:text-indigo-100"
+                  className="border-accent/40 text-link-hover hover:text-accent-ink mt-2 inline-block rounded-full border px-3 py-1 text-xs"
                 >
                   Continue notes
                 </Link>

@@ -600,20 +600,20 @@ export default async function NotePage({
           <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
             <Link
               href="/discovery/conversations/hot"
-              className="border-edge-strong text-ink-dim rounded-full border px-2 py-1 hover:text-white"
+              className="border-edge-strong text-ink-dim hover:text-ink-strong rounded-full border px-2 py-1"
             >
               Explore hot conversations
             </Link>
             <Link
               href="/discovery/profiles/rising"
-              className="border-edge-strong text-ink-dim rounded-full border px-2 py-1 hover:text-white"
+              className="border-edge-strong text-ink-dim hover:text-ink-strong rounded-full border px-2 py-1"
             >
               Explore rising profiles
             </Link>
             {rootEventId ? (
               <Link
                 href={`/notes/${encodeURIComponent(rootEventId)}`}
-                className="border-edge-strong text-ink-dim rounded-full border px-2 py-1 hover:text-white"
+                className="border-edge-strong text-ink-dim hover:text-ink-strong rounded-full border px-2 py-1"
               >
                 Open thread root
               </Link>
@@ -621,14 +621,14 @@ export default async function NotePage({
             {parentEventId ? (
               <Link
                 href={`/notes/${encodeURIComponent(parentEventId)}`}
-                className="border-edge-strong text-ink-dim rounded-full border px-2 py-1 hover:text-white"
+                className="border-edge-strong text-ink-dim hover:text-ink-strong rounded-full border px-2 py-1"
               >
                 Open parent note
               </Link>
             ) : null}
             <Link
               href={toThreadRoute(rootEventId ?? eventId)}
-              className="border-edge-strong text-ink-dim rounded-full border px-2 py-1 hover:text-white"
+              className="border-edge-strong text-ink-dim hover:text-ink-strong rounded-full border px-2 py-1"
             >
               View related thread activity
             </Link>
@@ -668,10 +668,10 @@ export default async function NotePage({
             )}
             {typeof activityNextCursor === "string" && activityNextCursor.length > 0 ? (
               <div className="border-accent/30 bg-accent/10 mt-4 rounded-md border p-3">
-                <p className="text-xs text-indigo-100">More thread activity is available.</p>
+                <p className="text-accent-ink text-xs">More thread activity is available.</p>
                 <Link
                   href={activityContinuationHref}
-                  className="border-accent/40 text-link-hover mt-2 inline-block rounded-full border px-3 py-1 text-xs hover:text-indigo-100"
+                  className="border-accent/40 text-link-hover hover:text-accent-ink mt-2 inline-block rounded-full border px-3 py-1 text-xs"
                 >
                   Continue activity
                 </Link>
@@ -714,10 +714,10 @@ export default async function NotePage({
             )}
             {typeof relatedNextCursor === "string" && relatedNextCursor.length > 0 ? (
               <div className="border-accent/30 bg-accent/10 mt-4 rounded-md border p-3">
-                <p className="text-xs text-indigo-100">More related notes are available.</p>
+                <p className="text-accent-ink text-xs">More related notes are available.</p>
                 <Link
                   href={relatedContinuationHref}
-                  className="border-accent/40 text-link-hover mt-2 inline-block rounded-full border px-3 py-1 text-xs hover:text-indigo-100"
+                  className="border-accent/40 text-link-hover hover:text-accent-ink mt-2 inline-block rounded-full border px-3 py-1 text-xs"
                 >
                   Continue related notes
                 </Link>

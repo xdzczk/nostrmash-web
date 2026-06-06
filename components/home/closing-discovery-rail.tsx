@@ -122,7 +122,7 @@ function HashtagDiscoveryModule({
   const columns = splitIntoColumns(items, 2);
 
   return (
-    <section className="border-edge/90 flex h-full flex-col rounded-[1.4rem] border bg-[radial-gradient(circle_at_top_left,rgba(217,70,239,0.08),transparent_42%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(20,20,23,0.88))] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.12)] sm:p-5 xl:p-6">
+    <section className="border-edge/90 nm-panel-fuchsia flex h-full flex-col rounded-[1.4rem] border p-4 sm:p-5 xl:p-6">
       <header className="space-y-2.5">
         <div className="text-[11px] font-medium tracking-[0.18em] text-fuchsia-300/90 uppercase">
           Hashtags
@@ -217,7 +217,7 @@ function DomainDiscoveryModule({
   const columns = splitIntoColumns(items, 2);
 
   return (
-    <section className="border-edge/90 flex h-full flex-col rounded-[1.4rem] border bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.08),transparent_40%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(20,20,23,0.88))] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.12)] sm:p-5 xl:p-6">
+    <section className="border-edge/90 nm-panel-sky flex h-full flex-col rounded-[1.4rem] border p-4 sm:p-5 xl:p-6">
       <header className="space-y-2.5">
         <div className="text-[11px] font-medium tracking-[0.18em] text-sky-300/90 uppercase">
           Domains
@@ -249,7 +249,7 @@ function DomainDiscoveryModule({
                     <li key={item.rawLabel}>
                       <Link
                         href={item.href}
-                        className="group flex items-start gap-3 py-2.5 transition first:pt-0 last:pb-0 hover:text-white"
+                        className="group hover:text-ink-strong flex items-start gap-3 py-2.5 transition first:pt-0 last:pb-0"
                       >
                         <span className="border-edge-strong/80 bg-surface-sunken/70 text-ink-dim mt-0.5 flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full border px-1 text-[10px] font-semibold tracking-[0.14em] uppercase">
                           {columnOffset + index + 1}
@@ -309,7 +309,7 @@ export function ClosingDiscoveryRail({
   domainsFreshness: string;
 }) {
   return (
-    <section className="border-edge/90 relative overflow-hidden rounded-[1.7rem] border bg-[radial-gradient(circle_at_bottom_center,rgba(99,102,241,0.08),transparent_40%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(15,15,17,0.98))] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.22)] sm:p-7 xl:p-8 2xl:px-9">
+    <section className="border-edge/90 nm-panel-close relative overflow-hidden rounded-[1.7rem] border p-5 sm:p-7 xl:p-8 2xl:px-9">
       <header className="max-w-3xl space-y-3">
         <h2 className="text-ink-strong text-[1.5rem] font-semibold tracking-tight sm:text-[1.9rem]">
           Follow what gains speed next

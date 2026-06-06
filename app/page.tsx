@@ -302,7 +302,7 @@ export default async function HomePage() {
     <div className="relative left-1/2 w-screen max-w-none -translate-x-1/2 px-4 sm:px-5 xl:px-8 2xl:px-10">
       <div className="mx-auto w-full max-w-[92rem] space-y-12 sm:space-y-16 xl:space-y-[5.1rem]">
         {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
-        <section className="border-edge/90 relative overflow-hidden rounded-[2rem] border bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.12),transparent_34%),linear-gradient(180deg,rgba(24,24,27,0.94),rgba(14,14,16,0.98))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.28)] sm:p-7 xl:p-9 2xl:px-10">
+        <section className="border-edge/90 nm-panel-hero relative overflow-hidden rounded-[2rem] border p-5 sm:p-7 xl:p-9 2xl:px-10">
           <div aria-hidden className="nm-aurora-layer pointer-events-none absolute inset-0" />
           <div className="relative z-10 grid gap-7 sm:gap-8 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.72fr)] xl:items-start xl:gap-10 2xl:grid-cols-[minmax(0,1.52fr)_360px] 2xl:gap-12">
             <div className="space-y-6 sm:space-y-7">
@@ -384,7 +384,7 @@ export default async function HomePage() {
         </section>
 
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1.76fr)_minmax(320px,0.8fr)] xl:items-start xl:gap-7 2xl:grid-cols-[minmax(0,1.9fr)_minmax(340px,0.74fr)]">
-          <section className="border-accent-soft/15 overflow-hidden rounded-[1.72rem] border bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.16),transparent_40%),linear-gradient(180deg,rgba(24,24,27,0.97),rgba(20,20,23,0.94))] p-5 shadow-[0_30px_95px_rgba(30,64,175,0.16)] ring-1 ring-white/5 sm:p-6 xl:p-7">
+          <section className="border-accent-soft/15 nm-panel-feature overflow-hidden rounded-[1.72rem] border p-5 ring-1 ring-white/5 sm:p-6 xl:p-7">
             <header className="mb-6 space-y-3.5 sm:mb-7">
               <div className="space-y-2.5">
                 <h2 className="text-ink-strong text-[1.65rem] font-semibold tracking-tight sm:text-[2.05rem]">

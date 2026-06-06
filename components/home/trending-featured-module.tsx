@@ -224,7 +224,7 @@ function NoteAuthor({
               className={
                 compact
                   ? "text-ink-soft hover:text-ink font-medium"
-                  : "text-ink-strong font-medium hover:text-white"
+                  : "text-ink-strong hover:text-ink-strong font-medium"
               }
             >
               {authorLabel}
@@ -360,9 +360,9 @@ function FeaturedNoteCard({
   const statusLabel = buildStatusLabel(rank, signals);
 
   return (
-    <article className="border-link/20 rounded-[1.7rem] border bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.14),transparent_44%),linear-gradient(180deg,rgba(40,40,46,0.96),rgba(23,23,27,0.95))] p-6 shadow-[0_34px_110px_rgba(30,64,175,0.26)] ring-1 ring-white/10 sm:p-7 xl:p-8">
+    <article className="border-link/20 nm-panel-featured rounded-[1.7rem] border p-6 ring-1 ring-white/10 sm:p-7 xl:p-8">
       <div className="flex flex-wrap items-center gap-2.5 text-sm">
-        <span className="bg-accent-soft/15 border-link/30 inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-indigo-100 uppercase">
+        <span className="bg-accent-soft/15 border-link/30 text-accent-ink inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold tracking-[0.18em] uppercase">
           Lead note
         </span>
         <span className="text-link-hover font-medium tracking-[0.16em] uppercase">#{rank}</span>

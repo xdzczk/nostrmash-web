@@ -23,7 +23,7 @@ export function TabBar({ items, ariaLabel }: { items: TabItem[]; ariaLabel?: str
               aria-current={tab.active ? "page" : undefined}
               className={`nm-pressable focus-visible:ring-accent-soft/70 inline-flex items-center rounded-lg px-3 py-1.5 text-sm focus-visible:ring-2 focus-visible:outline-none ${
                 tab.active
-                  ? "text-surface-sunken bg-zinc-200/90"
+                  ? "bg-ink text-surface"
                   : "hover:bg-surface/80 text-ink-dim hover:text-ink"
               }`}
             >
