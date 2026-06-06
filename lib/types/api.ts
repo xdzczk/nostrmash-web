@@ -317,6 +317,46 @@ export interface AuthorRepliesResponse extends NativeApiSemantics {
   [key: string]: unknown;
 }
 
+export interface AuthorReactionRecord {
+  event_id?: string;
+  target_event_id?: string;
+  reaction?: string;
+  reaction_type?: string;
+  created_at?: number;
+  event?: EventRecord;
+  target_event?: EventRecord;
+  target_note?: EventRecord;
+  [key: string]: unknown;
+}
+
+export interface AuthorReactionsResponse extends NativeApiSemantics {
+  pubkey?: string;
+  reactions?: AuthorReactionRecord[];
+  [key: string]: unknown;
+}
+
+export interface AuthorZapRecord {
+  event_id?: string;
+  target_event_id?: string;
+  sender_pubkey?: string;
+  receiver_pubkey?: string;
+  sats?: number;
+  msats?: number;
+  amount_msats?: number;
+  zap_text?: string;
+  created_at?: number;
+  event?: EventRecord;
+  target_event?: EventRecord;
+  target_note?: EventRecord;
+  [key: string]: unknown;
+}
+
+export interface AuthorZapsResponse extends NativeApiSemantics {
+  pubkey?: string;
+  zaps?: AuthorZapRecord[];
+  [key: string]: unknown;
+}
+
 export interface ProfileFollowersResponse extends NativeApiSemantics {
   pubkey?: string;
   followers?: Profile[];
@@ -443,6 +483,8 @@ export type ThreadActivityApiResponse = NativeApiSemantics & Record<string, unkn
 export type RelatedNotesApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type AuthorEventsApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type AuthorRepliesApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type AuthorReactionsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type AuthorZapsApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type ProfileFollowersApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type ProfileMentionsApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type RelatedProfilesApiResponse = NativeApiSemantics & Record<string, unknown>;

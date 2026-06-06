@@ -1,7 +1,11 @@
 import type {
   AuthorAnalyticsResponse,
   AuthorEventsResponse,
+  AuthorReactionRecord,
+  AuthorReactionsResponse,
   AuthorRepliesResponse,
+  AuthorZapRecord,
+  AuthorZapsResponse,
   ContactListContextResponse,
   DiscoveryHomeResponse,
   DomainDetailResponse,
@@ -541,6 +545,151 @@ export function normalizeAuthorRepliesResponse(value: unknown): AuthorRepliesRes
         record.data ??
         fallbackItems
     ),
+  };
+}
+
+function extractTagReference(value: unknown, tagName: string): string | undefined {
+  const record = asRecord(value);
+  const tags = record?.tags;
+  if (!Array.isArray(tags)) return undefined;
+  for (const tag of tags) {
+    if (!Array.isArray(tag) || tag.length < 2) continue;
+    if (String(tag[0]).toLowerCase() !== tagName.toLowerCase()) continue;
+    const candidate = asString(tag[1]);
+    if (candidate) return candidate;
+  }
+  return undefined;
+}
+
+function extractZapDescriptionRecord(value: unknown): Record<string, unknown> | null {
+  const record = asRecord(value);
+  const event = asRecord(record?.event) ?? record;
+  const tags = event?.tags;
+  if (!Array.isArray(tags)) return null;
+  for (const tag of tags) {
+    if (!Array.isArray(tag) || tag.length < 2) continue;
+    if (String(tag[0]).toLowerCase() !== "description") continue;
+    return parseJsonRecord(tag[1]);
+  }
+  return null;
+}
+
+function normalizeAuthorReactionRecord(value: unknown): AuthorReactionRecord | null {
+  const record = asRecord(value);
+  if (!record) return null;
+  const nestedEvent = normalizeEventRecord(record.event);
+  const reactionEvent =
+    nestedEvent ?? (asNumber(record.kind) === 7 ? normalizeEventRecord(record) : null);
+  const targetEvent = normalizeEventRecord(
+    record.target_event ?? record.target_note ?? record.target
+  );
+  const targetEventId = firstString(
+    record.target_event_id,
+    targetEvent?.id,
+    extractTagReference(record, "e"),
+    reactionEvent ? extractTagReference(reactionEvent, "e") : undefined
+  );
+  if (!reactionEvent && !targetEventId && !asString(record.reaction)) return null;
+
+  return compactDefined({
+    ...record,
+    event_id: firstString(record.event_id, reactionEvent?.id),
+    target_event_id: targetEventId,
+    reaction: firstString(
+      record.reaction,
+      record.reaction_type,
+      reactionEvent?.content,
+      record.content
+    ),
+    created_at: asNumber(record.created_at) ?? reactionEvent?.created_at,
+    event: reactionEvent ?? undefined,
+    target_event: targetEvent ?? undefined,
+    target_note: targetEvent ?? undefined,
+  });
+}
+
+export function normalizeAuthorReactionsResponse(value: unknown): AuthorReactionsResponse {
+  const record = asRecord(value) ?? {};
+  const fallbackItems = Array.isArray(value) ? value : [];
+  const rawItems =
+    record.reactions ??
+    record.items ??
+    record.events ??
+    record.notes ??
+    record.data ??
+    fallbackItems;
+
+  return {
+    ...record,
+    pubkey: asString(record.pubkey) ?? asString(record.author_pubkey),
+    reactions: asArray(rawItems)
+      .map((entry) => normalizeAuthorReactionRecord(entry))
+      .filter((entry): entry is AuthorReactionRecord => Boolean(entry)),
+  };
+}
+
+function normalizeAuthorZapRecord(value: unknown): AuthorZapRecord | null {
+  const record = asRecord(value);
+  if (!record) return null;
+  const event = normalizeEventRecord(record.event);
+  const targetEvent = normalizeEventRecord(
+    record.target_event ?? record.target_note ?? record.target
+  );
+  const description = extractZapDescriptionRecord(record);
+  const amountMsats =
+    asNumber(record.msats) ??
+    asNumber(record.amount_msats) ??
+    asNumber(record.amount) ??
+    asNumber(description?.amount);
+  const satsFromRecord = asNumber(record.sats);
+  const sats =
+    satsFromRecord && satsFromRecord > 0
+      ? satsFromRecord
+      : amountMsats && amountMsats > 0
+        ? Math.round(amountMsats / 1000)
+        : undefined;
+  const zapText = firstString(
+    record.zap_text,
+    record.content,
+    description?.content,
+    event?.content
+  );
+  const targetEventId = firstString(
+    record.target_event_id,
+    targetEvent?.id,
+    extractTagReference(record, "e"),
+    event ? extractTagReference(event, "e") : undefined
+  );
+
+  if (!event && !targetEventId && sats === undefined && !zapText) return null;
+
+  return compactDefined({
+    ...record,
+    event_id: firstString(record.event_id, event?.id),
+    sender_pubkey: firstString(record.sender_pubkey, event?.pubkey),
+    receiver_pubkey: asString(record.receiver_pubkey),
+    target_event_id: targetEventId,
+    sats,
+    msats: amountMsats,
+    amount_msats: amountMsats,
+    zap_text: zapText && zapText.trim().length > 0 ? zapText.trim() : undefined,
+    created_at: asNumber(record.created_at) ?? event?.created_at,
+    event: event ?? undefined,
+    target_event: targetEvent ?? undefined,
+    target_note: targetEvent ?? undefined,
+  });
+}
+
+export function normalizeAuthorZapsResponse(value: unknown): AuthorZapsResponse {
+  const record = asRecord(value) ?? {};
+  const fallbackItems = Array.isArray(value) ? value : [];
+
+  return {
+    ...record,
+    pubkey: asString(record.pubkey) ?? asString(record.author_pubkey),
+    zaps: asArray(record.zaps ?? record.items ?? record.data ?? fallbackItems)
+      .map((entry) => normalizeAuthorZapRecord(entry))
+      .filter((entry): entry is AuthorZapRecord => Boolean(entry)),
   };
 }
 

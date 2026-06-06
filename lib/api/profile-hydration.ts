@@ -1,4 +1,5 @@
-import { getProfile, getProfilesBatch } from "@/lib/api/endpoints";
+import { getEvent, getProfile, getProfilesBatch } from "@/lib/api/endpoints";
+import { normalizeEventRecord } from "@/lib/api/normalize";
 import type { CacheClass } from "@/lib/caching/policies";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
@@ -120,4 +121,44 @@ export async function hydrateProfiles(
 
 export function extractEventAuthorPubkeys(notes: EventRecord[]): string[] {
   return listHydratablePubkeys(notes.map((note) => note.pubkey));
+}
+
+export async function fetchEventsById(
+  eventIds: Array<string | null | undefined>,
+  cacheClass: CacheClass = "requestTime"
+): Promise<Record<string, EventRecord>> {
+  const normalizedIds = Array.from(
+    new Set(
+      eventIds.filter(
+        (eventId): eventId is string => typeof eventId === "string" && eventId.length > 0
+      )
+    )
+  );
+  if (normalizedIds.length === 0) return {};
+
+  const results = await Promise.allSettled(
+    normalizedIds.map((eventId) => getEvent(eventId, cacheClass))
+  );
+  const eventsById: Record<string, EventRecord> = {};
+
+  for (let index = 0; index < normalizedIds.length; index += 1) {
+    const result = results[index];
+    if (!result || result.status !== "fulfilled") continue;
+    const payload = result.value;
+    const event =
+      normalizeEventRecord(asRecord(payload)?.event ?? payload) ??
+      (asRecord(payload)?.event as EventRecord | undefined);
+    if (!event) continue;
+    if (typeof event.id === "string" && event.id.length > 0) {
+      eventsById[event.id.toLowerCase()] = event;
+    }
+    eventsById[normalizedIds[index]!.toLowerCase()] = event;
+  }
+
+  return eventsById;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
 }

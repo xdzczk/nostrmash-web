@@ -3,8 +3,12 @@ import type {
   AuthorAnalyticsResponse,
   AuthorEventsApiResponse,
   AuthorEventsResponse,
+  AuthorReactionsApiResponse,
+  AuthorReactionsResponse,
   AuthorRepliesApiResponse,
   AuthorRepliesResponse,
+  AuthorZapsApiResponse,
+  AuthorZapsResponse,
   BatchProfilesApiResponse,
   ContactListContextApiResponse,
   ContactListContextResponse,
@@ -89,7 +93,9 @@ import {
   normalizeNoteSummaryResponse,
   normalizeAuthorEventsResponse,
   normalizeAuthorAnalyticsResponse,
+  normalizeAuthorReactionsResponse,
   normalizeAuthorRepliesResponse,
+  normalizeAuthorZapsResponse,
   normalizeContactListContextResponse,
   normalizeProfile,
   normalizeProfileFollowersResponse,
@@ -138,6 +144,10 @@ const nativeApiV1Routes = {
   authorEventsByPubkey: (pubkey: string) => `/api/v1/authors/${encodeURIComponent(pubkey)}/events`,
   authorRepliesByPubkey: (pubkey: string) =>
     `/api/v1/authors/${encodeURIComponent(pubkey)}/replies`,
+  authorReactionsByPubkey: (pubkey: string) =>
+    `/api/v1/authors/${encodeURIComponent(pubkey)}/reactions`,
+  authorZapsByPubkey: (pubkey: string) => `/api/v1/authors/${encodeURIComponent(pubkey)}/zaps`,
+  profileZapsByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/zaps`,
   authorAnalyticsActivityByPubkey: (pubkey: string) =>
     `/api/v1/authors/${encodeURIComponent(pubkey)}/analytics/activity`,
   authorAnalyticsBehaviorByPubkey: (pubkey: string) =>
@@ -183,6 +193,11 @@ const nativeApiV1Routes = {
 interface CursorQuery {
   cursor?: string;
   limit?: number;
+  direction?: string;
+}
+
+function isApiNotFound(error: unknown): boolean {
+  return error instanceof Error && /API 404:/i.test(error.message);
 }
 
 const normalizeSearchQueryText = (value: string): string =>
@@ -1008,6 +1023,90 @@ export async function getAuthorReplies(
   throw lastError ?? new Error("Author replies lookup failed.");
 }
 
+export async function getAuthorReactions(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<AuthorReactionsResponse> {
+  const candidates = buildPubkeyCandidates(pubkey);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<AuthorReactionsApiResponse>(
+        nativeApiV1Routes.authorReactionsByPubkey(candidate),
+        {
+          cacheClass,
+          query: buildCursorQuery(query),
+        }
+      );
+      return normalizeAuthorReactionsResponse(response);
+    } catch (error) {
+      if (isApiNotFound(error)) continue;
+      lastError = error instanceof Error ? error : new Error("Author reactions lookup failed.");
+    }
+  }
+
+  try {
+    const events = await getAuthorEvents(pubkey, cacheClass, query);
+    const reactions = (events.events ?? []).filter((event) => event.kind === 7);
+    return {
+      ...events,
+      pubkey: events.pubkey,
+      reactions: reactions
+        .map((event) => normalizeAuthorReactionsResponse({ reactions: [event] }).reactions?.[0])
+        .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),
+    };
+  } catch (error) {
+    throw (
+      lastError ?? (error instanceof Error ? error : new Error("Author reactions lookup failed."))
+    );
+  }
+}
+
+export async function getAuthorZaps(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<AuthorZapsResponse> {
+  const candidates = buildPubkeyCandidates(pubkey);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<AuthorZapsApiResponse>(
+        nativeApiV1Routes.authorZapsByPubkey(candidate),
+        {
+          cacheClass,
+          query: buildCursorQuery(query),
+        }
+      );
+      return normalizeAuthorZapsResponse(response);
+    } catch (error) {
+      if (!isApiNotFound(error)) {
+        lastError = error instanceof Error ? error : new Error("Author zaps lookup failed.");
+      }
+    }
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<AuthorZapsApiResponse>(
+        nativeApiV1Routes.profileZapsByPubkey(candidate),
+        {
+          cacheClass,
+          query: buildCursorQuery(query),
+        }
+      );
+      return normalizeAuthorZapsResponse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Author zaps lookup failed.");
+    }
+  }
+
+  throw lastError ?? new Error("Author zaps lookup failed.");
+}
+
 async function fetchAuthorAnalyticsByRoutes(
   pubkey: string,
   cacheClass: CacheClass,
@@ -1124,6 +1223,7 @@ function buildCursorQuery(
   return {
     cursor: query.cursor,
     limit: query.limit,
+    direction: query.direction,
   };
 }
 
