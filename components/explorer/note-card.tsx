@@ -150,11 +150,6 @@ export function NoteCard({
         </div>
       </div>
 
-      {preview.treatmentLabel ? (
-        <div className="mt-2.5 text-[11px] tracking-[0.14em] text-zinc-500 uppercase sm:mt-3">
-          {preview.treatmentLabel}
-        </div>
-      ) : null}
       {preview.prefersMediaFirst && typeof note.content === "string" && note.content.length > 0 ? (
         <NoteMedia content={note.content} />
       ) : null}

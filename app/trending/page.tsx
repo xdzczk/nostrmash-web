@@ -328,11 +328,6 @@ export default async function TrendingPage() {
                               <p className="text-sm leading-5 text-zinc-300">
                                 {preview.contentForCard}
                               </p>
-                              {preview.treatmentLabel ? (
-                                <p className="text-[10px] tracking-[0.14em] text-zinc-500 uppercase">
-                                  {preview.treatmentLabel}
-                                </p>
-                              ) : null}
                             </div>
                             {noteId ? (
                               <Link

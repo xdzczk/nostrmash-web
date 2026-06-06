@@ -34,6 +34,7 @@ import {
 } from "@/lib/api/endpoints";
 import {
   extractNativeApiSemantics,
+  filterAuthoredNotes,
   normalizeEventRecords,
   normalizeProfiles,
 } from "@/lib/api/normalize";
@@ -354,12 +355,12 @@ export default async function ProfilePage({
   }
 
   const profile = mergeProfile(summaryProfile, profileEnrichment);
-  const summaryRecentNotePreviews = normalizeEventRecords(
-    summaryRecord?.recent_note_previews ?? summaryRecord?.recent_notes
+  const summaryRecentNotePreviews = filterAuthoredNotes(
+    normalizeEventRecords(summaryRecord?.recent_note_previews ?? summaryRecord?.recent_notes)
   );
   const notes =
     authoredNotesPayload?.events && authoredNotesPayload.events.length > 0
-      ? authoredNotesPayload.events
+      ? filterAuthoredNotes(authoredNotesPayload.events)
       : summaryRecentNotePreviews;
   const replies = authoredRepliesPayload?.replies ?? [];
   const reactions = authoredReactionsPayload?.reactions ?? [];

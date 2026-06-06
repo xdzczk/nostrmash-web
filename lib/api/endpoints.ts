@@ -194,6 +194,7 @@ interface CursorQuery {
   cursor?: string;
   limit?: number;
   direction?: string;
+  kind?: number;
 }
 
 function isApiNotFound(error: unknown): boolean {
@@ -1083,22 +1084,31 @@ export async function getAuthorZaps(
       );
       return normalizeAuthorZapsResponse(response);
     } catch (error) {
-      if (!isApiNotFound(error)) {
-        lastError = error instanceof Error ? error : new Error("Author zaps lookup failed.");
-      }
+      if (isApiNotFound(error)) continue;
+      lastError = error instanceof Error ? error : new Error("Author zaps lookup failed.");
     }
   }
 
   for (const candidate of candidates) {
     try {
-      const response = await fetchApiJson<AuthorZapsApiResponse>(
-        nativeApiV1Routes.profileZapsByPubkey(candidate),
+      const response = await fetchApiJson<AuthorEventsApiResponse>(
+        nativeApiV1Routes.authorEventsByPubkey(candidate),
         {
           cacheClass,
-          query: buildCursorQuery(query),
+          query: buildCursorQuery({ ...query, kind: 9735 }),
         }
       );
-      return normalizeAuthorZapsResponse(response);
+      const normalized = normalizeAuthorEventsResponse(response);
+      const sentZapEvents = (normalized.events ?? []).filter(
+        (event) => event.kind === 9735 || event.kind === 9734
+      );
+      return {
+        ...normalized,
+        pubkey: normalized.pubkey ?? candidate,
+        zaps: sentZapEvents
+          .map((event) => normalizeAuthorZapsResponse({ zaps: [event] }).zaps?.[0])
+          .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),
+      };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error("Author zaps lookup failed.");
     }
@@ -1224,6 +1234,7 @@ function buildCursorQuery(
     cursor: query.cursor,
     limit: query.limit,
     direction: query.direction,
+    kind: query.kind,
   };
 }
 

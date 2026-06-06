@@ -18,7 +18,6 @@ export interface NotePreviewPresentation {
   contentForCard: string;
   rawContent: string;
   prefersMediaFirst: boolean;
-  treatmentLabel?: string;
 }
 
 const URL_PATTERN = /https?:\/\/\S+/g;
@@ -139,21 +138,6 @@ function isIdentifierHeavy(content: string): boolean {
   return bech32Matches.length >= 2 || hexMatches.length >= 3;
 }
 
-function buildCompactSummary(
-  label: string,
-  firstLine: string | undefined,
-  domains: string[]
-): string {
-  const pieces: string[] = [label];
-  if (domains.length > 0) {
-    pieces.push(`from ${domains.slice(0, 2).join(", ")}`);
-  }
-  if (firstLine) {
-    pieces.push(`"${firstLine}"`);
-  }
-  return pieces.join(" — ");
-}
-
 function classifyFallback(content: string): NotePreviewPresentation {
   const urls = extractUrls(content);
   const domains = extractDomains(urls);
@@ -171,10 +155,9 @@ function classifyFallback(content: string): NotePreviewPresentation {
       containsRaw: true,
       firstLine,
       domains,
-      contentForCard: buildCompactSummary("Raw config-like note", firstLine, domains),
+      contentForCard: clampText(normalized, 140),
       rawContent: content,
       prefersMediaFirst: false,
-      treatmentLabel: "Compact raw preview",
     };
   }
 
@@ -185,10 +168,9 @@ function classifyFallback(content: string): NotePreviewPresentation {
       containsRaw: true,
       firstLine,
       domains,
-      contentForCard: buildCompactSummary("Identifier-heavy note", firstLine, domains),
+      contentForCard: clampText(normalized, 140),
       rawContent: content,
       prefersMediaFirst: false,
-      treatmentLabel: "Compact technical preview",
     };
   }
 
@@ -202,7 +184,6 @@ function classifyFallback(content: string): NotePreviewPresentation {
       contentForCard: clampText(normalized, 280),
       rawContent: content,
       prefersMediaFirst: true,
-      treatmentLabel: "Media-led",
     };
   }
 
@@ -216,7 +197,6 @@ function classifyFallback(content: string): NotePreviewPresentation {
       contentForCard: clampText(normalized, 220),
       rawContent: content,
       prefersMediaFirst: false,
-      treatmentLabel: "Link-led",
     };
   }
 
@@ -265,17 +245,6 @@ export function getNotePreviewPresentation(note: EventRecord): NotePreviewPresen
       )
     : fallback.contentForCard;
 
-  const treatmentLabel =
-    resolvedMode === "config_raw_data_preview"
-      ? "Compact raw preview"
-      : resolvedMode === "long_identifier_heavy_preview"
-        ? "Compact technical preview"
-        : resolvedMode === "link_led_preview"
-          ? "Link-led"
-          : resolvedMode === "media_led_preview"
-            ? "Media-led"
-            : undefined;
-
   return {
     mode: resolvedMode,
     isCompact,
@@ -285,6 +254,5 @@ export function getNotePreviewPresentation(note: EventRecord): NotePreviewPresen
     contentForCard: normalizedDisplay,
     rawContent: content,
     prefersMediaFirst: resolvedMode === "media_led_preview" || fallback.prefersMediaFirst,
-    treatmentLabel,
   };
 }

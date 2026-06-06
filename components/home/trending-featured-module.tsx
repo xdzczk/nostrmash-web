@@ -355,9 +355,9 @@ function FeaturedNoteCard({
   const noteId = resolveNoteId(note);
   const noteHref = noteId ? `/notes/${encodeURIComponent(noteId)}` : undefined;
   const preview = getNotePreviewPresentation(note);
-  const rawContent = preview.rawContent || "Media-only note with no text body.";
+  const content = preview.contentForCard;
+  const showContent = content.length > 0 && content !== "(no content)";
   const mediaAttachment = extractMediaAttachment(note);
-  const content = preview.contentForCard || rawContent;
   const signals = buildDiscoverySignals(note);
   const reasons = mapNoteWhyNow(note);
   const statusLabel = buildStatusLabel(rank, signals);
@@ -380,14 +380,11 @@ function FeaturedNoteCard({
       >
         <div className="max-w-[52rem] min-w-0 space-y-5">
           <NoteAuthor note={note} author={author} showSecondaryLabel={false} />
-          {preview.treatmentLabel ? (
-            <p className="text-[11px] tracking-[0.14em] text-zinc-500 uppercase">
-              {preview.treatmentLabel}
+          {showContent ? (
+            <p className="max-w-[46rem] text-base leading-7 [overflow-wrap:anywhere] whitespace-pre-wrap text-zinc-100 sm:text-[1.07rem]">
+              {content}
             </p>
           ) : null}
-          <p className="max-w-[46rem] text-base leading-7 [overflow-wrap:anywhere] whitespace-pre-wrap text-zinc-100 sm:text-[1.07rem]">
-            {content}
-          </p>
           <WhyNow reasons={reasons} tone="highlight" className="max-w-3xl" />
           <SignalRow signals={signals} />
           <div className="border-t border-white/10 pt-3">
@@ -413,7 +410,8 @@ function SecondaryNoteCard({
   const noteId = resolveNoteId(note);
   const noteHref = noteId ? `/notes/${encodeURIComponent(noteId)}` : undefined;
   const preview = getNotePreviewPresentation(note);
-  const content = preview.contentForCard || "Media-only note with no text body.";
+  const content = preview.contentForCard;
+  const showContent = content.length > 0 && content !== "(no content)";
   const mediaAttachment = extractMediaAttachment(note);
   const signals = buildDiscoverySignals(note).slice(0, 2);
   const reasons = mapNoteWhyNow(note);
@@ -430,16 +428,13 @@ function SecondaryNoteCard({
       <div className="mt-2.5 space-y-2.5">
         {mediaAttachment ? <NoteMediaFrame attachment={mediaAttachment} compact /> : null}
         <NoteAuthor note={note} author={author} compact />
-        {preview.treatmentLabel ? (
-          <p className="text-[10px] tracking-[0.14em] text-zinc-500 uppercase">
-            {preview.treatmentLabel}
+        {showContent ? (
+          <p
+            className={`${preview.isCompact ? "line-clamp-2" : "line-clamp-4"} text-sm leading-6 [overflow-wrap:anywhere] whitespace-pre-wrap text-zinc-300`}
+          >
+            {content}
           </p>
         ) : null}
-        <p
-          className={`${preview.isCompact ? "line-clamp-2" : "line-clamp-4"} text-sm leading-6 [overflow-wrap:anywhere] whitespace-pre-wrap text-zinc-300`}
-        >
-          {content}
-        </p>
         <WhyNow reasons={reasons} maxReasons={1} />
         <SignalRow signals={signals} compact />
         <QuietActionLinks noteId={noteId} noteHref={noteHref} />

@@ -164,6 +164,15 @@ export function normalizeEventRecords(value: unknown): EventRecord[] {
     .filter((entry): entry is EventRecord => entry !== null);
 }
 
+const AUTHORED_NOTE_EXCLUDED_KINDS = new Set([0, 6, 7, 9734, 9735]);
+
+export function filterAuthoredNotes(events: EventRecord[]): EventRecord[] {
+  return events.filter((event) => {
+    if (typeof event.kind !== "number") return true;
+    return !AUTHORED_NOTE_EXCLUDED_KINDS.has(event.kind);
+  });
+}
+
 export function normalizeProfile(value: unknown): Profile | null {
   const record = asRecord(value);
   if (!record) return null;
@@ -574,6 +583,30 @@ function extractZapDescriptionRecord(value: unknown): Record<string, unknown> | 
   return null;
 }
 
+function parseNumericAmount(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+function extractZapAmountMsats(description: Record<string, unknown> | null): number | undefined {
+  if (!description) return undefined;
+  const directAmount = parseNumericAmount(description.amount);
+  if (directAmount) return directAmount;
+  const tags = description.tags;
+  if (!Array.isArray(tags)) return undefined;
+  for (const tag of tags) {
+    if (!Array.isArray(tag) || tag.length < 2) continue;
+    if (String(tag[0]).toLowerCase() !== "amount") continue;
+    const amount = parseNumericAmount(tag[1]);
+    if (amount) return amount;
+  }
+  return undefined;
+}
+
 function normalizeAuthorReactionRecord(value: unknown): AuthorReactionRecord | null {
   const record = asRecord(value);
   if (!record) return null;
@@ -631,17 +664,22 @@ export function normalizeAuthorReactionsResponse(value: unknown): AuthorReaction
 function normalizeAuthorZapRecord(value: unknown): AuthorZapRecord | null {
   const record = asRecord(value);
   if (!record) return null;
-  const event = normalizeEventRecord(record.event);
+  const nestedEvent = normalizeEventRecord(record.event);
+  const directEvent =
+    asNumber(record.kind) === 9735 || asNumber(record.kind) === 9734
+      ? normalizeEventRecord(record)
+      : null;
+  const event = nestedEvent ?? directEvent;
   const targetEvent = normalizeEventRecord(
     record.target_event ?? record.target_note ?? record.target
   );
-  const description = extractZapDescriptionRecord(record);
+  const description = extractZapDescriptionRecord(record.event ? record : event);
   const amountMsats =
-    asNumber(record.msats) ??
-    asNumber(record.amount_msats) ??
-    asNumber(record.amount) ??
-    asNumber(description?.amount);
-  const satsFromRecord = asNumber(record.sats);
+    parseNumericAmount(record.msats) ??
+    parseNumericAmount(record.amount_msats) ??
+    parseNumericAmount(record.amount) ??
+    extractZapAmountMsats(description);
+  const satsFromRecord = parseNumericAmount(record.sats);
   const sats =
     satsFromRecord && satsFromRecord > 0
       ? satsFromRecord

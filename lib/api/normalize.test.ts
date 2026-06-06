@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeEventRecord, normalizeProfile } from "./normalize";
+import { filterAuthoredNotes, normalizeEventRecord, normalizeProfile } from "./normalize";
 import { profileLabel, profilePictureUrl } from "../../components/explorer/utils";
 import type { Profile } from "../types/api";
 import { hexToNpub, npubToHex } from "../nostr/npub";
@@ -176,6 +176,53 @@ describe("profile display helpers", () => {
     const profile = { pubkey } as Profile;
     const label = profileLabel(profile);
     expect(label.startsWith("npub1")).toBe(true);
+  });
+});
+
+describe("filterAuthoredNotes", () => {
+  it("removes reactions, zaps, reposts, and metadata from authored note feeds", () => {
+    const filtered = filterAuthoredNotes([
+      { id: "note-1", kind: 1, content: "hello" },
+      { id: "reaction-1", kind: 7, content: "+" },
+      { id: "zap-1", kind: 9735, content: "" },
+      { id: "repost-1", kind: 6, content: "" },
+      { id: "meta-1", kind: 0, content: "{}" },
+    ]);
+
+    expect(filtered.map((event) => event.id)).toEqual(["note-1"]);
+  });
+});
+
+describe("normalizeAuthorZapsResponse", () => {
+  it("maps authored zap receipt events into zap activity records", async () => {
+    const { normalizeAuthorZapsResponse } = await import("./normalize");
+    const payload = normalizeAuthorZapsResponse({
+      zaps: [
+        {
+          id: "zap-event-1",
+          kind: 9735,
+          pubkey: "sender-pubkey",
+          created_at: 1_700_000_000,
+          content: "",
+          tags: [
+            ["p", "receiver-pubkey"],
+            ["e", "target-note-id"],
+            [
+              "description",
+              JSON.stringify({
+                content: "great post",
+                tags: [["amount", "21000"]],
+              }),
+            ],
+          ],
+        },
+      ],
+    });
+
+    expect(payload.zaps?.[0]?.sender_pubkey).toBe("sender-pubkey");
+    expect(payload.zaps?.[0]?.target_event_id).toBe("target-note-id");
+    expect(payload.zaps?.[0]?.sats).toBe(21);
+    expect(payload.zaps?.[0]?.zap_text).toBe("great post");
   });
 });
 
