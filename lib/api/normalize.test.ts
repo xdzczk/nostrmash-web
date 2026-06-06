@@ -191,6 +191,29 @@ describe("filterAuthoredNotes", () => {
 
     expect(filtered.map((event) => event.id)).toEqual(["note-1"]);
   });
+
+  it("removes reply events from authored note feeds", () => {
+    const filtered = filterAuthoredNotes([
+      { id: "note-1", kind: 1, content: "top-level note" },
+      {
+        id: "reply-1",
+        kind: 1,
+        content: "a reply",
+        tags: [
+          ["e", "root-id", "", "root"],
+          ["e", "reply-to-id", "", "reply"],
+        ],
+      },
+      {
+        id: "quote-root-1",
+        kind: 1,
+        content: "quoted share",
+        tags: [["e", "root-id", "", "root"]],
+      },
+    ]);
+
+    expect(filtered.map((event) => event.id)).toEqual(["note-1", "quote-root-1"]);
+  });
 });
 
 describe("normalizeAuthorZapsResponse", () => {

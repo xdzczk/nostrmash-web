@@ -166,10 +166,26 @@ export function normalizeEventRecords(value: unknown): EventRecord[] {
 
 const AUTHORED_NOTE_EXCLUDED_KINDS = new Set([0, 6, 7, 9734, 9735]);
 
+function eventTagMarker(tag: unknown): string {
+  if (!Array.isArray(tag) || tag.length < 4) return "";
+  return typeof tag[3] === "string" ? tag[3].toLowerCase() : "";
+}
+
+export function isAuthoredReplyEvent(event: EventRecord): boolean {
+  const tags = event.tags;
+  if (!Array.isArray(tags)) return false;
+  return tags.some(
+    (tag) => Array.isArray(tag) && tag[0] === "e" && eventTagMarker(tag) === "reply"
+  );
+}
+
 export function filterAuthoredNotes(events: EventRecord[]): EventRecord[] {
   return events.filter((event) => {
-    if (typeof event.kind !== "number") return true;
-    return !AUTHORED_NOTE_EXCLUDED_KINDS.has(event.kind);
+    if (typeof event.kind === "number" && AUTHORED_NOTE_EXCLUDED_KINDS.has(event.kind)) {
+      return false;
+    }
+    if (isAuthoredReplyEvent(event)) return false;
+    return true;
   });
 }
 

@@ -147,7 +147,6 @@ const nativeApiV1Routes = {
   authorReactionsByPubkey: (pubkey: string) =>
     `/api/v1/authors/${encodeURIComponent(pubkey)}/reactions`,
   authorZapsByPubkey: (pubkey: string) => `/api/v1/authors/${encodeURIComponent(pubkey)}/zaps`,
-  profileZapsByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/zaps`,
   authorAnalyticsActivityByPubkey: (pubkey: string) =>
     `/api/v1/authors/${encodeURIComponent(pubkey)}/analytics/activity`,
   authorAnalyticsBehaviorByPubkey: (pubkey: string) =>
@@ -193,12 +192,6 @@ const nativeApiV1Routes = {
 interface CursorQuery {
   cursor?: string;
   limit?: number;
-  direction?: string;
-  kind?: number;
-}
-
-function isApiNotFound(error: unknown): boolean {
-  return error instanceof Error && /API 404:/i.test(error.message);
 }
 
 const normalizeSearchQueryText = (value: string): string =>
@@ -1043,26 +1036,11 @@ export async function getAuthorReactions(
       );
       return normalizeAuthorReactionsResponse(response);
     } catch (error) {
-      if (isApiNotFound(error)) continue;
       lastError = error instanceof Error ? error : new Error("Author reactions lookup failed.");
     }
   }
 
-  try {
-    const events = await getAuthorEvents(pubkey, cacheClass, query);
-    const reactions = (events.events ?? []).filter((event) => event.kind === 7);
-    return {
-      ...events,
-      pubkey: events.pubkey,
-      reactions: reactions
-        .map((event) => normalizeAuthorReactionsResponse({ reactions: [event] }).reactions?.[0])
-        .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),
-    };
-  } catch (error) {
-    throw (
-      lastError ?? (error instanceof Error ? error : new Error("Author reactions lookup failed."))
-    );
-  }
+  throw lastError ?? new Error("Author reactions lookup failed.");
 }
 
 export async function getAuthorZaps(
@@ -1083,32 +1061,6 @@ export async function getAuthorZaps(
         }
       );
       return normalizeAuthorZapsResponse(response);
-    } catch (error) {
-      if (isApiNotFound(error)) continue;
-      lastError = error instanceof Error ? error : new Error("Author zaps lookup failed.");
-    }
-  }
-
-  for (const candidate of candidates) {
-    try {
-      const response = await fetchApiJson<AuthorEventsApiResponse>(
-        nativeApiV1Routes.authorEventsByPubkey(candidate),
-        {
-          cacheClass,
-          query: buildCursorQuery({ ...query, kind: 9735 }),
-        }
-      );
-      const normalized = normalizeAuthorEventsResponse(response);
-      const sentZapEvents = (normalized.events ?? []).filter(
-        (event) => event.kind === 9735 || event.kind === 9734
-      );
-      return {
-        ...normalized,
-        pubkey: normalized.pubkey ?? candidate,
-        zaps: sentZapEvents
-          .map((event) => normalizeAuthorZapsResponse({ zaps: [event] }).zaps?.[0])
-          .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),
-      };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error("Author zaps lookup failed.");
     }
@@ -1233,8 +1185,6 @@ function buildCursorQuery(
   return {
     cursor: query.cursor,
     limit: query.limit,
-    direction: query.direction,
-    kind: query.kind,
   };
 }
 
