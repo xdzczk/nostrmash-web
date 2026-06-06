@@ -14,11 +14,11 @@ export function DiscoveryQuickStartPanel({
   footerText?: string;
 }) {
   return (
-    <aside className="rounded-xl border border-zinc-800 bg-zinc-900/35 p-3.5 sm:p-4">
-      <p className="text-[11px] font-medium tracking-[0.2em] text-zinc-500 uppercase">
+    <aside className="border-edge bg-surface/35 rounded-xl border p-3.5 sm:p-4">
+      <p className="text-ink-faint text-[11px] font-medium tracking-[0.2em] uppercase">
         Discovery quick start
       </p>
-      <p className="mt-2 text-base font-semibold tracking-tight text-zinc-100 sm:text-lg">
+      <p className="text-ink mt-2 text-base font-semibold tracking-tight sm:text-lg">
         Start with a live view.
       </p>
 
@@ -27,17 +27,17 @@ export function DiscoveryQuickStartPanel({
           <Link
             key={`${action.href}-${action.label}`}
             href={action.href}
-            className="block rounded-lg border border-zinc-800/80 bg-zinc-950/45 px-3 py-2 transition hover:border-zinc-700 hover:bg-zinc-900/60"
+            className="border-edge/80 bg-surface-sunken/45 hover:border-edge-strong hover:bg-surface/60 block rounded-lg border px-3 py-2 transition"
           >
-            <p className="text-sm font-medium text-zinc-100">{action.label}</p>
+            <p className="text-ink text-sm font-medium">{action.label}</p>
             {action.description ? (
-              <p className="mt-0.5 text-xs leading-5 text-zinc-400">{action.description}</p>
+              <p className="text-ink-muted mt-0.5 text-xs leading-5">{action.description}</p>
             ) : null}
           </Link>
         ))}
       </div>
 
-      {footerText ? <p className="mt-3 text-xs text-zinc-500 sm:mt-3.5">{footerText}</p> : null}
+      {footerText ? <p className="text-ink-faint mt-3 text-xs sm:mt-3.5">{footerText}</p> : null}
     </aside>
   );
 }

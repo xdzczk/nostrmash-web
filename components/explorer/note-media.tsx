@@ -74,7 +74,7 @@ export function NoteMedia({ content }: { content: string }) {
       {attachments.map((attachment) => (
         <div
           key={attachment.url}
-          className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950/60"
+          className="border-edge bg-surface-sunken/60 overflow-hidden rounded-lg border"
         >
           {attachment.kind === "image" ? (
             <img src={attachment.url} alt="" className="max-h-[28rem] w-full object-cover" />
@@ -93,13 +93,13 @@ export function NoteMedia({ content }: { content: string }) {
               <audio src={attachment.url} controls preload="metadata" className="w-full" />
             </div>
           ) : null}
-          <div className="border-t border-zinc-800 px-3 py-2 text-xs text-zinc-400">
+          <div className="border-edge text-ink-muted border-t px-3 py-2 text-xs">
             <a
               href={attachment.url}
               target="_blank"
               rel="noreferrer"
               title={attachment.url}
-              className="hover:text-zinc-200"
+              className="hover:text-ink-soft"
             >
               {formatUrlForDisplay(attachment.url, "secondary")}
             </a>

@@ -22,16 +22,14 @@ export function HashtagChip({
     <div>
       <div className="flex items-baseline justify-between gap-3">
         <p
-          className={`min-w-0 truncate text-sm font-medium ${isTopRank ? "text-zinc-100" : "text-zinc-200"}`}
+          className={`min-w-0 truncate text-sm font-medium ${isTopRank ? "text-ink" : "text-ink-soft"}`}
         >
           {typeof rank === "number" ? (
-            <span className={isTopRank ? "mr-1 text-indigo-300" : "mr-1 text-zinc-500"}>
-              #{rank}
-            </span>
+            <span className={isTopRank ? "text-link mr-1" : "text-ink-faint mr-1"}>#{rank}</span>
           ) : null}
           #{hashtag}
         </p>
-        <span className="shrink-0 text-[11px] text-zinc-500">{countLabel}</span>
+        <span className="text-ink-faint shrink-0 text-[11px]">{countLabel}</span>
       </div>
       <WhyNow reasons={whyNow} maxReasons={1} className="mt-2" />
     </div>
@@ -39,7 +37,7 @@ export function HashtagChip({
 
   if (!href) {
     return (
-      <div className={`${cardTierClassName("compact")} border-zinc-800/70 bg-zinc-950/30`}>
+      <div className={`${cardTierClassName("compact")} border-edge/70 bg-surface-sunken/30`}>
         {content}
       </div>
     );
@@ -48,7 +46,7 @@ export function HashtagChip({
   return (
     <Link
       href={href}
-      className={`block ${cardTierClassName("compact")} border-zinc-800/70 bg-zinc-950/30 transition hover:bg-zinc-950/45`}
+      className={`block ${cardTierClassName("compact")} border-edge/70 bg-surface-sunken/30 hover:bg-surface-sunken/45 transition`}
     >
       {content}
     </Link>

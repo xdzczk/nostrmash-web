@@ -104,12 +104,12 @@ export default async function DomainNotesPage({
             <NativeSemanticsBadges semantics={semantics} />
             <IdBadge id={domainTitle(normalizedDomain)} label="domain" />
             {typeof domainNotesPayload?.total === "number" ? (
-              <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+              <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
                 total: {domainNotesPayload.total.toLocaleString()}
               </span>
             ) : null}
             {typeof notesNextCursor === "string" && notesNextCursor.length > 0 ? (
-              <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+              <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
                 cursor: available
               </span>
             ) : null}
@@ -119,13 +119,13 @@ export default async function DomainNotesPage({
           <div className="flex flex-wrap gap-2">
             <Link
               href={`/domains/${encodeURIComponent(normalizedDomain)}`}
-              className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:text-zinc-100"
+              className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-3 py-1 text-xs"
             >
               Open domain overview
             </Link>
             <Link
               href={`/search?q=${encodeURIComponent(normalizedDomain)}&tab=notes`}
-              className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:text-zinc-100"
+              className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-3 py-1 text-xs"
             >
               Search domain notes
             </Link>
@@ -140,11 +140,11 @@ export default async function DomainNotesPage({
           <>
             <NotesList notes={notes} authorsByPubkey={authorsByPubkey} />
             {typeof notesNextCursor === "string" && notesNextCursor.length > 0 ? (
-              <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
+              <div className="border-accent/30 bg-accent/10 mt-4 rounded-md border p-3">
                 <p className="text-xs text-indigo-100">More notes are available.</p>
                 <Link
                   href={notesContinuationHref}
-                  className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+                  className="border-accent/40 text-link-hover mt-2 inline-block rounded-full border px-3 py-1 text-xs hover:text-indigo-100"
                 >
                   Continue notes
                 </Link>

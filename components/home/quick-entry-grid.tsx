@@ -26,10 +26,10 @@ export function QuickEntryGrid({
             <Link
               key={entry.href}
               href={entry.href}
-              className="rounded-lg border border-zinc-800 bg-zinc-900/45 p-3 transition hover:border-zinc-700 hover:bg-zinc-900/65 sm:p-3.5"
+              className="border-edge bg-surface/45 hover:border-edge-strong hover:bg-surface/65 rounded-lg border p-3 transition sm:p-3.5"
             >
-              <p className="text-sm font-medium text-zinc-100">{entry.label}</p>
-              <p className="mt-1 text-xs leading-5 text-zinc-400 sm:mt-1.5">{entry.description}</p>
+              <p className="text-ink text-sm font-medium">{entry.label}</p>
+              <p className="text-ink-muted mt-1 text-xs leading-5 sm:mt-1.5">{entry.description}</p>
             </Link>
           ))}
         </div>
@@ -39,12 +39,12 @@ export function QuickEntryGrid({
           {leadingSignals.map((signal) => (
             <div
               key={signal.label}
-              className="rounded-lg border border-zinc-800/90 bg-zinc-950/55 p-2.5 text-xs text-zinc-300 sm:p-3"
+              className="border-edge/90 bg-surface-sunken/55 text-ink-dim rounded-lg border p-2.5 text-xs sm:p-3"
             >
-              <p className="text-[11px] tracking-[0.14em] text-zinc-500 uppercase">
+              <p className="text-ink-faint text-[11px] tracking-[0.14em] uppercase">
                 {signal.label}
               </p>
-              <p className="mt-1.5 truncate text-zinc-200">{signal.value}</p>
+              <p className="text-ink-soft mt-1.5 truncate">{signal.value}</p>
             </div>
           ))}
         </div>

@@ -448,7 +448,7 @@ export default async function NotePage({
             {focal?.pubkey ? <IdBadge id={focal.pubkey} label="author" /> : null}
             <Timestamp unixSeconds={focal?.created_at} />
             {typeof focal?.kind === "number" ? (
-              <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+              <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
                 kind {focal.kind}
               </span>
             ) : null}
@@ -485,7 +485,7 @@ export default async function NotePage({
 
       {countStats.length > 0 ? (
         <section className="space-y-3">
-          <p className="text-sm font-medium text-zinc-300">Counts</p>
+          <p className="text-ink-dim text-sm font-medium">Counts</p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {countStats.map((stat) => (
               <StatCard key={stat.label} label={stat.label} value={stat.value} />
@@ -496,7 +496,7 @@ export default async function NotePage({
 
       {summaryStats.length > 0 ? (
         <section className="space-y-3">
-          <p className="text-sm font-medium text-zinc-300">Canonical summary</p>
+          <p className="text-ink-dim text-sm font-medium">Canonical summary</p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {summaryStats.map((stat) => (
               <StatCard key={stat.label} label={stat.label} value={stat.value} />
@@ -521,18 +521,18 @@ export default async function NotePage({
           ) : null}
           {provenanceRelayLinks.length > 0 ? (
             <div className="mt-3">
-              <p className="mb-2 text-xs tracking-wide text-zinc-500 uppercase">
+              <p className="text-ink-faint mb-2 text-xs tracking-wide uppercase">
                 Relay observations
               </p>
               <ul className="space-y-2">
                 {provenanceRelayLinks.map((observation) => (
                   <li
                     key={observation.key}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-800 bg-zinc-900/30 p-3"
+                    className="border-edge bg-surface/30 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm text-zinc-200">{observation.relay}</p>
-                      <p className="mt-1 truncate text-xs text-zinc-500">
+                      <p className="text-ink-soft truncate text-sm">{observation.relay}</p>
+                      <p className="text-ink-faint mt-1 truncate text-xs">
                         {observation.seenAt !== undefined
                           ? `seen at ${String(observation.seenAt)}`
                           : "seen timestamp not provided"}
@@ -541,13 +541,13 @@ export default async function NotePage({
                     <div className="flex flex-wrap gap-2 text-xs">
                       <Link
                         href={`/relays/${encodeURIComponent(observation.routeHost)}`}
-                        className="rounded-full border border-zinc-700 px-3 py-1 text-indigo-300 hover:border-indigo-400/40"
+                        className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1"
                       >
                         Open relay
                       </Link>
                       <Link
                         href={`/relays/health#relay-${encodeURIComponent(observation.routeHost)}`}
-                        className="rounded-full border border-zinc-700 px-3 py-1 text-indigo-300 hover:border-indigo-400/40"
+                        className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1"
                       >
                         Health posture
                       </Link>
@@ -583,7 +583,7 @@ export default async function NotePage({
 
       {threadSummaryStats.length > 0 ? (
         <section className="space-y-3">
-          <p className="text-sm font-medium text-zinc-300">Thread activity summary</p>
+          <p className="text-ink-dim text-sm font-medium">Thread activity summary</p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {threadSummaryStats.map((stat) => (
               <StatCard key={stat.label} label={stat.label} value={stat.value} />
@@ -600,20 +600,20 @@ export default async function NotePage({
           <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
             <Link
               href="/discovery/conversations/hot"
-              className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300 hover:text-white"
+              className="border-edge-strong text-ink-dim rounded-full border px-2 py-1 hover:text-white"
             >
               Explore hot conversations
             </Link>
             <Link
               href="/discovery/profiles/rising"
-              className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300 hover:text-white"
+              className="border-edge-strong text-ink-dim rounded-full border px-2 py-1 hover:text-white"
             >
               Explore rising profiles
             </Link>
             {rootEventId ? (
               <Link
                 href={`/notes/${encodeURIComponent(rootEventId)}`}
-                className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300 hover:text-white"
+                className="border-edge-strong text-ink-dim rounded-full border px-2 py-1 hover:text-white"
               >
                 Open thread root
               </Link>
@@ -621,14 +621,14 @@ export default async function NotePage({
             {parentEventId ? (
               <Link
                 href={`/notes/${encodeURIComponent(parentEventId)}`}
-                className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300 hover:text-white"
+                className="border-edge-strong text-ink-dim rounded-full border px-2 py-1 hover:text-white"
               >
                 Open parent note
               </Link>
             ) : null}
             <Link
               href={toThreadRoute(rootEventId ?? eventId)}
-              className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300 hover:text-white"
+              className="border-edge-strong text-ink-dim rounded-full border px-2 py-1 hover:text-white"
             >
               View related thread activity
             </Link>
@@ -667,11 +667,11 @@ export default async function NotePage({
               <EmptyState message="No activity entries were returned for this thread." />
             )}
             {typeof activityNextCursor === "string" && activityNextCursor.length > 0 ? (
-              <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
+              <div className="border-accent/30 bg-accent/10 mt-4 rounded-md border p-3">
                 <p className="text-xs text-indigo-100">More thread activity is available.</p>
                 <Link
                   href={activityContinuationHref}
-                  className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+                  className="border-accent/40 text-link-hover mt-2 inline-block rounded-full border px-3 py-1 text-xs hover:text-indigo-100"
                 >
                   Continue activity
                 </Link>
@@ -680,14 +680,11 @@ export default async function NotePage({
           </SectionCard>
         ) : (
           <SectionCard title="Thread activity" description="Recent activity from this thread.">
-            <div className="rounded-md border border-zinc-800 bg-zinc-900/40 p-3">
-              <p className="text-xs text-zinc-300">
+            <div className="border-edge bg-surface/40 rounded-md border p-3">
+              <p className="text-ink-dim text-xs">
                 Extended thread context is skipped for faster initial loads.
               </p>
-              <Link
-                href={extendedContextHref}
-                className="mt-2 inline-block text-xs text-indigo-300"
-              >
+              <Link href={extendedContextHref} className="text-link mt-2 inline-block text-xs">
                 Load full context
               </Link>
             </div>
@@ -716,11 +713,11 @@ export default async function NotePage({
               <EmptyState message="No related notes were returned for this event." />
             )}
             {typeof relatedNextCursor === "string" && relatedNextCursor.length > 0 ? (
-              <div className="mt-4 rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
+              <div className="border-accent/30 bg-accent/10 mt-4 rounded-md border p-3">
                 <p className="text-xs text-indigo-100">More related notes are available.</p>
                 <Link
                   href={relatedContinuationHref}
-                  className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+                  className="border-accent/40 text-link-hover mt-2 inline-block rounded-full border px-3 py-1 text-xs hover:text-indigo-100"
                 >
                   Continue related notes
                 </Link>
@@ -729,14 +726,11 @@ export default async function NotePage({
           </SectionCard>
         ) : (
           <SectionCard title="Related notes" description="Other notes linked to this one.">
-            <div className="rounded-md border border-zinc-800 bg-zinc-900/40 p-3">
-              <p className="text-xs text-zinc-300">
+            <div className="border-edge bg-surface/40 rounded-md border p-3">
+              <p className="text-ink-dim text-xs">
                 Related-note expansion is skipped for faster initial loads.
               </p>
-              <Link
-                href={extendedContextHref}
-                className="mt-2 inline-block text-xs text-indigo-300"
-              >
+              <Link href={extendedContextHref} className="text-link mt-2 inline-block text-xs">
                 Load full context
               </Link>
             </div>

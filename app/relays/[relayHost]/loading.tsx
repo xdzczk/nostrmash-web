@@ -1,7 +1,14 @@
+import { ChipGridSkeleton, PageHeroSkeleton, StatGridSkeleton } from "@/components/ui/skeleton";
+
 export default function RelayLoading() {
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-5 text-sm text-zinc-300">
-      Loading relay explorer page...
+    <div className="space-y-7">
+      <span className="sr-only" role="status">
+        Loading relay explorer page
+      </span>
+      <PageHeroSkeleton />
+      <StatGridSkeleton count={4} />
+      <ChipGridSkeleton count={6} />
     </div>
   );
 }

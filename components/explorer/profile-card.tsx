@@ -68,8 +68,8 @@ export function ProfileCard({
 
   return (
     <article
-      className={`${cardTierClassName("standard")} ${
-        isTopRank ? "border-emerald-500/20 bg-zinc-900/60" : "border-zinc-800/85 bg-zinc-900/45"
+      className={`nm-lift ${cardTierClassName("standard")} ${
+        isTopRank ? "bg-surface/60 border-emerald-500/20" : "border-edge/85 bg-surface/45"
       }`}
     >
       <div className="flex items-start gap-3">
@@ -79,11 +79,11 @@ export function ProfileCard({
           width={44}
           height={44}
           unoptimized
-          className="h-10 w-10 rounded-full border border-zinc-700 object-cover sm:h-11 sm:w-11"
+          className="border-edge-strong h-10 w-10 rounded-full border object-cover sm:h-11 sm:w-11"
         />
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex items-start justify-between gap-2">
-            <p className="truncate text-base font-semibold text-zinc-100">{label}</p>
+            <p className="text-ink truncate text-base font-semibold">{label}</p>
             {rankLabel ? (
               <DiscoveryPill
                 tone={isTopRank ? "rank" : "freshness"}
@@ -94,12 +94,12 @@ export function ProfileCard({
             ) : null}
           </div>
           {secondaryIdentity ? (
-            <p className="truncate text-xs text-zinc-500" title={secondaryIdentity}>
+            <p className="text-ink-faint truncate text-xs" title={secondaryIdentity}>
               {truncateIdentifier(secondaryIdentity, identifierKind, "secondary")}
             </p>
           ) : null}
           {typeof profile.about === "string" && profile.about.length > 0 ? (
-            <p className="line-clamp-2 text-sm text-zinc-300">{profile.about}</p>
+            <p className="text-ink-dim line-clamp-2 text-sm">{profile.about}</p>
           ) : null}
         </div>
       </div>

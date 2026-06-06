@@ -1,7 +1,14 @@
+import { PageHeroSkeleton, StatGridSkeleton } from "@/components/ui/skeleton";
+
 export default function StatsLoading() {
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-5 text-sm text-zinc-300">
-      Loading analytics metrics...
+    <div className="space-y-7">
+      <span className="sr-only" role="status">
+        Loading analytics metrics
+      </span>
+      <PageHeroSkeleton />
+      <StatGridSkeleton count={4} />
+      <StatGridSkeleton count={4} />
     </div>
   );
 }

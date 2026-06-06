@@ -12,11 +12,11 @@ export function StatCard({
 }) {
   return (
     <article className={cardTierClassName("utility")}>
-      <p className="text-[11px] font-medium tracking-[0.14em] text-zinc-500 uppercase">
+      <p className="text-ink-faint text-[11px] font-medium tracking-[0.14em] uppercase">
         {formatMetricLabel(label)}
       </p>
-      <p className="mt-2 text-xl font-semibold text-zinc-100 sm:text-2xl">{formatValue(value)}</p>
-      {description ? <p className="mt-1 text-xs leading-5 text-zinc-400">{description}</p> : null}
+      <p className="text-ink mt-2 text-xl font-semibold sm:text-2xl">{formatValue(value)}</p>
+      {description ? <p className="text-ink-muted mt-1 text-xs leading-5">{description}</p> : null}
     </article>
   );
 }

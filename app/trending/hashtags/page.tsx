@@ -77,7 +77,7 @@ export default async function TrendingHashtagsPage({
           />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
-          <Link href={continuationHref} className="mt-3 inline-block text-sm text-indigo-300">
+          <Link href={continuationHref} className="text-link mt-3 inline-block text-sm">
             Load more hashtags
           </Link>
         ) : null}

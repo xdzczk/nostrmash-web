@@ -127,26 +127,26 @@ function ProfileDiscoveryRow({ profile, rank }: { profile: Profile; rank: number
           width={52}
           height={52}
           unoptimized
-          className="h-12 w-12 shrink-0 rounded-full border border-zinc-700/80 object-cover"
+          className="border-edge-strong/80 h-12 w-12 shrink-0 rounded-full border object-cover"
         />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="truncate text-[1.02rem] font-semibold tracking-tight text-zinc-50">
+              <p className="text-ink-strong truncate text-[1.02rem] font-semibold tracking-tight">
                 {label}
               </p>
               {identityBits.length > 0 ? (
-                <p className="mt-1 truncate text-xs text-zinc-500">{identityBits.join(" • ")}</p>
+                <p className="text-ink-faint mt-1 truncate text-xs">{identityBits.join(" • ")}</p>
               ) : null}
             </div>
-            <span className="inline-flex shrink-0 items-center rounded-full border border-white/8 bg-white/[0.03] px-2 py-1 text-[11px] font-medium tracking-[0.18em] text-zinc-400 uppercase">
+            <span className="text-ink-muted inline-flex shrink-0 items-center rounded-full border border-white/8 bg-white/[0.03] px-2 py-1 text-[11px] font-medium tracking-[0.18em] uppercase">
               #{rank}
             </span>
           </div>
 
           {typeof profile.about === "string" && profile.about.trim().length > 0 ? (
-            <p className="mt-2.5 line-clamp-2 text-sm leading-6 text-zinc-300">
+            <p className="text-ink-dim mt-2.5 line-clamp-2 text-sm leading-6">
               {profile.about.trim()}
             </p>
           ) : null}
@@ -155,14 +155,14 @@ function ProfileDiscoveryRow({ profile, rank }: { profile: Profile; rank: number
 
           <WhyNow reasons={reasons} maxReasons={1} className="mt-3" />
 
-          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+          <div className="text-ink-faint mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             {identifier !== "unknown" && !href ? (
               <IdBadge
                 id={identifier}
                 label={identifier.startsWith("npub") ? "npub" : "pubkey"}
                 kind={identifier.startsWith("npub") ? "npub" : "pubkey"}
                 surface="secondary"
-                className="border-zinc-800 bg-zinc-950/50"
+                className="border-edge bg-surface-sunken/50"
               />
             ) : null}
             <DiscoveryActionLinks
@@ -170,7 +170,7 @@ function ProfileDiscoveryRow({ profile, rank }: { profile: Profile; rank: number
                 { label: "View profile", href },
                 { label: "Recent notes", href: href ? `${href}#authored-notes` : undefined },
               ]}
-              className="text-zinc-500"
+              className="text-ink-faint"
             />
           </div>
         </div>
@@ -189,27 +189,29 @@ export function ProfilesInMotionSpotlight({
   freshnessLabel: string;
 }) {
   return (
-    <section className="relative overflow-hidden rounded-[1.6rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.1),transparent_38%),linear-gradient(180deg,rgba(24,24,27,0.96),rgba(20,20,23,0.92))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.16)] sm:p-6 xl:p-7">
+    <section className="border-edge/90 relative overflow-hidden rounded-[1.6rem] border bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.1),transparent_38%),linear-gradient(180deg,rgba(24,24,27,0.96),rgba(20,20,23,0.92))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.16)] sm:p-6 xl:p-7">
       <div className="flex h-full flex-col">
         <header className="space-y-3">
           <div className="space-y-2">
-            <h2 className="text-[1.4rem] font-semibold tracking-tight text-zinc-50 sm:text-[1.75rem]">
+            <h2 className="text-ink-strong text-[1.4rem] font-semibold tracking-tight sm:text-[1.75rem]">
               Profiles in motion
             </h2>
-            <p className="max-w-lg text-sm leading-6 text-zinc-400 sm:text-base">
+            <p className="text-ink-muted max-w-lg text-sm leading-6 sm:text-base">
               The profiles gaining the most momentum.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+          <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <span>{trendWindowLabel}</span>
-            <span className="text-zinc-600">•</span>
+            <span aria-hidden className="text-zinc-600">
+              •
+            </span>
             <span>{freshnessLabel}</span>
           </div>
         </header>
 
         <div className="mt-6 flex-1">
           {profiles.length > 0 ? (
-            <ul className="divide-y divide-zinc-800/75">
+            <ul className="divide-edge/75 divide-y">
               {profiles.map((profile, index) => (
                 <ProfileDiscoveryRow
                   key={profile.pubkey ?? profile.npub ?? `profile-highlight-${index}`}
@@ -228,7 +230,7 @@ export function ProfilesInMotionSpotlight({
           )}
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+        <div className="text-ink-faint mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
           <Link href="/trending/profiles" className="hover:text-emerald-200">
             See all profiles
           </Link>

@@ -11,10 +11,10 @@ export function DebugDisclosure({
 }) {
   return (
     <details
-      className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 p-3 text-xs text-zinc-400"
+      className="border-edge/80 bg-surface-sunken/40 text-ink-muted rounded-lg border p-3 text-xs"
       open={defaultOpen}
     >
-      <summary className="cursor-pointer text-sm text-zinc-300 select-none">{title}</summary>
+      <summary className="text-ink-dim cursor-pointer text-sm select-none">{title}</summary>
       <div className="mt-3">
         <JsonPanel data={data} maxHeightClassName="max-h-80" />
       </div>

@@ -51,17 +51,17 @@ export function NativeSemanticsBadges({
     <>
       <ConsistencyBadge consistency={consistency} />
       {trustMode ? (
-        <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+        <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
           trust mode: {trustMode}
         </span>
       ) : null}
       {trustApplied !== undefined ? (
-        <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+        <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
           trust applied: {trustApplied ? "yes" : "no"}
         </span>
       ) : null}
       {resultScopeText ? (
-        <span className="max-w-full rounded-full border border-zinc-700 px-2 py-1 break-words text-zinc-300">
+        <span className="border-edge-strong text-ink-dim max-w-full rounded-full border px-2 py-1 break-words">
           scope: {resultScopeText}
         </span>
       ) : null}

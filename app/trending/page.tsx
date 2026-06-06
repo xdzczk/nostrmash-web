@@ -272,7 +272,7 @@ export default async function TrendingPage() {
         badges={
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
             <NativeSemanticsBadges semantics={semantics} />
-            <span className="text-zinc-400">
+            <span className="text-ink-muted">
               Notes {(notes?.notes?.length ?? 0).toLocaleString()} • Profiles{" "}
               {(profiles?.profiles?.length ?? 0).toLocaleString()} • Hashtags{" "}
               {(hashtags?.hashtags?.length ?? 0).toLocaleString()} • Domains{" "}
@@ -288,9 +288,11 @@ export default async function TrendingPage() {
             title="Notes setting the pace"
             description="Lead note spotlight with a tighter ranked follow-up list."
           >
-            <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-400 sm:mb-4">
+            <div className="text-ink-muted mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] sm:mb-4">
               <span>{trendWindowLabel}</span>
-              <span className="text-zinc-600">•</span>
+              <span aria-hidden className="text-zinc-600">
+                •
+              </span>
               <span>{notesFreshness}</span>
             </div>
             {leadNote ? (
@@ -302,7 +304,7 @@ export default async function TrendingPage() {
                   discoverySignals
                 />
                 {followupNotes.length > 0 ? (
-                  <ol className="space-y-2 rounded-lg border border-zinc-800/80 bg-zinc-950/35 p-2.5 sm:p-3">
+                  <ol className="border-edge/80 bg-surface-sunken/35 space-y-2 rounded-lg border p-2.5 sm:p-3">
                     {followupNotes.map((note, index) => {
                       const rank = index + 2;
                       const author = resolveNoteAuthor(note, authorsByPubkey);
@@ -312,27 +314,27 @@ export default async function TrendingPage() {
                       return (
                         <li
                           key={note.id ?? note.event_id ?? note.eventId ?? `note-followup-${rank}`}
-                          className="rounded-md border border-zinc-800/80 bg-zinc-900/40 p-2.5"
+                          className="border-edge/80 bg-surface/40 rounded-md border p-2.5"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 space-y-1">
                               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                                <span className="font-medium text-indigo-300">#{rank}</span>
-                                <span className="truncate text-zinc-200">
+                                <span className="text-link font-medium">#{rank}</span>
+                                <span className="text-ink-soft truncate">
                                   {author ? profileLabel(author) : "Unknown author"}
                                 </span>
                                 {observedAt ? (
-                                  <span className="text-zinc-500">{observedAt}</span>
+                                  <span className="text-ink-faint">{observedAt}</span>
                                 ) : null}
                               </div>
-                              <p className="text-sm leading-5 text-zinc-300">
+                              <p className="text-ink-dim text-sm leading-5">
                                 {preview.contentForCard}
                               </p>
                             </div>
                             {noteId ? (
                               <Link
                                 href={`/notes/${encodeURIComponent(noteId)}`}
-                                className="shrink-0 text-xs text-indigo-300 hover:text-indigo-200"
+                                className="text-link hover:text-link-hover shrink-0 text-xs"
                               >
                                 Open note
                               </Link>
@@ -357,25 +359,27 @@ export default async function TrendingPage() {
             {trendingNotesContinuationHref ? (
               <Link
                 href={trendingNotesContinuationHref}
-                className="mt-2 inline-block text-xs text-indigo-300 hover:text-indigo-200"
+                className="text-link hover:text-link-hover mt-2 inline-block text-xs"
               >
                 Load more notes
               </Link>
             ) : null}
           </SectionCard>
 
-          <section className="rounded-xl border border-zinc-800/95 bg-zinc-900/45 p-3.5 sm:p-4">
+          <section className="border-edge/95 bg-surface/45 rounded-xl border p-3.5 sm:p-4">
             <header className="mb-3 space-y-1">
-              <h2 className="text-base font-semibold tracking-tight text-zinc-100">
+              <h2 className="text-ink text-base font-semibold tracking-tight">
                 Profiles in motion
               </h2>
-              <p className="text-sm leading-5 text-zinc-400">
+              <p className="text-ink-muted text-sm leading-5">
                 Fast-ranked profile list for quick identity scanning.
               </p>
             </header>
-            <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-400">
+            <div className="text-ink-muted mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
               <span>{trendWindowLabel}</span>
-              <span className="text-zinc-600">•</span>
+              <span aria-hidden className="text-zinc-600">
+                •
+              </span>
               <span>{profilesFreshness}</span>
             </div>
             {compactProfiles.length > 0 ? (
@@ -389,7 +393,7 @@ export default async function TrendingPage() {
                   return (
                     <li
                       key={profile.pubkey ?? profile.npub ?? `profile-${rank}`}
-                      className="flex items-center justify-between gap-3 rounded-md border border-zinc-800/80 bg-zinc-950/35 px-2.5 py-2"
+                      className="border-edge/80 bg-surface-sunken/35 flex items-center justify-between gap-3 rounded-md border px-2.5 py-2"
                     >
                       <div className="min-w-0">
                         <div className="flex min-w-0 items-center gap-2 text-sm">
@@ -399,16 +403,16 @@ export default async function TrendingPage() {
                           {profileHref ? (
                             <Link
                               href={profileHref}
-                              className="truncate text-zinc-200 hover:text-white"
+                              className="text-ink-soft truncate hover:text-white"
                             >
                               {profileLabel(profile)}
                             </Link>
                           ) : (
-                            <span className="truncate text-zinc-200">{profileLabel(profile)}</span>
+                            <span className="text-ink-soft truncate">{profileLabel(profile)}</span>
                           )}
                         </div>
                         {secondary ? (
-                          <p className="truncate text-xs text-zinc-500">{secondary}</p>
+                          <p className="text-ink-faint truncate text-xs">{secondary}</p>
                         ) : null}
                         {rank <= 2 ? (
                           <WhyNow
@@ -421,7 +425,7 @@ export default async function TrendingPage() {
                       {profileHref ? (
                         <Link
                           href={profileHref}
-                          className="shrink-0 text-xs text-indigo-300 hover:text-indigo-200"
+                          className="text-link hover:text-link-hover shrink-0 text-xs"
                         >
                           View
                         </Link>
@@ -446,7 +450,7 @@ export default async function TrendingPage() {
             {trendingProfilesContinuationHref ? (
               <Link
                 href={trendingProfilesContinuationHref}
-                className="mt-2 inline-block text-xs text-indigo-300 hover:text-indigo-200"
+                className="text-link hover:text-link-hover mt-2 inline-block text-xs"
               >
                 Load more profiles
               </Link>
@@ -455,35 +459,37 @@ export default async function TrendingPage() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <section className="rounded-xl border border-zinc-800/90 bg-zinc-950/35 p-3.5 sm:p-4">
+          <section className="border-edge/90 bg-surface-sunken/35 rounded-xl border p-3.5 sm:p-4">
             <header className="mb-3 space-y-1">
-              <h2 className="text-base font-semibold tracking-tight text-zinc-100">
+              <h2 className="text-ink text-base font-semibold tracking-tight">
                 Hashtags gaining speed
               </h2>
-              <p className="text-sm leading-5 text-zinc-400">
+              <p className="text-ink-muted text-sm leading-5">
                 Ranked topic intelligence with quick jump links.
               </p>
             </header>
-            <div className="mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-400">
+            <div className="text-ink-muted mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
               <span>{trendWindowLabel}</span>
-              <span className="text-zinc-600">•</span>
+              <span aria-hidden className="text-zinc-600">
+                •
+              </span>
               <span>{hashtagsFreshness}</span>
             </div>
             {hashtagEntries.length > 0 ? (
-              <ol className="divide-y divide-zinc-800/70 rounded-lg border border-zinc-800/80 bg-zinc-950/45">
+              <ol className="divide-edge/70 border-edge/80 bg-surface-sunken/45 divide-y rounded-lg border">
                 {hashtagEntries.map((entry) => (
                   <li key={entry.hashtag} className="px-2.5 py-2 text-sm">
                     <div className="flex items-center gap-3">
-                      <span className="w-6 shrink-0 text-xs font-medium text-indigo-300">
+                      <span className="text-link w-6 shrink-0 text-xs font-medium">
                         #{entry.rank}
                       </span>
                       <Link
                         href={entry.href}
-                        className="min-w-0 flex-1 truncate text-zinc-200 hover:text-white"
+                        className="text-ink-soft min-w-0 flex-1 truncate hover:text-white"
                       >
                         #{entry.hashtag}
                       </Link>
-                      <span className="shrink-0 text-xs text-zinc-400">
+                      <span className="text-ink-muted shrink-0 text-xs">
                         {entry.count !== null ? entry.count.toLocaleString() : "—"}
                       </span>
                     </div>
@@ -518,42 +524,44 @@ export default async function TrendingPage() {
             {trendingHashtagsContinuationHref ? (
               <Link
                 href={trendingHashtagsContinuationHref}
-                className="mt-2 inline-block text-xs text-indigo-300 hover:text-indigo-200"
+                className="text-link hover:text-link-hover mt-2 inline-block text-xs"
               >
                 Load more hashtags
               </Link>
             ) : null}
           </section>
 
-          <section className="rounded-xl border border-zinc-800/90 bg-zinc-950/35 p-3.5 sm:p-4">
+          <section className="border-edge/90 bg-surface-sunken/35 rounded-xl border p-3.5 sm:p-4">
             <header className="mb-3 space-y-1">
-              <h2 className="text-base font-semibold tracking-tight text-zinc-100">
+              <h2 className="text-ink text-base font-semibold tracking-tight">
                 Domains gaining traction
               </h2>
-              <p className="text-sm leading-5 text-zinc-400">
+              <p className="text-ink-muted text-sm leading-5">
                 Compact ranked links with cleaner right-side pickup counts.
               </p>
             </header>
-            <div className="mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-400">
+            <div className="text-ink-muted mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
               <span>{trendWindowLabel}</span>
-              <span className="text-zinc-600">•</span>
+              <span aria-hidden className="text-zinc-600">
+                •
+              </span>
               <span>{domainsFreshness}</span>
             </div>
             {domainEntries.length > 0 ? (
-              <ol className="divide-y divide-zinc-800/70 rounded-lg border border-zinc-800/80 bg-zinc-950/45">
+              <ol className="divide-edge/70 border-edge/80 bg-surface-sunken/45 divide-y rounded-lg border">
                 {domainEntries.map((entry) => (
                   <li key={entry.domain} className="px-2.5 py-2 text-sm">
                     <div className="flex items-center gap-3">
-                      <span className="w-6 shrink-0 text-xs font-medium text-indigo-300">
+                      <span className="text-link w-6 shrink-0 text-xs font-medium">
                         #{entry.rank}
                       </span>
                       <Link
                         href={entry.href}
-                        className="min-w-0 flex-1 truncate text-zinc-200 hover:text-white"
+                        className="text-ink-soft min-w-0 flex-1 truncate hover:text-white"
                       >
                         {entry.domain}
                       </Link>
-                      <span className="shrink-0 text-xs text-zinc-400">
+                      <span className="text-ink-muted shrink-0 text-xs">
                         {entry.count !== null ? entry.count.toLocaleString() : "—"}
                       </span>
                     </div>
@@ -588,7 +596,7 @@ export default async function TrendingPage() {
             {trendingDomainsContinuationHref ? (
               <Link
                 href={trendingDomainsContinuationHref}
-                className="mt-2 inline-block text-xs text-indigo-300 hover:text-indigo-200"
+                className="text-link hover:text-link-hover mt-2 inline-block text-xs"
               >
                 Load more domains
               </Link>
@@ -596,20 +604,20 @@ export default async function TrendingPage() {
           </section>
         </div>
 
-        <section className="rounded-lg border border-zinc-800/80 bg-zinc-950/20 p-3 sm:p-4">
+        <section className="border-edge/80 bg-surface-sunken/20 rounded-lg border p-3 sm:p-4">
           <header className="mb-2.5">
-            <h2 className="text-sm font-semibold tracking-tight text-zinc-200">Next moves</h2>
-            <p className="text-xs text-zinc-500">Jump into adjacent discovery surfaces.</p>
+            <h2 className="text-ink-soft text-sm font-semibold tracking-tight">Next moves</h2>
+            <p className="text-ink-faint text-xs">Jump into adjacent discovery surfaces.</p>
           </header>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {nextMoves.map((section) => (
               <Link
                 key={section.href}
                 href={section.href}
-                className="rounded-md border border-zinc-800/80 bg-zinc-900/35 px-2.5 py-2 transition hover:border-indigo-500/35 hover:bg-zinc-900/65"
+                className="border-edge/80 bg-surface/35 hover:border-accent/35 hover:bg-surface/65 rounded-md border px-2.5 py-2 transition"
               >
-                <p className="text-xs font-medium text-zinc-100">{section.title}</p>
-                <p className="mt-0.5 text-[11px] leading-4 text-zinc-400">{section.description}</p>
+                <p className="text-ink text-xs font-medium">{section.title}</p>
+                <p className="text-ink-muted mt-0.5 text-[11px] leading-4">{section.description}</p>
               </Link>
             ))}
           </div>

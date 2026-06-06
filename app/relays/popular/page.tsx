@@ -21,14 +21,14 @@ function admissionBadge(state: string | undefined) {
     active: "border-emerald-700/60 text-emerald-300",
     pinned: "border-sky-700/60 text-sky-300",
     probation: "border-amber-700/60 text-amber-300",
-    candidate: "border-zinc-700 text-zinc-400",
-    inactive: "border-zinc-700 text-zinc-500",
+    candidate: "border-edge-strong text-ink-muted",
+    inactive: "border-edge-strong text-ink-faint",
     blocked: "border-red-800/60 text-red-400",
     draining: "border-orange-700/60 text-orange-300",
   };
   return (
     <span
-      className={`rounded-full border px-2 py-0.5 text-[11px] ${colors[state] ?? "border-zinc-700 text-zinc-400"}`}
+      className={`rounded-full border px-2 py-0.5 text-[11px] ${colors[state] ?? "border-edge-strong text-ink-muted"}`}
     >
       {state}
     </span>
@@ -57,15 +57,15 @@ export default async function PopularRelaysPage() {
         subtitle="Relays ranked by the number of Nostr users who include them in their relay lists (kind 10002)."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
               relays shown: {relays.length.toLocaleString()}
             </span>
-            <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
               tracked by registry: {inRegistry.toLocaleString()}
             </span>
             <Link
               href="/relays"
-              className="rounded-full border border-zinc-700 px-2 py-1 text-indigo-300 hover:border-indigo-400/40"
+              className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-2 py-1"
             >
               Back to relay explorer
             </Link>
@@ -97,15 +97,15 @@ export default async function PopularRelaysPage() {
               return (
                 <li
                   key={relay.normalized_url}
-                  className="rounded-md border border-zinc-800 bg-zinc-900/40 p-3"
+                  className="border-edge bg-surface/40 rounded-md border p-3"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate text-sm text-zinc-100">
-                        <span className="mr-2 text-zinc-500">#{index + 1}</span>
+                      <p className="text-ink truncate text-sm">
+                        <span className="text-ink-faint mr-2">#{index + 1}</span>
                         {relay.normalized_url}
                       </p>
-                      <p className="mt-1 text-xs text-zinc-500">
+                      <p className="text-ink-faint mt-1 text-xs">
                         {relay.distinct_users.toLocaleString()} users
                         {relay.in_registry && relay.admission_state
                           ? ` · ${relay.admission_state}`
@@ -116,14 +116,14 @@ export default async function PopularRelaysPage() {
                       {relay.in_registry ? (
                         admissionBadge(relay.admission_state)
                       ) : (
-                        <span className="rounded-full border border-zinc-700/50 px-2 py-0.5 text-[11px] text-zinc-600">
+                        <span className="border-edge-strong/50 text-ink-faint rounded-full border px-2 py-0.5 text-[11px]">
                           not tracked
                         </span>
                       )}
                       {host ? (
                         <Link
                           href={`/relays/${encodeURIComponent(host)}`}
-                          className="rounded-full border border-zinc-700 px-3 py-1 text-indigo-300 hover:border-indigo-400/40"
+                          className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1"
                         >
                           Open relay
                         </Link>
@@ -131,9 +131,9 @@ export default async function PopularRelaysPage() {
                     </div>
                   </div>
                   <div className="mt-2">
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
+                    <div className="bg-edge h-1.5 w-full overflow-hidden rounded-full">
                       <div
-                        className="h-full rounded-full bg-indigo-500/60"
+                        className="bg-accent/60 h-full rounded-full"
                         style={{
                           width: `${totalUsers > 0 ? Math.max((relay.distinct_users / totalUsers) * 100, 0.5) : 0}%`,
                         }}

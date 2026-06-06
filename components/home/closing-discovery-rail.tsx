@@ -122,20 +122,22 @@ function HashtagDiscoveryModule({
   const columns = splitIntoColumns(items, 2);
 
   return (
-    <section className="flex h-full flex-col rounded-[1.4rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_left,rgba(217,70,239,0.08),transparent_42%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(20,20,23,0.88))] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.12)] sm:p-5 xl:p-6">
+    <section className="border-edge/90 flex h-full flex-col rounded-[1.4rem] border bg-[radial-gradient(circle_at_top_left,rgba(217,70,239,0.08),transparent_42%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(20,20,23,0.88))] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.12)] sm:p-5 xl:p-6">
       <header className="space-y-2.5">
         <div className="text-[11px] font-medium tracking-[0.18em] text-fuchsia-300/90 uppercase">
           Hashtags
         </div>
-        <h3 className="text-lg font-semibold tracking-tight text-zinc-50">
+        <h3 className="text-ink-strong text-lg font-semibold tracking-tight">
           Hashtags gaining speed
         </h3>
-        <p className="max-w-lg text-sm leading-6 text-zinc-400">
+        <p className="text-ink-muted max-w-lg text-sm leading-6">
           The topics accelerating fastest right now.
         </p>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+        <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
           <span>{trendWindowLabel}</span>
-          <span className="text-zinc-600">•</span>
+          <span aria-hidden className="text-zinc-600">
+            •
+          </span>
           <span>{freshnessLabel}</span>
         </div>
       </header>
@@ -162,11 +164,11 @@ function HashtagDiscoveryModule({
                           </span>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-baseline justify-between gap-3">
-                              <p className="truncate text-base font-semibold tracking-tight text-zinc-50 sm:text-[1.05rem]">
+                              <p className="text-ink-strong truncate text-base font-semibold tracking-tight sm:text-[1.05rem]">
                                 #{item.label}
                               </p>
                               {item.metric ? (
-                                <span className="shrink-0 text-xs text-zinc-500">
+                                <span className="text-ink-faint shrink-0 text-xs">
                                   {item.metric.value}
                                 </span>
                               ) : null}
@@ -193,7 +195,7 @@ function HashtagDiscoveryModule({
         )}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+      <div className="text-ink-faint mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
         <Link href="/trending/hashtags" className="hover:text-fuchsia-200">
           See all hashtags
         </Link>
@@ -215,20 +217,22 @@ function DomainDiscoveryModule({
   const columns = splitIntoColumns(items, 2);
 
   return (
-    <section className="flex h-full flex-col rounded-[1.4rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.08),transparent_40%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(20,20,23,0.88))] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.12)] sm:p-5 xl:p-6">
+    <section className="border-edge/90 flex h-full flex-col rounded-[1.4rem] border bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.08),transparent_40%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(20,20,23,0.88))] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.12)] sm:p-5 xl:p-6">
       <header className="space-y-2.5">
         <div className="text-[11px] font-medium tracking-[0.18em] text-sky-300/90 uppercase">
           Domains
         </div>
-        <h3 className="text-lg font-semibold tracking-tight text-zinc-50">
+        <h3 className="text-ink-strong text-lg font-semibold tracking-tight">
           Links gaining traction
         </h3>
-        <p className="max-w-lg text-sm leading-6 text-zinc-400">
+        <p className="text-ink-muted max-w-lg text-sm leading-6">
           Domains appearing across the strongest notes.
         </p>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+        <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
           <span>{trendWindowLabel}</span>
-          <span className="text-zinc-600">•</span>
+          <span aria-hidden className="text-zinc-600">
+            •
+          </span>
           <span>{freshnessLabel}</span>
         </div>
       </header>
@@ -240,19 +244,19 @@ function DomainDiscoveryModule({
               const columnOffset = columnIndex * Math.ceil(items.length / columns.length);
 
               return (
-                <ol key={`domains-column-${columnIndex}`} className="divide-y divide-zinc-800/80">
+                <ol key={`domains-column-${columnIndex}`} className="divide-edge/80 divide-y">
                   {column.map((item, index) => (
                     <li key={item.rawLabel}>
                       <Link
                         href={item.href}
                         className="group flex items-start gap-3 py-2.5 transition first:pt-0 last:pb-0 hover:text-white"
                       >
-                        <span className="mt-0.5 flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full border border-zinc-700/80 bg-zinc-950/70 px-1 text-[10px] font-semibold tracking-[0.14em] text-zinc-300 uppercase">
+                        <span className="border-edge-strong/80 bg-surface-sunken/70 text-ink-dim mt-0.5 flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full border px-1 text-[10px] font-semibold tracking-[0.14em] uppercase">
                           {columnOffset + index + 1}
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                            <p className="min-w-0 flex-1 truncate text-sm font-semibold text-zinc-100 sm:text-[0.97rem]">
+                            <p className="text-ink min-w-0 flex-1 truncate text-sm font-semibold sm:text-[0.97rem]">
                               <span title={item.rawLabel}>{item.label}</span>
                             </p>
                             {item.metric ? (
@@ -282,7 +286,7 @@ function DomainDiscoveryModule({
         )}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+      <div className="text-ink-faint mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
         <Link href="/trending/domains" className="hover:text-sky-200">
           See all domains
         </Link>
@@ -305,17 +309,17 @@ export function ClosingDiscoveryRail({
   domainsFreshness: string;
 }) {
   return (
-    <section className="relative overflow-hidden rounded-[1.7rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_bottom_center,rgba(99,102,241,0.08),transparent_40%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(15,15,17,0.98))] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.22)] sm:p-7 xl:p-8 2xl:px-9">
+    <section className="border-edge/90 relative overflow-hidden rounded-[1.7rem] border bg-[radial-gradient(circle_at_bottom_center,rgba(99,102,241,0.08),transparent_40%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(15,15,17,0.98))] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.22)] sm:p-7 xl:p-8 2xl:px-9">
       <header className="max-w-3xl space-y-3">
-        <h2 className="text-[1.5rem] font-semibold tracking-tight text-zinc-50 sm:text-[1.9rem]">
+        <h2 className="text-ink-strong text-[1.5rem] font-semibold tracking-tight sm:text-[1.9rem]">
           Follow what gains speed next
         </h2>
-        <p className="max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base">
+        <p className="text-ink-muted max-w-2xl text-sm leading-6 sm:text-base">
           Track the hashtags and links shaping the current window.
         </p>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+        <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
           <span>{trendWindowLabel}</span>
-          <span className="text-zinc-700">•</span>
+          <span className="text-edge-strong">•</span>
           <span>Topics and links</span>
         </div>
       </header>
@@ -333,10 +337,10 @@ export function ClosingDiscoveryRail({
         />
       </div>
 
-      <div className="mt-7 flex flex-col gap-4 border-t border-zinc-800/80 pt-5 sm:flex-row sm:items-end sm:justify-between">
+      <div className="border-edge/80 mt-7 flex flex-col gap-4 border-t pt-5 sm:flex-row sm:items-end sm:justify-between">
         <DiscoveryActionLinks
           actions={[{ label: "Open search", href: "/search?tab=all" }]}
-          className="text-sm text-zinc-500"
+          className="text-ink-faint text-sm"
         />
       </div>
     </section>

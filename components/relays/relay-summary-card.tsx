@@ -26,15 +26,15 @@ export function RelaySummaryCard({
     .map((key) => ({ label: key, value: record[key] }));
 
   return (
-    <article className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-900/60 p-4">
+    <article className="border-edge bg-surface/60 space-y-3 rounded-lg border p-4">
       <div className="space-y-2">
-        <p className="text-sm font-medium text-zinc-100">Relay summary</p>
+        <p className="text-ink text-sm font-medium">Relay summary</p>
         <IdBadge id={relayHost} label="relay" />
       </div>
       {summaryItems.length > 0 ? (
         <MetadataList items={summaryItems} columns={2} />
       ) : (
-        <p className="text-sm text-zinc-400">
+        <p className="text-ink-muted text-sm">
           Relay details were sparse in this response. Open debug details for the raw payload.
         </p>
       )}

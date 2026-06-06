@@ -8,7 +8,7 @@ export function ErrorPanel({ message }: { message: string }) {
 
 export function EmptyPanel({ message }: { message: string }) {
   return (
-    <div className="rounded-lg border border-zinc-800/95 bg-zinc-900/45 p-3.5 text-sm break-words text-zinc-300">
+    <div className="border-edge/95 bg-surface/45 text-ink-dim rounded-lg border p-3.5 text-sm break-words">
       {message}
     </div>
   );
@@ -23,7 +23,7 @@ export function JsonPanel({
 }) {
   return (
     <pre
-      className={`overflow-auto rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-300 ${maxHeightClassName}`}
+      className={`border-edge bg-surface-sunken text-ink-dim overflow-auto rounded-lg border p-3 text-xs ${maxHeightClassName}`}
     >
       {JSON.stringify(data, null, 2)}
     </pre>

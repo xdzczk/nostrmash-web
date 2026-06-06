@@ -187,7 +187,7 @@ export function DomainsList({
 
   if (ranked) {
     return (
-      <ol className="divide-y divide-zinc-800/75 rounded-2xl border border-zinc-800/70 bg-zinc-950/25">
+      <ol className="divide-edge/75 border-edge/70 bg-surface-sunken/25 divide-y rounded-2xl border">
         {normalized.map((entry, index) => (
           <li key={`${entry.domain}-${index}`} className="px-3 py-2.5 sm:px-4">
             <DomainChip

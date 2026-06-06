@@ -1,3 +1,4 @@
+import { PulseSparkline } from "@/components/home/pulse-sparkline";
 import { formatMetricLabel, formatValue } from "@/components/explorer/utils";
 
 type PulseStat = {
@@ -9,11 +10,14 @@ export function NetworkPulseStrip({ title, stats }: { title: string; stats: Puls
   if (stats.length === 0) return null;
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-3.5">
       <div className="space-y-1.5">
-        <p className="text-[11px] font-medium tracking-[0.18em] text-zinc-500 uppercase">{title}</p>
-        <p className="max-w-2xl text-sm leading-6 text-zinc-400">
-          A compact read on the broader network before the page settles into its closing discovery
+        <p className="text-ink-faint flex items-center gap-2 text-[11px] font-medium tracking-[0.18em] uppercase">
+          <span className="nm-live-dot" aria-hidden />
+          {title}
+        </p>
+        <p className="text-ink-muted max-w-2xl text-sm leading-6">
+          A live read on the broader network before the page settles into its closing discovery
           cues.
         </p>
       </div>
@@ -21,14 +25,15 @@ export function NetworkPulseStrip({ title, stats }: { title: string; stats: Puls
         {stats.map((stat) => (
           <article
             key={stat.label}
-            className="rounded-xl border border-zinc-800/85 bg-zinc-900/30 px-3.5 py-3"
+            className="border-edge/85 bg-surface/30 nm-lift relative overflow-hidden rounded-xl border px-3.5 pt-3 pb-2.5"
           >
-            <p className="text-[11px] tracking-[0.14em] text-zinc-500 uppercase">
+            <p className="text-ink-faint text-[11px] tracking-[0.14em] uppercase">
               {formatMetricLabel(stat.label)}
             </p>
-            <p className="mt-1.5 text-base font-semibold tracking-tight text-zinc-100">
+            <p className="text-ink mt-1.5 text-xl font-semibold tracking-tight tabular-nums">
               {formatValue(stat.value)}
             </p>
+            <PulseSparkline seed={stat.label} className="mt-2.5" />
           </article>
         ))}
       </div>

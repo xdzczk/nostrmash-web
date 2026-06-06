@@ -60,7 +60,7 @@ export function ProfileReactionsActivityList({
 
         return (
           <li key={reactionKey} className={`${cardTierClassName("standard")} space-y-3 p-4`}>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+            <div className="text-ink-muted flex flex-wrap items-center gap-2 text-xs">
               <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-amber-100">
                 Reaction: {reactionLabel}
               </span>
@@ -68,7 +68,9 @@ export function ProfileReactionsActivityList({
             </div>
             {targetNote ? (
               <div className="space-y-2">
-                <p className="text-xs font-medium tracking-wide text-zinc-500 uppercase">On note</p>
+                <p className="text-ink-faint text-xs font-medium tracking-wide uppercase">
+                  On note
+                </p>
                 <NoteCard
                   note={targetNote}
                   author={
@@ -81,12 +83,12 @@ export function ProfileReactionsActivityList({
             ) : reaction.target_event_id ? (
               <Link
                 href={`/notes/${encodeURIComponent(reaction.target_event_id)}`}
-                className="text-sm text-indigo-300 hover:text-indigo-200"
+                className="text-link hover:text-link-hover text-sm"
               >
                 Open target note
               </Link>
             ) : (
-              <p className="text-sm text-zinc-500">Target note unavailable.</p>
+              <p className="text-ink-faint text-sm">Target note unavailable.</p>
             )}
           </li>
         );
@@ -117,7 +119,7 @@ export function ProfileZapsActivityList({
 
         return (
           <li key={zapKey} className={`${cardTierClassName("standard")} space-y-3 p-4`}>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+            <div className="text-ink-muted flex flex-wrap items-center gap-2 text-xs">
               {amountLabel ? (
                 <span className="rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2.5 py-1 text-yellow-100">
                   {amountLabel}
@@ -128,13 +130,15 @@ export function ProfileZapsActivityList({
                 </span>
               )}
               {zapText ? (
-                <span className="text-sm text-zinc-200">&ldquo;{zapText}&rdquo;</span>
+                <span className="text-ink-soft text-sm">&ldquo;{zapText}&rdquo;</span>
               ) : null}
               <Timestamp unixSeconds={zap.created_at} />
             </div>
             {targetNote ? (
               <div className="space-y-2">
-                <p className="text-xs font-medium tracking-wide text-zinc-500 uppercase">On note</p>
+                <p className="text-ink-faint text-xs font-medium tracking-wide uppercase">
+                  On note
+                </p>
                 <NoteCard
                   note={targetNote}
                   author={
@@ -147,12 +151,12 @@ export function ProfileZapsActivityList({
             ) : zap.target_event_id ? (
               <Link
                 href={`/notes/${encodeURIComponent(zap.target_event_id)}`}
-                className="text-sm text-indigo-300 hover:text-indigo-200"
+                className="text-link hover:text-link-hover text-sm"
               >
                 Open target note
               </Link>
             ) : (
-              <p className="text-sm text-zinc-500">Target note unavailable.</p>
+              <p className="text-ink-faint text-sm">Target note unavailable.</p>
             )}
           </li>
         );

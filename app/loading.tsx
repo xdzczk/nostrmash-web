@@ -1,7 +1,13 @@
+import { NotesListSkeleton, PageHeroSkeleton } from "@/components/ui/skeleton";
+
 export default function Loading() {
   return (
-    <div className="rounded-md border border-zinc-800 bg-zinc-900/60 p-4 text-sm text-zinc-300">
-      Loading explorer data...
+    <div className="space-y-7">
+      <span className="sr-only" role="status">
+        Loading explorer data
+      </span>
+      <PageHeroSkeleton />
+      <NotesListSkeleton count={4} />
     </div>
   );
 }

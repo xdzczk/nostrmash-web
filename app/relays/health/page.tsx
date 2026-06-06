@@ -61,18 +61,18 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <NativeSemanticsBadges semantics={semantics} />
-            <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
               healthy: {posture.healthy.toLocaleString()}
             </span>
-            <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
               unhealthy: {posture.unhealthy.toLocaleString()}
             </span>
-            <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
               unknown: {posture.unknown.toLocaleString()}
             </span>
             <Link
               href="/relays"
-              className="rounded-full border border-zinc-700 px-2 py-1 text-indigo-300 hover:border-indigo-400/40"
+              className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-2 py-1"
             >
               Back to relay explorer
             </Link>
@@ -89,12 +89,12 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
               <li
                 key={row.host}
                 id={`relay-${encodeURIComponent(row.host)}`}
-                className="rounded-md border border-zinc-800 bg-zinc-900/40 p-3"
+                className="border-edge bg-surface/40 rounded-md border p-3"
               >
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <p className="min-w-0 truncate text-sm text-zinc-100">{row.relay}</p>
+                  <p className="text-ink min-w-0 truncate text-sm">{row.relay}</p>
                   <div className="flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+                    <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
                       {row.healthy === true
                         ? "healthy"
                         : row.healthy === false
@@ -103,7 +103,7 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
                     </span>
                     <Link
                       href={`/relays/${encodeURIComponent(row.host)}`}
-                      className="rounded-full border border-zinc-700 px-2 py-1 text-indigo-300 hover:border-indigo-400/40"
+                      className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-2 py-1"
                     >
                       Open relay
                     </Link>
@@ -128,7 +128,7 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
           />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
-          <Link href={continuationHref} className="mt-3 inline-block text-sm text-indigo-300">
+          <Link href={continuationHref} className="text-link mt-3 inline-block text-sm">
             Load more health rows
           </Link>
         ) : null}

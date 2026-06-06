@@ -92,31 +92,31 @@ export default async function RelayPage({ params }: { params: Params }) {
             <NativeSemanticsBadges semantics={semantics} />
             <Link
               href="/relays"
-              className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-indigo-300 hover:border-indigo-400/40"
+              className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1 text-xs"
             >
               Open relay ranking
             </Link>
             <Link
               href={`/relays/health#relay-${encodeURIComponent(normalizedRelayHost)}`}
-              className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-indigo-300 hover:border-indigo-400/40"
+              className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1 text-xs"
             >
               Open relay health row
             </Link>
             <Link
               href={`/search?q=${encodeURIComponent(relayHost)}&tab=all`}
-              className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-indigo-300 hover:border-indigo-400/40"
+              className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1 text-xs"
             >
               Search relay mentions
             </Link>
             <Link
               href={`/search?q=${encodeURIComponent(relayHost)}&tab=notes`}
-              className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-indigo-300 hover:border-indigo-400/40"
+              className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1 text-xs"
             >
               Open relay note activity
             </Link>
             <Link
               href="/discovery/conversations/hot"
-              className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-indigo-300 hover:border-indigo-400/40"
+              className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1 text-xs"
             >
               Open hot conversations
             </Link>
@@ -202,13 +202,13 @@ export default async function RelayPage({ params }: { params: Params }) {
               {neighboringRelays.map((entry) => (
                 <li
                   key={entry.host}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-zinc-800 bg-zinc-900/40 p-3"
+                  className="border-edge bg-surface/40 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm text-zinc-200">
+                    <p className="text-ink-soft truncate text-sm">
                       #{entry.rank} {entry.relay}
                     </p>
-                    <p className="mt-1 truncate text-xs text-zinc-500">
+                    <p className="text-ink-faint mt-1 truncate text-xs">
                       score {entry.activityScore.toLocaleString()} •{" "}
                       {Object.entries(entry.metrics)
                         .slice(0, 2)
@@ -218,7 +218,7 @@ export default async function RelayPage({ params }: { params: Params }) {
                   </div>
                   <Link
                     href={`/relays/${encodeURIComponent(entry.host)}`}
-                    className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-indigo-300 hover:border-indigo-400/40"
+                    className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1 text-xs"
                   >
                     Open relay
                   </Link>

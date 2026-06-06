@@ -10,6 +10,8 @@ import { SearchForm } from "@/components/search/search-form";
 import { NotesList, ProfilesList, HashtagsList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
+import { Pill } from "@/components/ui/pill";
+import { TabBar } from "@/components/ui/tabs";
 import { getSearch, getTrendingHashtags, getTrendingProfiles } from "@/lib/api/endpoints";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { parseSearchQuery } from "@/lib/search-params/search";
@@ -173,43 +175,33 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
           canQuery ? (
             <div className="flex flex-wrap gap-2 text-xs">
               <NativeSemanticsBadges semantics={payload} />
-              <span className="max-w-full rounded-full border border-zinc-700 px-2 py-1 break-all text-zinc-300">
+              <Pill tone="neutral" className="max-w-full break-all">
                 Query: {query.q}
-              </span>
+              </Pill>
               {typeof payload?.total === "number" ? (
-                <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
-                  {payload.total.toLocaleString()} results
-                </span>
+                <Pill tone="neutral">{payload.total.toLocaleString()} results</Pill>
               ) : null}
               {typeof payload?.section_totals?.notes === "number" ? (
-                <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
-                  notes: {payload.section_totals.notes.toLocaleString()}
-                </span>
+                <Pill tone="neutral">notes: {payload.section_totals.notes.toLocaleString()}</Pill>
               ) : null}
               {typeof payload?.section_totals?.profiles === "number" ? (
-                <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+                <Pill tone="neutral">
                   profiles: {payload.section_totals.profiles.toLocaleString()}
-                </span>
+                </Pill>
               ) : null}
               {typeof payload?.section_totals?.hashtags === "number" ? (
-                <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+                <Pill tone="neutral">
                   hashtags: {payload.section_totals.hashtags.toLocaleString()}
-                </span>
+                </Pill>
               ) : null}
               {typeof payload?.section_totals?.relays === "number" ? (
-                <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
-                  relays: {payload.section_totals.relays.toLocaleString()}
-                </span>
+                <Pill tone="neutral">relays: {payload.section_totals.relays.toLocaleString()}</Pill>
               ) : null}
               {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
-                <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
-                  cursor: available
-                </span>
+                <Pill tone="neutral">cursor: available</Pill>
               ) : null}
               {typeof query.offset === "number" && query.offset > 0 ? (
-                <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
-                  offset: {query.offset.toLocaleString()}
-                </span>
+                <Pill tone="neutral">offset: {query.offset.toLocaleString()}</Pill>
               ) : null}
             </div>
           ) : null
@@ -231,32 +223,16 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
         <ErrorPanel message={errorMessage} />
       ) : (
         <div className="space-y-6">
-          <nav className="rounded-xl border border-zinc-800 bg-zinc-900/45 p-1">
-            <ul className="flex flex-wrap gap-1">
-              {SEARCH_TABS.map((tab) => {
-                const isActive = tab.key === activeTab;
-                return (
-                  <li key={tab.key}>
-                    <Link
-                      href={searchHref({ tab: tab.key, offset: undefined })}
-                      className={`inline-flex items-center rounded-lg px-3 py-1.5 text-sm transition ${
-                        isActive
-                          ? "bg-zinc-200/90 text-zinc-950"
-                          : "text-zinc-300 hover:bg-zinc-800/60 hover:text-zinc-100"
-                      }`}
-                    >
-                      {tab.label}
-                      {typeof tabCounts[tab.key] === "number" ? (
-                        <span className="ml-2 text-xs opacity-80">
-                          {tabCounts[tab.key]?.toLocaleString()}
-                        </span>
-                      ) : null}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
+          <TabBar
+            ariaLabel="Search result categories"
+            items={SEARCH_TABS.map((tab) => ({
+              key: tab.key,
+              label: tab.label,
+              href: searchHref({ tab: tab.key, offset: undefined }),
+              active: tab.key === activeTab,
+              count: tabCounts[tab.key],
+            }))}
+          />
 
           {payload?.errors && payload.errors.length > 0 ? (
             <ErrorPanel message={payload.errors.join(" | ")} />
@@ -277,7 +253,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               {typeof notesNextOffset === "number" ? (
                 <Link
                   href={searchHref({ tab: "notes", offset: notesNextOffset })}
-                  className="mt-3 inline-block text-sm text-indigo-300"
+                  className="text-link mt-3 inline-block text-sm"
                 >
                   Continue notes search
                 </Link>
@@ -300,7 +276,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               {typeof profilesNextOffset === "number" ? (
                 <Link
                   href={searchHref({ tab: "profiles", offset: profilesNextOffset })}
-                  className="mt-3 inline-block text-sm text-indigo-300"
+                  className="text-link mt-3 inline-block text-sm"
                 >
                   Continue profiles search
                 </Link>
@@ -320,7 +296,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
                 <ProfilesList profiles={hydratedSuggestedProfiles} />
               ) : fallbackSuggestedProfiles.length > 0 ? (
                 <div className="space-y-3">
-                  <p className="text-xs text-zinc-500">
+                  <p className="text-ink-faint text-xs">
                     No direct suggestions returned; showing trending profiles instead.
                   </p>
                   <ProfilesList profiles={fallbackSuggestedProfiles} />
@@ -339,7 +315,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
                 <HashtagsList hashtags={payload.hashtags} searchable />
               ) : fallbackSuggestedHashtags.length > 0 ? (
                 <div className="space-y-3">
-                  <p className="text-xs text-zinc-500">
+                  <p className="text-ink-faint text-xs">
                     No hashtags matched this query; showing trending hashtags instead.
                   </p>
                   <HashtagsList hashtags={fallbackSuggestedHashtags} searchable />
@@ -358,7 +334,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
                     <Link
                       key={relay}
                       href={`/relays/${encodeURIComponent(relay)}`}
-                      className="rounded-full border border-zinc-700 bg-zinc-900/40 px-3 py-1 text-xs break-all text-indigo-300 hover:border-indigo-400/40"
+                      className="border-edge-strong bg-surface/40 hover:border-accent-soft/40 text-link rounded-full border px-3 py-1 text-xs break-all"
                     >
                       {relay}
                     </Link>

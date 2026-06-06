@@ -13,14 +13,14 @@ export function MetadataList({
 
   return (
     <dl
-      className={`grid gap-3 ${columns === 2 ? "sm:grid-cols-2" : "grid-cols-1"} rounded-lg border border-zinc-800 bg-zinc-900/40 p-4`}
+      className={`grid gap-3 ${columns === 2 ? "sm:grid-cols-2" : "grid-cols-1"} border-edge bg-surface/40 rounded-lg border p-4`}
     >
       {items.map((item) => (
         <div key={item.label} className="space-y-1">
-          <dt className="text-[11px] tracking-wide text-zinc-500 uppercase">
+          <dt className="text-ink-faint text-[11px] tracking-wide uppercase">
             {normalizeLabels ? formatMetricLabel(item.label) : item.label}
           </dt>
-          <dd className="text-sm break-words text-zinc-200">{formatValue(item.value)}</dd>
+          <dd className="text-ink-soft text-sm break-words">{formatValue(item.value)}</dd>
         </div>
       ))}
     </dl>

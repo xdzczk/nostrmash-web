@@ -18,11 +18,11 @@ export function Timestamp({
   }
 
   if (!date) {
-    return <span className={`text-zinc-500 ${className}`}>time unknown</span>;
+    return <span className={`text-ink-faint ${className}`}>time unknown</span>;
   }
 
   return (
-    <time dateTime={date.toISOString()} className={`text-zinc-400 ${className}`}>
+    <time dateTime={date.toISOString()} className={`text-ink-muted ${className}`}>
       {date.toLocaleString()}
     </time>
   );

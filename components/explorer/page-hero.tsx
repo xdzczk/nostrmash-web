@@ -21,25 +21,25 @@ export function PageHero({
 }) {
   return (
     <section
-      className={`space-y-4 rounded-xl border border-zinc-800/95 bg-zinc-900/55 p-4 sm:space-y-5 sm:p-6 ${
+      className={`border-edge/95 bg-surface/55 space-y-4 rounded-xl border p-4 sm:space-y-5 sm:p-6 ${
         emphasize ? "shadow-[0_0_0_1px_rgba(63,63,70,0.34)]" : ""
       } ${className ?? ""}`}
     >
       <div className="space-y-2">
         {eyebrow ? (
-          <p className="text-[11px] font-medium tracking-[0.18em] text-zinc-500 uppercase">
+          <p className="text-ink-faint text-[11px] font-medium tracking-[0.18em] uppercase">
             {eyebrow}
           </p>
         ) : null}
         <h1
-          className={`font-semibold tracking-tight text-zinc-100 ${
+          className={`text-ink font-semibold tracking-tight ${
             emphasize ? "text-[1.85rem] sm:text-[2.1rem]" : "text-[1.75rem] sm:text-2xl"
           }`}
         >
           {title}
         </h1>
         {subtitle ? (
-          <p className="max-w-4xl text-sm leading-5 text-zinc-300 sm:text-[0.95rem] sm:leading-6">
+          <p className="text-ink-dim max-w-4xl text-sm leading-5 sm:text-[0.95rem] sm:leading-6">
             {subtitle}
           </p>
         ) : null}

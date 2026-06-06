@@ -11,7 +11,7 @@ export function RelayStatList({
 
   return (
     <section className="space-y-2">
-      <h3 className="text-sm font-medium text-zinc-200">{title}</h3>
+      <h3 className="text-ink-soft text-sm font-medium">{title}</h3>
       <MetadataList items={stats} columns={2} />
     </section>
   );

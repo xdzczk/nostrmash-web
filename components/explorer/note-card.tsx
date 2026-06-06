@@ -103,8 +103,8 @@ export function NoteCard({
 
   return (
     <article
-      className={`${cardTierClassName("standard")} ${
-        isTopRank ? "border-indigo-500/20 bg-zinc-900/60" : "border-zinc-800/85 bg-zinc-900/45"
+      className={`nm-lift ${cardTierClassName("standard")} ${
+        isTopRank ? "border-accent/20 bg-surface/60" : "border-edge/85 bg-surface/45"
       }`}
     >
       <div className="flex items-start gap-3">
@@ -115,10 +115,10 @@ export function NoteCard({
             width={44}
             height={44}
             unoptimized
-            className="h-10 w-10 rounded-full border border-zinc-700 object-cover sm:h-11 sm:w-11"
+            className="border-edge-strong h-10 w-10 rounded-full border object-cover sm:h-11 sm:w-11"
           />
         ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-950/70 text-xs text-zinc-500 sm:h-11 sm:w-11">
+          <div className="bg-surface-sunken/70 text-ink-faint flex h-10 w-10 items-center justify-center rounded-full text-xs sm:h-11 sm:w-11">
             ?
           </div>
         )}
@@ -133,18 +133,20 @@ export function NoteCard({
               </DiscoveryPill>
             ) : null}
             {authorHref ? (
-              <Link href={authorHref} className="font-medium text-zinc-200 hover:text-white">
+              <Link href={authorHref} className="text-ink-soft font-medium hover:text-white">
                 {authorLabel}
               </Link>
             ) : (
-              <span className="font-medium text-zinc-200">{authorLabel}</span>
+              <span className="text-ink-soft font-medium">{authorLabel}</span>
             )}
             {authorSecondaryLabel ? (
-              <span className="text-zinc-500" title={authorSecondaryLabel}>
+              <span className="text-ink-faint" title={authorSecondaryLabel}>
                 {truncateIdentifier(authorSecondaryLabel, "npub", "secondary")}
               </span>
             ) : null}
-            <span className="text-zinc-600">•</span>
+            <span aria-hidden className="text-zinc-600">
+              •
+            </span>
             <Timestamp unixSeconds={note.created_at} />
           </div>
         </div>
@@ -154,7 +156,7 @@ export function NoteCard({
         <NoteMedia content={note.content} />
       ) : null}
       <p
-        className={`mt-2.5 text-sm leading-5 [overflow-wrap:anywhere] text-zinc-100 sm:leading-6 ${clampClassName}`}
+        className={`text-ink mt-2.5 text-sm leading-5 [overflow-wrap:anywhere] sm:leading-6 ${clampClassName}`}
       >
         {presentationContent}
       </p>
@@ -163,15 +165,17 @@ export function NoteCard({
       ) : null}
 
       {noteDomains.length > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
-          <span className="text-zinc-500">Links</span>
+        <div className="text-ink-muted mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          <span className="text-ink-faint">Links</span>
           {noteDomains.map((domain) => (
             <span key={domain.raw} className="inline-flex items-center gap-2">
-              <span className="text-zinc-600">•</span>
+              <span aria-hidden className="text-zinc-600">
+                •
+              </span>
               <Link
                 href={`/domains/${encodeURIComponent(domain.raw)}`}
                 title={domain.raw}
-                className="text-zinc-300 transition hover:text-zinc-100"
+                className="text-ink-dim hover:text-ink transition"
               >
                 {domain.label}
               </Link>
@@ -181,14 +185,16 @@ export function NoteCard({
       ) : null}
 
       {noteHashtags.length > 0 ? (
-        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
-          <span className="text-zinc-500">Topics</span>
+        <div className="text-ink-muted mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          <span className="text-ink-faint">Topics</span>
           {noteHashtags.map((hashtag) => (
             <span key={hashtag} className="inline-flex items-center gap-2">
-              <span className="text-zinc-600">•</span>
+              <span aria-hidden className="text-zinc-600">
+                •
+              </span>
               <Link
                 href={`/hashtags/${encodeURIComponent(hashtag)}`}
-                className="text-zinc-300 transition hover:text-zinc-100"
+                className="text-ink-dim hover:text-ink transition"
               >
                 #{hashtag}
               </Link>
@@ -198,15 +204,17 @@ export function NoteCard({
       ) : null}
 
       {relayHosts.length > 0 ? (
-        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
-          <span className="text-zinc-500">Relays</span>
+        <div className="text-ink-muted mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          <span className="text-ink-faint">Relays</span>
           {relayHosts.map((relayHost) => (
             <span key={relayHost.raw} className="inline-flex items-center gap-2">
-              <span className="text-zinc-600">•</span>
+              <span aria-hidden className="text-zinc-600">
+                •
+              </span>
               <Link
                 href={`/relays/${encodeURIComponent(relayHost.raw)}`}
                 title={relayHost.raw}
-                className="text-zinc-300 transition hover:text-indigo-200"
+                className="hover:text-link-hover text-ink-dim transition"
               >
                 {relayHost.label}
               </Link>
@@ -220,7 +228,7 @@ export function NoteCard({
       <DiscoveryStatPills stats={metrics} className="mt-2.5 sm:mt-3" />
 
       {resolvedNoteId ? (
-        <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-zinc-400 sm:mt-3">
+        <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
           <DiscoveryActionLinks
             actions={[
               { label: "Open note", href: noteHref },

@@ -49,7 +49,7 @@ export function ThreadView({
 
       {ancestors.length > 0 ? (
         <section className="space-y-3">
-          <p className="text-sm font-medium text-zinc-300">Ancestors</p>
+          <p className="text-ink-dim text-sm font-medium">Ancestors</p>
           <div className="space-y-3">
             {ancestors.map((ancestor, index) => (
               <ThreadNode
@@ -75,7 +75,7 @@ export function ThreadView({
 
       {replies.length > 0 ? (
         <section className="space-y-3">
-          <p className="text-sm font-medium text-zinc-300">Replies</p>
+          <p className="text-ink-dim text-sm font-medium">Replies</p>
           <div className="space-y-3">
             {replies.map((reply, index) => (
               <ThreadNode
@@ -90,17 +90,17 @@ export function ThreadView({
       ) : null}
 
       {typeof nextCursor === "string" && nextCursor.length > 0 ? (
-        <div className="rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
+        <div className="border-accent/30 bg-accent/10 rounded-md border p-3">
           <p className="text-xs text-indigo-100">More replies are available.</p>
           {continuationHref ? (
             <Link
               href={continuationHref}
-              className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+              className="border-accent/40 text-link-hover mt-2 inline-block rounded-full border px-3 py-1 text-xs hover:text-indigo-100"
             >
               {continuationLabel}
             </Link>
           ) : null}
-          <p className="mt-2 text-xs break-all text-indigo-300/80">cursor: {nextCursor}</p>
+          <p className="text-link/80 mt-2 text-xs break-all">cursor: {nextCursor}</p>
         </div>
       ) : null}
     </div>

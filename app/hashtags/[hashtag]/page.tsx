@@ -115,12 +115,12 @@ export default async function HashtagPage({ params }: { params: Params }) {
             <NativeSemanticsBadges semantics={semantics} />
             <IdBadge id={hashtagTitle(normalizedHashtag)} label="hashtag" />
             {typeof totalMentions === "number" ? (
-              <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+              <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
                 mentions: {totalMentions.toLocaleString()}
               </span>
             ) : null}
             {typeof uniqueAuthors === "number" ? (
-              <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+              <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
                 unique authors: {uniqueAuthors.toLocaleString()}
               </span>
             ) : null}
@@ -130,13 +130,13 @@ export default async function HashtagPage({ params }: { params: Params }) {
           <div className="flex flex-wrap gap-2">
             <Link
               href={notesSurfaceHref}
-              className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:text-zinc-100"
+              className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-3 py-1 text-xs"
             >
               Open full note list
             </Link>
             <Link
               href={`/search?q=${encodeURIComponent(`#${normalizedHashtag}`)}&tab=all`}
-              className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-300 hover:text-zinc-100"
+              className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-3 py-1 text-xs"
             >
               Search this hashtag
             </Link>
@@ -162,7 +162,7 @@ export default async function HashtagPage({ params }: { params: Params }) {
         {notes.length > 0 ? (
           <div className="space-y-3">
             <NotesList notes={notes.slice(0, 8)} authorsByPubkey={authorsByPubkey} />
-            <Link href={notesSurfaceHref} className="inline-block text-sm text-indigo-300">
+            <Link href={notesSurfaceHref} className="text-link inline-block text-sm">
               Open all hashtag notes
             </Link>
           </div>

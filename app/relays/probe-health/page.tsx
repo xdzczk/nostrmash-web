@@ -24,11 +24,11 @@ function probeStatusBadge(status: string | undefined) {
     eose_timeout: "border-amber-700/60 text-amber-300",
     protocol_error: "border-red-800/60 text-red-400",
     rate_limited: "border-yellow-700/60 text-yellow-300",
-    unknown_error: "border-zinc-700 text-zinc-400",
+    unknown_error: "border-edge-strong text-ink-muted",
   };
   return (
     <span
-      className={`rounded-full border px-2 py-0.5 text-[11px] ${colors[status] ?? "border-zinc-700 text-zinc-400"}`}
+      className={`rounded-full border px-2 py-0.5 text-[11px] ${colors[status] ?? "border-edge-strong text-ink-muted"}`}
     >
       {status.replace(/_/g, " ")}
     </span>
@@ -40,14 +40,14 @@ function admissionBadge(state: string) {
     active: "border-emerald-700/60 text-emerald-300",
     pinned: "border-sky-700/60 text-sky-300",
     probation: "border-amber-700/60 text-amber-300",
-    candidate: "border-zinc-700 text-zinc-400",
-    inactive: "border-zinc-700 text-zinc-500",
+    candidate: "border-edge-strong text-ink-muted",
+    inactive: "border-edge-strong text-ink-faint",
     blocked: "border-red-800/60 text-red-400",
     draining: "border-orange-700/60 text-orange-300",
   };
   return (
     <span
-      className={`rounded-full border px-2 py-0.5 text-[11px] ${colors[state] ?? "border-zinc-700 text-zinc-400"}`}
+      className={`rounded-full border px-2 py-0.5 text-[11px] ${colors[state] ?? "border-edge-strong text-ink-muted"}`}
     >
       {state}
     </span>
@@ -115,7 +115,7 @@ export default async function RelayProbeHealthPage() {
         subtitle="Health probe results from automated monitoring of Nostr relays. Probes test websocket connectivity, NIP-01 subscription, and EOSE delivery."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
               probed relays: {relays.length.toLocaleString()}
             </span>
             <span className="rounded-full border border-emerald-800/50 px-2 py-1 text-emerald-300">
@@ -126,7 +126,7 @@ export default async function RelayProbeHealthPage() {
             </span>
             <Link
               href="/relays"
-              className="rounded-full border border-zinc-700 px-2 py-1 text-indigo-300 hover:border-indigo-400/40"
+              className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-2 py-1"
             >
               Back to relay explorer
             </Link>
@@ -154,11 +154,11 @@ export default async function RelayProbeHealthPage() {
               return (
                 <li
                   key={relay.normalized_url}
-                  className="rounded-md border border-zinc-800 bg-zinc-900/40 p-3"
+                  className="border-edge bg-surface/40 rounded-md border p-3"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate text-sm text-zinc-100">{relay.normalized_url}</p>
+                      <p className="text-ink truncate text-sm">{relay.normalized_url}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       {probeStatusBadge(relay.last_probe_status)}
@@ -166,14 +166,14 @@ export default async function RelayProbeHealthPage() {
                       {host ? (
                         <Link
                           href={`/relays/${encodeURIComponent(host)}`}
-                          className="rounded-full border border-zinc-700 px-3 py-1 text-indigo-300 hover:border-indigo-400/40"
+                          className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1"
                         >
                           Open relay
                         </Link>
                       ) : null}
                     </div>
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-zinc-500">
+                  <div className="text-ink-faint mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
                     <span>
                       connect:{" "}
                       <span className={relay.last_connect_ok ? "text-emerald-400" : "text-red-400"}>

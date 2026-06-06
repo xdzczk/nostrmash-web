@@ -203,8 +203,8 @@ function NoteAuthor({
         <div
           className={
             compact
-              ? "flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-zinc-950/60 text-xs font-medium text-zinc-300"
-              : "flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-zinc-950/60 text-sm font-medium text-zinc-300"
+              ? "bg-surface-sunken/60 text-ink-dim flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-xs font-medium"
+              : "bg-surface-sunken/60 text-ink-dim flex h-12 w-12 items-center justify-center rounded-full border border-white/10 text-sm font-medium"
           }
         >
           {authorInitial}
@@ -223,22 +223,19 @@ function NoteAuthor({
               href={authorHref}
               className={
                 compact
-                  ? "font-medium text-zinc-200 hover:text-zinc-100"
-                  : "font-medium text-zinc-50 hover:text-white"
+                  ? "text-ink-soft hover:text-ink font-medium"
+                  : "text-ink-strong font-medium hover:text-white"
               }
             >
               {authorLabel}
             </Link>
           ) : (
-            <span className={compact ? "font-medium text-zinc-200" : "font-medium text-zinc-50"}>
+            <span className={compact ? "text-ink-soft font-medium" : "text-ink-strong font-medium"}>
               {authorLabel}
             </span>
           )}
           {showSecondaryLabel && authorSecondaryLabel ? (
-            <span
-              className={compact ? "truncate text-zinc-600" : "truncate text-zinc-500"}
-              title={authorSecondaryLabel}
-            >
+            <span className="text-ink-faint truncate" title={authorSecondaryLabel}>
               {truncateIdentifier(authorSecondaryLabel, "npub", "secondary")}
             </span>
           ) : null}
@@ -277,16 +274,16 @@ function QuietActionLinks({
     <div
       className={
         featured
-          ? "flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs text-zinc-400"
-          : "flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-500"
+          ? "text-ink-muted flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs"
+          : "text-ink-faint flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]"
       }
     >
       {!featured ? (
         <>
-          <span className="text-zinc-600">
+          <span className="text-ink-faint">
             event {truncateIdentifier(noteId, "event", "secondary")}
           </span>
-          <span className="text-zinc-700">|</span>
+          <span className="text-edge-strong">|</span>
         </>
       ) : null}
       <DiscoveryActionLinks
@@ -301,7 +298,7 @@ function QuietActionLinks({
             href: `/notes/${encodeURIComponent(noteId)}#note-provenance`,
           },
         ]}
-        className={featured ? "text-zinc-300" : "text-zinc-400"}
+        className={featured ? "text-ink-dim" : "text-ink-muted"}
       />
     </div>
   );
@@ -320,7 +317,7 @@ function NoteMediaFrame({
 
   return (
     <div
-      className={`overflow-hidden ${compact ? "border border-white/8 bg-zinc-950/50" : "border border-white/10 bg-zinc-950/70"} ${frameClassName}`}
+      className={`overflow-hidden ${compact ? "bg-surface-sunken/50 border border-white/8" : "bg-surface-sunken/70 border border-white/10"} ${frameClassName}`}
     >
       {attachment.kind === "image" ? (
         <img src={attachment.url} alt="" className="h-full w-full object-cover" />
@@ -335,7 +332,7 @@ function NoteMediaFrame({
         />
       ) : null}
       {attachment.kind === "audio" ? (
-        <div className="flex h-full items-center justify-center px-4 text-sm text-zinc-300">
+        <div className="text-ink-dim flex h-full items-center justify-center px-4 text-sm">
           <span>Audio attachment</span>
         </div>
       ) : null}
@@ -363,14 +360,16 @@ function FeaturedNoteCard({
   const statusLabel = buildStatusLabel(rank, signals);
 
   return (
-    <article className="rounded-[1.7rem] border border-indigo-300/20 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.14),transparent_44%),linear-gradient(180deg,rgba(40,40,46,0.96),rgba(23,23,27,0.95))] p-6 shadow-[0_34px_110px_rgba(30,64,175,0.26)] ring-1 ring-white/10 sm:p-7 xl:p-8">
+    <article className="border-link/20 rounded-[1.7rem] border bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.14),transparent_44%),linear-gradient(180deg,rgba(40,40,46,0.96),rgba(23,23,27,0.95))] p-6 shadow-[0_34px_110px_rgba(30,64,175,0.26)] ring-1 ring-white/10 sm:p-7 xl:p-8">
       <div className="flex flex-wrap items-center gap-2.5 text-sm">
-        <span className="inline-flex items-center rounded-full border border-indigo-300/30 bg-indigo-400/15 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-indigo-100 uppercase">
+        <span className="bg-accent-soft/15 border-link/30 inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-indigo-100 uppercase">
           Lead note
         </span>
-        <span className="font-medium tracking-[0.16em] text-indigo-200 uppercase">#{rank}</span>
-        <span className="text-zinc-600">•</span>
-        <span className="text-zinc-300">{statusLabel}</span>
+        <span className="text-link-hover font-medium tracking-[0.16em] uppercase">#{rank}</span>
+        <span aria-hidden className="text-zinc-600">
+          •
+        </span>
+        <span className="text-ink-dim">{statusLabel}</span>
       </div>
 
       <div
@@ -381,7 +380,7 @@ function FeaturedNoteCard({
         <div className="max-w-[52rem] min-w-0 space-y-5">
           <NoteAuthor note={note} author={author} showSecondaryLabel={false} />
           {showContent ? (
-            <p className="max-w-[46rem] text-base leading-7 [overflow-wrap:anywhere] whitespace-pre-wrap text-zinc-100 sm:text-[1.07rem]">
+            <p className="text-ink max-w-[46rem] text-base leading-7 [overflow-wrap:anywhere] whitespace-pre-wrap sm:text-[1.07rem]">
               {content}
             </p>
           ) : null}
@@ -418,11 +417,13 @@ function SecondaryNoteCard({
   const statusLabel = buildStatusLabel(rank, signals);
 
   return (
-    <article className="rounded-[1.35rem] border border-white/6 bg-zinc-950/20 p-4 xl:p-[1.125rem]">
+    <article className="bg-surface-sunken/20 rounded-[1.35rem] border border-white/6 p-4 xl:p-[1.125rem]">
       <div className="flex flex-wrap items-center gap-2 text-[11px]">
-        <span className="font-medium tracking-[0.16em] text-zinc-400 uppercase">#{rank}</span>
-        <span className="text-zinc-600">•</span>
-        <span className="text-zinc-600">{statusLabel}</span>
+        <span className="text-ink-muted font-medium tracking-[0.16em] uppercase">#{rank}</span>
+        <span aria-hidden className="text-zinc-600">
+          •
+        </span>
+        <span className="text-ink-faint">{statusLabel}</span>
       </div>
 
       <div className="mt-2.5 space-y-2.5">
@@ -430,7 +431,7 @@ function SecondaryNoteCard({
         <NoteAuthor note={note} author={author} compact />
         {showContent ? (
           <p
-            className={`${preview.isCompact ? "line-clamp-2" : "line-clamp-4"} text-sm leading-6 [overflow-wrap:anywhere] whitespace-pre-wrap text-zinc-300`}
+            className={`${preview.isCompact ? "line-clamp-2" : "line-clamp-4"} text-ink-dim text-sm leading-6 [overflow-wrap:anywhere] whitespace-pre-wrap`}
           >
             {content}
           </p>

@@ -1,7 +1,13 @@
+import { NotesListSkeleton, PageHeroSkeleton } from "@/components/ui/skeleton";
+
 export default function TrendingLoading() {
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-5 text-sm text-zinc-300">
-      Loading trending explorer data...
+    <div className="space-y-7">
+      <span className="sr-only" role="status">
+        Loading trending explorer data
+      </span>
+      <PageHeroSkeleton />
+      <NotesListSkeleton count={5} />
     </div>
   );
 }

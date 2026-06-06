@@ -220,19 +220,15 @@ export function WhyNow({
   if (visibleReasons.length === 0) return null;
 
   const containerClassName =
-    tone === "highlight"
-      ? "rounded-xl border border-indigo-300/20 bg-indigo-500/[0.07] px-3.5 py-2.5"
-      : "";
+    tone === "highlight" ? "rounded-xl border border-link/20 bg-accent/[0.07] px-3.5 py-2.5" : "";
   const titleClassName =
     tone === "highlight"
       ? "text-[10px] font-semibold tracking-[0.16em] text-indigo-100 uppercase"
-      : "text-[10px] font-semibold tracking-[0.16em] text-zinc-500 uppercase";
+      : "text-[10px] font-semibold tracking-[0.16em] text-ink-faint uppercase";
   const reasonClassName =
-    tone === "highlight"
-      ? "border-indigo-300/30 bg-indigo-300/10 text-indigo-100"
-      : "text-zinc-300";
-  const supportClassName = tone === "highlight" ? "text-indigo-200/80" : "text-zinc-500";
-  const dotClassName = tone === "highlight" ? "text-indigo-200/60" : "text-zinc-600";
+    tone === "highlight" ? "border-link/30 bg-link/10 text-indigo-100" : "text-ink-dim";
+  const supportClassName = tone === "highlight" ? "text-link-hover/80" : "text-ink-faint";
+  const dotClassName = tone === "highlight" ? "text-link-hover/60" : "text-zinc-600";
 
   return (
     <div className={`${containerClassName} ${className}`.trim()}>
@@ -243,7 +239,11 @@ export function WhyNow({
             key={`${reason.text}-${reason.support ?? index}`}
             className="inline-flex items-center gap-2"
           >
-            {index > 0 ? <span className={dotClassName}>•</span> : null}
+            {index > 0 ? (
+              <span aria-hidden className={dotClassName}>
+                •
+              </span>
+            ) : null}
             <span
               className={
                 tone === "highlight"
@@ -254,7 +254,9 @@ export function WhyNow({
               <span>{reason.text}</span>
               {reason.support && renderSupport(reason.support).length > 0 ? (
                 <>
-                  <span className={dotClassName}>·</span>
+                  <span aria-hidden className={dotClassName}>
+                    ·
+                  </span>
                   <span className={supportClassName}>{renderSupport(reason.support)}</span>
                 </>
               ) : null}

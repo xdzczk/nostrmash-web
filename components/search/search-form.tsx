@@ -5,6 +5,8 @@ import { useCallback, useRef, useState } from "react";
 
 import { profileIdentifier } from "@/components/explorer/utils";
 import { SuggestionDropdown } from "@/components/search/suggestion-dropdown";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useSearchSuggest } from "@/hooks/use-search-suggest";
 import type { Profile } from "@/lib/types/api";
 
@@ -128,8 +130,9 @@ export function SearchForm({
         className={`relative flex w-full flex-col gap-2 sm:flex-row ${heroVariant ? "xl:items-stretch xl:gap-3" : ""}`}
       >
         <div className="relative w-full min-w-0">
-          <input
+          <Input
             ref={inputRef}
+            variant={heroVariant ? "hero" : "default"}
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -148,11 +151,6 @@ export function SearchForm({
             aria-haspopup="listbox"
             aria-autocomplete="list"
             aria-label="Search notes, profiles, hashtags, relays, and event IDs"
-            className={`w-full min-w-0 rounded-lg border px-4 py-3 text-sm text-zinc-100 outline-none ${
-              heroVariant
-                ? "border-zinc-700/90 bg-zinc-950/90 px-5 py-3.5 text-[0.95rem] placeholder:text-zinc-500 focus:border-zinc-600 focus:ring-2 focus:ring-indigo-400/70 xl:py-4"
-                : "border-zinc-700 bg-zinc-950 placeholder:text-zinc-500 focus:ring-2 focus:ring-indigo-400"
-            }`}
           />
           {showDropdown && (
             <SuggestionDropdown
@@ -165,23 +163,22 @@ export function SearchForm({
             />
           )}
         </div>
-        <button
+        <Button
           type="submit"
-          className={`min-h-12 shrink-0 rounded-lg px-5 py-3 text-sm font-medium text-white transition sm:min-w-[120px] ${
-            heroVariant
-              ? "bg-indigo-500/95 hover:bg-indigo-400 xl:min-w-[148px] xl:px-6"
-              : "bg-indigo-500 hover:bg-indigo-400"
-          }`}
+          size="lg"
+          className={`sm:min-w-[120px] ${heroVariant ? "xl:min-w-[148px] xl:px-6" : ""}`}
         >
           Search
-        </button>
+        </Button>
       </div>
       {heroVariant && shortcuts.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2 xl:gap-2.5">
           {shortcuts.map((shortcut) => (
-            <button
+            <Button
               key={shortcut.label}
-              type="button"
+              variant="chip"
+              size="sm"
+              className="min-h-0 px-2.5 py-1"
               onClick={() => {
                 if (shortcut.href) {
                   router.push(shortcut.href);
@@ -192,15 +189,14 @@ export function SearchForm({
                   inputRef.current?.focus();
                 }
               }}
-              className="rounded-full border border-zinc-700/90 bg-zinc-900/70 px-2.5 py-1 text-xs text-zinc-300 transition hover:border-zinc-600 hover:text-zinc-100"
             >
               {shortcut.label}
-            </button>
+            </Button>
           ))}
         </div>
       ) : null}
       {helperText ? (
-        <p className={`text-xs ${heroVariant ? "max-w-3xl text-zinc-500" : "text-zinc-400"}`}>
+        <p className={`text-xs ${heroVariant ? "text-ink-faint max-w-3xl" : "text-ink-muted"}`}>
           {helperText}
         </p>
       ) : null}

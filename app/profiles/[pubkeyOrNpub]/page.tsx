@@ -558,14 +558,14 @@ export default async function ProfilePage({
               width={72}
               height={72}
               unoptimized
-              className="h-16 w-16 rounded-full border border-zinc-700 object-cover sm:h-[72px] sm:w-[72px]"
+              className="border-edge-strong h-16 w-16 rounded-full border object-cover sm:h-[72px] sm:w-[72px]"
             />
             <div className="min-w-0 flex-1 space-y-1">
-              <p className="truncate text-xl font-semibold tracking-tight text-zinc-100">
+              <p className="text-ink truncate text-xl font-semibold tracking-tight">
                 {heroDisplayName}
               </p>
-              {heroHandle ? <p className="truncate text-sm text-zinc-400">{heroHandle}</p> : null}
-              <p className="text-sm leading-6 text-zinc-300">{heroBio}</p>
+              {heroHandle ? <p className="text-ink-muted truncate text-sm">{heroHandle}</p> : null}
+              <p className="text-ink-dim text-sm leading-6">{heroBio}</p>
             </div>
           </div>
 
@@ -580,7 +580,7 @@ export default async function ProfilePage({
             {heroWebsite?.raw ? (
               <Link
                 href={heroWebsite.raw}
-                className="rounded-full border border-zinc-700 bg-zinc-900/80 px-2 py-1 text-zinc-300 hover:text-zinc-100"
+                className="border-edge-strong bg-surface/80 text-ink-dim hover:text-ink rounded-full border px-2 py-1"
               >
                 {heroWebsite.display ?? truncateMiddle(heroWebsite.raw, 28)}
               </Link>
@@ -588,7 +588,7 @@ export default async function ProfilePage({
             {heroLud16?.raw ? (
               <a
                 href={`lightning:${heroLud16.raw}`}
-                className="rounded-full border border-zinc-700 bg-zinc-900/80 px-2 py-1 text-zinc-300 hover:text-zinc-100"
+                className="border-edge-strong bg-surface/80 text-ink-dim hover:text-ink rounded-full border px-2 py-1"
               >
                 {heroLud16.display ?? heroLud16.raw}
               </a>
@@ -600,10 +600,10 @@ export default async function ProfilePage({
               {heroCounters.map((counter) => (
                 <div
                   key={counter.key}
-                  className="rounded-full border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-300"
+                  className="border-edge-strong bg-surface/80 text-ink-dim rounded-full border px-3 py-1.5 text-xs"
                 >
-                  <span className="mr-2 text-zinc-500">{counter.label}</span>
-                  <span className="font-medium text-zinc-100">{counter.value}</span>
+                  <span className="text-ink-faint mr-2">{counter.label}</span>
+                  <span className="text-ink font-medium">{counter.value}</span>
                 </div>
               ))}
             </div>
@@ -614,7 +614,7 @@ export default async function ProfilePage({
               <Link
                 key={action.id}
                 href={action.href}
-                className="rounded-full border border-zinc-700 px-2.5 py-1 text-zinc-300 hover:text-zinc-100"
+                className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
               >
                 {action.label}
               </Link>
@@ -667,13 +667,13 @@ export default async function ProfilePage({
               )
             ) : null}
             {typeof activeNextCursor === "string" && activeNextCursor.length > 0 ? (
-              <div className="rounded-md border border-indigo-500/30 bg-indigo-500/10 p-3">
+              <div className="border-accent/30 bg-accent/10 rounded-md border p-3">
                 <p className="text-xs text-indigo-100">
                   More {activeTabMeta?.label.toLowerCase() ?? "activity"} are available.
                 </p>
                 <Link
                   href={activeContinuationHref}
-                  className="mt-2 inline-block rounded-full border border-indigo-500/40 px-3 py-1 text-xs text-indigo-200 hover:text-indigo-100"
+                  className="border-accent/40 text-link-hover mt-2 inline-block rounded-full border px-3 py-1 text-xs hover:text-indigo-100"
                 >
                   Continue {activeTabMeta?.label.toLowerCase() ?? "activity"}
                 </Link>
@@ -690,7 +690,7 @@ export default async function ProfilePage({
         >
           <div className="space-y-5">
             <div className="space-y-2">
-              <p className="text-xs font-medium tracking-wide text-zinc-400 uppercase">
+              <p className="text-ink-muted text-xs font-medium tracking-wide uppercase">
                 Related profiles
               </p>
               {relatedProfiles.length > 0 ? (
@@ -700,7 +700,7 @@ export default async function ProfilePage({
                   relatedProfilesNextCursor.length > 0 ? (
                     <Link
                       href={relatedProfilesContinuationHref}
-                      className="inline-block text-sm text-indigo-300"
+                      className="text-link inline-block text-sm"
                     >
                       Continue related profiles
                     </Link>
@@ -712,7 +712,7 @@ export default async function ProfilePage({
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs font-medium tracking-wide text-zinc-400 uppercase">
+              <p className="text-ink-muted text-xs font-medium tracking-wide uppercase">
                 Rising profiles
               </p>
               {risingProfiles.length > 0 ? (
@@ -739,27 +739,24 @@ export default async function ProfilePage({
               return (
                 <li
                   key={`${field.key}-${field.label}`}
-                  className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3"
+                  className="border-edge bg-surface-sunken/40 rounded-md border p-3"
                 >
-                  <p className="mb-1 text-[11px] tracking-wide text-zinc-500 uppercase">
+                  <p className="text-ink-faint mb-1 text-[11px] tracking-wide uppercase">
                     {field.label}
                   </p>
                   {isUrl ? (
-                    <Link
-                      href={raw}
-                      className="text-sm break-all text-indigo-300 hover:text-indigo-200"
-                    >
+                    <Link href={raw} className="text-link hover:text-link-hover text-sm break-all">
                       {display}
                     </Link>
                   ) : isLud16 ? (
                     <a
                       href={`lightning:${raw}`}
-                      className="text-sm break-all text-indigo-300 hover:text-indigo-200"
+                      className="text-link hover:text-link-hover text-sm break-all"
                     >
                       {display}
                     </a>
                   ) : (
-                    <p className="text-sm break-all text-zinc-200" title={raw || display}>
+                    <p className="text-ink-soft text-sm break-all" title={raw || display}>
                       {display}
                     </p>
                   )}

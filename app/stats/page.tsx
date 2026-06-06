@@ -92,7 +92,7 @@ function StatsGroup({
 
         {objectEntries.map((group) => (
           <div key={group.title} className="space-y-2">
-            <p className="text-[11px] tracking-[0.14em] text-zinc-500 uppercase">
+            <p className="text-ink-faint text-[11px] tracking-[0.14em] uppercase">
               {formatMetricLabel(group.title)}
             </p>
             <MetadataList items={group.items} columns={2} />
@@ -101,14 +101,14 @@ function StatsGroup({
 
         {arraySections.slice(0, 2).map((group) => (
           <div key={group.label} className="space-y-2">
-            <p className="text-[11px] tracking-[0.14em] text-zinc-500 uppercase">
+            <p className="text-ink-faint text-[11px] tracking-[0.14em] uppercase">
               {formatMetricLabel(group.label)}
             </p>
             <div className="space-y-2">
               {group.value.slice(0, 8).map((entry, index) => (
                 <div
                   key={`${group.label}-${index}`}
-                  className="rounded-md border border-zinc-800 bg-zinc-900/30 p-3"
+                  className="border-edge bg-surface/30 rounded-md border p-3"
                 >
                   {isRecord(entry) ? (
                     <MetadataList
@@ -124,7 +124,7 @@ function StatsGroup({
                       columns={2}
                     />
                   ) : (
-                    <p className="text-sm text-zinc-300">{String(entry)}</p>
+                    <p className="text-ink-dim text-sm">{String(entry)}</p>
                   )}
                 </div>
               ))}
@@ -196,15 +196,15 @@ export default async function StatsPage() {
               <li
                 key={`${row.relay}-${index}`}
                 className={`rounded-md border p-3 ${
-                  index < 3 ? "border-zinc-700 bg-zinc-900/65" : "border-zinc-800 bg-zinc-900/40"
+                  index < 3 ? "border-edge-strong bg-surface/65" : "border-edge bg-surface/40"
                 }`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-sm text-zinc-100">
+                    <p className="text-ink text-sm">
                       #{index + 1} {row.relay}
                     </p>
-                    <p className="mt-1 text-xs text-zinc-500">
+                    <p className="text-ink-faint mt-1 text-xs">
                       {Object.entries(row.metrics)
                         .slice(0, 3)
                         .map(([label, value]) => `${formatMetricLabel(label)}: ${String(value)}`)
@@ -214,13 +214,13 @@ export default async function StatsPage() {
                   <div className="flex flex-wrap gap-2 text-xs">
                     <Link
                       href={`/relays/${encodeURIComponent(row.relay)}`}
-                      className="rounded-full border border-zinc-700 px-3 py-1 text-indigo-300 hover:border-indigo-400/40"
+                      className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1"
                     >
                       Open relay
                     </Link>
                     <Link
                       href={`/search?q=${encodeURIComponent(row.relay)}&tab=all`}
-                      className="rounded-full border border-zinc-700 px-3 py-1 text-indigo-300 hover:border-indigo-400/40"
+                      className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1"
                     >
                       Search mentions
                     </Link>

@@ -8,6 +8,32 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* Semantic surface + line tokens. Use with opacity modifiers, e.g.
+     `bg-surface/55`, `border-edge`, to replace scattered raw zinc values. */
+  --color-surface: #18181b; /* zinc-900 */
+  --color-surface-sunken: #09090b; /* zinc-950 */
+  --color-edge: #27272a; /* zinc-800 */
+  --color-edge-strong: #3f3f46; /* zinc-700 */
+
+  /* Brand accent + muted text. */
+  --color-accent: #6366f1; /* indigo-500 */
+  --color-accent-soft: #818cf8; /* indigo-400 */
+
+  /* Ink scale — text emphasis ladder (use as `text-ink`, `text-ink-soft`, …).
+     One coherent family so themes redefine text in six places. All tiers from
+     `ink-faint` up meet WCAG AA on every app surface. */
+  --color-ink-strong: #fafafa; /* zinc-50  — strongest headlines */
+  --color-ink: #f4f4f5; /* zinc-100 — default headings / key text */
+  --color-ink-soft: #e4e4e7; /* zinc-200 — emphasized labels */
+  --color-ink-dim: #d4d4d8; /* zinc-300 — body copy */
+  --color-ink-muted: #a1a1aa; /* zinc-400 — secondary */
+  --color-ink-faint: #83838c; /* tertiary labels (AA-compliant) */
+
+  /* Interactive text (links) + hover. */
+  --color-link: #a5b4fc; /* indigo-300 */
+  --color-link-hover: #c7d2fe; /* indigo-200 */
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -23,4 +49,244 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Typographic refinement: balance headings, avoid paragraph orphans. */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+
+/* ---------------------------------------------------------------------------
+   Motion layer
+   Dependency-free animation primitives. Plain (unlayered) CSS so they reliably
+   win over Tailwind's layered utilities. Every animation degrades gracefully
+   under `prefers-reduced-motion`.
+--------------------------------------------------------------------------- */
+
+@keyframes nm-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes nm-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes nm-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes nm-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Plays on every navigation via app/template.tsx (templates remount per route). */
+.nm-page-enter {
+  animation: nm-page-enter 440ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.nm-fade-in {
+  animation: nm-fade-in 320ms ease both;
+}
+
+.nm-pop-in {
+  transform-origin: top center;
+  animation: nm-pop-in 150ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Centralized interactive vocabulary: one press/transition feel everywhere. */
+.nm-pressable {
+  transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+  transition-duration: 160ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.nm-pressable:active {
+  transform: scale(0.97);
+}
+
+/* Subtle hover lift for cards (pointer devices only). */
+.nm-lift {
+  transition-property: transform, border-color, box-shadow, background-color;
+  transition-duration: 220ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) {
+  .nm-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+  }
+}
+
+/* Skeleton placeholder with a single travelling shimmer highlight. */
+.nm-skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background-color: rgba(63, 63, 70, 0.3);
+}
+.nm-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(244, 244, 245, 0.07) 50%,
+    transparent 100%
+  );
+  animation: nm-shimmer 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nm-page-enter,
+  .nm-fade-in,
+  .nm-pop-in {
+    animation: none;
+  }
+  .nm-pressable,
+  .nm-lift {
+    transition-property: background-color, border-color, color, box-shadow, opacity;
+  }
+  .nm-pressable:active,
+  .nm-lift:hover {
+    transform: none;
+  }
+  .nm-skeleton::after {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Signature layer ("the NostrMash look")
+   A live-monitor identity: a drifting accent aurora, a recurring live pulse,
+   and an animated heartbeat trace for network data.
+--------------------------------------------------------------------------- */
+
+/* Drifting accent aurora — a soft, ownable glow behind hero surfaces. */
+@keyframes nm-aurora-drift {
+  0% {
+    transform: translate3d(-2.5%, -1.5%, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(2.5%, 2%, 0) scale(1.09);
+  }
+}
+
+.nm-aurora-layer {
+  background:
+    radial-gradient(38% 60% at 18% 22%, rgba(99, 102, 241, 0.22), transparent 70%),
+    radial-gradient(34% 52% at 82% 12%, rgba(129, 140, 248, 0.16), transparent 72%),
+    radial-gradient(46% 58% at 62% 92%, rgba(99, 102, 241, 0.12), transparent 70%);
+  filter: blur(26px);
+  animation: nm-aurora-drift 19s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+/* Live pulse dot — the recurring "this is live" signal. */
+@keyframes nm-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  75%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+.nm-live-dot {
+  position: relative;
+  display: inline-block;
+  height: 0.5rem;
+  width: 0.5rem;
+  flex: none;
+  border-radius: 9999px;
+  background: var(--color-accent-soft);
+}
+.nm-live-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  animation: nm-ping 1.9s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Heartbeat trace — a bright segment travelling along a normalized SVG path. */
+@keyframes nm-trace {
+  from {
+    stroke-dashoffset: 130;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes nm-spark-dot {
+  0%,
+  100% {
+    opacity: 0.95;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(1.55);
+  }
+}
+
+.nm-spark-trace {
+  stroke-dasharray: 26 130;
+  animation: nm-trace 3.4s linear infinite;
+}
+.nm-spark-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nm-spark-dot 1.9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nm-aurora-layer,
+  .nm-live-dot::after,
+  .nm-spark-trace,
+  .nm-spark-dot {
+    animation: none;
+  }
+}
+
+/* Windows High Contrast / forced-colors: box-shadow focus rings are dropped,
+   so guarantee a visible outline on keyboard focus. */
+@media (forced-colors: active) {
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 2px;
+  }
 }

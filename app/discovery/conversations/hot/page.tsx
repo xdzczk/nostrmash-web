@@ -97,7 +97,7 @@ export default async function HotConversationsPage({
           />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
-          <Link href={continuationHref} className="mt-3 inline-block text-sm text-indigo-300">
+          <Link href={continuationHref} className="text-link mt-3 inline-block text-sm">
             Load more conversations
           </Link>
         ) : null}
@@ -115,13 +115,13 @@ export default async function HotConversationsPage({
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
           <Link
             href="/discovery/profiles/rising"
-            className="rounded-full border border-zinc-700 px-2.5 py-1 text-zinc-300 hover:text-zinc-100"
+            className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
           >
             Open rising profiles
           </Link>
           <Link
             href="/trending/notes"
-            className="rounded-full border border-zinc-700 px-2.5 py-1 text-zinc-300 hover:text-zinc-100"
+            className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
           >
             See trending notes
           </Link>

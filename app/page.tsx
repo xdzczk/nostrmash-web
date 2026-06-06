@@ -302,14 +302,15 @@ export default async function HomePage() {
     <div className="relative left-1/2 w-screen max-w-none -translate-x-1/2 px-4 sm:px-5 xl:px-8 2xl:px-10">
       <div className="mx-auto w-full max-w-[92rem] space-y-12 sm:space-y-16 xl:space-y-[5.1rem]">
         {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
-        <section className="relative overflow-hidden rounded-[2rem] border border-zinc-800/90 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.12),transparent_34%),linear-gradient(180deg,rgba(24,24,27,0.94),rgba(14,14,16,0.98))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.28)] sm:p-7 xl:p-9 2xl:px-10">
-          <div className="grid gap-7 sm:gap-8 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.72fr)] xl:items-start xl:gap-10 2xl:grid-cols-[minmax(0,1.52fr)_360px] 2xl:gap-12">
+        <section className="border-edge/90 relative overflow-hidden rounded-[2rem] border bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.12),transparent_34%),linear-gradient(180deg,rgba(24,24,27,0.94),rgba(14,14,16,0.98))] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.28)] sm:p-7 xl:p-9 2xl:px-10">
+          <div aria-hidden className="nm-aurora-layer pointer-events-none absolute inset-0" />
+          <div className="relative z-10 grid gap-7 sm:gap-8 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.72fr)] xl:items-start xl:gap-10 2xl:grid-cols-[minmax(0,1.52fr)_360px] 2xl:gap-12">
             <div className="space-y-6 sm:space-y-7">
               <div className="space-y-4 sm:space-y-5">
-                <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-zinc-100 sm:text-5xl xl:max-w-[15ch] xl:text-[3.7rem] xl:leading-[1.02] 2xl:max-w-[16ch] 2xl:text-[4rem]">
+                <h1 className="text-ink max-w-4xl text-4xl font-semibold tracking-tight sm:text-5xl xl:max-w-[15ch] xl:text-[3.7rem] xl:leading-[1.02] 2xl:max-w-[16ch] 2xl:text-[4rem]">
                   Track what is moving on Nostr.
                 </h1>
-                <p className="max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base">
+                <p className="text-ink-muted max-w-2xl text-sm leading-6 sm:text-base">
                   One index for the lead note, rising profiles, relay pulse, and fast-moving topics.
                 </p>
               </div>
@@ -319,54 +320,59 @@ export default async function HomePage() {
                 helperText="Search notes, profiles, hashtags, relays, and event IDs."
                 shortcuts={heroSearchShortcuts}
               />
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+              <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                 <span>{trendWindowLabel}</span>
-                <span className="text-zinc-600">•</span>
-                <span>{freshness}</span>
+                <span aria-hidden className="text-zinc-600">
+                  •
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="nm-live-dot" aria-hidden />
+                  {freshness}
+                </span>
               </div>
             </div>
-            <aside className="rounded-[1.5rem] border border-zinc-800/90 bg-zinc-950/35 p-4 sm:p-5 xl:self-stretch xl:justify-self-end xl:p-6">
-              <p className="text-[11px] font-medium tracking-[0.18em] text-zinc-500 uppercase">
+            <aside className="border-edge/90 bg-surface-sunken/35 rounded-[1.5rem] border p-4 sm:p-5 xl:self-stretch xl:justify-self-end xl:p-6">
+              <p className="text-ink-faint text-[11px] font-medium tracking-[0.18em] uppercase">
                 Snapshot
               </p>
-              <dl className="mt-4 space-y-3 border-t border-zinc-800/70 pt-4 text-sm">
+              <dl className="border-edge/70 mt-4 space-y-3 border-t pt-4 text-sm">
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="text-zinc-500">Window</dt>
-                  <dd className="font-medium text-zinc-100">{trendWindowLabel}</dd>
+                  <dt className="text-ink-faint">Window</dt>
+                  <dd className="text-ink font-medium">{trendWindowLabel}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="text-zinc-500">Freshness</dt>
-                  <dd className="font-medium text-zinc-100">{freshness}</dd>
+                  <dt className="text-ink-faint">Freshness</dt>
+                  <dd className="text-ink font-medium">{freshness}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="text-zinc-500">Top relay</dt>
+                  <dt className="text-ink-faint">Top relay</dt>
                   <dd className="min-w-0">
                     {topRelay ? (
                       <Link
                         href={`/relays/${encodeURIComponent(topRelay)}`}
                         title={topRelay}
-                        className="truncate font-medium text-zinc-200 transition hover:text-indigo-200"
+                        className="hover:text-link-hover text-ink-soft truncate font-medium transition"
                       >
                         {truncateIdentifier(topRelay, "relay", "primary")}
                       </Link>
                     ) : (
-                      <span className="font-medium text-zinc-100">Relay activity live</span>
+                      <span className="text-ink font-medium">Relay activity live</span>
                     )}
                   </dd>
                 </div>
               </dl>
 
               {heroPulseStats.length > 0 ? (
-                <div className="mt-5 space-y-2.5 border-t border-zinc-800/70 pt-4">
+                <div className="border-edge/70 mt-5 space-y-2.5 border-t pt-4">
                   {heroPulseStats.map((stat) => (
                     <article
                       key={stat.label}
                       className="flex items-baseline justify-between gap-3 text-sm"
                     >
-                      <p className="text-[11px] tracking-[0.16em] text-zinc-500 uppercase">
+                      <p className="text-ink-faint text-[11px] tracking-[0.16em] uppercase">
                         {stat.label}
                       </p>
-                      <p className="text-base font-semibold tracking-tight text-zinc-100">
+                      <p className="text-ink text-base font-semibold tracking-tight">
                         {String(stat.value)}
                       </p>
                     </article>
@@ -378,19 +384,21 @@ export default async function HomePage() {
         </section>
 
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1.76fr)_minmax(320px,0.8fr)] xl:items-start xl:gap-7 2xl:grid-cols-[minmax(0,1.9fr)_minmax(340px,0.74fr)]">
-          <section className="overflow-hidden rounded-[1.72rem] border border-indigo-400/15 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.16),transparent_40%),linear-gradient(180deg,rgba(24,24,27,0.97),rgba(20,20,23,0.94))] p-5 shadow-[0_30px_95px_rgba(30,64,175,0.16)] ring-1 ring-white/5 sm:p-6 xl:p-7">
+          <section className="border-accent-soft/15 overflow-hidden rounded-[1.72rem] border bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.16),transparent_40%),linear-gradient(180deg,rgba(24,24,27,0.97),rgba(20,20,23,0.94))] p-5 shadow-[0_30px_95px_rgba(30,64,175,0.16)] ring-1 ring-white/5 sm:p-6 xl:p-7">
             <header className="mb-6 space-y-3.5 sm:mb-7">
               <div className="space-y-2.5">
-                <h2 className="text-[1.65rem] font-semibold tracking-tight text-zinc-50 sm:text-[2.05rem]">
+                <h2 className="text-ink-strong text-[1.65rem] font-semibold tracking-tight sm:text-[2.05rem]">
                   The note to read first
                 </h2>
-                <p className="max-w-3xl text-sm leading-6 text-zinc-400 sm:text-base">
+                <p className="text-ink-muted max-w-3xl text-sm leading-6 sm:text-base">
                   One lead note with two strong follow-ups.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400">
+              <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                 <span>{trendWindowLabel}</span>
-                <span className="text-zinc-600">•</span>
+                <span aria-hidden className="text-zinc-600">
+                  •
+                </span>
                 <span>{notesFreshness}</span>
               </div>
             </header>
@@ -406,7 +414,7 @@ export default async function HomePage() {
             )}
             <DiscoveryActionLinks
               actions={[{ label: "See all trending notes", href: "/trending/notes" }]}
-              className="mt-6 text-sm text-zinc-500"
+              className="text-ink-faint mt-6 text-sm"
             />
           </section>
 

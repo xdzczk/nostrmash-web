@@ -78,27 +78,27 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <NativeSemanticsBadges semantics={semantics} />
-            <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
               ranked relays: {rankedRelays.length.toLocaleString()}
             </span>
-            <span className="rounded-full border border-zinc-700 px-2 py-1 text-zinc-300">
+            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
               health rows: {healthRows.length.toLocaleString()}
             </span>
             <Link
               href="/relays/health"
-              className="rounded-full border border-zinc-700 px-2 py-1 text-indigo-300 hover:border-indigo-400/40"
+              className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-2 py-1"
             >
               Ingest health
             </Link>
             <Link
               href="/relays/popular"
-              className="rounded-full border border-zinc-700 px-2 py-1 text-indigo-300 hover:border-indigo-400/40"
+              className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-2 py-1"
             >
               Popular relays
             </Link>
             <Link
               href="/relays/probe-health"
-              className="rounded-full border border-zinc-700 px-2 py-1 text-indigo-300 hover:border-indigo-400/40"
+              className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-2 py-1"
             >
               Probe health
             </Link>
@@ -123,13 +123,13 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
               const share =
                 totalActivity > 0 ? ((row.activityScore / totalActivity) * 100).toFixed(1) : "0.0";
               return (
-                <li key={row.host} className="rounded-md border border-zinc-800 bg-zinc-900/40 p-3">
+                <li key={row.host} className="border-edge bg-surface/40 rounded-md border p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate text-sm text-zinc-100">
+                      <p className="text-ink truncate text-sm">
                         #{row.rank} {row.relay}
                       </p>
-                      <p className="mt-1 truncate text-xs text-zinc-500">
+                      <p className="text-ink-faint mt-1 truncate text-xs">
                         activity share: {share}% • score: {row.activityScore.toLocaleString()} •
                         health:{" "}
                         {health?.healthy === true
@@ -142,19 +142,19 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
                     <div className="flex flex-wrap gap-2 text-xs">
                       <Link
                         href={`/relays/${encodeURIComponent(row.host)}`}
-                        className="rounded-full border border-zinc-700 px-3 py-1 text-indigo-300 hover:border-indigo-400/40"
+                        className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1"
                       >
                         Open relay
                       </Link>
                       <Link
                         href={`/search?q=${encodeURIComponent(row.relay)}&tab=all`}
-                        className="rounded-full border border-zinc-700 px-3 py-1 text-indigo-300 hover:border-indigo-400/40"
+                        className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1"
                       >
                         Search mentions
                       </Link>
                     </div>
                   </div>
-                  <p className="mt-2 truncate text-xs text-zinc-500">
+                  <p className="text-ink-faint mt-2 truncate text-xs">
                     {Object.entries(row.metrics)
                       .slice(0, 3)
                       .map(([label, value]) => `${formatMetricLabel(label)}: ${String(value)}`)
@@ -171,7 +171,7 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
           />
         )}
         {typeof relayHealth?.next_cursor === "string" && relayHealth.next_cursor.length > 0 ? (
-          <Link href={healthContinuationHref} className="mt-3 inline-block text-sm text-indigo-300">
+          <Link href={healthContinuationHref} className="text-link mt-3 inline-block text-sm">
             Load more relay health context
           </Link>
         ) : null}

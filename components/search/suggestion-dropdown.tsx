@@ -31,11 +31,11 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
         ref={ref}
         id="search-suggest-listbox"
         role="listbox"
-        className="absolute inset-x-0 top-full z-50 mt-1 max-h-[min(26rem,60vh)] overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl"
+        className="nm-pop-in border-edge-strong bg-surface absolute inset-x-0 top-full z-50 mt-1 max-h-[min(26rem,60vh)] overflow-y-auto rounded-lg border shadow-xl"
       >
         {profiles.length > 0 && (
           <div>
-            <p className="px-3 pt-2.5 pb-1 text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">
+            <p className="text-ink-faint px-3 pt-2.5 pb-1 text-[10px] font-semibold tracking-wider uppercase">
               Profiles
             </p>
             {profiles.map((profile, index) => {
@@ -52,7 +52,7 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                   role="option"
                   aria-selected={active}
                   className={`flex w-full items-center gap-2.5 px-3 py-2 text-left transition ${
-                    active ? "bg-indigo-500/15 text-zinc-100" : "text-zinc-300 hover:bg-zinc-800/60"
+                    active ? "bg-accent/15 text-ink" : "hover:bg-edge/60 text-ink-dim"
                   }`}
                   onMouseDown={(e) => {
                     e.preventDefault();
@@ -65,11 +65,11 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                     width={28}
                     height={28}
                     unoptimized
-                    className="h-7 w-7 shrink-0 rounded-full border border-zinc-700 object-cover"
+                    className="border-edge-strong h-7 w-7 shrink-0 rounded-full border object-cover"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{label}</p>
-                    {secondary && <p className="truncate text-xs text-zinc-500">{secondary}</p>}
+                    {secondary && <p className="text-ink-faint truncate text-xs">{secondary}</p>}
                   </div>
                 </button>
               );
@@ -79,7 +79,7 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
 
         {hashtags.length > 0 && (
           <div>
-            <p className="px-3 pt-2.5 pb-1 text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">
+            <p className="text-ink-faint px-3 pt-2.5 pb-1 text-[10px] font-semibold tracking-wider uppercase">
               Hashtags
             </p>
             {hashtags.map((entry, index) => {
@@ -95,7 +95,7 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                   role="option"
                   aria-selected={active}
                   className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition ${
-                    active ? "bg-indigo-500/15 text-zinc-100" : "text-zinc-300 hover:bg-zinc-800/60"
+                    active ? "bg-accent/15 text-ink" : "hover:bg-edge/60 text-ink-dim"
                   }`}
                   onMouseDown={(e) => {
                     e.preventDefault();
@@ -104,7 +104,7 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                 >
                   <span className="truncate font-medium">#{tag}</span>
                   {typeof count === "number" && (
-                    <span className="ml-2 shrink-0 text-xs text-zinc-500">
+                    <span className="text-ink-faint ml-2 shrink-0 text-xs">
                       {count.toLocaleString()}
                     </span>
                   )}

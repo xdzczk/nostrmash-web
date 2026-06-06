@@ -11,8 +11,8 @@ export function ThreadNode({
   role: "ancestor" | "focal" | "reply";
 }) {
   return (
-    <div className={role === "focal" ? "border-l-2 border-indigo-400 pl-3" : ""}>
-      <p className="mb-2 text-xs tracking-wide text-zinc-500 uppercase">{role}</p>
+    <div className={role === "focal" ? "border-accent-soft border-l-2 pl-3" : ""}>
+      <p className="text-ink-faint mb-2 text-xs tracking-wide uppercase">{role}</p>
       <NoteCard note={note} author={author} showFullContent={role === "focal"} />
     </div>
   );
