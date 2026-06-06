@@ -68,9 +68,7 @@ export function ProfileReactionsActivityList({
             </div>
             {targetNote ? (
               <div className="space-y-2">
-                <p className="text-ink-faint text-xs font-medium tracking-wide uppercase">
-                  On note
-                </p>
+                <p className="text-ink-faint text-xs font-medium">On note</p>
                 <NoteCard
                   note={targetNote}
                   author={
@@ -136,9 +134,7 @@ export function ProfileZapsActivityList({
             </div>
             {targetNote ? (
               <div className="space-y-2">
-                <p className="text-ink-faint text-xs font-medium tracking-wide uppercase">
-                  On note
-                </p>
+                <p className="text-ink-faint text-xs font-medium">On note</p>
                 <NoteCard
                   note={targetNote}
                   author={

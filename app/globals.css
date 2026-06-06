@@ -3,9 +3,9 @@
 /* ---------------------------------------------------------------------------
    Theme tokens
    Values live as CSS variables so they can flip per theme. Dark is the default
-   (`:root`); light is applied via `[data-theme="light"]` or the system
-   preference when the user hasn't chosen. Components only read the semantic
-   `--color-*` utilities below, so theming touches values in one place.
+   (`:root`); light applies only when the user explicitly chooses it via
+   `[data-theme="light"]`. Components only read the semantic `--color-*`
+   utilities below, so theming touches values in one place.
 --------------------------------------------------------------------------- */
 
 :root {
@@ -37,6 +37,10 @@
   --panel-base: linear-gradient(180deg, rgba(24, 24, 27, 0.94), rgba(14, 14, 16, 0.98));
   --panel-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
   --panel-glow: 0 30px 95px rgba(30, 64, 175, 0.18);
+
+  /* Soft container elevation — lets surfaces read as raised instead of relying
+     on hard 1px outlines for separation. */
+  --elev-1: inset 0 1px 0 0 rgba(255, 255, 255, 0.03), 0 14px 34px -20px rgba(0, 0, 0, 0.55);
 }
 
 :root[data-theme="light"] {
@@ -67,39 +71,7 @@
   --panel-base: linear-gradient(180deg, #ffffff, #f6f6f8);
   --panel-shadow: 0 16px 44px rgba(30, 30, 60, 0.1);
   --panel-glow: 0 18px 50px rgba(79, 70, 229, 0.12);
-}
-
-/* Follow the system when the user hasn't explicitly chosen dark. */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    color-scheme: light;
-
-    --background: #fafafb;
-    --foreground: #18181b;
-
-    --surface: #ffffff;
-    --surface-sunken: #f4f4f5;
-    --edge: #e4e4e7;
-    --edge-strong: #d4d4d8;
-
-    --accent: #4f46e5;
-    --accent-soft: #6366f1;
-    --accent-ink: #3730a3;
-
-    --ink-strong: #09090b;
-    --ink: #18181b;
-    --ink-soft: #27272a;
-    --ink-dim: #3f3f46;
-    --ink-muted: #52525b;
-    --ink-faint: #71717a;
-
-    --link: #4f46e5;
-    --link-hover: #4338ca;
-
-    --panel-base: linear-gradient(180deg, #ffffff, #f6f6f8);
-    --panel-shadow: 0 16px 44px rgba(30, 30, 60, 0.1);
-    --panel-glow: 0 18px 50px rgba(79, 70, 229, 0.12);
-  }
+  --elev-1: 0 1px 2px rgba(16, 24, 40, 0.04), 0 14px 30px -18px rgba(16, 24, 40, 0.14);
 }
 
 @theme inline {
@@ -370,6 +342,12 @@ p {
   }
 }
 
+/* Raised surface: soft elevation in place of a hard outline. Pair with a faint
+   border for definition rather than a full 1px box. */
+.nm-raised {
+  box-shadow: var(--elev-1);
+}
+
 /* Decorative gradient panels. Dark/light share one themeable base + elevation;
    each keeps its own faint hue tint (which reads fine on either theme). */
 .nm-panel-hero {
@@ -429,12 +407,6 @@ p {
 :root[data-theme="light"] {
   --show-dark: none;
   --show-light: block;
-}
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --show-dark: none;
-    --show-light: block;
-  }
 }
 
 /* Windows High Contrast / forced-colors: box-shadow focus rings are dropped,

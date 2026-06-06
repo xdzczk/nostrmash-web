@@ -210,15 +210,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
       />
 
       {!canQuery ? (
-        <div className="space-y-6">
-          <EmptyState message="Enter a query to search indexed content." />
-          <SectionCard
-            title="Explore without a query"
-            description="Start with the main routes when you want to browse first."
-          >
-            <QuickEntryGrid links={explorerJumpLinks} />
-          </SectionCard>
-        </div>
+        <SectionCard
+          title="Start exploring"
+          description="Search notes, profiles, hashtags, relays, or event IDs above — or jump straight into a discovery surface."
+        >
+          <QuickEntryGrid links={explorerJumpLinks} />
+        </SectionCard>
       ) : errorMessage ? (
         <ErrorPanel message={errorMessage} />
       ) : (

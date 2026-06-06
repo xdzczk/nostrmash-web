@@ -89,7 +89,7 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
               <li
                 key={row.host}
                 id={`relay-${encodeURIComponent(row.host)}`}
-                className="border-edge bg-surface/40 rounded-md border p-3"
+                className="hover:bg-surface/40 rounded-lg p-3 transition-colors"
               >
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-ink min-w-0 truncate text-sm">{row.relay}</p>
@@ -122,10 +122,7 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
             ))}
           </ul>
         ) : (
-          <EmptyState
-            title="Health data unavailable"
-            message="No relay health observations were returned."
-          />
+          <EmptyState message="Relay health observations will appear here once probes have been collected." />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
           <Link href={continuationHref} className="text-link mt-3 inline-block text-sm">

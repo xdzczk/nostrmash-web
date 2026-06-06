@@ -50,7 +50,7 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         {/* Apply the saved theme before first paint to avoid a flash. When no
-            choice is stored, CSS falls back to the system preference. */}
+            choice is stored, the site stays on dark mode. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`,

@@ -8,6 +8,7 @@ import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-ba
 import { PageHero } from "@/components/explorer/page-hero";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
+import { WindowSelector } from "@/components/explorer/window-selector";
 import { getHotConversations } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
@@ -16,6 +17,7 @@ import {
   readSearchParam,
   toUrlSearchParams,
 } from "@/lib/search-params/pagination";
+import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
 import type { Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = {
@@ -32,6 +34,7 @@ export default async function HotConversationsPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const cursor = readSearchParam(resolvedSearchParams, "cursor");
+  const window = readStatsWindow(resolvedSearchParams);
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   let errorMessage = "";
   let payload: Awaited<ReturnType<typeof getHotConversations>> | null = null;
@@ -39,7 +42,7 @@ export default async function HotConversationsPage({
   let activeProfiles: Profile[] = [];
 
   try {
-    payload = await getHotConversations("shortTtl", { cursor });
+    payload = await getHotConversations("shortTtl", { cursor, window });
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Failed to load hot conversations.";
   }
@@ -77,11 +80,17 @@ export default async function HotConversationsPage({
         title="Hot conversations"
         subtitle="Notes driving active threads, so you can move from signal to conversation context quickly."
         badges={
-          hasSemantics ? (
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <NativeSemanticsBadges semantics={semantics} />
-            </div>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <WindowSelector
+              path="/discovery/conversations/hot"
+              searchParams={currentSearchParams}
+              activeWindow={window}
+            />
+            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
+              {formatStatsWindowLabel(window)}
+            </span>
+            {hasSemantics ? <NativeSemanticsBadges semantics={semantics} /> : null}
+          </div>
         }
       />
 

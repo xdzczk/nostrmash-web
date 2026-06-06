@@ -41,9 +41,7 @@ export function QuickEntryGrid({
               key={signal.label}
               className="border-edge/90 bg-surface-sunken/55 text-ink-dim rounded-lg border p-2.5 text-xs sm:p-3"
             >
-              <p className="text-ink-faint text-[11px] tracking-[0.14em] uppercase">
-                {signal.label}
-              </p>
+              <p className="text-ink-faint text-[11px]">{signal.label}</p>
               <p className="text-ink-soft mt-1.5 truncate">{signal.value}</p>
             </div>
           ))}

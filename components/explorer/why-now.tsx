@@ -206,11 +206,13 @@ export function WhyNow({
   reasons,
   maxReasons = 1,
   tone = "default",
+  showLabel = true,
   className = "",
 }: {
   reasons: WhyNowReason[];
   maxReasons?: number;
   tone?: WhyNowTone;
+  showLabel?: boolean;
   className?: string;
 }) {
   const visibleReasons = reasons
@@ -228,12 +230,17 @@ export function WhyNow({
   const reasonClassName =
     tone === "highlight" ? "border-link/30 bg-link/10 text-accent-ink" : "text-ink-dim";
   const supportClassName = tone === "highlight" ? "text-link-hover/80" : "text-ink-faint";
-  const dotClassName = tone === "highlight" ? "text-link-hover/60" : "text-zinc-600";
+  const dotClassName = tone === "highlight" ? "text-link-hover/60" : "text-ink-faint/70";
 
   return (
     <div className={`${containerClassName} ${className}`.trim()}>
-      <p className={titleClassName}>Why now</p>
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-5">
+      {showLabel ? <p className={titleClassName}>Why now</p> : null}
+      <div
+        className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-5 ${showLabel ? "mt-1.5" : ""}`.trim()}
+      >
+        {!showLabel && tone !== "highlight" ? (
+          <span aria-hidden className="bg-accent-soft/70 inline-block h-1.5 w-1.5 rounded-full" />
+        ) : null}
         {visibleReasons.map((reason, index) => (
           <span
             key={`${reason.text}-${reason.support ?? index}`}

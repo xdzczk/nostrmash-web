@@ -202,7 +202,7 @@ export default async function RelayPage({ params }: { params: Params }) {
               {neighboringRelays.map((entry) => (
                 <li
                   key={entry.host}
-                  className="border-edge bg-surface/40 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
+                  className="hover:bg-surface/40 flex flex-wrap items-center justify-between gap-2 rounded-lg p-3 transition-colors"
                 >
                   <div className="min-w-0">
                     <p className="text-ink-soft truncate text-sm">

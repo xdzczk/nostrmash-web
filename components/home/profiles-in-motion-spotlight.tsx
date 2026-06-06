@@ -105,7 +105,7 @@ function buildSummaryMetrics(profile: Profile) {
     if (selected.length >= 3) break;
   }
 
-  return selected.slice(0, 3);
+  return selected.slice(0, 2);
 }
 
 function ProfileDiscoveryRow({ profile, rank }: { profile: Profile; rank: number }) {
@@ -119,7 +119,7 @@ function ProfileDiscoveryRow({ profile, rank }: { profile: Profile; rank: number
   const reasons = mapProfileWhyNow(profile);
 
   return (
-    <li className="py-4 first:pt-0 last:pb-0">
+    <li className="group py-4 first:pt-0 last:pb-0">
       <div className="flex items-start gap-3">
         <Image
           src={avatarSrc}
@@ -140,7 +140,7 @@ function ProfileDiscoveryRow({ profile, rank }: { profile: Profile; rank: number
                 <p className="text-ink-faint mt-1 truncate text-xs">{identityBits.join(" • ")}</p>
               ) : null}
             </div>
-            <span className="text-ink-muted inline-flex shrink-0 items-center rounded-full border border-white/8 bg-white/[0.03] px-2 py-1 text-[11px] font-medium tracking-[0.18em] uppercase">
+            <span className="text-ink-muted border-edge bg-surface-sunken/40 inline-flex shrink-0 items-center rounded-full border px-2 py-1 text-[11px] font-medium tracking-[0.18em] uppercase">
               #{rank}
             </span>
           </div>
@@ -153,9 +153,9 @@ function ProfileDiscoveryRow({ profile, rank }: { profile: Profile; rank: number
 
           <DiscoveryStatPills stats={metrics} className="mt-3" />
 
-          <WhyNow reasons={reasons} maxReasons={1} className="mt-3" />
+          <WhyNow reasons={reasons} maxReasons={1} showLabel={false} className="mt-2" />
 
-          <div className="text-ink-faint mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          <div className="text-ink-faint mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs opacity-80 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
             {identifier !== "unknown" && !href ? (
               <IdBadge
                 id={identifier}
@@ -202,7 +202,7 @@ export function ProfilesInMotionSpotlight({
           </div>
           <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <span>{trendWindowLabel}</span>
-            <span aria-hidden className="text-zinc-600">
+            <span aria-hidden className="text-ink-faint/70">
               •
             </span>
             <span>{freshnessLabel}</span>

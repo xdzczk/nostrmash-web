@@ -21,8 +21,8 @@ export function PageHero({
 }) {
   return (
     <section
-      className={`border-edge/95 bg-surface/55 space-y-4 rounded-xl border p-4 sm:space-y-5 sm:p-6 ${
-        emphasize ? "shadow-[0_0_0_1px_rgba(63,63,70,0.34)]" : ""
+      className={`border-edge/50 bg-surface/50 nm-raised space-y-4 rounded-2xl border p-4 sm:space-y-5 sm:p-6 ${
+        emphasize ? "ring-edge-strong/40 ring-1" : ""
       } ${className ?? ""}`}
     >
       <div className="space-y-2">

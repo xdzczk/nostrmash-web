@@ -690,9 +690,7 @@ export default async function ProfilePage({
         >
           <div className="space-y-5">
             <div className="space-y-2">
-              <p className="text-ink-muted text-xs font-medium tracking-wide uppercase">
-                Related profiles
-              </p>
+              <p className="text-ink-muted text-xs font-medium">Related profiles</p>
               {relatedProfiles.length > 0 ? (
                 <>
                   <ProfilesList profiles={relatedProfiles.slice(0, 8)} />
@@ -712,9 +710,7 @@ export default async function ProfilePage({
             </div>
 
             <div className="space-y-2">
-              <p className="text-ink-muted text-xs font-medium tracking-wide uppercase">
-                Rising profiles
-              </p>
+              <p className="text-ink-muted text-xs font-medium">Rising profiles</p>
               {risingProfiles.length > 0 ? (
                 <ProfilesList profiles={risingProfiles.slice(0, 8)} />
               ) : (
@@ -739,11 +735,9 @@ export default async function ProfilePage({
               return (
                 <li
                   key={`${field.key}-${field.label}`}
-                  className="border-edge bg-surface-sunken/40 rounded-md border p-3"
+                  className="bg-surface-sunken/40 hover:bg-surface-sunken/60 rounded-lg p-3 transition-colors"
                 >
-                  <p className="text-ink-faint mb-1 text-[11px] tracking-wide uppercase">
-                    {field.label}
-                  </p>
+                  <p className="text-ink-faint mb-1 text-[11px]">{field.label}</p>
                   {isUrl ? (
                     <Link href={raw} className="text-link hover:text-link-hover text-sm break-all">
                       {display}

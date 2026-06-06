@@ -1,4 +1,6 @@
 import { isRecord } from "@/components/explorer/utils";
+import type { StatsWindow } from "@/lib/search-params/window";
+import { preferredMetricKeysForWindow } from "@/lib/search-params/window";
 
 export function classifyStats(value: unknown): {
   primitives: Array<{ label: string; value: string | number | boolean }>;
@@ -36,9 +38,8 @@ export function classifyStats(value: unknown): {
 
 export function pickRelayEntryByHost(payload: unknown, relayHost: string): unknown {
   const target = normalizeRelayHost(relayHost);
-  const { arrays } = classifyStats(payload);
-  for (const group of arrays) {
-    for (const row of group.value) {
+  for (const group of collectRelayStatRowArrays(payload)) {
+    for (const row of group) {
       if (!isRecord(row)) continue;
       for (const key of ["relay_url", "url", "host", "relay", "name"]) {
         const value = row[key];
@@ -118,25 +119,82 @@ function relayActivityScore(metrics: Record<string, string | number | boolean>):
   }, 0);
 }
 
+const RELAY_STAT_ROW_ARRAY_KEYS = ["top", "items", "rows", "leaders", "relays", "data"] as const;
+
+function relayRowFromRecord(row: Record<string, unknown>): RelayRowSummary | null {
+  const relay = toRelayIdentifier(row);
+  if (!relay) return null;
+
+  const metrics = Object.fromEntries(
+    Object.entries(row).filter(
+      ([key, value]) =>
+        !RELAY_IDENTIFIER_KEYS.includes(key as (typeof RELAY_IDENTIFIER_KEYS)[number]) &&
+        (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+    )
+  ) as Record<string, string | number | boolean>;
+
+  return { relay, metrics };
+}
+
+function collectRelayStatRowArrays(payload: unknown): unknown[][] {
+  if (!isRecord(payload)) return [];
+
+  const groups: unknown[][] = [];
+  const seen = new Set<unknown[]>();
+  const pushGroup = (value: unknown) => {
+    if (!Array.isArray(value) || seen.has(value)) return;
+    seen.add(value);
+    groups.push(value);
+  };
+
+  const { arrays, objects } = classifyStats(payload);
+  for (const group of arrays) {
+    pushGroup(group.value);
+  }
+
+  for (const objectGroup of objects) {
+    for (const key of RELAY_STAT_ROW_ARRAY_KEYS) {
+      pushGroup(objectGroup.value[key]);
+    }
+  }
+
+  for (const key of ["relays", "relay_stats", "stats", "items", "data"]) {
+    const entry = payload[key];
+    if (Array.isArray(entry)) {
+      pushGroup(entry);
+      continue;
+    }
+    if (!isRecord(entry)) continue;
+    for (const nestedKey of RELAY_STAT_ROW_ARRAY_KEYS) {
+      pushGroup(entry[nestedKey]);
+    }
+  }
+
+  return groups;
+}
+
+function parseRelayHealthyFlag(entry: Record<string, unknown>): boolean | undefined {
+  if (typeof entry.healthy === "boolean") return entry.healthy;
+  if (typeof entry.status !== "string") return undefined;
+
+  const normalized = entry.status.trim().toLowerCase();
+  if (["healthy", "ok", "up", "online", "active"].includes(normalized)) return true;
+  if (["unhealthy", "down", "offline", "degraded", "error", "failed"].includes(normalized)) {
+    return false;
+  }
+  return undefined;
+}
+
 export function extractRelayRows(payload: unknown, limit = 20): RelayRowSummary[] {
-  const { arrays } = classifyStats(payload);
   const rows: RelayRowSummary[] = [];
 
-  for (const group of arrays) {
-    for (const row of group.value) {
+  for (const group of collectRelayStatRowArrays(payload)) {
+    for (const row of group) {
       if (!isRecord(row)) continue;
-      const relay = toRelayIdentifier(row);
-      if (!relay) continue;
+      const summary = relayRowFromRecord(row);
+      if (!summary) continue;
 
-      const metrics = Object.fromEntries(
-        Object.entries(row).filter(
-          ([key, value]) =>
-            !RELAY_IDENTIFIER_KEYS.includes(key as (typeof RELAY_IDENTIFIER_KEYS)[number]) &&
-            (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
-        )
-      ) as Record<string, string | number | boolean>;
-
-      rows.push({ relay, metrics });
+      rows.push(summary);
       if (rows.length >= limit) {
         return rows;
       }
@@ -183,7 +241,7 @@ export function extractRelayHealthRows(payload: unknown, limit = 50): RelayHealt
         relay,
         host,
         status: typeof entry.status === "string" ? entry.status : undefined,
-        healthy: typeof entry.healthy === "boolean" ? entry.healthy : undefined,
+        healthy: parseRelayHealthyFlag(entry),
         latencyMs: toNumeric(entry.latency_ms) ?? undefined,
         uptime: (toNumeric(entry.uptime) ??
           (typeof entry.uptime === "string" ? entry.uptime : undefined)) as
@@ -257,19 +315,256 @@ export function relayHealthPosture(rows: RelayHealthSummary[]): {
   );
 }
 
+const STATS_METADATA_KEYS = new Set([
+  "consistency",
+  "next_cursor",
+  "cursor",
+  "continuation",
+  "generated_at",
+  "updated_at",
+  "as_of",
+]);
+
+const STATS_WRAPPER_KEYS = ["network", "content", "relays", "stats", "summary", "data"] as const;
+const TIME_WINDOW_KEYS = new Set(["24h", "7d", "1h", "30d", "1d"]);
+
+function isPrimitiveStatValue(value: unknown): value is string | number | boolean {
+  return typeof value === "string" || typeof value === "number" || typeof value === "boolean";
+}
+
+function unwrapStatsSources(payload: unknown): Record<string, unknown>[] {
+  if (!isRecord(payload)) return [];
+  const sources: Record<string, unknown>[] = [payload];
+  for (const key of STATS_WRAPPER_KEYS) {
+    const wrapped = payload[key];
+    if (isRecord(wrapped)) {
+      sources.push(wrapped);
+    }
+  }
+  return sources;
+}
+
+export function flattenPrimitiveStats(
+  value: unknown,
+  prefix = "",
+  depth = 0,
+  maxDepth = 5
+): Array<{ label: string; value: string | number | boolean }> {
+  if (depth > maxDepth || !isRecord(value)) return [];
+
+  const stats: Array<{ label: string; value: string | number | boolean }> = [];
+  for (const [key, fieldValue] of Object.entries(value)) {
+    if (STATS_METADATA_KEYS.has(key)) continue;
+
+    if (isPrimitiveStatValue(fieldValue)) {
+      const label = prefix ? `${prefix}_${key}` : key;
+      stats.push({ label, value: fieldValue });
+      if (prefix && /_(24h|7d|1h|30d|1d)$/.test(key)) {
+        stats.push({ label: key, value: fieldValue });
+      }
+      continue;
+    }
+
+    if (!isRecord(fieldValue)) continue;
+    const entries = Object.entries(fieldValue);
+    const isTimeWindowObject =
+      entries.length > 0 &&
+      entries.every(
+        ([windowKey, windowValue]) =>
+          TIME_WINDOW_KEYS.has(windowKey) && isPrimitiveStatValue(windowValue)
+      );
+
+    if (isTimeWindowObject) {
+      for (const [windowKey, windowValue] of entries) {
+        if (!isPrimitiveStatValue(windowValue)) continue;
+        stats.push({ label: `${key}_${windowKey}`, value: windowValue });
+      }
+      continue;
+    }
+
+    stats.push(
+      ...flattenPrimitiveStats(fieldValue, prefix ? `${prefix}_${key}` : key, depth + 1, maxDepth)
+    );
+  }
+
+  return stats;
+}
+
+export function filterPrimitiveStatsForWindow(
+  stats: Array<{ label: string; value: string | number | boolean }>,
+  window: StatsWindow
+): Array<{ label: string; value: string | number | boolean }> {
+  return stats.filter((stat) => {
+    if (stat.label.endsWith(`_${window}`)) return true;
+    if (stat.label.endsWith("_24h") || stat.label.endsWith("_7d")) return false;
+    if (stat.label === "active_24h") return window === "24h";
+    if (stat.label === "active_7d") return window === "7d";
+    return true;
+  });
+}
+
+function filterMetricGroupItemsForWindow(
+  items: Array<{ label: string; value: string | number | boolean }>,
+  window: StatsWindow
+): Array<{ label: string; value: string | number | boolean }> {
+  const windowItem = items.find((item) => item.label === window);
+  if (windowItem) return [windowItem];
+  return filterPrimitiveStatsForWindow(items, window);
+}
+
+function sectionMatchesWindow(label: string, window: StatsWindow): boolean {
+  return label === window || label.endsWith(`.${window}`);
+}
+
+export function collectStatsMetricGroups(
+  payload: unknown,
+  limit = 3,
+  window?: StatsWindow
+): Array<{ title: string; items: Array<{ label: string; value: string | number | boolean }> }> {
+  const groups: Array<{
+    title: string;
+    items: Array<{ label: string; value: string | number | boolean }>;
+  }> = [];
+  const seenTitles = new Set<string>();
+
+  const pushGroup = (title: string, record: Record<string, unknown>) => {
+    if (seenTitles.has(title)) return;
+    let items = Object.entries(record)
+      .filter((entry): entry is [string, string | number | boolean] =>
+        isPrimitiveStatValue(entry[1])
+      )
+      .map(([label, value]) => ({ label, value }));
+    if (window) {
+      items = filterMetricGroupItemsForWindow(items, window);
+    }
+    if (items.length === 0) return;
+    seenTitles.add(title);
+    groups.push({ title, items });
+  };
+
+  const inspectRecord = (record: Record<string, unknown>) => {
+    for (const [key, value] of Object.entries(record)) {
+      if (STATS_METADATA_KEYS.has(key)) continue;
+      if (isPrimitiveStatValue(value)) continue;
+      if (!isRecord(value)) continue;
+
+      const entries = Object.entries(value);
+      const isTimeWindowObject =
+        entries.length > 0 &&
+        entries.every(
+          ([windowKey, windowValue]) =>
+            TIME_WINDOW_KEYS.has(windowKey) && isPrimitiveStatValue(windowValue)
+        );
+      if (isTimeWindowObject) {
+        pushGroup(key, Object.fromEntries(entries) as Record<string, string | number | boolean>);
+        continue;
+      }
+
+      pushGroup(key, value);
+      for (const [nestedKey, nestedValue] of entries) {
+        if (!isRecord(nestedValue)) continue;
+        const nestedEntries = Object.entries(nestedValue);
+        const nestedTimeWindowObject =
+          nestedEntries.length > 0 &&
+          nestedEntries.every(
+            ([windowKey, windowValue]) =>
+              TIME_WINDOW_KEYS.has(windowKey) && isPrimitiveStatValue(windowValue)
+          );
+        if (nestedTimeWindowObject) {
+          pushGroup(
+            `${key}_${nestedKey}`,
+            Object.fromEntries(nestedEntries) as Record<string, string | number | boolean>
+          );
+        }
+      }
+    }
+  };
+
+  for (const source of unwrapStatsSources(payload)) {
+    inspectRecord(source);
+    if (groups.length >= limit) break;
+  }
+
+  return groups.slice(0, limit);
+}
+
+export function collectStatsArraySections(
+  payload: unknown,
+  limit = 2,
+  window?: StatsWindow
+): Array<{ label: string; value: unknown[] }> {
+  const sections: Array<{ label: string; value: unknown[] }> = [];
+  const seen = new Set<unknown[]>();
+
+  const pushSection = (label: string, value: unknown[]) => {
+    if (seen.has(value)) return;
+    seen.add(value);
+    sections.push({ label, value });
+  };
+
+  const formatSectionLabel = (parts: string[]) => {
+    const normalized =
+      parts[0] && STATS_WRAPPER_KEYS.includes(parts[0] as (typeof STATS_WRAPPER_KEYS)[number])
+        ? parts.slice(1)
+        : parts;
+    return normalized.join(".");
+  };
+
+  for (const source of unwrapStatsSources(payload)) {
+    const classified = classifyStats(source);
+    for (const group of classified.arrays) {
+      pushSection(group.label, group.value);
+    }
+
+    for (const objectGroup of classified.objects) {
+      for (const [key, value] of Object.entries(objectGroup.value)) {
+        if (Array.isArray(value)) {
+          pushSection(formatSectionLabel([objectGroup.label, key]), value);
+          continue;
+        }
+        if (!isRecord(value)) continue;
+        for (const [nestedKey, nestedValue] of Object.entries(value)) {
+          if (Array.isArray(nestedValue)) {
+            pushSection(formatSectionLabel([objectGroup.label, key, nestedKey]), nestedValue);
+          }
+        }
+      }
+    }
+  }
+
+  const filtered = window
+    ? sections.filter((section) => sectionMatchesWindow(section.label, window))
+    : sections;
+
+  return (filtered.length > 0 ? filtered : sections).slice(0, limit);
+}
+
 export function pickTopPrimitiveStats(
   payload: unknown,
   preferredKeys: string[],
-  limit = 6
+  limit = 6,
+  window?: StatsWindow
 ): Array<{ label: string; value: string | number | boolean }> {
-  const { primitives } = classifyStats(payload);
+  const resolvedPreferredKeys = window
+    ? preferredMetricKeysForWindow(preferredKeys, window)
+    : preferredKeys;
+  let primitives = Array.from(
+    new Map(
+      unwrapStatsSources(payload)
+        .flatMap((source) => flattenPrimitiveStats(source))
+        .map((entry) => [entry.label, entry] as const)
+    ).values()
+  );
+  if (window) {
+    primitives = filterPrimitiveStatsForWindow(primitives, window);
+  }
   if (primitives.length === 0) return [];
 
   const byKey = new Map(primitives.map((entry) => [entry.label, entry]));
   const selected: Array<{ label: string; value: string | number | boolean }> = [];
   const seen = new Set<string>();
 
-  for (const key of preferredKeys) {
+  for (const key of resolvedPreferredKeys) {
     const stat = byKey.get(key);
     if (!stat) continue;
     selected.push(stat);

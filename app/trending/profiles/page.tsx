@@ -8,6 +8,7 @@ import { PageHero } from "@/components/explorer/page-hero";
 import { ProfilesList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
+import { WindowSelector } from "@/components/explorer/window-selector";
 import { getTrendingProfiles } from "@/lib/api/endpoints";
 import { hydrateProfiles } from "@/lib/api/profile-hydration";
 import {
@@ -15,6 +16,7 @@ import {
   readSearchParam,
   toUrlSearchParams,
 } from "@/lib/search-params/pagination";
+import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import type { Profile } from "@/lib/types/api";
 
@@ -32,12 +34,13 @@ export default async function TrendingProfilesPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const cursor = readSearchParam(resolvedSearchParams, "cursor");
+  const window = readStatsWindow(resolvedSearchParams);
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   let errorMessage = "";
   let payload: Awaited<ReturnType<typeof getTrendingProfiles>> | null = null;
   let hydratedProfiles: Profile[] = [];
   try {
-    payload = await getTrendingProfiles("shortTtl", { cursor });
+    payload = await getTrendingProfiles("shortTtl", { cursor, window });
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Failed to load trending profiles.";
   }
@@ -70,11 +73,17 @@ export default async function TrendingProfilesPage({
         title="Trending profiles"
         subtitle="The profiles with the strongest momentum."
         badges={
-          hasSemantics ? (
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <NativeSemanticsBadges semantics={semantics} />
-            </div>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <WindowSelector
+              path="/trending/profiles"
+              searchParams={currentSearchParams}
+              activeWindow={window}
+            />
+            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
+              {formatStatsWindowLabel(window)}
+            </span>
+            {hasSemantics ? <NativeSemanticsBadges semantics={semantics} /> : null}
+          </div>
         }
       />
       <SectionCard title="Ranked profiles" description="The profiles strongest in view.">

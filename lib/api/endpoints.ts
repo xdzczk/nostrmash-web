@@ -192,6 +192,7 @@ const nativeApiV1Routes = {
 interface CursorQuery {
   cursor?: string;
   limit?: number;
+  window?: string;
 }
 
 const normalizeSearchQueryText = (value: string): string =>
@@ -1185,6 +1186,7 @@ function buildCursorQuery(
   return {
     cursor: query.cursor,
     limit: query.limit,
+    window: query.window,
   };
 }
 

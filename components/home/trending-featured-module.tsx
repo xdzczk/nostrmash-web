@@ -195,16 +195,16 @@ function NoteAuthor({
           unoptimized
           className={
             compact
-              ? "h-10 w-10 rounded-full border border-white/10 object-cover"
-              : "h-12 w-12 rounded-full border border-white/10 object-cover"
+              ? "border-edge-strong/50 h-10 w-10 rounded-full border object-cover"
+              : "border-edge-strong/50 h-12 w-12 rounded-full border object-cover"
           }
         />
       ) : (
         <div
           className={
             compact
-              ? "bg-surface-sunken/60 text-ink-dim flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-xs font-medium"
-              : "bg-surface-sunken/60 text-ink-dim flex h-12 w-12 items-center justify-center rounded-full border border-white/10 text-sm font-medium"
+              ? "bg-surface-sunken/60 text-ink-dim border-edge-strong/50 flex h-10 w-10 items-center justify-center rounded-full border text-xs font-medium"
+              : "bg-surface-sunken/60 text-ink-dim border-edge-strong/50 flex h-12 w-12 items-center justify-center rounded-full border text-sm font-medium"
           }
         >
           {authorInitial}
@@ -317,7 +317,7 @@ function NoteMediaFrame({
 
   return (
     <div
-      className={`overflow-hidden ${compact ? "bg-surface-sunken/50 border border-white/8" : "bg-surface-sunken/70 border border-white/10"} ${frameClassName}`}
+      className={`overflow-hidden ${compact ? "bg-surface-sunken/50 border-edge-strong/50 border" : "bg-surface-sunken/70 border-edge-strong/50 border"} ${frameClassName}`}
     >
       {attachment.kind === "image" ? (
         <img src={attachment.url} alt="" className="h-full w-full object-cover" />
@@ -366,7 +366,7 @@ function FeaturedNoteCard({
           Lead note
         </span>
         <span className="text-link-hover font-medium tracking-[0.16em] uppercase">#{rank}</span>
-        <span aria-hidden className="text-zinc-600">
+        <span aria-hidden className="text-ink-faint/70">
           •
         </span>
         <span className="text-ink-dim">{statusLabel}</span>
@@ -386,7 +386,7 @@ function FeaturedNoteCard({
           ) : null}
           <WhyNow reasons={reasons} tone="highlight" className="max-w-3xl" />
           <SignalRow signals={signals} />
-          <div className="border-t border-white/10 pt-3">
+          <div className="border-edge/55 border-t pt-3">
             <QuietActionLinks noteId={noteId} noteHref={noteHref} featured />
           </div>
         </div>
@@ -417,10 +417,10 @@ function SecondaryNoteCard({
   const statusLabel = buildStatusLabel(rank, signals);
 
   return (
-    <article className="bg-surface-sunken/20 rounded-[1.35rem] border border-white/6 p-4 xl:p-[1.125rem]">
+    <article className="bg-surface-sunken/30 rounded-[1.35rem] p-4 xl:p-[1.125rem]">
       <div className="flex flex-wrap items-center gap-2 text-[11px]">
         <span className="text-ink-muted font-medium tracking-[0.16em] uppercase">#{rank}</span>
-        <span aria-hidden className="text-zinc-600">
+        <span aria-hidden className="text-ink-faint/70">
           •
         </span>
         <span className="text-ink-faint">{statusLabel}</span>

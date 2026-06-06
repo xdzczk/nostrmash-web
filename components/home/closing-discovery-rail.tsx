@@ -135,7 +135,7 @@ function HashtagDiscoveryModule({
         </p>
         <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
           <span>{trendWindowLabel}</span>
-          <span aria-hidden className="text-zinc-600">
+          <span aria-hidden className="text-ink-faint/70">
             •
           </span>
           <span>{freshnessLabel}</span>
@@ -154,10 +154,10 @@ function HashtagDiscoveryModule({
                     const rank = columnOffset + index + 1;
 
                     return (
-                      <li key={item.label} className="border-b border-white/6 last:border-b-0">
+                      <li key={item.label} className="border-edge/55 border-b last:border-b-0">
                         <Link
                           href={item.href}
-                          className="flex items-baseline gap-4 rounded-2xl px-1 py-3 transition hover:bg-white/[0.03]"
+                          className="hover:bg-surface/40 flex items-baseline gap-4 rounded-2xl px-1 py-3 transition"
                         >
                           <span className="w-9 shrink-0 text-right text-[11px] font-medium tracking-[0.2em] text-fuchsia-300/80 uppercase">
                             {String(rank).padStart(2, "0")}
@@ -230,7 +230,7 @@ function DomainDiscoveryModule({
         </p>
         <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
           <span>{trendWindowLabel}</span>
-          <span aria-hidden className="text-zinc-600">
+          <span aria-hidden className="text-ink-faint/70">
             •
           </span>
           <span>{freshnessLabel}</span>

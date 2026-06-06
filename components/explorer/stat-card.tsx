@@ -12,9 +12,7 @@ export function StatCard({
 }) {
   return (
     <article className={cardTierClassName("utility")}>
-      <p className="text-ink-faint text-[11px] font-medium tracking-[0.14em] uppercase">
-        {formatMetricLabel(label)}
-      </p>
+      <p className="text-ink-faint text-[11px] font-medium">{formatMetricLabel(label)}</p>
       <p className="text-ink mt-2 text-xl font-semibold sm:text-2xl">{formatValue(value)}</p>
       {description ? <p className="text-ink-muted mt-1 text-xs leading-5">{description}</p> : null}
     </article>

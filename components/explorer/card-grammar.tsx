@@ -7,10 +7,10 @@ export type CardTier = "lead" | "standard" | "compact" | "utility";
 export type { PillTone };
 
 const TIER_SURFACE: Record<CardTier, string> = {
-  lead: "rounded-[1.65rem] border border-edge-strong/70 bg-surface/55 p-5 sm:p-6",
-  standard: "rounded-[1.15rem] border border-edge/85 bg-surface/45 p-4 sm:p-5",
-  compact: "rounded-xl border border-edge/85 bg-surface-sunken/35 px-3 py-2.5",
-  utility: "rounded-lg border border-edge/95 bg-surface/50 p-4",
+  lead: "nm-raised rounded-[1.65rem] border border-edge/45 bg-surface/55 p-5 sm:p-6",
+  standard: "rounded-[1.15rem] border border-edge/45 bg-surface/40 p-4 sm:p-5",
+  compact: "rounded-xl bg-surface-sunken/40 px-3 py-2.5",
+  utility: "nm-raised rounded-xl bg-surface/55 p-4",
 };
 
 export type DiscoveryAction = {
@@ -55,7 +55,7 @@ export function DiscoveryStatPills({
       {stats.map((metric, index) => (
         <span key={metric.label} className="inline-flex items-center gap-1.5">
           {index > 0 ? (
-            <span aria-hidden className="text-zinc-600">
+            <span aria-hidden className="text-ink-faint/70">
               •
             </span>
           ) : null}
@@ -88,7 +88,7 @@ export function DiscoveryActionLinks({
       {visibleActions.map((action, index) => (
         <span key={action.label} className="inline-flex items-center gap-2">
           {index > 0 ? (
-            <span aria-hidden className="text-zinc-600">
+            <span aria-hidden className="text-ink-faint/70">
               •
             </span>
           ) : null}

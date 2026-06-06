@@ -977,6 +977,18 @@ export function normalizeRelayListContextResponse(value: unknown): RelayListCont
   };
 }
 
+function relayHealthyFromObservation(entry: Record<string, unknown>): boolean | undefined {
+  const healthy = asBoolean(entry.healthy);
+  if (typeof healthy === "boolean") return healthy;
+  const status = asString(entry.status)?.trim().toLowerCase();
+  if (!status) return undefined;
+  if (["healthy", "ok", "up", "online", "active"].includes(status)) return true;
+  if (["unhealthy", "down", "offline", "degraded", "error", "failed"].includes(status)) {
+    return false;
+  }
+  return undefined;
+}
+
 export function normalizeRelayHealthResponse(value: unknown): RelayHealthResponse {
   const record = asRecord(value) ?? {};
   const candidateRelays =
@@ -991,7 +1003,7 @@ export function normalizeRelayHealthResponse(value: unknown): RelayHealthRespons
       compactDefined({
         ...entry,
         status: asString(entry.status),
-        healthy: asBoolean(entry.healthy),
+        healthy: relayHealthyFromObservation(entry),
         latency_ms: asNumber(entry.latency_ms),
         uptime: asNumber(entry.uptime) ?? asString(entry.uptime),
         last_seen_at:

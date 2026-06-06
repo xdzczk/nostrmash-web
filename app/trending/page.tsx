@@ -22,6 +22,7 @@ import {
 } from "@/components/explorer/utils";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
+import { WindowSelector } from "@/components/explorer/window-selector";
 import {
   getTrendingDomains,
   getTrendingHashtags,
@@ -34,6 +35,8 @@ import {
   fetchProfilesByPubkey,
   hydrateProfiles,
 } from "@/lib/api/profile-hydration";
+import { toUrlSearchParams } from "@/lib/search-params/pagination";
+import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
 const nextMoves = [
@@ -65,7 +68,12 @@ export const metadata: Metadata = {
     "Explore what is trending now across notes, profiles, hashtags, domains, and relays.",
 };
 
-export default async function TrendingPage() {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function TrendingPage({ searchParams }: { searchParams: SearchParams }) {
+  const resolvedSearchParams = await searchParams;
+  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
+  const window = readStatsWindow(resolvedSearchParams);
   const normalizeUnixSeconds = (value: unknown): number | null => {
     if (typeof value !== "number" || !Number.isFinite(value)) return null;
     if (value > 1_000_000_000_000) return Math.floor(value / 1000);
@@ -117,15 +125,15 @@ export default async function TrendingPage() {
     if (typeof value !== "number" || !Number.isFinite(value)) return null;
     return value;
   };
-  const trendWindowLabel = "Last 24h";
+  const trendWindowLabel = formatStatsWindowLabel(window);
   let errorMessage = "";
   let authorsByPubkey: Record<string, Profile> = {};
   let hydratedProfiles: Profile[] = [];
   const [notesResult, profilesResult, hashtagsResult, domainsResult] = await Promise.allSettled([
-    getTrendingNotes("shortTtl"),
-    getTrendingProfiles("shortTtl"),
-    getTrendingHashtags("shortTtl"),
-    getTrendingDomains("shortTtl"),
+    getTrendingNotes("shortTtl", { window }),
+    getTrendingProfiles("shortTtl", { window }),
+    getTrendingHashtags("shortTtl", { window }),
+    getTrendingDomains("shortTtl", { window }),
   ]);
 
   const notes = notesResult.status === "fulfilled" ? notesResult.value : null;
@@ -271,6 +279,14 @@ export default async function TrendingPage() {
         className="space-y-3 p-3.5 sm:p-4"
         badges={
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+            <WindowSelector
+              path="/trending"
+              searchParams={currentSearchParams}
+              activeWindow={window}
+            />
+            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-0.5">
+              {trendWindowLabel}
+            </span>
             <NativeSemanticsBadges semantics={semantics} />
             <span className="text-ink-muted">
               Notes {(notes?.notes?.length ?? 0).toLocaleString()} • Profiles{" "}
@@ -290,7 +306,7 @@ export default async function TrendingPage() {
           >
             <div className="text-ink-muted mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] sm:mb-4">
               <span>{trendWindowLabel}</span>
-              <span aria-hidden className="text-zinc-600">
+              <span aria-hidden className="text-ink-faint/70">
                 •
               </span>
               <span>{notesFreshness}</span>
@@ -314,7 +330,7 @@ export default async function TrendingPage() {
                       return (
                         <li
                           key={note.id ?? note.event_id ?? note.eventId ?? `note-followup-${rank}`}
-                          className="border-edge/80 bg-surface/40 rounded-md border p-2.5"
+                          className="hover:bg-surface/40 rounded-lg p-2.5 transition-colors"
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 space-y-1">
@@ -377,7 +393,7 @@ export default async function TrendingPage() {
             </header>
             <div className="text-ink-muted mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
               <span>{trendWindowLabel}</span>
-              <span aria-hidden className="text-zinc-600">
+              <span aria-hidden className="text-ink-faint/70">
                 •
               </span>
               <span>{profilesFreshness}</span>
@@ -470,7 +486,7 @@ export default async function TrendingPage() {
             </header>
             <div className="text-ink-muted mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
               <span>{trendWindowLabel}</span>
-              <span aria-hidden className="text-zinc-600">
+              <span aria-hidden className="text-ink-faint/70">
                 •
               </span>
               <span>{hashtagsFreshness}</span>
@@ -542,7 +558,7 @@ export default async function TrendingPage() {
             </header>
             <div className="text-ink-muted mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
               <span>{trendWindowLabel}</span>
-              <span aria-hidden className="text-zinc-600">
+              <span aria-hidden className="text-ink-faint/70">
                 •
               </span>
               <span>{domainsFreshness}</span>

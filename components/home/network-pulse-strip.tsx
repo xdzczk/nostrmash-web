@@ -27,9 +27,7 @@ export function NetworkPulseStrip({ title, stats }: { title: string; stats: Puls
             key={stat.label}
             className="border-edge/85 bg-surface/30 nm-lift relative overflow-hidden rounded-xl border px-3.5 pt-3 pb-2.5"
           >
-            <p className="text-ink-faint text-[11px] tracking-[0.14em] uppercase">
-              {formatMetricLabel(stat.label)}
-            </p>
+            <p className="text-ink-faint text-[11px]">{formatMetricLabel(stat.label)}</p>
             <p className="text-ink mt-1.5 text-xl font-semibold tracking-tight tabular-nums">
               {formatValue(stat.value)}
             </p>

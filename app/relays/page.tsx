@@ -123,7 +123,7 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
               const share =
                 totalActivity > 0 ? ((row.activityScore / totalActivity) * 100).toFixed(1) : "0.0";
               return (
-                <li key={row.host} className="border-edge bg-surface/40 rounded-md border p-3">
+                <li key={row.host} className="hover:bg-surface/40 rounded-lg p-3 transition-colors">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-ink truncate text-sm">
@@ -165,10 +165,7 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
             })}
           </ul>
         ) : (
-          <EmptyState
-            title="Relay rankings unavailable"
-            message="The relay stats payload did not contain rankable relay rows."
-          />
+          <EmptyState message="Relay activity rankings will appear here once the index has gathered enough relay stats to rank." />
         )}
         {typeof relayHealth?.next_cursor === "string" && relayHealth.next_cursor.length > 0 ? (
           <Link href={healthContinuationHref} className="text-link mt-3 inline-block text-sm">

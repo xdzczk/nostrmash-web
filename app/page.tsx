@@ -3,14 +3,15 @@ import type { Metadata } from "next";
 
 import { DiscoveryActionLinks } from "@/components/explorer/card-grammar";
 import { EmptyState } from "@/components/explorer/empty-state";
-import { extractPrimitiveStats, isRecord, truncateIdentifier } from "@/components/explorer/utils";
+import { extractRelayRows, pickTopPrimitiveStats } from "@/components/explorer/stats-utils";
+import { WindowSelector } from "@/components/explorer/window-selector";
+import { isRecord, truncateIdentifier } from "@/components/explorer/utils";
 import { ClosingDiscoveryRail } from "@/components/home/closing-discovery-rail";
 import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
 import { ProfilesInMotionSpotlight } from "@/components/home/profiles-in-motion-spotlight";
 import { TrendingFeaturedModule } from "@/components/home/trending-featured-module";
 import { SearchForm } from "@/components/search/search-form";
 import { ErrorPanel } from "@/components/ui/status-panels";
-import { extractRelayRows } from "@/components/explorer/stats-utils";
 import {
   getDiscoveryHome,
   getNetworkStats,
@@ -21,6 +22,13 @@ import {
   getTrendingProfiles,
 } from "@/lib/api/endpoints";
 import { fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
+import { toUrlSearchParams } from "@/lib/search-params/pagination";
+import {
+  buildWindowHref,
+  formatStatsWindowLabel,
+  networkPulsePreferredKeys,
+  readStatsWindow,
+} from "@/lib/search-params/window";
 import type { Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = {
@@ -30,44 +38,15 @@ export const metadata: Metadata = {
 };
 export const revalidate = 60;
 
-export default async function HomePage() {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
+  const resolvedSearchParams = await searchParams;
+  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
+  const window = readStatsWindow(resolvedSearchParams);
+  const trendWindowLabel = formatStatsWindowLabel(window);
   const asRecord = (value: unknown): Record<string, unknown> | null =>
     isRecord(value) ? value : null;
-  const pickPreferredStats = (
-    sources: Array<Record<string, unknown> | null | undefined>,
-    preferredKeys: string[],
-    limit: number
-  ): Array<{ label: string; value: string | number | boolean }> => {
-    const flattened = sources.flatMap((source) => extractPrimitiveStats(source ?? {}, []));
-    if (flattened.length === 0) return [];
-
-    const selected: Array<{ label: string; value: string | number | boolean }> = [];
-    const usedLabels = new Set<string>();
-    for (const key of preferredKeys) {
-      const match = flattened.find((entry) => entry.label === key && !usedLabels.has(entry.label));
-      if (!match) continue;
-      selected.push(match);
-      usedLabels.add(match.label);
-      if (selected.length >= limit) return selected;
-    }
-
-    for (const entry of flattened) {
-      if (usedLabels.has(entry.label)) continue;
-      selected.push(entry);
-      usedLabels.add(entry.label);
-      if (selected.length >= limit) break;
-    }
-
-    return selected;
-  };
-  const networkPulsePreferredKeys = [
-    "events_ingested",
-    "projected_profiles",
-    "active_authors_24h",
-    "note_volume_24h",
-    "relays_active_24h",
-    "unique_authors_24h",
-  ];
   const normalizeUnixSeconds = (value: unknown): number | null => {
     if (typeof value !== "number" || !Number.isFinite(value)) return null;
     if (value > 1_000_000_000_000) return Math.floor(value / 1000);
@@ -112,10 +91,43 @@ export default async function HomePage() {
   let homeHashtags = payload?.hashtags ?? [];
   let homeDomains = payload?.domains ?? [];
 
-  const needsNotesFallback = homeNotes.length === 0;
-  const needsProfilesFallback = homeProfiles.length === 0;
-  const needsHashtagsFallback = homeHashtags.length === 0;
-  const needsDomainsFallback = homeDomains.length === 0;
+  if (window !== "24h") {
+    const windowedResults = await Promise.allSettled([
+      getTrendingNotes("shortTtl", { window, limit: 20 }),
+      getTrendingProfiles("shortTtl", { window, limit: 20 }),
+      getTrendingHashtags("shortTtl", { window, limit: 20 }),
+      getTrendingDomains("shortTtl", { window, limit: 20 }),
+    ]);
+    const [notesResult, profilesResult, hashtagsResult, domainsResult] = windowedResults;
+    if (notesResult.status === "fulfilled") {
+      trendingNotes = notesResult.value;
+      homeNotes = trendingNotes.notes ?? [];
+    }
+    if (profilesResult.status === "fulfilled") {
+      trendingProfiles = profilesResult.value;
+      homeProfiles = trendingProfiles.profiles ?? [];
+    }
+    if (hashtagsResult.status === "fulfilled") {
+      trendingHashtags = hashtagsResult.value;
+      homeHashtags = trendingHashtags.hashtags ?? [];
+    }
+    if (domainsResult.status === "fulfilled") {
+      trendingDomains = domainsResult.value;
+      homeDomains = trendingDomains.domains ?? [];
+    }
+    for (const result of windowedResults) {
+      if (result.status === "rejected") {
+        failedMessages.push(
+          result.reason instanceof Error ? result.reason.message : "Failed to load windowed trends."
+        );
+      }
+    }
+  }
+
+  const needsNotesFallback = window === "24h" && homeNotes.length === 0;
+  const needsProfilesFallback = window === "24h" && homeProfiles.length === 0;
+  const needsHashtagsFallback = window === "24h" && homeHashtags.length === 0;
+  const needsDomainsFallback = window === "24h" && homeDomains.length === 0;
   if (
     needsNotesFallback ||
     needsProfilesFallback ||
@@ -124,10 +136,10 @@ export default async function HomePage() {
     !payload
   ) {
     const fallbackRequests: Array<Promise<unknown>> = [];
-    if (needsNotesFallback) fallbackRequests.push(getTrendingNotes("shortTtl"));
-    if (needsProfilesFallback) fallbackRequests.push(getTrendingProfiles("shortTtl"));
-    if (needsHashtagsFallback) fallbackRequests.push(getTrendingHashtags("shortTtl"));
-    if (needsDomainsFallback) fallbackRequests.push(getTrendingDomains("shortTtl"));
+    if (needsNotesFallback) fallbackRequests.push(getTrendingNotes("shortTtl", { window }));
+    if (needsProfilesFallback) fallbackRequests.push(getTrendingProfiles("shortTtl", { window }));
+    if (needsHashtagsFallback) fallbackRequests.push(getTrendingHashtags("shortTtl", { window }));
+    if (needsDomainsFallback) fallbackRequests.push(getTrendingDomains("shortTtl", { window }));
     const fallbackResults = await Promise.allSettled(fallbackRequests);
     let fallbackIndex = 0;
     if (needsNotesFallback) {
@@ -216,10 +228,11 @@ export default async function HomePage() {
   const networkSummary = asRecord(sections?.network_summary);
 
   const homeStats = isRecord(payload?.stats) ? payload.stats : {};
-  let pulseStats = pickPreferredStats([homeStats], networkPulsePreferredKeys, 3);
+  let pulseStats = pickTopPrimitiveStats(homeStats, networkPulsePreferredKeys(window), 6, window);
 
   let relayLeaders = extractRelayRows(networkSummary ?? payload, 1);
-  const needsNetworkFallback = pulseStats.length === 0 || relayLeaders.length === 0;
+  const needsNetworkFallback =
+    pulseStats.length === 0 || relayLeaders.length === 0 || window !== "24h";
   if (needsNetworkFallback) {
     const fallbackStatsResults = await Promise.allSettled([
       getNetworkStats("shortTtl"),
@@ -238,13 +251,12 @@ export default async function HomePage() {
         );
       }
     }
-    if (pulseStats.length === 0) {
-      pulseStats = pickPreferredStats(
-        [isRecord(networkStats) ? networkStats : {}],
-        networkPulsePreferredKeys,
-        3
-      );
-    }
+    pulseStats = pickTopPrimitiveStats(
+      { ...homeStats, ...(networkStats ?? {}) },
+      networkPulsePreferredKeys(window),
+      6,
+      window
+    );
     if (relayLeaders.length === 0) {
       relayLeaders = extractRelayRows(relayStats, 1);
     }
@@ -275,7 +287,7 @@ export default async function HomePage() {
     "Updated recently";
   const hashtagsFreshness = formatFreshness(homeNotes[0]?.created_at) ?? "Updated recently";
   const domainsFreshness = formatFreshness(homeNotes[0]?.created_at) ?? "Updated recently";
-  const trendWindowLabel = "Last 24h";
+  const trendingNotesHref = buildWindowHref("/trending/notes", currentSearchParams, window);
   const heroSearchShortcuts = [
     { label: "#bitcoin", query: "#bitcoin" },
     { label: "npub", query: "npub1..." },
@@ -321,8 +333,9 @@ export default async function HomePage() {
                 shortcuts={heroSearchShortcuts}
               />
               <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                <WindowSelector path="/" searchParams={currentSearchParams} activeWindow={window} />
                 <span>{trendWindowLabel}</span>
-                <span aria-hidden className="text-zinc-600">
+                <span aria-hidden className="text-ink-faint/70">
                   •
                 </span>
                 <span className="inline-flex items-center gap-1.5">
@@ -369,9 +382,7 @@ export default async function HomePage() {
                       key={stat.label}
                       className="flex items-baseline justify-between gap-3 text-sm"
                     >
-                      <p className="text-ink-faint text-[11px] tracking-[0.16em] uppercase">
-                        {stat.label}
-                      </p>
+                      <p className="text-ink-faint text-[11px]">{stat.label}</p>
                       <p className="text-ink text-base font-semibold tracking-tight">
                         {String(stat.value)}
                       </p>
@@ -396,7 +407,7 @@ export default async function HomePage() {
               </div>
               <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                 <span>{trendWindowLabel}</span>
-                <span aria-hidden className="text-zinc-600">
+                <span aria-hidden className="text-ink-faint/70">
                   •
                 </span>
                 <span>{notesFreshness}</span>
@@ -413,7 +424,7 @@ export default async function HomePage() {
               </div>
             )}
             <DiscoveryActionLinks
-              actions={[{ label: "See all trending notes", href: "/trending/notes" }]}
+              actions={[{ label: "See all trending notes", href: trendingNotesHref }]}
               className="text-ink-faint mt-6 text-sm"
             />
           </section>

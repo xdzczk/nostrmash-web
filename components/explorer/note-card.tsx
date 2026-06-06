@@ -87,7 +87,7 @@ export function NoteCard({
   const metrics = noteMetricPriority
     .map((matcher) => rawMetrics.find((entry) => matcher.test(entry.label)))
     .filter((entry): entry is (typeof rawMetrics)[number] => Boolean(entry))
-    .slice(0, 3);
+    .slice(0, 2);
   const isTopRank = typeof rank === "number" && rank <= 3;
   const noteDomains = extractDomainsFromNote(note, 2).map((domain) => ({
     raw: domain,
@@ -103,7 +103,7 @@ export function NoteCard({
 
   return (
     <article
-      className={`nm-lift ${cardTierClassName("standard")} ${
+      className={`group nm-lift ${cardTierClassName("standard")} ${
         isTopRank ? "border-accent/20 bg-surface/60" : "border-edge/85 bg-surface/45"
       }`}
     >
@@ -144,7 +144,7 @@ export function NoteCard({
                 {truncateIdentifier(authorSecondaryLabel, "npub", "secondary")}
               </span>
             ) : null}
-            <span aria-hidden className="text-zinc-600">
+            <span aria-hidden className="text-ink-faint/70">
               •
             </span>
             <Timestamp unixSeconds={note.created_at} />
@@ -169,7 +169,7 @@ export function NoteCard({
           <span className="text-ink-faint">Links</span>
           {noteDomains.map((domain) => (
             <span key={domain.raw} className="inline-flex items-center gap-2">
-              <span aria-hidden className="text-zinc-600">
+              <span aria-hidden className="text-ink-faint/70">
                 •
               </span>
               <Link
@@ -189,7 +189,7 @@ export function NoteCard({
           <span className="text-ink-faint">Topics</span>
           {noteHashtags.map((hashtag) => (
             <span key={hashtag} className="inline-flex items-center gap-2">
-              <span aria-hidden className="text-zinc-600">
+              <span aria-hidden className="text-ink-faint/70">
                 •
               </span>
               <Link
@@ -208,7 +208,7 @@ export function NoteCard({
           <span className="text-ink-faint">Relays</span>
           {relayHosts.map((relayHost) => (
             <span key={relayHost.raw} className="inline-flex items-center gap-2">
-              <span aria-hidden className="text-zinc-600">
+              <span aria-hidden className="text-ink-faint/70">
                 •
               </span>
               <Link
@@ -223,12 +223,14 @@ export function NoteCard({
         </div>
       ) : null}
 
-      {discoverySignals ? <WhyNow reasons={reasonCandidates} className="mt-2.5 sm:mt-3" /> : null}
+      {discoverySignals ? (
+        <WhyNow reasons={reasonCandidates} showLabel={false} className="mt-2.5 sm:mt-3" />
+      ) : null}
 
       <DiscoveryStatPills stats={metrics} className="mt-2.5 sm:mt-3" />
 
       {resolvedNoteId ? (
-        <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
+        <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs opacity-80 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 sm:mt-3">
           <DiscoveryActionLinks
             actions={[
               { label: "Open note", href: noteHref },

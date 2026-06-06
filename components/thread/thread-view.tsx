@@ -33,7 +33,7 @@ export function ThreadView({
   authorsByPubkey?: Record<string, Profile>;
 }) {
   if (!focal && ancestors.length === 0 && replies.length === 0) {
-    return <EmptyState title="No thread data" message="No ancestors or replies were returned." />;
+    return <EmptyState message="No replies or ancestors have been indexed for this note yet." />;
   }
 
   return (

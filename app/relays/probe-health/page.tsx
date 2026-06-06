@@ -154,7 +154,7 @@ export default async function RelayProbeHealthPage() {
               return (
                 <li
                   key={relay.normalized_url}
-                  className="border-edge bg-surface/40 rounded-md border p-3"
+                  className="hover:bg-surface/40 rounded-lg p-3 transition-colors"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">

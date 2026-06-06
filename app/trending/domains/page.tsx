@@ -8,12 +8,14 @@ import { PageHero } from "@/components/explorer/page-hero";
 import { DomainsList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
+import { WindowSelector } from "@/components/explorer/window-selector";
 import { getTrendingDomains } from "@/lib/api/endpoints";
 import {
   buildContinuationHref,
   readSearchParam,
   toUrlSearchParams,
 } from "@/lib/search-params/pagination";
+import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 
 export const metadata: Metadata = {
@@ -30,11 +32,12 @@ export default async function TrendingDomainsPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const cursor = readSearchParam(resolvedSearchParams, "cursor");
+  const window = readStatsWindow(resolvedSearchParams);
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   let errorMessage = "";
   let payload: Awaited<ReturnType<typeof getTrendingDomains>> | null = null;
   try {
-    payload = await getTrendingDomains("shortTtl", { cursor });
+    payload = await getTrendingDomains("shortTtl", { cursor, window });
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : "Failed to load trending domains.";
   }
@@ -58,11 +61,17 @@ export default async function TrendingDomainsPage({
         title="Trending domains"
         subtitle="The domains spreading most widely through active notes."
         badges={
-          hasSemantics ? (
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <NativeSemanticsBadges semantics={semantics} />
-            </div>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <WindowSelector
+              path="/trending/domains"
+              searchParams={currentSearchParams}
+              activeWindow={window}
+            />
+            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
+              {formatStatsWindowLabel(window)}
+            </span>
+            {hasSemantics ? <NativeSemanticsBadges semantics={semantics} /> : null}
+          </div>
         }
       />
       <SectionCard title="Domain ranking" description="The domains strongest in view.">

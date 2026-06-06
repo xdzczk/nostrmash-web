@@ -59,7 +59,7 @@ export function ProfileCard({
   const metrics = profileMetricPriority
     .map((matcher) => rawMetrics.find((entry) => matcher.test(entry.label)))
     .filter((entry): entry is (typeof rawMetrics)[number] => Boolean(entry))
-    .slice(0, 3);
+    .slice(0, 2);
   const isTopRank = typeof rank === "number" && rank <= 3;
   const rankLabel = typeof rank === "number" ? `#${rank}` : null;
   const identifierKind = identifier.startsWith("npub") ? "npub" : "pubkey";
@@ -68,7 +68,7 @@ export function ProfileCard({
 
   return (
     <article
-      className={`nm-lift ${cardTierClassName("standard")} ${
+      className={`group nm-lift ${cardTierClassName("standard")} ${
         isTopRank ? "bg-surface/60 border-emerald-500/20" : "border-edge/85 bg-surface/45"
       }`}
     >
@@ -104,12 +104,14 @@ export function ProfileCard({
         </div>
       </div>
 
-      {discoverySignals ? <WhyNow reasons={profileReasons} className="mt-2.5 sm:mt-3" /> : null}
+      {discoverySignals ? (
+        <WhyNow reasons={profileReasons} showLabel={false} className="mt-2.5 sm:mt-3" />
+      ) : null}
 
       <DiscoveryStatPills stats={metrics} className="mt-2.5 sm:mt-3" />
 
       {href ? (
-        <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
+        <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs opacity-80 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 sm:mt-3">
           <DiscoveryActionLinks
             actions={[
               { label: "View profile", href },

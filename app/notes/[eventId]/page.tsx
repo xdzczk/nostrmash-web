@@ -521,14 +521,12 @@ export default async function NotePage({
           ) : null}
           {provenanceRelayLinks.length > 0 ? (
             <div className="mt-3">
-              <p className="text-ink-faint mb-2 text-xs tracking-wide uppercase">
-                Relay observations
-              </p>
+              <p className="text-ink-faint mb-2 text-xs">Relay observations</p>
               <ul className="space-y-2">
                 {provenanceRelayLinks.map((observation) => (
                   <li
                     key={observation.key}
-                    className="border-edge bg-surface/30 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
+                    className="bg-surface/30 hover:bg-surface/45 flex flex-wrap items-center justify-between gap-2 rounded-lg p-3 transition-colors"
                   >
                     <div className="min-w-0">
                       <p className="text-ink-soft truncate text-sm">{observation.relay}</p>
@@ -680,7 +678,7 @@ export default async function NotePage({
           </SectionCard>
         ) : (
           <SectionCard title="Thread activity" description="Recent activity from this thread.">
-            <div className="border-edge bg-surface/40 rounded-md border p-3">
+            <div className="hover:bg-surface/40 rounded-lg p-3 transition-colors">
               <p className="text-ink-dim text-xs">
                 Extended thread context is skipped for faster initial loads.
               </p>
@@ -726,7 +724,7 @@ export default async function NotePage({
           </SectionCard>
         ) : (
           <SectionCard title="Related notes" description="Other notes linked to this one.">
-            <div className="border-edge bg-surface/40 rounded-md border p-3">
+            <div className="hover:bg-surface/40 rounded-lg p-3 transition-colors">
               <p className="text-ink-dim text-xs">
                 Related-note expansion is skipped for faster initial loads.
               </p>

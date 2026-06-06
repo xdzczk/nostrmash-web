@@ -1,7 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-import { classifyStats, pickTopPrimitiveStats } from "@/components/explorer/stats-utils";
+import {
+  collectStatsArraySections,
+  collectStatsMetricGroups,
+  pickTopPrimitiveStats,
+} from "@/components/explorer/stats-utils";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { MetadataList } from "@/components/explorer/metadata-list";
@@ -11,9 +15,16 @@ import { StatCard } from "@/components/explorer/stat-card";
 import { formatMetricLabel, isRecord } from "@/components/explorer/utils";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
+import { WindowSelector } from "@/components/explorer/window-selector";
 import { getContentStats, getNetworkStats, getRelayStats } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractRelayRows } from "@/components/explorer/stats-utils";
+import { toUrlSearchParams } from "@/lib/search-params/pagination";
+import {
+  formatStatsWindowLabel,
+  readStatsWindow,
+  type StatsWindow,
+} from "@/lib/search-params/window";
 
 export const metadata: Metadata = {
   title: "Stats",
@@ -21,30 +32,36 @@ export const metadata: Metadata = {
 };
 
 const NETWORK_PRIORITY_KEYS = [
-  "total_nodes",
-  "active_nodes",
-  "active_relays",
-  "active_authors",
-  "total_profiles",
-  "consistency",
+  "active_authors_24h",
+  "active_authors_7d",
+  "note_volume_24h",
+  "note_volume_7d",
+  "active_24h",
+  "active_7d",
+  "event_volume_24h",
+  "event_volume_7d",
+  "unique_authors_24h",
+  "unique_authors_7d",
+  "total",
 ];
 
 const CONTENT_PRIORITY_KEYS = [
-  "note_count",
-  "total_notes",
+  "note_volume_24h",
+  "note_volume_7d",
   "event_count",
   "unique_authors",
-  "top_hashtag_count",
-  "consistency",
+  "hashtag",
 ];
 
 const RELAY_PRIORITY_KEYS = [
-  "relay_count",
-  "total_relays",
-  "active_relays",
-  "top_relay_count",
-  "relay_mentions",
-  "consistency",
+  "active_24h",
+  "active_7d",
+  "total",
+  "event_volume_24h",
+  "event_volume_7d",
+  "unique_authors_24h",
+  "unique_authors_7d",
+  "event_count",
 ];
 
 function StatsGroup({
@@ -52,27 +69,17 @@ function StatsGroup({
   description,
   payload,
   preferredKeys,
+  window,
 }: {
   title: string;
   description: string;
   payload: unknown;
   preferredKeys: string[];
+  window: StatsWindow;
 }) {
-  const sections = classifyStats(payload);
-  const topStats = pickTopPrimitiveStats(payload, preferredKeys, 6);
-  const objectEntries = sections.objects
-    .map((entry) => ({
-      title: entry.label,
-      items: Object.entries(entry.value)
-        .filter(
-          ([, value]) =>
-            typeof value === "string" || typeof value === "number" || typeof value === "boolean"
-        )
-        .map(([label, value]) => ({ label, value })),
-    }))
-    .filter((entry) => entry.items.length > 0)
-    .slice(0, 3);
-  const arraySections = sections.arrays;
+  const topStats = pickTopPrimitiveStats(payload, preferredKeys, 6, window);
+  const objectEntries = collectStatsMetricGroups(payload, 3, window);
+  const arraySections = collectStatsArraySections(payload, 2, window);
 
   return (
     <SectionCard title={title} description={description}>
@@ -85,30 +92,26 @@ function StatsGroup({
           </div>
         ) : (
           <EmptyState
-            title="No top-level signal returned"
-            message="The payload did not expose primitive metrics for this section."
+            title="No metrics returned"
+            message="The payload did not expose readable metrics for this section."
           />
         )}
 
         {objectEntries.map((group) => (
           <div key={group.title} className="space-y-2">
-            <p className="text-ink-faint text-[11px] tracking-[0.14em] uppercase">
-              {formatMetricLabel(group.title)}
-            </p>
+            <p className="text-ink-faint text-[11px]">{formatMetricLabel(group.title)}</p>
             <MetadataList items={group.items} columns={2} />
           </div>
         ))}
 
         {arraySections.slice(0, 2).map((group) => (
           <div key={group.label} className="space-y-2">
-            <p className="text-ink-faint text-[11px] tracking-[0.14em] uppercase">
-              {formatMetricLabel(group.label)}
-            </p>
+            <p className="text-ink-faint text-[11px]">{formatMetricLabel(group.label)}</p>
             <div className="space-y-2">
               {group.value.slice(0, 8).map((entry, index) => (
                 <div
                   key={`${group.label}-${index}`}
-                  className="border-edge bg-surface/30 rounded-md border p-3"
+                  className="bg-surface/30 hover:bg-surface/45 rounded-lg p-3 transition-colors"
                 >
                   {isRecord(entry) ? (
                     <MetadataList
@@ -136,7 +139,14 @@ function StatsGroup({
   );
 }
 
-export default async function StatsPage() {
+export default async function StatsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
+  const window = readStatsWindow(resolvedSearchParams);
   let errorMessage = "";
   let network: Awaited<ReturnType<typeof getNetworkStats>> | null = null;
   let content: Awaited<ReturnType<typeof getContentStats>> | null = null;
@@ -160,7 +170,15 @@ export default async function StatsPage() {
         title="Network analytics"
         subtitle="Read network, content, and relay metrics without opening raw payloads."
         badges={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <WindowSelector
+              path="/stats"
+              searchParams={currentSearchParams}
+              activeWindow={window}
+            />
+            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1 text-xs">
+              {formatStatsWindowLabel(window)}
+            </span>
             <NativeSemanticsBadges semantics={semantics} />
           </div>
         }
@@ -173,18 +191,21 @@ export default async function StatsPage() {
         description="Node-level and topology summary data."
         payload={network ?? {}}
         preferredKeys={NETWORK_PRIORITY_KEYS}
+        window={window}
       />
       <StatsGroup
         title="Content"
         description="Aggregate content activity metrics."
         payload={content ?? {}}
         preferredKeys={CONTENT_PRIORITY_KEYS}
+        window={window}
       />
       <StatsGroup
         title="Relays"
         description="Relay availability and health summaries."
         payload={relays ?? {}}
         preferredKeys={RELAY_PRIORITY_KEYS}
+        window={window}
       />
       <SectionCard
         title="Relay leaderboard"
@@ -195,8 +216,8 @@ export default async function StatsPage() {
             {extractRelayRows(relays, 12).map((row, index) => (
               <li
                 key={`${row.relay}-${index}`}
-                className={`rounded-md border p-3 ${
-                  index < 3 ? "border-edge-strong bg-surface/65" : "border-edge bg-surface/40"
+                className={`rounded-lg p-3 transition-colors ${
+                  index < 3 ? "bg-surface/60" : "hover:bg-surface/40"
                 }`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -230,10 +251,7 @@ export default async function StatsPage() {
             ))}
           </ul>
         ) : (
-          <EmptyState
-            title="Relay ranking unavailable"
-            message="No relay rows were returned in the aggregate relay payload."
-          />
+          <EmptyState message="Relay rankings will appear here once the index has gathered enough relay activity to rank." />
         )}
       </SectionCard>
 

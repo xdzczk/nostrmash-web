@@ -10,7 +10,7 @@ export function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <section className="border-edge/95 bg-surface/55 rounded-xl border p-3.5 sm:p-5">
+    <section className="border-edge/50 bg-surface/50 nm-raised rounded-2xl border p-3.5 sm:p-5">
       <header className="mb-3 space-y-1 sm:mb-4">
         <h2 className="text-ink text-base font-semibold tracking-tight sm:text-[1.1rem]">
           {title}
