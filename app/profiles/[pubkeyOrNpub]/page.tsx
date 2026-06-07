@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { cache } from "react";
 
-import { NotesList, ProfilesList } from "@/components/data/renderers";
+import { ArticlesList, NotesList, ProfilesList } from "@/components/data/renderers";
 import { ProfileActivityTabs } from "@/components/profile/profile-activity-tabs";
 import {
   ProfileReactionsActivityList,
@@ -31,6 +31,11 @@ import {
   getProfileSummary,
   getRelatedProfiles,
   getRisingProfiles,
+  getUserBookmarks,
+  getUserHighlights,
+  getUserLongForm,
+  getUserMuteList,
+  getUserMutedBy,
 } from "@/lib/api/endpoints";
 import {
   extractNativeApiSemantics,
@@ -187,6 +192,16 @@ function activityEmptyMessage(tab: ProfileActivityTab): string {
       return "No recent reactions were returned for this profile.";
     case "zaps":
       return "No recent zaps were returned for this profile.";
+    case "long_form":
+      return "No long-form articles were returned for this profile.";
+    case "bookmarks":
+      return "No bookmarks were returned for this profile.";
+    case "highlights":
+      return "No highlights were returned for this profile.";
+    case "mute_list":
+      return "This profile's mute list is empty or unavailable.";
+    case "muted_by":
+      return "No accounts muting this profile were returned.";
   }
 }
 
@@ -222,6 +237,11 @@ export default async function ProfilePage({
   const repliesCursor = readSearchParam(resolvedSearchParams, "replies_cursor");
   const reactionsCursor = readSearchParam(resolvedSearchParams, "reactions_cursor");
   const zapsCursor = readSearchParam(resolvedSearchParams, "zaps_cursor");
+  const longFormCursor = readSearchParam(resolvedSearchParams, "long_form_cursor");
+  const bookmarksCursor = readSearchParam(resolvedSearchParams, "bookmarks_cursor");
+  const highlightsCursor = readSearchParam(resolvedSearchParams, "highlights_cursor");
+  const muteListCursor = readSearchParam(resolvedSearchParams, "mute_list_cursor");
+  const mutedByCursor = readSearchParam(resolvedSearchParams, "muted_by_cursor");
   const relatedProfilesCursor = readSearchParam(resolvedSearchParams, "related_profiles_cursor");
   const activityTab = parseProfileActivityTab(readSearchParam(resolvedSearchParams, "activity"));
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
@@ -234,6 +254,11 @@ export default async function ProfilePage({
   let authoredRepliesPayload: Awaited<ReturnType<typeof getAuthorReplies>> | null = null;
   let authoredReactionsPayload: Awaited<ReturnType<typeof getAuthorReactions>> | null = null;
   let authoredZapsPayload: Awaited<ReturnType<typeof getAuthorZaps>> | null = null;
+  let longFormPayload: Awaited<ReturnType<typeof getUserLongForm>> | null = null;
+  let bookmarksPayload: Awaited<ReturnType<typeof getUserBookmarks>> | null = null;
+  let highlightsPayload: Awaited<ReturnType<typeof getUserHighlights>> | null = null;
+  let muteListPayload: Awaited<ReturnType<typeof getUserMuteList>> | null = null;
+  let mutedByPayload: Awaited<ReturnType<typeof getUserMutedBy>> | null = null;
   let relatedProfilesFallbackPayload: Awaited<ReturnType<typeof getRelatedProfiles>> | null = null;
   let risingProfilesPayload: Awaited<ReturnType<typeof getRisingProfiles>> | null = null;
 
@@ -262,6 +287,11 @@ export default async function ProfilePage({
   const shouldLoadReplies = activityTab === "replies" || typeof repliesCursor === "string";
   const shouldLoadReactions = activityTab === "reactions" || typeof reactionsCursor === "string";
   const shouldLoadZaps = activityTab === "zaps" || typeof zapsCursor === "string";
+  const shouldLoadLongForm = activityTab === "long_form" || typeof longFormCursor === "string";
+  const shouldLoadBookmarks = activityTab === "bookmarks" || typeof bookmarksCursor === "string";
+  const shouldLoadHighlights = activityTab === "highlights" || typeof highlightsCursor === "string";
+  const shouldLoadMuteList = activityTab === "mute_list" || typeof muteListCursor === "string";
+  const shouldLoadMutedBy = activityTab === "muted_by" || typeof mutedByCursor === "string";
   const shouldLoadRelatedProfilesFallback =
     typeof relatedProfilesCursor === "string" || summaryRelatedProfiles.length === 0;
   const shouldLoadRisingProfilesFallback = summaryRisingProfiles.length === 0;
@@ -272,6 +302,11 @@ export default async function ProfilePage({
     repliesResult,
     reactionsResult,
     zapsResult,
+    longFormResult,
+    bookmarksResult,
+    highlightsResult,
+    muteListResult,
+    mutedByResult,
     relatedFallbackResult,
     risingProfilesResult,
   ] = await Promise.allSettled([
@@ -285,6 +320,21 @@ export default async function ProfilePage({
       : Promise.resolve(null),
     shouldLoadZaps
       ? getAuthorZaps(lookupKey, "shortTtl", { cursor: zapsCursor })
+      : Promise.resolve(null),
+    shouldLoadLongForm
+      ? getUserLongForm(lookupKey, "shortTtl", { cursor: longFormCursor })
+      : Promise.resolve(null),
+    shouldLoadBookmarks
+      ? getUserBookmarks(lookupKey, "shortTtl", { cursor: bookmarksCursor })
+      : Promise.resolve(null),
+    shouldLoadHighlights
+      ? getUserHighlights(lookupKey, "shortTtl", { cursor: highlightsCursor })
+      : Promise.resolve(null),
+    shouldLoadMuteList
+      ? getUserMuteList(lookupKey, "shortTtl", { cursor: muteListCursor })
+      : Promise.resolve(null),
+    shouldLoadMutedBy
+      ? getUserMutedBy(lookupKey, "shortTtl", { cursor: mutedByCursor })
       : Promise.resolve(null),
     shouldLoadRelatedProfilesFallback
       ? getRelatedProfiles(lookupKey, "shortTtl", { cursor: relatedProfilesCursor })
@@ -335,6 +385,51 @@ export default async function ProfilePage({
       zapsResult.reason instanceof Error ? zapsResult.reason.message : "Failed to load recent zaps."
     );
   }
+  if (longFormResult.status === "fulfilled") {
+    longFormPayload = longFormResult.value;
+  } else if (shouldLoadLongForm && !isNotFoundReason(longFormResult.reason)) {
+    errors.push(
+      longFormResult.reason instanceof Error
+        ? longFormResult.reason.message
+        : "Failed to load long-form articles."
+    );
+  }
+  if (bookmarksResult.status === "fulfilled") {
+    bookmarksPayload = bookmarksResult.value;
+  } else if (shouldLoadBookmarks && !isNotFoundReason(bookmarksResult.reason)) {
+    errors.push(
+      bookmarksResult.reason instanceof Error
+        ? bookmarksResult.reason.message
+        : "Failed to load bookmarks."
+    );
+  }
+  if (highlightsResult.status === "fulfilled") {
+    highlightsPayload = highlightsResult.value;
+  } else if (shouldLoadHighlights && !isNotFoundReason(highlightsResult.reason)) {
+    errors.push(
+      highlightsResult.reason instanceof Error
+        ? highlightsResult.reason.message
+        : "Failed to load highlights."
+    );
+  }
+  if (muteListResult.status === "fulfilled") {
+    muteListPayload = muteListResult.value;
+  } else if (shouldLoadMuteList && !isNotFoundReason(muteListResult.reason)) {
+    errors.push(
+      muteListResult.reason instanceof Error
+        ? muteListResult.reason.message
+        : "Failed to load mute list."
+    );
+  }
+  if (mutedByResult.status === "fulfilled") {
+    mutedByPayload = mutedByResult.value;
+  } else if (shouldLoadMutedBy && !isNotFoundReason(mutedByResult.reason)) {
+    errors.push(
+      mutedByResult.reason instanceof Error
+        ? mutedByResult.reason.message
+        : "Failed to load muted-by accounts."
+    );
+  }
   if (relatedFallbackResult.status === "fulfilled") {
     relatedProfilesFallbackPayload = relatedFallbackResult.value;
   } else if (shouldLoadRelatedProfilesFallback && !isNotFoundReason(relatedFallbackResult.reason)) {
@@ -365,6 +460,11 @@ export default async function ProfilePage({
   const replies = authoredRepliesPayload?.replies ?? [];
   const reactions = authoredReactionsPayload?.reactions ?? [];
   const zaps = authoredZapsPayload?.zaps ?? [];
+  const longFormArticles = longFormPayload?.articles ?? [];
+  const bookmarks = bookmarksPayload?.events ?? [];
+  const highlights = highlightsPayload?.highlights ?? [];
+  const mutedProfiles = muteListPayload?.profiles ?? [];
+  const mutedByProfiles = mutedByPayload?.profiles ?? [];
   const semantics = extractNativeApiSemantics(
     summary,
     profileEnrichment,
@@ -386,6 +486,11 @@ export default async function ProfilePage({
   const repliesNextCursor = extractNativeApiSemantics(authoredRepliesPayload).next_cursor;
   const reactionsNextCursor = extractNativeApiSemantics(authoredReactionsPayload).next_cursor;
   const zapsNextCursor = extractNativeApiSemantics(authoredZapsPayload).next_cursor;
+  const longFormNextCursor = extractNativeApiSemantics(longFormPayload).next_cursor;
+  const bookmarksNextCursor = extractNativeApiSemantics(bookmarksPayload).next_cursor;
+  const highlightsNextCursor = extractNativeApiSemantics(highlightsPayload).next_cursor;
+  const muteListNextCursor = extractNativeApiSemantics(muteListPayload).next_cursor;
+  const mutedByNextCursor = extractNativeApiSemantics(mutedByPayload).next_cursor;
   const relatedProfilesNextCursor = extractNativeApiSemantics(
     relatedProfilesFallbackPayload
   ).next_cursor;
@@ -399,6 +504,11 @@ export default async function ProfilePage({
     replies: repliesNextCursor,
     reactions: reactionsNextCursor,
     zaps: zapsNextCursor,
+    long_form: longFormNextCursor,
+    bookmarks: bookmarksNextCursor,
+    highlights: highlightsNextCursor,
+    mute_list: muteListNextCursor,
+    muted_by: mutedByNextCursor,
   };
   const activityContinuationByTab: Record<ProfileActivityTab, string> = {
     notes: buildProfileActivityContinuationHref(
@@ -424,6 +534,36 @@ export default async function ProfilePage({
       currentSearchParams,
       "zaps",
       zapsNextCursor
+    ),
+    long_form: buildProfileActivityContinuationHref(
+      profileRoute,
+      currentSearchParams,
+      "long_form",
+      longFormNextCursor
+    ),
+    bookmarks: buildProfileActivityContinuationHref(
+      profileRoute,
+      currentSearchParams,
+      "bookmarks",
+      bookmarksNextCursor
+    ),
+    highlights: buildProfileActivityContinuationHref(
+      profileRoute,
+      currentSearchParams,
+      "highlights",
+      highlightsNextCursor
+    ),
+    mute_list: buildProfileActivityContinuationHref(
+      profileRoute,
+      currentSearchParams,
+      "mute_list",
+      muteListNextCursor
+    ),
+    muted_by: buildProfileActivityContinuationHref(
+      profileRoute,
+      currentSearchParams,
+      "muted_by",
+      mutedByNextCursor
     ),
   };
   const relatedProfilesContinuationHref = buildContinuationHref(
@@ -452,6 +592,16 @@ export default async function ProfilePage({
           extractEventAuthorPubkeys(Object.values(targetNotesById)),
           "shortTtl"
         )
+      : {};
+
+  const eventListAuthorPubkeys = extractEventAuthorPubkeys([
+    ...longFormArticles,
+    ...bookmarks,
+    ...highlights,
+  ]);
+  const eventListAuthorsByPubkey =
+    eventListAuthorPubkeys.length > 0
+      ? await fetchProfilesByPubkey(eventListAuthorPubkeys, "shortTtl")
       : {};
 
   const hero = isRecord(summaryRecord?.hero) ? summaryRecord.hero : null;
@@ -666,6 +816,50 @@ export default async function ProfilePage({
                 <EmptyState message={activityEmptyMessage("zaps")} />
               )
             ) : null}
+            {activityTab === "long_form" ? (
+              longFormArticles.length > 0 ? (
+                <ArticlesList
+                  articles={longFormArticles}
+                  authorsByPubkey={{ ...notesAuthorMap, ...eventListAuthorsByPubkey }}
+                />
+              ) : (
+                <EmptyState message={activityEmptyMessage("long_form")} />
+              )
+            ) : null}
+            {activityTab === "bookmarks" ? (
+              bookmarks.length > 0 ? (
+                <NotesList
+                  notes={bookmarks}
+                  authorsByPubkey={{ ...notesAuthorMap, ...eventListAuthorsByPubkey }}
+                />
+              ) : (
+                <EmptyState message={activityEmptyMessage("bookmarks")} />
+              )
+            ) : null}
+            {activityTab === "highlights" ? (
+              highlights.length > 0 ? (
+                <NotesList
+                  notes={highlights}
+                  authorsByPubkey={{ ...notesAuthorMap, ...eventListAuthorsByPubkey }}
+                />
+              ) : (
+                <EmptyState message={activityEmptyMessage("highlights")} />
+              )
+            ) : null}
+            {activityTab === "mute_list" ? (
+              mutedProfiles.length > 0 ? (
+                <ProfilesList profiles={mutedProfiles} />
+              ) : (
+                <EmptyState message={activityEmptyMessage("mute_list")} />
+              )
+            ) : null}
+            {activityTab === "muted_by" ? (
+              mutedByProfiles.length > 0 ? (
+                <ProfilesList profiles={mutedByProfiles} />
+              ) : (
+                <EmptyState message={activityEmptyMessage("muted_by")} />
+              )
+            ) : null}
             {typeof activeNextCursor === "string" && activeNextCursor.length > 0 ? (
               <div className="border-accent/30 bg-accent/10 rounded-md border p-3">
                 <p className="text-accent-ink text-xs">
@@ -776,6 +970,11 @@ export default async function ProfilePage({
           data={authoredReactionsPayload ?? {}}
         />
         <DebugDisclosure title="Debug payload: authored zaps" data={authoredZapsPayload ?? {}} />
+        <DebugDisclosure title="Debug payload: long-form" data={longFormPayload ?? {}} />
+        <DebugDisclosure title="Debug payload: bookmarks" data={bookmarksPayload ?? {}} />
+        <DebugDisclosure title="Debug payload: highlights" data={highlightsPayload ?? {}} />
+        <DebugDisclosure title="Debug payload: mute list" data={muteListPayload ?? {}} />
+        <DebugDisclosure title="Debug payload: muted by" data={mutedByPayload ?? {}} />
         <DebugDisclosure
           title="Debug payload: related profiles fallback"
           data={relatedProfilesFallbackPayload ?? {}}

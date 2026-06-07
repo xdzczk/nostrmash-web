@@ -66,8 +66,20 @@ import type {
   TrendingDomainsApiResponse,
   TrendingDomainsResponse,
   TrendingHashtagsResponse,
+  TrendingLongFormApiResponse,
+  TrendingLongFormResponse,
   TrendingNotesResponse,
   TrendingProfilesResponse,
+  UserBookmarksApiResponse,
+  UserBookmarksResponse,
+  UserHighlightsApiResponse,
+  UserHighlightsResponse,
+  UserLongFormApiResponse,
+  UserLongFormResponse,
+  UserMuteListApiResponse,
+  UserMuteListResponse,
+  UserMutedByApiResponse,
+  UserMutedByResponse,
   TrustScoreApiResponse,
   TrustScoreResponse,
   PopularRelaysResponse,
@@ -110,7 +122,13 @@ import {
   normalizeThreadActivityResponse,
   normalizeThreadResponse,
   normalizeThreadSummaryResponse,
+  normalizeTrendingLongFormResponse,
   normalizeTrustScoreResponse,
+  normalizeUserBookmarksResponse,
+  normalizeUserHighlightsResponse,
+  normalizeUserLongFormResponse,
+  normalizeUserMuteListResponse,
+  normalizeUserMutedByResponse,
 } from "@/lib/api/normalize";
 import type { CacheClass } from "@/lib/caching/policies";
 import { npubToHex } from "@/lib/nostr/npub";
@@ -135,6 +153,13 @@ const nativeApiV1Routes = {
     `/api/v1/users/${encodeURIComponent(pubkey)}/followers`,
   profileMentionsByPubkey: (pubkey: string) =>
     `/api/v1/users/${encodeURIComponent(pubkey)}/mentions`,
+  userLongFormByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/long-form`,
+  userBookmarksByPubkey: (pubkey: string) =>
+    `/api/v1/users/${encodeURIComponent(pubkey)}/bookmarks`,
+  userHighlightsByPubkey: (pubkey: string) =>
+    `/api/v1/users/${encodeURIComponent(pubkey)}/highlights`,
+  userMuteListByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/mute-list`,
+  userMutedByByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/muted-by`,
   contactListByPubkey: (pubkey: string) => `/api/v1/contact-lists/${encodeURIComponent(pubkey)}`,
   relayListByPubkey: (pubkey: string) => `/api/v1/relay-lists/${encodeURIComponent(pubkey)}`,
   relatedProfilesByPubkey: (pubkey: string) =>
@@ -168,6 +193,7 @@ const nativeApiV1Routes = {
   noteSummaryByEventId: (eventId: string) => `/api/v1/notes/${encodeURIComponent(eventId)}/summary`,
   noteRelatedByEventId: (eventId: string) => `/api/v1/notes/${encodeURIComponent(eventId)}/related`,
   trendingNotes: "/api/v1/discovery/notes/trending",
+  trendingLongForm: "/api/v1/discovery/long-form/trending",
   trendingProfiles: "/api/v1/discovery/profiles/trending",
   hotConversations: "/api/v1/discovery/conversations/hot",
   risingProfiles: "/api/v1/discovery/profiles/rising",
@@ -193,6 +219,23 @@ interface CursorQuery {
   cursor?: string;
   limit?: number;
   window?: string;
+}
+
+interface OffsetQuery {
+  limit?: number;
+  offset?: number;
+  window?: string;
+}
+
+function buildOffsetQuery(
+  query?: OffsetQuery
+): Record<string, string | number | undefined> | undefined {
+  if (!query) return undefined;
+  return {
+    limit: query.limit,
+    offset: query.offset,
+    window: query.window,
+  };
 }
 
 const normalizeSearchQueryText = (value: string): string =>
@@ -852,6 +895,136 @@ export async function getProfileMentions(
   throw lastError ?? new Error("Profile mentions lookup failed.");
 }
 
+export async function getUserLongForm(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<UserLongFormResponse> {
+  const candidates = buildPubkeyCandidates(pubkey);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<UserLongFormApiResponse>(
+        nativeApiV1Routes.userLongFormByPubkey(candidate),
+        {
+          cacheClass,
+          query: buildCursorQuery(query),
+        }
+      );
+      return normalizeUserLongFormResponse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("User long-form lookup failed.");
+    }
+  }
+
+  throw lastError ?? new Error("User long-form lookup failed.");
+}
+
+export async function getUserBookmarks(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<UserBookmarksResponse> {
+  const candidates = buildPubkeyCandidates(pubkey);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<UserBookmarksApiResponse>(
+        nativeApiV1Routes.userBookmarksByPubkey(candidate),
+        {
+          cacheClass,
+          query: buildCursorQuery(query),
+        }
+      );
+      return normalizeUserBookmarksResponse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("User bookmarks lookup failed.");
+    }
+  }
+
+  throw lastError ?? new Error("User bookmarks lookup failed.");
+}
+
+export async function getUserHighlights(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<UserHighlightsResponse> {
+  const candidates = buildPubkeyCandidates(pubkey);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<UserHighlightsApiResponse>(
+        nativeApiV1Routes.userHighlightsByPubkey(candidate),
+        {
+          cacheClass,
+          query: buildCursorQuery(query),
+        }
+      );
+      return normalizeUserHighlightsResponse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("User highlights lookup failed.");
+    }
+  }
+
+  throw lastError ?? new Error("User highlights lookup failed.");
+}
+
+export async function getUserMuteList(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<UserMuteListResponse> {
+  const candidates = buildPubkeyCandidates(pubkey);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<UserMuteListApiResponse>(
+        nativeApiV1Routes.userMuteListByPubkey(candidate),
+        {
+          cacheClass,
+          query: buildCursorQuery(query),
+        }
+      );
+      return normalizeUserMuteListResponse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("User mute list lookup failed.");
+    }
+  }
+
+  throw lastError ?? new Error("User mute list lookup failed.");
+}
+
+export async function getUserMutedBy(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime",
+  query?: CursorQuery
+): Promise<UserMutedByResponse> {
+  const candidates = buildPubkeyCandidates(pubkey);
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetchApiJson<UserMutedByApiResponse>(
+        nativeApiV1Routes.userMutedByByPubkey(candidate),
+        {
+          cacheClass,
+          query: buildCursorQuery(query),
+        }
+      );
+      return normalizeUserMutedByResponse(response);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("User muted-by lookup failed.");
+    }
+  }
+
+  throw lastError ?? new Error("User muted-by lookup failed.");
+}
+
 export async function getRelatedProfiles(
   pubkey: string,
   cacheClass: CacheClass = "requestTime",
@@ -1282,6 +1455,20 @@ export async function getTrendingNotes(cacheClass: CacheClass = "shortTtl", quer
     ...response,
     notes: normalizeEventRecords(response.notes),
   };
+}
+
+export async function getTrendingLongForm(
+  cacheClass: CacheClass = "shortTtl",
+  query?: OffsetQuery
+): Promise<TrendingLongFormResponse> {
+  const response = await fetchApiJson<TrendingLongFormApiResponse>(
+    nativeApiV1Routes.trendingLongForm,
+    {
+      cacheClass,
+      query: buildOffsetQuery(query),
+    }
+  );
+  return normalizeTrendingLongFormResponse(response);
 }
 
 export async function getTrendingProfiles(

@@ -1,4 +1,6 @@
+import { LONG_FORM_KIND } from "@/lib/types/api";
 import type {
+  ArticleRecord,
   AuthorAnalyticsResponse,
   AuthorEventsResponse,
   AuthorReactionRecord,
@@ -36,7 +38,13 @@ import type {
   ThreadResponse,
   ThreadActivityResponse,
   ThreadSummaryResponse,
+  TrendingLongFormResponse,
   TrustScoreResponse,
+  UserBookmarksResponse,
+  UserHighlightsResponse,
+  UserLongFormResponse,
+  UserMuteListResponse,
+  UserMutedByResponse,
 } from "@/lib/types/api";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -162,6 +170,183 @@ export function normalizeEventRecords(value: unknown): EventRecord[] {
   return asArray(value)
     .map((entry) => normalizeEventRecord(entry))
     .filter((entry): entry is EventRecord => entry !== null);
+}
+
+function extractArticleTagValue(record: Record<string, unknown>, name: string): string | undefined {
+  const tags = record.tags;
+  if (!Array.isArray(tags)) return undefined;
+  for (const tag of tags) {
+    if (!Array.isArray(tag) || tag.length < 2) continue;
+    if (String(tag[0]).toLowerCase() !== name.toLowerCase()) continue;
+    const candidate = asString(tag[1]);
+    if (candidate) return candidate;
+  }
+  return undefined;
+}
+
+export function normalizeArticleRecord(value: unknown): ArticleRecord | null {
+  const base = normalizeEventRecord(value);
+  if (!base) return null;
+  const record = asRecord(value) ?? {};
+  const author = normalizeProfile(record.author);
+  const publishedAtRaw =
+    asNumber(record.published_at) ??
+    parseNumericAmount(extractArticleTagValue(record, "published_at"));
+
+  return compactDefined({
+    ...base,
+    kind: asNumber(base.kind) ?? LONG_FORM_KIND,
+    title: asString(record.title) ?? extractArticleTagValue(record, "title"),
+    summary:
+      asString(record.summary) ??
+      asString(record.description) ??
+      extractArticleTagValue(record, "summary"),
+    image: asString(record.image) ?? extractArticleTagValue(record, "image"),
+    language: asString(record.language) ?? extractArticleTagValue(record, "language"),
+    published_at: publishedAtRaw,
+    score: asNumber(record.score),
+    author: author ?? undefined,
+  }) as ArticleRecord;
+}
+
+export function normalizeArticleRecords(value: unknown): ArticleRecord[] {
+  return asArray(value)
+    .map((entry) => normalizeArticleRecord(entry))
+    .filter((entry): entry is ArticleRecord => entry !== null && entry.id.length > 0);
+}
+
+export function normalizeTrendingLongFormResponse(value: unknown): TrendingLongFormResponse {
+  const record = asRecord(value) ?? {};
+  const articles = normalizeArticleRecords(
+    record.articles ??
+      record.long_form ??
+      record.notes ??
+      record.events ??
+      record.items ??
+      record.data
+  );
+  const total = asNumber(record.total) ?? (articles.length > 0 ? articles.length : undefined);
+
+  return compactDefined({
+    ...record,
+    surface: asString(record.surface),
+    window: asString(record.window),
+    articles,
+    offset: asNumber(record.offset),
+    total,
+  });
+}
+
+export function normalizeUserLongFormResponse(value: unknown): UserLongFormResponse {
+  const record = asRecord(value) ?? {};
+  const articles = normalizeArticleRecords(
+    record.articles ??
+      record.long_form ??
+      record.notes ??
+      record.events ??
+      record.items ??
+      record.data ??
+      (Array.isArray(value) ? value : [])
+  );
+  const total = asNumber(record.total) ?? asNumber(record.count);
+
+  return compactDefined({
+    ...record,
+    pubkey: asString(record.pubkey) ?? asString(record.author_pubkey),
+    articles,
+    total: total ?? (articles.length > 0 ? articles.length : undefined),
+  });
+}
+
+export function normalizeUserBookmarksResponse(value: unknown): UserBookmarksResponse {
+  const record = asRecord(value) ?? {};
+  const events = normalizeEventRecords(
+    record.bookmarks ??
+      record.events ??
+      record.notes ??
+      record.items ??
+      record.data ??
+      (Array.isArray(value) ? value : [])
+  );
+  const total = asNumber(record.total) ?? asNumber(record.count);
+
+  return compactDefined({
+    ...record,
+    pubkey: asString(record.pubkey) ?? asString(record.author_pubkey),
+    events,
+    total: total ?? (events.length > 0 ? events.length : undefined),
+  });
+}
+
+export function normalizeUserHighlightsResponse(value: unknown): UserHighlightsResponse {
+  const record = asRecord(value) ?? {};
+  const highlights = normalizeEventRecords(
+    record.highlights ??
+      record.events ??
+      record.notes ??
+      record.items ??
+      record.data ??
+      (Array.isArray(value) ? value : [])
+  );
+  const total = asNumber(record.total) ?? asNumber(record.count);
+
+  return compactDefined({
+    ...record,
+    pubkey: asString(record.pubkey) ?? asString(record.author_pubkey),
+    highlights,
+    total: total ?? (highlights.length > 0 ? highlights.length : undefined),
+  });
+}
+
+export function normalizeUserMuteListResponse(value: unknown): UserMuteListResponse {
+  const record = asRecord(value) ?? {};
+  const fallbackItems = Array.isArray(value) ? value : [];
+  const profiles = normalizeProfiles(
+    record.muted ??
+      record.muted_profiles ??
+      record.profiles ??
+      record.users ??
+      record.items ??
+      record.data ??
+      fallbackItems
+  );
+  const mutedPubkeys = normalizeStringArray(
+    record.muted_pubkeys ?? record.mute_pubkeys ?? record.pubkeys
+  );
+  const profilesFromPubkeys = mutedPubkeys.map((pubkey) => ({ pubkey }) satisfies Profile);
+  const total = asNumber(record.total) ?? asNumber(record.count);
+  const merged = dedupeProfilesByPubkey([...profiles, ...profilesFromPubkeys]);
+
+  return compactDefined({
+    ...record,
+    pubkey: asString(record.pubkey) ?? asString(record.author_pubkey),
+    profiles: merged,
+    total: total ?? (merged.length > 0 ? merged.length : undefined),
+  });
+}
+
+export function normalizeUserMutedByResponse(value: unknown): UserMutedByResponse {
+  const record = asRecord(value) ?? {};
+  const fallbackItems = Array.isArray(value) ? value : [];
+  const profiles = dedupeProfilesByPubkey(
+    normalizeProfiles(
+      record.muted_by ??
+        record.muters ??
+        record.profiles ??
+        record.users ??
+        record.items ??
+        record.data ??
+        fallbackItems
+    )
+  );
+  const total = asNumber(record.total) ?? asNumber(record.count);
+
+  return compactDefined({
+    ...record,
+    pubkey: asString(record.pubkey) ?? asString(record.author_pubkey),
+    profiles,
+    total: total ?? (profiles.length > 0 ? profiles.length : undefined),
+  });
 }
 
 const AUTHORED_NOTE_EXCLUDED_KINDS = new Set([0, 6, 7, 9734, 9735]);

@@ -75,6 +75,18 @@ export interface EventRecord {
   [key: string]: unknown;
 }
 
+export const LONG_FORM_KIND = 30023;
+
+export interface ArticleRecord extends EventRecord {
+  title?: string;
+  summary?: string;
+  image?: string;
+  language?: string;
+  published_at?: number;
+  score?: number;
+  author?: Profile;
+}
+
 export interface SearchResponse extends NativeApiSemantics {
   notes?: EventRecord[];
   profiles?: Profile[];
@@ -142,6 +154,51 @@ export interface TrendingNotesResponse extends NativeApiSemantics {
 
 export interface TrendingProfilesResponse extends NativeApiSemantics {
   profiles?: Profile[];
+  [key: string]: unknown;
+}
+
+export interface TrendingLongFormResponse extends NativeApiSemantics {
+  surface?: string;
+  window?: string;
+  articles?: ArticleRecord[];
+  offset?: number;
+  next_offset?: number;
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface UserLongFormResponse extends NativeApiSemantics {
+  pubkey?: string;
+  articles?: ArticleRecord[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface UserBookmarksResponse extends NativeApiSemantics {
+  pubkey?: string;
+  events?: EventRecord[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface UserHighlightsResponse extends NativeApiSemantics {
+  pubkey?: string;
+  highlights?: EventRecord[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface UserMuteListResponse extends NativeApiSemantics {
+  pubkey?: string;
+  profiles?: Profile[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface UserMutedByResponse extends NativeApiSemantics {
+  pubkey?: string;
+  profiles?: Profile[];
+  total?: number;
   [key: string]: unknown;
 }
 
@@ -498,6 +555,12 @@ export type HashtagDetailApiResponse = NativeApiSemantics & Record<string, unkno
 export type HashtagNotesApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type RelatedHashtagsApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type TrendingDomainsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type TrendingLongFormApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type UserLongFormApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type UserBookmarksApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type UserHighlightsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type UserMuteListApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type UserMutedByApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type DomainDetailApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type DomainNotesApiResponse = NativeApiSemantics & Record<string, unknown>;
 

@@ -41,6 +41,11 @@ import type { EventRecord, Profile } from "@/lib/types/api";
 
 const nextMoves = [
   {
+    href: "/trending/long-form",
+    title: "Trending long-form",
+    description: "Read the long-form articles leading the network.",
+  },
+  {
     href: "/discovery/conversations/hot",
     title: "Hot conversations",
     description: "Follow the threads pulling in the most replies now.",
@@ -369,7 +374,10 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
               />
             )}
             <DiscoveryActionLinks
-              actions={[{ label: "See all notes", href: "/trending/notes" }]}
+              actions={[
+                { label: "See all notes", href: "/trending/notes" },
+                { label: "See long-form", href: "/trending/long-form" },
+              ]}
               className="mt-3"
             />
             {trendingNotesContinuationHref ? (

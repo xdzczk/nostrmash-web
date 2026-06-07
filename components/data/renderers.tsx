@@ -1,3 +1,4 @@
+import { ArticleCard } from "@/components/explorer/article-card";
 import { DomainChip } from "@/components/explorer/domain-chip";
 import { pickPrimaryDomainSupportingSignal } from "@/components/explorer/domain-supporting-signal";
 import { HashtagChip } from "@/components/explorer/hashtag-chip";
@@ -5,7 +6,11 @@ import { NoteCard } from "@/components/explorer/note-card";
 import { mapDomainWhyNow, mapHashtagWhyNow } from "@/components/explorer/why-now";
 import { normalizeDomainLabel, noteInlineAuthorProfile } from "@/components/explorer/utils";
 import { ProfileCard } from "@/components/explorer/profile-card";
-import type { EventRecord, Profile } from "@/lib/types/api";
+import { LONG_FORM_KIND, type EventRecord, type Profile } from "@/lib/types/api";
+
+function isLongFormEvent(note: EventRecord): boolean {
+  return typeof note.kind === "number" && note.kind === LONG_FORM_KIND;
+}
 
 function getAuthorByPubkey(
   authorsByPubkey: Record<string, Profile> | undefined,
@@ -36,11 +41,47 @@ export function NotesList({
     <ul className="min-w-0 space-y-3">
       {notes.map((note, index) => (
         <li key={note.id ?? `note-${index}`} className="min-w-0">
-          <NoteCard
-            note={note}
-            author={getAuthorByPubkey(authorsByPubkey, note)}
+          {isLongFormEvent(note) ? (
+            <ArticleCard
+              article={note}
+              author={getAuthorByPubkey(authorsByPubkey, note)}
+              rank={ranked ? index + 1 : undefined}
+              discoverySignals={discoverySignals}
+            />
+          ) : (
+            <NoteCard
+              note={note}
+              author={getAuthorByPubkey(authorsByPubkey, note)}
+              rank={ranked ? index + 1 : undefined}
+              showFullContent={showFullContent}
+              discoverySignals={discoverySignals}
+            />
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function ArticlesList({
+  articles,
+  authorsByPubkey,
+  ranked = false,
+  discoverySignals = false,
+}: {
+  articles: EventRecord[];
+  authorsByPubkey?: Record<string, Profile>;
+  ranked?: boolean;
+  discoverySignals?: boolean;
+}) {
+  return (
+    <ul className="min-w-0 space-y-3">
+      {articles.map((article, index) => (
+        <li key={article.id ?? `article-${index}`} className="min-w-0">
+          <ArticleCard
+            article={article}
+            author={getAuthorByPubkey(authorsByPubkey, article)}
             rank={ranked ? index + 1 : undefined}
-            showFullContent={showFullContent}
             discoverySignals={discoverySignals}
           />
         </li>

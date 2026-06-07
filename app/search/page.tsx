@@ -49,6 +49,11 @@ const explorerJumpLinks = [
     description: "Review ranked notes and open the threads behind them.",
   },
   {
+    href: "/trending/long-form",
+    label: "Read trending long-form",
+    description: "Browse the long-form articles leading the network.",
+  },
+  {
     href: "/trending/profiles",
     label: "View active profiles",
     description: "Browse profiles gaining ground across the network.",
