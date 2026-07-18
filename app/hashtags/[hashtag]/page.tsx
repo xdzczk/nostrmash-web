@@ -13,12 +13,13 @@ import { ErrorPanel } from "@/components/ui/status-panels";
 import { getHashtagDetail, getHashtagNotes, getRelatedHashtags } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
+import { isValidHashtag } from "@/lib/hashtags";
 import type { Profile } from "@/lib/types/api";
 
 type Params = Promise<{ hashtag: string }>;
 
 function normalizeHashtagParam(value: string): string {
-  return decodeURIComponent(value).trim().replace(/^#/, "");
+  return decodeURIComponent(value).trim().replace(/^#/, "").toLowerCase();
 }
 
 function hashtagTitle(value: string): string {
@@ -43,6 +44,33 @@ export default async function HashtagPage({ params }: { params: Params }) {
   let hashtagNotesPayload: Awaited<ReturnType<typeof getHashtagNotes>> | null = null;
   let relatedHashtagsPayload: Awaited<ReturnType<typeof getRelatedHashtags>> | null = null;
   let authorsByPubkey: Record<string, Profile> = {};
+
+  if (!isValidHashtag(normalizedHashtag)) {
+    return (
+      <div className="space-y-6">
+        <PageHero
+          eyebrow="Hashtag"
+          title={hashtagTitle(hashtag)}
+          subtitle="This value is not a valid hashtag. Try a search instead."
+        />
+        <ErrorPanel
+          message={`"${normalizedHashtag || hashtag}" is not a valid hashtag. Use letters, numbers, underscore, or hyphen.`}
+        />
+        <EmptyState
+          title="Search instead"
+          message="Names and phrases belong in search, not hashtag pages."
+          actions={
+            <Link
+              href={`/search?q=${encodeURIComponent(hashtag)}`}
+              className="text-accent-soft underline-offset-2 hover:underline"
+            >
+              Open search
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
 
   const [detailResult, notesResult, relatedResult] = await Promise.allSettled([
     getHashtagDetail(normalizedHashtag, "shortTtl"),

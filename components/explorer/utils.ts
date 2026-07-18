@@ -319,8 +319,11 @@ export function profileIdentifier(profile: Profile): string {
       "user_pubkey",
       "userPubkey",
     ]) ?? "";
-  const encoded = !npub && pubkey ? hexToNpub(pubkey) : null;
-  return npub || encoded || pubkey || "unknown";
+  // Prefer hex so profile/summary/related routes hit canonical API keys even
+  // when an older API build does not accept npub path params.
+  if (pubkey) return pubkey;
+  if (npub) return npub;
+  return "unknown";
 }
 
 export function profileSecondaryLabel(profile: Profile): string | null {

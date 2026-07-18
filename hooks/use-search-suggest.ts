@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isValidHashtag } from "@/lib/hashtags";
 import type { Profile, HashtagEntry } from "@/lib/types/api";
 
 export interface SuggestResult {
@@ -24,7 +25,11 @@ function normalizeProfiles(raw: unknown): Profile[] {
 
 function normalizeHashtags(raw: unknown): HashtagEntry[] {
   if (!Array.isArray(raw)) return [];
-  return raw.filter((entry): entry is HashtagEntry => typeof entry === "object" && entry !== null);
+  return raw.filter((entry): entry is HashtagEntry => {
+    if (typeof entry !== "object" || entry === null) return false;
+    const tag = String((entry as HashtagEntry).hashtag ?? "").replace(/^#/, "");
+    return isValidHashtag(tag);
+  });
 }
 
 function normalizeQuery(raw: string): string {

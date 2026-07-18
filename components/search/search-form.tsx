@@ -8,6 +8,7 @@ import { SuggestionDropdown } from "@/components/search/suggestion-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSearchSuggest } from "@/hooks/use-search-suggest";
+import { isValidHashtag } from "@/lib/hashtags";
 import type { Profile } from "@/lib/types/api";
 
 type SearchShortcut = {
@@ -71,11 +72,17 @@ export function SearchForm({
 
   const handleSelectHashtag = useCallback(
     (tag: string) => {
+      const normalized = tag.replace(/^#/, "").trim();
+      if (!isValidHashtag(normalized)) {
+        // Names/phrases are not hashtags — send them to search instead.
+        navigateToSearch(tag);
+        return;
+      }
       setOpen(false);
       clearSuggest();
-      router.push(`/hashtags/${encodeURIComponent(tag)}`);
+      router.push(`/hashtags/${encodeURIComponent(normalized.toLowerCase())}`);
     },
-    [router, clearSuggest]
+    [router, clearSuggest, navigateToSearch]
   );
 
   const commitActiveItem = useCallback(() => {

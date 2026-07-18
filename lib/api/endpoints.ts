@@ -86,6 +86,7 @@ import type {
   RelayProbeHealthResponse,
 } from "@/lib/types/api";
 import { fetchApiJson } from "@/lib/api/http";
+import { normalizeHashtagQuery } from "@/lib/hashtags";
 import {
   normalizeDiscoveryHomeResponse,
   normalizeEventCountsResponse,
@@ -287,10 +288,6 @@ function buildSearchQuery(
     limit: query.limit,
     offset: query.offset,
   };
-}
-
-function normalizeHashtagQuery(hashtag: string): string {
-  return hashtag.trim().replace(/^#/, "");
 }
 
 function normalizeDomainQuery(domain: string): string {
