@@ -21,6 +21,7 @@ import {
   getTrendingNotes,
   getTrendingProfiles,
 } from "@/lib/api/endpoints";
+import { isApiTimeoutError } from "@/lib/api/http";
 import { fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import {
@@ -78,9 +79,11 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   let trendingHashtags: Awaited<ReturnType<typeof getTrendingHashtags>> | null = null;
   let trendingDomains: Awaited<ReturnType<typeof getTrendingDomains>> | null = null;
   let noteAuthorsByPubkey: Record<string, Profile> = {};
+  let homeTimedOut = false;
   try {
     payload = await getDiscoveryHome("shortTtl");
   } catch (error) {
+    homeTimedOut = isApiTimeoutError(error);
     failedMessages.push(
       error instanceof Error ? error.message : "Failed to load discovery home payload."
     );
@@ -91,7 +94,9 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   let homeHashtags = payload?.hashtags ?? [];
   let homeDomains = payload?.domains ?? [];
 
-  if (window !== "24h") {
+  // When the API is saturated, cascading fallbacks just multiply wait time.
+  // Render a degraded homepage quickly instead of hanging the SSR request.
+  if (!homeTimedOut && window !== "24h") {
     const windowedResults = await Promise.allSettled([
       getTrendingNotes("shortTtl", { window, limit: 20 }),
       getTrendingProfiles("shortTtl", { window, limit: 20 }),
@@ -124,16 +129,17 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
     }
   }
 
-  const needsNotesFallback = window === "24h" && homeNotes.length === 0;
-  const needsProfilesFallback = window === "24h" && homeProfiles.length === 0;
-  const needsHashtagsFallback = window === "24h" && homeHashtags.length === 0;
-  const needsDomainsFallback = window === "24h" && homeDomains.length === 0;
+  const needsNotesFallback = !homeTimedOut && window === "24h" && homeNotes.length === 0;
+  const needsProfilesFallback = !homeTimedOut && window === "24h" && homeProfiles.length === 0;
+  const needsHashtagsFallback = !homeTimedOut && window === "24h" && homeHashtags.length === 0;
+  const needsDomainsFallback = !homeTimedOut && window === "24h" && homeDomains.length === 0;
   if (
-    needsNotesFallback ||
-    needsProfilesFallback ||
-    needsHashtagsFallback ||
-    needsDomainsFallback ||
-    !payload
+    !homeTimedOut &&
+    (needsNotesFallback ||
+      needsProfilesFallback ||
+      needsHashtagsFallback ||
+      needsDomainsFallback ||
+      !payload)
   ) {
     const fallbackRequests: Array<Promise<unknown>> = [];
     if (needsNotesFallback) fallbackRequests.push(getTrendingNotes("shortTtl", { window }));
@@ -232,7 +238,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
 
   let relayLeaders = extractRelayRows(networkSummary ?? payload, 1);
   const needsNetworkFallback =
-    pulseStats.length === 0 || relayLeaders.length === 0 || window !== "24h";
+    !homeTimedOut && (pulseStats.length === 0 || relayLeaders.length === 0 || window !== "24h");
   if (needsNetworkFallback) {
     const fallbackStatsResults = await Promise.allSettled([
       getNetworkStats("shortTtl"),
