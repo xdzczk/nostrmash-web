@@ -10,12 +10,12 @@ export default defineConfig({
       reporter: ["text", "lcov"],
       include: ["lib/**/*.{ts,tsx}"],
       exclude: ["lib/**/*.test.ts", "lib/types/**"],
-      // Floor against today's coverage; raise as Phase 5 tests land.
+      // Ratcheted from measured coverage (~41% lines / ~28% branches).
       thresholds: {
-        lines: 20,
-        functions: 20,
-        branches: 15,
-        statements: 20,
+        lines: 38,
+        functions: 28,
+        branches: 25,
+        statements: 38,
       },
     },
   },

@@ -1,12 +1,4 @@
-import type {
-  Profile,
-  SearchApiResponse,
-  SearchNotesApiResponse,
-  SearchProfilesApiResponse,
-  SearchResponse,
-  SearchSuggestApiResponse,
-} from "@/lib/types/api";
-import { fetchApiJson } from "@/lib/api/http";
+import type { SearchResponse } from "@/lib/types/api";
 import {
   extractNativeApiSemantics,
   normalizeEventRecord,
@@ -15,177 +7,30 @@ import {
   normalizeProfiles,
 } from "@/lib/api/normalize";
 import type { CacheClass } from "@/lib/caching/policies";
+import { getEvent } from "@/lib/api/endpoints/notes";
+import { getProfile } from "@/lib/api/endpoints/profiles";
 import {
-  buildSearchQuery,
   buildSearchSectionTotals,
   looksLikeEventIdentifier,
   looksLikeProfileIdentifier,
-  nativeApiV1Routes,
-  normalizeProfileSearchQueryText,
   normalizeRelayHints,
-  normalizeSearchQueryText,
   toSearchCursor,
   type SearchQuery,
 } from "@/lib/api/endpoints/shared";
-import { getEvent } from "@/lib/api/endpoints/notes";
-import { getProfile } from "@/lib/api/endpoints/profiles";
+import {
+  fetchSearch,
+  fetchSearchNotes,
+  fetchSearchProfiles,
+  fetchSearchSuggest,
+} from "@/lib/api/endpoints/search/fetchers";
+import { dedupeProfiles } from "@/lib/api/endpoints/search/helpers";
 
-async function fetchSearchNotes(
-  query: Pick<SearchQuery, "q" | "limit" | "offset">,
-  cacheClass: CacheClass
-) {
-  return fetchApiJson<SearchNotesApiResponse>(nativeApiV1Routes.searchNotes, {
-    cacheClass,
-    query: buildSearchQuery(query),
-  });
-}
-
-async function fetchSearchProfiles(
-  query: Pick<SearchQuery, "q" | "limit" | "offset">,
-  cacheClass: CacheClass
-) {
-  return fetchApiJson<SearchProfilesApiResponse>(nativeApiV1Routes.searchProfiles, {
-    cacheClass,
-    query: buildSearchQuery(query),
-  });
-}
-
-async function fetchSearchSuggest(query: Pick<SearchQuery, "q" | "limit">, cacheClass: CacheClass) {
-  return fetchApiJson<SearchSuggestApiResponse>(nativeApiV1Routes.searchSuggest, {
-    cacheClass,
-    query,
-  });
-}
-
-async function fetchSearch(query: Pick<SearchQuery, "q" | "limit">, cacheClass: CacheClass) {
-  return fetchApiJson<SearchApiResponse>(nativeApiV1Routes.search, {
-    cacheClass,
-    query,
-  });
-}
-export async function getSearch(
+export async function searchAllTab(
   query: SearchQuery,
-  cacheClass: CacheClass = "requestTime"
+  normalizedQueryText: string,
+  normalizedProfileQueryText: string,
+  cacheClass: CacheClass
 ): Promise<SearchResponse> {
-  const normalizedQueryText = normalizeSearchQueryText(query.q);
-  const normalizedProfileQueryText = normalizeProfileSearchQueryText(query.q);
-  const searchQuery = {
-    q: normalizedQueryText,
-    limit: query.limit,
-    offset: query.offset,
-  } satisfies Pick<SearchQuery, "q" | "limit" | "offset">;
-  const profileSearchQuery = {
-    q: normalizedProfileQueryText,
-    limit: query.limit,
-    offset: query.offset,
-  } satisfies Pick<SearchQuery, "q" | "limit" | "offset">;
-  const combinedSearchQuery = {
-    q: normalizedQueryText,
-    limit: query.limit,
-  } satisfies Pick<SearchQuery, "q" | "limit">;
-  const dedupeProfiles = (profiles: Profile[]): Profile[] =>
-    Array.from(
-      new Map(
-        profiles
-          .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
-          .map((profile) => [profile.pubkey, profile])
-      ).values()
-    );
-
-  if (query.tab === "notes") {
-    const notesResponse = await fetchSearchNotes(searchQuery, cacheClass);
-    const notes = normalizeEventRecords(notesResponse.notes);
-    const currentOffset =
-      typeof notesResponse.offset === "number" ? notesResponse.offset : (query.offset ?? 0);
-    const nextOffset =
-      typeof query.limit === "number" && notes.length >= query.limit
-        ? currentOffset + notes.length
-        : undefined;
-    let directNoteMatch = [] as NonNullable<SearchResponse["notes"]>;
-    if (notes.length === 0 && looksLikeEventIdentifier(normalizedQueryText)) {
-      try {
-        const eventResponse = await getEvent(normalizedQueryText, cacheClass);
-        const directEvent = normalizeEventRecord(eventResponse.event ?? eventResponse);
-        directNoteMatch = directEvent ? [directEvent] : [];
-      } catch {
-        directNoteMatch = [];
-      }
-    }
-    const mergedNotes = Array.from(
-      new Map([...notes, ...directNoteMatch].map((note) => [note.id, note])).values()
-    );
-    const sectionTotals = buildSearchSectionTotals(mergedNotes.length, 0, 0, 0, 0);
-    const semantics = extractNativeApiSemantics(notesResponse);
-    const notesCursor = toSearchCursor(notesResponse);
-    return {
-      ...semantics,
-      ...notesResponse,
-      notes: mergedNotes,
-      profiles: [],
-      profile_suggestions: [],
-      hashtags: [],
-      relays: [],
-      offset: currentOffset,
-      next_offset: nextOffset,
-      next_cursor: notesCursor ?? semantics.next_cursor,
-      surface_cursors: notesCursor ? { notes: notesCursor } : undefined,
-      total: typeof notesResponse.total === "number" ? notesResponse.total : mergedNotes.length,
-      section_totals: {
-        ...sectionTotals,
-        ...(notesResponse.section_totals ?? {}),
-      },
-    } satisfies SearchResponse;
-  }
-
-  if (query.tab === "profiles") {
-    const profilesResponse = await fetchSearchProfiles(profileSearchQuery, cacheClass);
-    const profiles = normalizeProfiles(profilesResponse.profiles);
-    const currentOffset =
-      typeof profilesResponse.offset === "number" ? profilesResponse.offset : (query.offset ?? 0);
-    const nextOffset =
-      typeof query.limit === "number" && profiles.length >= query.limit
-        ? currentOffset + profiles.length
-        : undefined;
-    let directProfileMatch: Profile[] = [];
-    if (profiles.length === 0 && looksLikeProfileIdentifier(normalizedProfileQueryText)) {
-      try {
-        const profile = await getProfile(normalizedProfileQueryText, cacheClass);
-        directProfileMatch = [profile];
-      } catch {
-        directProfileMatch = [];
-      }
-    }
-    const mergedProfiles = Array.from(
-      new Map(
-        [...profiles, ...directProfileMatch]
-          .filter((profile) => typeof profile.pubkey === "string" && profile.pubkey.length > 0)
-          .map((profile) => [profile.pubkey, profile])
-      ).values()
-    );
-    const sectionTotals = buildSearchSectionTotals(0, mergedProfiles.length, 0, 0, 0);
-    const semantics = extractNativeApiSemantics(profilesResponse);
-    const profilesCursor = toSearchCursor(profilesResponse);
-    return {
-      ...semantics,
-      ...profilesResponse,
-      notes: [],
-      profiles: mergedProfiles,
-      profile_suggestions: [],
-      hashtags: [],
-      relays: [],
-      offset: currentOffset,
-      next_offset: nextOffset,
-      next_cursor: profilesCursor ?? semantics.next_cursor,
-      surface_cursors: profilesCursor ? { profiles: profilesCursor } : undefined,
-      total:
-        typeof profilesResponse.total === "number" ? profilesResponse.total : mergedProfiles.length,
-      section_totals: {
-        ...sectionTotals,
-        ...(profilesResponse.section_totals ?? {}),
-      },
-    } satisfies SearchResponse;
-  }
-
   const [
     searchResult,
     notesResult,
@@ -194,7 +39,13 @@ export async function getSearch(
     directProfileResult,
     directNoteResult,
   ] = await Promise.allSettled([
-    fetchSearch(combinedSearchQuery, cacheClass),
+    fetchSearch(
+      {
+        q: normalizedQueryText,
+        limit: query.limit,
+      },
+      cacheClass
+    ),
     fetchSearchNotes(
       {
         q: normalizedQueryText,
