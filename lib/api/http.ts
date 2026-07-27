@@ -1,5 +1,8 @@
+import type { z } from "zod";
+
 import { appConfig } from "@/lib/config";
 import { toNextFetchConfig, type CacheClass } from "@/lib/caching/policies";
+import { softParseApiPayload } from "@/lib/api/schemas/parse";
 import { traceApiCall } from "@/lib/telemetry/trace";
 import type { ApiErrorBody, ApiErrorDetails } from "@/lib/types/api";
 
@@ -104,6 +107,7 @@ export async function fetchApiJson<T>(
     cacheClass?: CacheClass;
     timeoutMs?: number;
     init?: RequestInit;
+    schema?: z.ZodTypeAny;
   }
 ): Promise<T> {
   const query = new URLSearchParams();
@@ -167,5 +171,9 @@ export async function fetchApiJson<T>(
     throw new Error(`API ${response.status}: ${message}${details}`);
   }
 
-  return (await response.json()) as T;
+  const json = (await response.json()) as T;
+  if (options?.schema) {
+    return softParseApiPayload(options.schema, json, `api:${path}`) as T;
+  }
+  return json;
 }

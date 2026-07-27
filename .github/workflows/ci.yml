@@ -42,3 +42,40 @@ jobs:
         run: pnpm build
         env:
           NOSTRMASH_API_BASE_URL: https://api.nostrmash.com
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: quality
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm test:e2e:install
+
+      - name: Build
+        run: pnpm build
+        env:
+          NOSTRMASH_API_BASE_URL: http://127.0.0.1:8080
+
+      - name: Smoke e2e
+        run: pnpm test:e2e
+        env:
+          CI: "true"
+          NOSTRMASH_API_BASE_URL: http://127.0.0.1:8080

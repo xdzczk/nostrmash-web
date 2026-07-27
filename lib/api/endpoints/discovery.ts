@@ -28,6 +28,7 @@ import {
   nativeApiV1Routes,
   normalizeHotConversationNotes,
 } from "@/lib/api/endpoints/shared";
+import { eventListResponseSchema, profileListResponseSchema } from "@/lib/api/schemas/core";
 
 export async function getDiscoveryHome(cacheClass: CacheClass = "shortTtl") {
   const response = await fetchApiJson<DiscoveryHomeResponse>(nativeApiV1Routes.discoveryHome, {
@@ -39,6 +40,7 @@ export async function getTrendingNotes(cacheClass: CacheClass = "shortTtl", quer
   const response = await fetchApiJson<TrendingNotesResponse>(nativeApiV1Routes.trendingNotes, {
     cacheClass,
     query: buildCursorQuery(query),
+    schema: eventListResponseSchema,
   });
   return {
     ...response,
@@ -69,6 +71,7 @@ export async function getTrendingProfiles(
     {
       cacheClass,
       query: buildCursorQuery(query),
+      schema: profileListResponseSchema,
     }
   );
   return {

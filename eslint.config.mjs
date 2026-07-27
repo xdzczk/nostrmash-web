@@ -57,6 +57,8 @@ const eslintConfig = defineConfig([
     ".open-next/**",
     ".wrangler/**",
     "coverage/**",
+    "playwright-report/**",
+    "test-results/**",
   ]),
   prettier,
 ]);

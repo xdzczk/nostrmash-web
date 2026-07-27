@@ -13,3 +13,9 @@ export async function traceApiCall<T>(spanName: string, operation: () => Promise
     throw error;
   }
 }
+
+/** Log homepage upstream fan-out so TTFB regressions are visible in server logs. */
+export function traceHomeFanOut(callCount: number, details: Record<string, boolean | number>) {
+  if (callCount <= 1) return;
+  console.info(`[trace] homepage fan-out: ${callCount} upstream calls`, details);
+}

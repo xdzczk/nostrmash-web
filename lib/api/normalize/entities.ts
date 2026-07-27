@@ -17,13 +17,15 @@ import {
   parseJsonRecord,
   parseNumericAmount,
 } from "@/lib/api/normalize/helpers";
+import { eventRecordSchema, profileSchema } from "@/lib/api/schemas/core";
+import { softParseApiPayload } from "@/lib/api/schemas/parse";
 
 export function normalizeEventRecord(value: unknown): EventRecord | null {
   const record = asRecord(value);
   if (!record) return null;
   const counts = asRecord(record.counts);
 
-  return {
+  const normalized = {
     ...record,
     id:
       asString(record.id) ??
@@ -43,7 +45,10 @@ export function normalizeEventRecord(value: unknown): EventRecord | null {
       asNumber(record.repost_count) ?? asNumber(record.reposts) ?? asNumber(counts?.repost_count),
     zap_count: asNumber(record.zap_count) ?? asNumber(record.zaps) ?? asNumber(counts?.zap_count),
     zap_msats: asNumber(record.zap_msats) ?? asNumber(counts?.zap_msats),
-  };
+  } satisfies EventRecord;
+
+  if (!normalized.id) return normalized;
+  return softParseApiPayload(eventRecordSchema, normalized, "normalizeEventRecord") as EventRecord;
 }
 
 export function normalizeEventRecords(value: unknown): EventRecord[] {
@@ -190,7 +195,8 @@ export function normalizeProfile(value: unknown): Profile | null {
     ),
   };
 
-  return normalized as Profile;
+  if (!normalized.pubkey) return normalized as Profile;
+  return softParseApiPayload(profileSchema, normalized, "normalizeProfile") as Profile;
 }
 
 export function normalizeProfiles(value: unknown): Profile[] {

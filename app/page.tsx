@@ -23,6 +23,7 @@ import {
 } from "@/lib/api/endpoints";
 import { isApiTimeoutError } from "@/lib/api/http";
 import { fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import {
   buildWindowHref,
@@ -30,8 +31,8 @@ import {
   networkPulsePreferredKeys,
   readStatsWindow,
 } from "@/lib/search-params/window";
+import { traceHomeFanOut } from "@/lib/telemetry/trace";
 import type { Profile } from "@/lib/types/api";
-import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
   title: "NostrMash",
@@ -81,7 +82,9 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   let trendingDomains: Awaited<ReturnType<typeof getTrendingDomains>> | null = null;
   let noteAuthorsByPubkey: Record<string, Profile> = {};
   let homeTimedOut = false;
+  let upstreamCallCount = 0;
   try {
+    upstreamCallCount += 1;
     payload = await getDiscoveryHome("shortTtl");
   } catch (error) {
     homeTimedOut = isApiTimeoutError(error);
@@ -96,6 +99,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   // When the API is saturated, cascading fallbacks just multiply wait time.
   // Render a degraded homepage quickly instead of hanging the SSR request.
   if (!homeTimedOut && window !== "24h") {
+    upstreamCallCount += 4;
     const windowedResults = await Promise.allSettled([
       getTrendingNotes("shortTtl", { window, limit: 20 }),
       getTrendingProfiles("shortTtl", { window, limit: 20 }),
@@ -145,6 +149,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
     if (needsProfilesFallback) fallbackRequests.push(getTrendingProfiles("shortTtl", { window }));
     if (needsHashtagsFallback) fallbackRequests.push(getTrendingHashtags("shortTtl", { window }));
     if (needsDomainsFallback) fallbackRequests.push(getTrendingDomains("shortTtl", { window }));
+    upstreamCallCount += fallbackRequests.length;
     const fallbackResults = await Promise.allSettled(fallbackRequests);
     let fallbackIndex = 0;
     if (needsNotesFallback) {
@@ -211,6 +216,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   );
   if (pubkeysToHydrate.length > 0) {
     try {
+      upstreamCallCount += 1;
       noteAuthorsByPubkey = await fetchProfilesByPubkey(pubkeysToHydrate, "shortTtl");
       hydratedHomeProfiles = homeProfiles.map((profile) => {
         const key = typeof profile.pubkey === "string" ? profile.pubkey.toLowerCase() : "";
@@ -233,6 +239,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   const needsNetworkFallback =
     !homeTimedOut && (pulseStats.length === 0 || relayLeaders.length === 0 || window !== "24h");
   if (needsNetworkFallback) {
+    upstreamCallCount += 2;
     const fallbackStatsResults = await Promise.allSettled([
       getNetworkStats("shortTtl"),
       getRelayStats("shortTtl"),
@@ -260,6 +267,12 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   }
 
   const errorMessage = failedMessages.length > 0 ? failedMessages.join(" | ") : "";
+  traceHomeFanOut(upstreamCallCount, {
+    window: window === "7d" ? 7 : 1,
+    homeTimedOut: homeTimedOut ? 1 : 0,
+    hydratedPubkeys: pubkeysToHydrate.length,
+    failedMessages: failedMessages.length,
+  });
 
   const topRelay = relayLeaders[0]?.relay;
   const topEventId = homeNotes[0]?.id ?? "0".repeat(64);
