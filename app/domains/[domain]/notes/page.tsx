@@ -18,6 +18,7 @@ import {
   toUrlSearchParams,
 } from "@/lib/search-params/pagination";
 import type { Profile } from "@/lib/types/api";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 type Params = Promise<{ domain: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -72,7 +73,7 @@ export default async function DomainNotesPage({
       cursor: notesCursor,
     });
   } catch (error) {
-    errors.push(error instanceof Error ? error.message : "Domain notes lookup failed.");
+    errors.push(toUserFacingErrorMessage(error, "Domain notes lookup failed."));
   }
 
   const notes = domainNotesPayload?.notes ?? [];

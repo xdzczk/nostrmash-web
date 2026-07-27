@@ -25,6 +25,7 @@ import {
   readStatsWindow,
   type StatsWindow,
 } from "@/lib/search-params/window";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
   title: "Stats",
@@ -159,7 +160,7 @@ export default async function StatsPage({
       getRelayStats("shortTtl"),
     ]);
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : "Failed to load stats.";
+    errorMessage = toUserFacingErrorMessage(error, "Failed to load stats.");
   }
   const semantics = extractNativeApiSemantics(network, content, relays);
 

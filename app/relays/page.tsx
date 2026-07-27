@@ -21,6 +21,7 @@ import {
   toUrlSearchParams,
 } from "@/lib/search-params/pagination";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
   title: "Relay explorer",
@@ -44,16 +45,12 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
   if (statsResult.status === "fulfilled") {
     relayStats = statsResult.value;
   } else {
-    errors.push(
-      statsResult.reason instanceof Error ? statsResult.reason.message : "Relay stats failed."
-    );
+    errors.push(toUserFacingErrorMessage(statsResult.reason, "Relay stats failed."));
   }
   if (healthResult.status === "fulfilled") {
     relayHealth = healthResult.value;
   } else {
-    errors.push(
-      healthResult.reason instanceof Error ? healthResult.reason.message : "Relay health failed."
-    );
+    errors.push(toUserFacingErrorMessage(healthResult.reason, "Relay health failed."));
   }
 
   const rankedRelays = rankRelayActivity(relayStats, 40);

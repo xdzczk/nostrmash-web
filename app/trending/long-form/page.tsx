@@ -19,6 +19,7 @@ import {
 } from "@/lib/search-params/pagination";
 import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
 import type { Profile } from "@/lib/types/api";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
   title: "Trending Long-form",
@@ -52,7 +53,7 @@ export default async function TrendingLongFormPage({
   try {
     payload = await getTrendingLongForm("shortTtl", { window, offset, limit: DEFAULT_LIMIT });
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : "Failed to load trending long-form.";
+    errorMessage = toUserFacingErrorMessage(error, "Failed to load trending long-form.");
   }
 
   const articles = payload?.articles ?? [];

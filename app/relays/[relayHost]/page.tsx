@@ -19,6 +19,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { getRelayHealth, getRelayStats } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 type Params = Promise<{ relayHost: string }>;
 
@@ -44,20 +45,12 @@ export default async function RelayPage({ params }: { params: Params }) {
   if (statsResult.status === "fulfilled") {
     payload = statsResult.value;
   } else {
-    errors.push(
-      statsResult.reason instanceof Error
-        ? statsResult.reason.message
-        : "Failed to load relay stats."
-    );
+    errors.push(toUserFacingErrorMessage(statsResult.reason, "Failed to load relay stats."));
   }
   if (healthResult.status === "fulfilled") {
     healthPayload = healthResult.value;
   } else {
-    errors.push(
-      healthResult.reason instanceof Error
-        ? healthResult.reason.message
-        : "Failed to load relay health."
-    );
+    errors.push(toUserFacingErrorMessage(healthResult.reason, "Failed to load relay health."));
   }
 
   const rankedActivity = rankRelayActivity(payload, 200);

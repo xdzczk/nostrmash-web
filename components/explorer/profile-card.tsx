@@ -78,7 +78,6 @@ export function ProfileCard({
           alt={label}
           width={44}
           height={44}
-          unoptimized
           className="border-edge-strong h-10 w-10 rounded-full border object-cover sm:h-11 sm:w-11"
         />
         <div className="min-w-0 flex-1 space-y-1.5">

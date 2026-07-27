@@ -1,0 +1,83 @@
+import type { RelayHealthResponse } from "@/lib/types/api";
+import {
+  asArray,
+  asBoolean,
+  asNumber,
+  asRecord,
+  asString,
+  compactDefined,
+} from "@/lib/api/normalize/helpers";
+
+export function normalizeRelayObservation(
+  value: unknown
+): { relay_url?: string; seen_at?: string | number; [key: string]: unknown } | null {
+  if (typeof value === "string" && value.trim().length > 0) {
+    return { relay_url: value.trim() };
+  }
+
+  const record = asRecord(value);
+  if (!record) return null;
+
+  const relayUrl =
+    asString(record.relay_url) ??
+    asString(record.url) ??
+    asString(record.relay) ??
+    asString(record.host) ??
+    asString(record.name);
+  const seenAt =
+    asString(record.seen_at) ??
+    asNumber(record.seen_at) ??
+    asString(record.last_seen_at) ??
+    asNumber(record.last_seen_at) ??
+    asString(record.first_seen_at) ??
+    asNumber(record.first_seen_at);
+
+  return compactDefined({
+    ...record,
+    relay_url: relayUrl,
+    seen_at: seenAt,
+  });
+}
+
+export function relayHealthyFromObservation(entry: Record<string, unknown>): boolean | undefined {
+  const healthy = asBoolean(entry.healthy);
+  if (typeof healthy === "boolean") return healthy;
+  const status = asString(entry.status)?.trim().toLowerCase();
+  if (!status) return undefined;
+  if (["healthy", "ok", "up", "online", "active"].includes(status)) return true;
+  if (["unhealthy", "down", "offline", "degraded", "error", "failed"].includes(status)) {
+    return false;
+  }
+  return undefined;
+}
+
+export function normalizeRelayHealthResponse(value: unknown): RelayHealthResponse {
+  const record = asRecord(value) ?? {};
+  const candidateRelays =
+    record.relays ?? record.relay_health ?? record.health ?? record.items ?? record.data;
+  const relays = asArray(candidateRelays)
+    .map((entry) => normalizeRelayObservation(entry))
+    .filter(
+      (entry): entry is { relay_url?: string; seen_at?: string | number; [key: string]: unknown } =>
+        entry !== null
+    )
+    .map((entry) =>
+      compactDefined({
+        ...entry,
+        status: asString(entry.status),
+        healthy: relayHealthyFromObservation(entry),
+        latency_ms: asNumber(entry.latency_ms),
+        uptime: asNumber(entry.uptime) ?? asString(entry.uptime),
+        last_seen_at:
+          asString(entry.last_seen_at) ??
+          asNumber(entry.last_seen_at) ??
+          asString(entry.seen_at) ??
+          asNumber(entry.seen_at),
+      })
+    );
+
+  return {
+    ...record,
+    relays: relays.length > 0 ? relays : undefined,
+  };
+}

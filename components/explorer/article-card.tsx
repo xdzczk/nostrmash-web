@@ -106,7 +106,6 @@ export function ArticleCard({
             alt={presentation.title}
             width={96}
             height={96}
-            unoptimized
             className="border-edge-strong h-16 w-16 shrink-0 rounded-lg border object-cover sm:h-20 sm:w-20"
           />
         ) : null}
@@ -137,7 +136,6 @@ export function ArticleCard({
             alt={authorLabel}
             width={24}
             height={24}
-            unoptimized
             className="border-edge-strong h-6 w-6 rounded-full border object-cover"
           />
         ) : null}

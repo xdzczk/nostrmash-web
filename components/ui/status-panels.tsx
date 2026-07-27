@@ -1,6 +1,9 @@
 export function ErrorPanel({ message }: { message: string }) {
   return (
-    <div className="rounded-lg border border-red-900/55 bg-red-950/30 p-3.5 text-sm break-words text-red-200">
+    <div
+      role="alert"
+      className="rounded-lg border border-red-900/55 bg-red-950/30 p-3.5 text-sm break-words text-red-200"
+    >
       {message}
     </div>
   );

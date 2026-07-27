@@ -9,6 +9,8 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+# This project uses pnpm; ignore npm's lockfile if regenerated locally.
+package-lock.json
 
 # testing
 /coverage

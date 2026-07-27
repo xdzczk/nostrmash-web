@@ -8,6 +8,7 @@ import { StatCard } from "@/components/explorer/stat-card";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { getPopularRelays } from "@/lib/api/endpoints";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
   title: "Popular relays",
@@ -42,7 +43,7 @@ export default async function PopularRelaysPage() {
   try {
     data = await getPopularRelays("shortTtl", { limit: 100 });
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : "Failed to load popular relays.";
+    errorMessage = toUserFacingErrorMessage(error, "Failed to load popular relays.");
   }
 
   const relays = data?.relays ?? [];

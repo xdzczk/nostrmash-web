@@ -192,7 +192,6 @@ function NoteAuthor({
           alt={authorLabel}
           width={compact ? 40 : 48}
           height={compact ? 40 : 48}
-          unoptimized
           className={
             compact
               ? "border-edge-strong/50 h-10 w-10 rounded-full border object-cover"

@@ -38,6 +38,7 @@ import {
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
 import type { EventRecord, Profile } from "@/lib/types/api";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 const nextMoves = [
   {
@@ -148,9 +149,7 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
 
   const errors = [notesResult, profilesResult, hashtagsResult, domainsResult]
     .filter((result): result is PromiseRejectedResult => result.status === "rejected")
-    .map((result) =>
-      result.reason instanceof Error ? result.reason.message : "Trending request failed."
-    );
+    .map((result) => toUserFacingErrorMessage(result.reason, "Trending request failed."));
   if (errors.length > 0) {
     errorMessage = errors.join(" | ");
   }

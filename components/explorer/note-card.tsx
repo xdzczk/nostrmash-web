@@ -114,7 +114,6 @@ export function NoteCard({
             alt={authorLabel}
             width={44}
             height={44}
-            unoptimized
             className="border-edge-strong h-10 w-10 rounded-full border object-cover sm:h-11 sm:w-11"
           />
         ) : (

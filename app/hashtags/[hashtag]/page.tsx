@@ -15,6 +15,7 @@ import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { isValidHashtag } from "@/lib/hashtags";
 import type { Profile } from "@/lib/types/api";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 type Params = Promise<{ hashtag: string }>;
 
@@ -81,27 +82,17 @@ export default async function HashtagPage({ params }: { params: Params }) {
   if (detailResult.status === "fulfilled") {
     hashtagDetailPayload = detailResult.value;
   } else {
-    errors.push(
-      detailResult.reason instanceof Error ? detailResult.reason.message : "Hashtag lookup failed."
-    );
+    errors.push(toUserFacingErrorMessage(detailResult.reason, "Hashtag lookup failed."));
   }
   if (notesResult.status === "fulfilled") {
     hashtagNotesPayload = notesResult.value;
   } else {
-    errors.push(
-      notesResult.reason instanceof Error
-        ? notesResult.reason.message
-        : "Hashtag notes lookup failed."
-    );
+    errors.push(toUserFacingErrorMessage(notesResult.reason, "Hashtag notes lookup failed."));
   }
   if (relatedResult.status === "fulfilled") {
     relatedHashtagsPayload = relatedResult.value;
   } else {
-    errors.push(
-      relatedResult.reason instanceof Error
-        ? relatedResult.reason.message
-        : "Related hashtags lookup failed."
-    );
+    errors.push(toUserFacingErrorMessage(relatedResult.reason, "Related hashtags lookup failed."));
   }
 
   const notes = hashtagNotesPayload?.notes ?? hashtagDetailPayload?.notes ?? [];

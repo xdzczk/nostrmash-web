@@ -19,6 +19,7 @@ import {
 } from "@/lib/search-params/pagination";
 import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
 import type { Profile } from "@/lib/types/api";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
   title: "Hot Conversations",
@@ -44,7 +45,7 @@ export default async function HotConversationsPage({
   try {
     payload = await getHotConversations("shortTtl", { cursor, window });
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : "Failed to load hot conversations.";
+    errorMessage = toUserFacingErrorMessage(error, "Failed to load hot conversations.");
   }
 
   const notes = payload?.notes ?? [];

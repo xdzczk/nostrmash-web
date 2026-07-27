@@ -14,6 +14,7 @@ import { getDomainDetail, getDomainNotes } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import type { Profile } from "@/lib/types/api";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 type Params = Promise<{ domain: string }>;
 
@@ -62,18 +63,12 @@ export default async function DomainPage({ params }: { params: Params }) {
   if (detailResult.status === "fulfilled") {
     domainDetailPayload = detailResult.value;
   } else {
-    errors.push(
-      detailResult.reason instanceof Error ? detailResult.reason.message : "Domain lookup failed."
-    );
+    errors.push(toUserFacingErrorMessage(detailResult.reason, "Domain lookup failed."));
   }
   if (notesResult.status === "fulfilled") {
     domainNotesPayload = notesResult.value;
   } else {
-    errors.push(
-      notesResult.reason instanceof Error
-        ? notesResult.reason.message
-        : "Domain notes lookup failed."
-    );
+    errors.push(toUserFacingErrorMessage(notesResult.reason, "Domain notes lookup failed."));
   }
 
   const notes = domainNotesPayload?.notes ?? domainDetailPayload?.notes ?? [];

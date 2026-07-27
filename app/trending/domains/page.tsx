@@ -17,6 +17,7 @@ import {
 } from "@/lib/search-params/pagination";
 import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
   title: "Trending Domains",
@@ -39,7 +40,7 @@ export default async function TrendingDomainsPage({
   try {
     payload = await getTrendingDomains("shortTtl", { cursor, window });
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : "Failed to load trending domains.";
+    errorMessage = toUserFacingErrorMessage(error, "Failed to load trending domains.");
   }
   const continuationHref = buildContinuationHref(
     "/trending/domains",

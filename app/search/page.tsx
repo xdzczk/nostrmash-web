@@ -16,6 +16,7 @@ import { getSearch, getTrendingHashtags, getTrendingProfiles } from "@/lib/api/e
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { parseSearchQuery } from "@/lib/search-params/search";
 import type { Profile } from "@/lib/types/api";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -90,7 +91,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
       hydratedProfiles = payload.profiles ?? [];
       hydratedSuggestedProfiles = suggestedProfiles;
     } catch (error) {
-      errorMessage = error instanceof Error ? error.message : "Search failed.";
+      errorMessage = toUserFacingErrorMessage(error, "Search failed.");
     }
   }
 

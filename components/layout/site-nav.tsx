@@ -8,6 +8,7 @@ const navItems = [
   { href: "/search", label: "Search", mobileLabel: "Search" },
   { href: "/trending", label: "Trends", mobileLabel: "Trends" },
   { href: "/relays", label: "Relays", mobileLabel: "Relays" },
+  { href: "/stats", label: "Stats", mobileLabel: "Stats" },
   { href: "/methodology", label: "Methodology", mobileLabel: "Guide" },
 ];
 

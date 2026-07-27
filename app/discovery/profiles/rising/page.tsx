@@ -19,6 +19,7 @@ import {
 } from "@/lib/search-params/pagination";
 import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
 import type { Profile } from "@/lib/types/api";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
   title: "Rising Profiles",
@@ -39,7 +40,7 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
   try {
     payload = await getRisingProfiles("shortTtl", { cursor, window });
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : "Failed to load rising profiles.";
+    errorMessage = toUserFacingErrorMessage(error, "Failed to load rising profiles.");
   }
   const continuationHref = buildContinuationHref(
     "/discovery/profiles/rising",

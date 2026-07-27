@@ -19,6 +19,7 @@ import {
   toUrlSearchParams,
 } from "@/lib/search-params/pagination";
 import type { Profile } from "@/lib/types/api";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 type Params = Promise<{ hashtag: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -91,20 +92,12 @@ export default async function HashtagNotesPage({
   if (notesResult.status === "fulfilled") {
     hashtagNotesPayload = notesResult.value;
   } else {
-    errors.push(
-      notesResult.reason instanceof Error
-        ? notesResult.reason.message
-        : "Hashtag notes lookup failed."
-    );
+    errors.push(toUserFacingErrorMessage(notesResult.reason, "Hashtag notes lookup failed."));
   }
   if (relatedResult.status === "fulfilled") {
     relatedHashtagsPayload = relatedResult.value;
   } else {
-    errors.push(
-      relatedResult.reason instanceof Error
-        ? relatedResult.reason.message
-        : "Related hashtags lookup failed."
-    );
+    errors.push(toUserFacingErrorMessage(relatedResult.reason, "Related hashtags lookup failed."));
   }
 
   const notes = hashtagNotesPayload?.notes ?? [];

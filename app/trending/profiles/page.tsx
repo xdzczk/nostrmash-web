@@ -19,6 +19,7 @@ import {
 import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import type { Profile } from "@/lib/types/api";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
   title: "Trending Profiles",
@@ -42,7 +43,7 @@ export default async function TrendingProfilesPage({
   try {
     payload = await getTrendingProfiles("shortTtl", { cursor, window });
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : "Failed to load trending profiles.";
+    errorMessage = toUserFacingErrorMessage(error, "Failed to load trending profiles.");
   }
   const continuationHref = buildContinuationHref(
     "/trending/profiles",

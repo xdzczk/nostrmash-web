@@ -64,7 +64,6 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                     alt={label}
                     width={28}
                     height={28}
-                    unoptimized
                     className="border-edge-strong h-7 w-7 shrink-0 rounded-full border object-cover"
                   />
                   <div className="min-w-0 flex-1">

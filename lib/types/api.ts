@@ -414,45 +414,10 @@ export interface AuthorZapsResponse extends NativeApiSemantics {
   [key: string]: unknown;
 }
 
-export interface ProfileFollowersResponse extends NativeApiSemantics {
-  pubkey?: string;
-  followers?: Profile[];
-  total?: number;
-  [key: string]: unknown;
-}
-
-export interface ProfileMentionsResponse extends NativeApiSemantics {
-  pubkey?: string;
-  mentions?: Profile[];
-  total?: number;
-  [key: string]: unknown;
-}
-
 export interface RelatedProfilesResponse extends NativeApiSemantics {
   pubkey?: string;
   related_profiles?: Profile[];
   total?: number;
-  [key: string]: unknown;
-}
-
-export interface ContactListContextResponse extends NativeApiSemantics {
-  pubkey?: string;
-  contacts?: Profile[];
-  contact_pubkeys?: string[];
-  relays?: string[];
-  [key: string]: unknown;
-}
-
-export interface RelayListEntry {
-  relay_url?: string;
-  read?: boolean;
-  write?: boolean;
-  [key: string]: unknown;
-}
-
-export interface RelayListContextResponse extends NativeApiSemantics {
-  pubkey?: string;
-  relays?: RelayListEntry[];
   [key: string]: unknown;
 }
 
@@ -466,26 +431,6 @@ export interface RelayHealthResponse extends NativeApiSemantics {
     last_seen_at?: string | number;
     [key: string]: unknown;
   }>;
-  [key: string]: unknown;
-}
-
-export interface ProfileTopicsResponse extends NativeApiSemantics {
-  pubkey?: string;
-  topics?: HashtagEntry[];
-  profiles?: Profile[];
-  [key: string]: unknown;
-}
-
-export interface AuthorAnalyticsResponse extends NativeApiSemantics {
-  pubkey?: string;
-  [key: string]: unknown;
-}
-
-export interface TrustScoreResponse extends NativeApiSemantics {
-  pubkey?: string;
-  trust_score?: number | string;
-  score?: number | string;
-  metadata?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
@@ -542,15 +487,8 @@ export type AuthorEventsApiResponse = NativeApiSemantics & Record<string, unknow
 export type AuthorRepliesApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type AuthorReactionsApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type AuthorZapsApiResponse = NativeApiSemantics & Record<string, unknown>;
-export type ProfileFollowersApiResponse = NativeApiSemantics & Record<string, unknown>;
-export type ProfileMentionsApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type RelatedProfilesApiResponse = NativeApiSemantics & Record<string, unknown>;
-export type ContactListContextApiResponse = NativeApiSemantics & Record<string, unknown>;
-export type RelayListContextApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type RelayHealthApiResponse = NativeApiSemantics & Record<string, unknown>;
-export type ProfileTopicsApiResponse = NativeApiSemantics & Record<string, unknown>;
-export type AuthorAnalyticsApiResponse = NativeApiSemantics & Record<string, unknown>;
-export type TrustScoreApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type HashtagDetailApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type HashtagNotesApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type RelatedHashtagsApiResponse = NativeApiSemantics & Record<string, unknown>;

@@ -17,6 +17,7 @@ import {
 } from "@/lib/search-params/pagination";
 import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
   title: "Trending Hashtags",
@@ -39,7 +40,7 @@ export default async function TrendingHashtagsPage({
   try {
     payload = await getTrendingHashtags("shortTtl", { cursor, window });
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : "Failed to load trending hashtags.";
+    errorMessage = toUserFacingErrorMessage(error, "Failed to load trending hashtags.");
   }
   const continuationHref = buildContinuationHref(
     "/trending/hashtags",

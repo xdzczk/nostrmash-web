@@ -9,7 +9,7 @@ interface MediaAttachment {
   kind: MediaKind;
 }
 
-const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".svg"]);
+const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif"]);
 const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mov", ".m4v"]);
 const AUDIO_EXTENSIONS = new Set([".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"]);
 
@@ -31,7 +31,17 @@ function extractUrls(text: string): string[] {
   return Array.from(deduped);
 }
 
+function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function classifyMediaUrl(value: string): MediaKind | null {
+  if (!isHttpsUrl(value)) return null;
+
   try {
     const url = new URL(value);
     const pathname = url.pathname.toLowerCase();
@@ -77,28 +87,48 @@ export function NoteMedia({ content }: { content: string }) {
           className="border-edge bg-surface-sunken/60 overflow-hidden rounded-lg border"
         >
           {attachment.kind === "image" ? (
-            <img src={attachment.url} alt="" className="max-h-[28rem] w-full object-cover" />
-          ) : null}
-          {attachment.kind === "video" ? (
-            <video
+            <img
               src={attachment.url}
-              controls
-              playsInline
-              preload="metadata"
-              className="max-h-[28rem] w-full bg-black"
+              alt="Image attached to note"
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
+              className="max-h-[28rem] w-full object-cover"
             />
           ) : null}
+          {attachment.kind === "video" ? (
+            <details className="group">
+              <summary className="text-ink-dim hover:text-ink cursor-pointer list-none px-3 py-3 text-sm">
+                <span className="underline-offset-2 group-open:hidden">Load video</span>
+                <span className="hidden underline-offset-2 group-open:inline">Hide video</span>
+              </summary>
+              <video
+                src={attachment.url}
+                controls
+                playsInline
+                preload="none"
+                className="max-h-[28rem] w-full bg-black"
+              />
+            </details>
+          ) : null}
           {attachment.kind === "audio" ? (
-            <div className="p-3">
-              <audio src={attachment.url} controls preload="metadata" className="w-full" />
-            </div>
+            <details className="group">
+              <summary className="text-ink-dim hover:text-ink cursor-pointer list-none px-3 py-3 text-sm">
+                <span className="underline-offset-2 group-open:hidden">Load audio</span>
+                <span className="hidden underline-offset-2 group-open:inline">Hide audio</span>
+              </summary>
+              <div className="px-3 pb-3">
+                <audio src={attachment.url} controls preload="none" className="w-full" />
+              </div>
+            </details>
           ) : null}
           <div className="border-edge text-ink-muted border-t px-3 py-2 text-xs">
             <a
               href={attachment.url}
               target="_blank"
-              rel="noreferrer"
+              rel="noreferrer noopener"
               title={attachment.url}
+              referrerPolicy="no-referrer"
               className="hover:text-ink-soft"
             >
               {formatUrlForDisplay(attachment.url, "secondary")}

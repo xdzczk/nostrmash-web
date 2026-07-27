@@ -126,7 +126,6 @@ function ProfileDiscoveryRow({ profile, rank }: { profile: Profile; rank: number
           alt={label}
           width={52}
           height={52}
-          unoptimized
           className="border-edge-strong/80 h-12 w-12 shrink-0 rounded-full border object-cover"
         />
 

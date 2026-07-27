@@ -16,6 +16,7 @@ import {
   toUrlSearchParams,
 } from "@/lib/search-params/pagination";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
   title: "Relay health",
@@ -34,7 +35,7 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
   try {
     payload = await getRelayHealth("shortTtl", { cursor });
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : "Failed to load relay health.";
+    errorMessage = toUserFacingErrorMessage(error, "Failed to load relay health.");
   }
   const continuationHref = buildContinuationHref(
     "/relays/health",

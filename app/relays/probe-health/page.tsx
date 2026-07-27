@@ -9,6 +9,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { getRelayProbeHealth } from "@/lib/api/endpoints";
 import type { RelayProbeHealthEntry } from "@/lib/types/api";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
   title: "Relay probe health",
@@ -96,7 +97,7 @@ export default async function RelayProbeHealthPage() {
   try {
     data = await getRelayProbeHealth("shortTtl", { limit: 200 });
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : "Failed to load probe health.";
+    errorMessage = toUserFacingErrorMessage(error, "Failed to load probe health.");
   }
 
   const relays = sortRelays(data?.relays ?? []);

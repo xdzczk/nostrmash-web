@@ -31,6 +31,7 @@ import {
   readStatsWindow,
 } from "@/lib/search-params/window";
 import type { Profile } from "@/lib/types/api";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
   title: "NostrMash",
@@ -84,9 +85,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
     payload = await getDiscoveryHome("shortTtl");
   } catch (error) {
     homeTimedOut = isApiTimeoutError(error);
-    failedMessages.push(
-      error instanceof Error ? error.message : "Failed to load discovery home payload."
-    );
+    failedMessages.push(toUserFacingErrorMessage(error, "Failed to load discovery home payload."));
   }
 
   let homeNotes = payload?.notes ?? [];
@@ -123,7 +122,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
     for (const result of windowedResults) {
       if (result.status === "rejected") {
         failedMessages.push(
-          result.reason instanceof Error ? result.reason.message : "Failed to load windowed trends."
+          toUserFacingErrorMessage(result.reason, "Failed to load windowed trends.")
         );
       }
     }
@@ -155,7 +154,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         homeNotes = trendingNotes.notes ?? [];
       } else if (result?.status === "rejected") {
         failedMessages.push(
-          result.reason instanceof Error ? result.reason.message : "Failed to load trending notes."
+          toUserFacingErrorMessage(result.reason, "Failed to load trending notes.")
         );
       }
       fallbackIndex += 1;
@@ -167,9 +166,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         homeProfiles = trendingProfiles.profiles ?? [];
       } else if (result?.status === "rejected") {
         failedMessages.push(
-          result.reason instanceof Error
-            ? result.reason.message
-            : "Failed to load trending profiles."
+          toUserFacingErrorMessage(result.reason, "Failed to load trending profiles.")
         );
       }
       fallbackIndex += 1;
@@ -181,9 +178,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         homeHashtags = trendingHashtags.hashtags ?? [];
       } else if (result?.status === "rejected") {
         failedMessages.push(
-          result.reason instanceof Error
-            ? result.reason.message
-            : "Failed to load trending hashtags."
+          toUserFacingErrorMessage(result.reason, "Failed to load trending hashtags.")
         );
       }
       fallbackIndex += 1;
@@ -195,9 +190,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         homeDomains = trendingDomains.domains ?? [];
       } else if (result?.status === "rejected") {
         failedMessages.push(
-          result.reason instanceof Error
-            ? result.reason.message
-            : "Failed to load trending domains."
+          toUserFacingErrorMessage(result.reason, "Failed to load trending domains.")
         );
       }
     }
@@ -251,9 +244,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
     for (const result of fallbackStatsResults) {
       if (result.status === "rejected") {
         failedMessages.push(
-          result.reason instanceof Error
-            ? result.reason.message
-            : "Failed to load network fallback."
+          toUserFacingErrorMessage(result.reason, "Failed to load network fallback.")
         );
       }
     }
