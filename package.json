@@ -2,6 +2,7 @@
   "name": "nostrmash-web",
   "version": "0.1.0",
   "private": true,
+  "license": "Unlicense",
   "packageManager": "pnpm@10.18.1",
   "scripts": {
     "dev": "next dev",
