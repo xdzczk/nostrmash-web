@@ -77,8 +77,7 @@ function mergeProfile(
   };
 }
 
-export async function loadProfilePageData(
-  pubkeyOrNpub: string,
+function readActivitySearchParams(
   resolvedSearchParams: Record<string, string | string[] | undefined>
 ) {
   const notesCursor = readSearchParam(resolvedSearchParams, "notes_cursor");
@@ -90,14 +89,88 @@ export async function loadProfilePageData(
   const highlightsCursor = readSearchParam(resolvedSearchParams, "highlights_cursor");
   const muteListCursor = readSearchParam(resolvedSearchParams, "mute_list_cursor");
   const mutedByCursor = readSearchParam(resolvedSearchParams, "muted_by_cursor");
-  const relatedProfilesCursor = readSearchParam(resolvedSearchParams, "related_profiles_cursor");
   const activityTab = parseProfileActivityTab(readSearchParam(resolvedSearchParams, "activity"));
-  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
-  const profileRoute = `/profiles/${encodeURIComponent(pubkeyOrNpub)}`;
+  return {
+    activityTab,
+    notesCursor,
+    repliesCursor,
+    reactionsCursor,
+    zapsCursor,
+    longFormCursor,
+    bookmarksCursor,
+    highlightsCursor,
+    muteListCursor,
+    mutedByCursor,
+    shouldLoadReplies: activityTab === "replies" || typeof repliesCursor === "string",
+    shouldLoadReactions: activityTab === "reactions" || typeof reactionsCursor === "string",
+    shouldLoadZaps: activityTab === "zaps" || typeof zapsCursor === "string",
+    shouldLoadLongForm: activityTab === "long_form" || typeof longFormCursor === "string",
+    shouldLoadBookmarks: activityTab === "bookmarks" || typeof bookmarksCursor === "string",
+    shouldLoadHighlights: activityTab === "highlights" || typeof highlightsCursor === "string",
+    shouldLoadMuteList: activityTab === "mute_list" || typeof muteListCursor === "string",
+    shouldLoadMutedBy: activityTab === "muted_by" || typeof mutedByCursor === "string",
+  };
+}
 
+/** Fast path: summary + optional profile enrichment only. */
+export async function loadProfileFocalData(pubkeyOrNpub: string) {
   const errors: string[] = [];
   let summary: Awaited<ReturnType<typeof getProfileSummary>> | null = null;
   let profileEnrichment: Awaited<ReturnType<typeof getProfile>> | null = null;
+
+  try {
+    summary = await getProfileSummaryCached(pubkeyOrNpub);
+  } catch (error) {
+    errors.push(toUserFacingErrorMessage(error, "Failed to load profile summary."));
+  }
+
+  const summaryRecord = isRecord(summary) ? summary : null;
+  const summaryProfile = summary ? (summary.profile ?? (summary as unknown as Profile)) : null;
+  const lookupKey = summaryProfile?.pubkey ?? summary?.pubkey ?? pubkeyOrNpub;
+  const profileRoute = `/profiles/${encodeURIComponent(pubkeyOrNpub)}`;
+
+  const shouldEnrichProfile = !hasIdentityMetadata(summaryProfile);
+  if (shouldEnrichProfile) {
+    try {
+      profileEnrichment = await getProfile(lookupKey, "shortTtl");
+    } catch (error) {
+      errors.push(toUserFacingErrorMessage(error, "Failed to enrich profile metadata."));
+    }
+  }
+
+  const profile = mergeProfile(summaryProfile, profileEnrichment);
+  const semantics = extractNativeApiSemantics(summary, profileEnrichment);
+
+  return {
+    summary,
+    summaryRecord,
+    profile,
+    lookupKey,
+    profileEnrichment,
+    semantics,
+    errorMessage: errors.filter(Boolean).join(" | "),
+    profileRoute,
+  };
+}
+
+export async function loadProfileActivityData(
+  {
+    lookupKey,
+    profile,
+    profileRoute,
+    summaryRecord,
+  }: {
+    lookupKey: string;
+    profile: Profile | null;
+    profileRoute: string;
+    summaryRecord: Record<string, unknown> | null;
+  },
+  resolvedSearchParams: Record<string, string | string[] | undefined>
+) {
+  const params = readActivitySearchParams(resolvedSearchParams);
+  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
+  const errors: string[] = [];
+
   let authoredNotesPayload: Awaited<ReturnType<typeof getAuthorEvents>> | null = null;
   let authoredRepliesPayload: Awaited<ReturnType<typeof getAuthorReplies>> | null = null;
   let authoredReactionsPayload: Awaited<ReturnType<typeof getAuthorReactions>> | null = null;
@@ -107,43 +180,8 @@ export async function loadProfilePageData(
   let highlightsPayload: Awaited<ReturnType<typeof getUserHighlights>> | null = null;
   let muteListPayload: Awaited<ReturnType<typeof getUserMuteList>> | null = null;
   let mutedByPayload: Awaited<ReturnType<typeof getUserMutedBy>> | null = null;
-  let relatedProfilesFallbackPayload: Awaited<ReturnType<typeof getRelatedProfiles>> | null = null;
-  let risingProfilesPayload: Awaited<ReturnType<typeof getRisingProfiles>> | null = null;
-
-  const summaryResult = await Promise.allSettled([getProfileSummaryCached(pubkeyOrNpub)]);
-  if (summaryResult[0].status === "fulfilled") {
-    summary = summaryResult[0].value;
-  } else {
-    errors.push(
-      toUserFacingErrorMessage(summaryResult[0].reason, "Failed to load profile summary.")
-    );
-  }
-
-  const summaryRecord = isRecord(summary) ? summary : null;
-  const summaryProfile = summary ? (summary.profile ?? (summary as unknown as Profile)) : null;
-  const lookupKey = summaryProfile?.pubkey ?? summary?.pubkey ?? pubkeyOrNpub;
-
-  const summaryRelatedDiscovery = isRecord(summaryRecord?.related_discovery)
-    ? summaryRecord.related_discovery
-    : null;
-  const summaryRelatedProfiles = normalizeProfiles(summaryRelatedDiscovery?.related_profiles);
-  const summaryRisingProfiles = normalizeProfiles(summaryRelatedDiscovery?.rising_profiles);
-
-  const shouldEnrichProfile = !hasIdentityMetadata(summaryProfile);
-  const shouldLoadReplies = activityTab === "replies" || typeof repliesCursor === "string";
-  const shouldLoadReactions = activityTab === "reactions" || typeof reactionsCursor === "string";
-  const shouldLoadZaps = activityTab === "zaps" || typeof zapsCursor === "string";
-  const shouldLoadLongForm = activityTab === "long_form" || typeof longFormCursor === "string";
-  const shouldLoadBookmarks = activityTab === "bookmarks" || typeof bookmarksCursor === "string";
-  const shouldLoadHighlights = activityTab === "highlights" || typeof highlightsCursor === "string";
-  const shouldLoadMuteList = activityTab === "mute_list" || typeof muteListCursor === "string";
-  const shouldLoadMutedBy = activityTab === "muted_by" || typeof mutedByCursor === "string";
-  const shouldLoadRelatedProfilesFallback =
-    typeof relatedProfilesCursor === "string" || summaryRelatedProfiles.length === 0;
-  const shouldLoadRisingProfilesFallback = summaryRisingProfiles.length === 0;
 
   const [
-    profileResult,
     notesResult,
     repliesResult,
     reactionsResult,
@@ -153,48 +191,34 @@ export async function loadProfilePageData(
     highlightsResult,
     muteListResult,
     mutedByResult,
-    relatedFallbackResult,
-    risingProfilesResult,
   ] = await Promise.allSettled([
-    shouldEnrichProfile ? getProfile(lookupKey, "shortTtl") : Promise.resolve(null),
-    getAuthorEvents(lookupKey, "shortTtl", { cursor: notesCursor }),
-    shouldLoadReplies
-      ? getAuthorReplies(lookupKey, "shortTtl", { cursor: repliesCursor })
+    getAuthorEvents(lookupKey, "shortTtl", { cursor: params.notesCursor }),
+    params.shouldLoadReplies
+      ? getAuthorReplies(lookupKey, "shortTtl", { cursor: params.repliesCursor })
       : Promise.resolve(null),
-    shouldLoadReactions
-      ? getAuthorReactions(lookupKey, "shortTtl", { cursor: reactionsCursor })
+    params.shouldLoadReactions
+      ? getAuthorReactions(lookupKey, "shortTtl", { cursor: params.reactionsCursor })
       : Promise.resolve(null),
-    shouldLoadZaps
-      ? getAuthorZaps(lookupKey, "shortTtl", { cursor: zapsCursor })
+    params.shouldLoadZaps
+      ? getAuthorZaps(lookupKey, "shortTtl", { cursor: params.zapsCursor })
       : Promise.resolve(null),
-    shouldLoadLongForm
-      ? getUserLongForm(lookupKey, "shortTtl", { cursor: longFormCursor })
+    params.shouldLoadLongForm
+      ? getUserLongForm(lookupKey, "shortTtl", { cursor: params.longFormCursor })
       : Promise.resolve(null),
-    shouldLoadBookmarks
-      ? getUserBookmarks(lookupKey, "shortTtl", { cursor: bookmarksCursor })
+    params.shouldLoadBookmarks
+      ? getUserBookmarks(lookupKey, "shortTtl", { cursor: params.bookmarksCursor })
       : Promise.resolve(null),
-    shouldLoadHighlights
-      ? getUserHighlights(lookupKey, "shortTtl", { cursor: highlightsCursor })
+    params.shouldLoadHighlights
+      ? getUserHighlights(lookupKey, "shortTtl", { cursor: params.highlightsCursor })
       : Promise.resolve(null),
-    shouldLoadMuteList
-      ? getUserMuteList(lookupKey, "shortTtl", { cursor: muteListCursor })
+    params.shouldLoadMuteList
+      ? getUserMuteList(lookupKey, "shortTtl", { cursor: params.muteListCursor })
       : Promise.resolve(null),
-    shouldLoadMutedBy
-      ? getUserMutedBy(lookupKey, "shortTtl", { cursor: mutedByCursor })
+    params.shouldLoadMutedBy
+      ? getUserMutedBy(lookupKey, "shortTtl", { cursor: params.mutedByCursor })
       : Promise.resolve(null),
-    shouldLoadRelatedProfilesFallback
-      ? getRelatedProfiles(lookupKey, "shortTtl", { cursor: relatedProfilesCursor })
-      : Promise.resolve(null),
-    shouldLoadRisingProfilesFallback ? getRisingProfiles("shortTtl") : Promise.resolve(null),
   ]);
 
-  if (profileResult.status === "fulfilled") {
-    profileEnrichment = profileResult.value;
-  } else if (shouldEnrichProfile) {
-    errors.push(
-      toUserFacingErrorMessage(profileResult.reason, "Failed to enrich profile metadata.")
-    );
-  }
   if (notesResult.status === "fulfilled") {
     authoredNotesPayload = notesResult.value;
   } else if (!isNotFoundReason(notesResult.reason)) {
@@ -202,66 +226,51 @@ export async function loadProfilePageData(
   }
   if (repliesResult.status === "fulfilled") {
     authoredRepliesPayload = repliesResult.value;
-  } else if (shouldLoadReplies && !isNotFoundReason(repliesResult.reason)) {
+  } else if (params.shouldLoadReplies && !isNotFoundReason(repliesResult.reason)) {
     errors.push(toUserFacingErrorMessage(repliesResult.reason, "Failed to load recent replies."));
   }
   if (reactionsResult.status === "fulfilled") {
     authoredReactionsPayload = reactionsResult.value;
-  } else if (shouldLoadReactions && !isNotFoundReason(reactionsResult.reason)) {
+  } else if (params.shouldLoadReactions && !isNotFoundReason(reactionsResult.reason)) {
     errors.push(
       toUserFacingErrorMessage(reactionsResult.reason, "Failed to load recent reactions.")
     );
   }
   if (zapsResult.status === "fulfilled") {
     authoredZapsPayload = zapsResult.value;
-  } else if (shouldLoadZaps && !isNotFoundReason(zapsResult.reason)) {
+  } else if (params.shouldLoadZaps && !isNotFoundReason(zapsResult.reason)) {
     errors.push(toUserFacingErrorMessage(zapsResult.reason, "Failed to load recent zaps."));
   }
   if (longFormResult.status === "fulfilled") {
     longFormPayload = longFormResult.value;
-  } else if (shouldLoadLongForm && !isNotFoundReason(longFormResult.reason)) {
+  } else if (params.shouldLoadLongForm && !isNotFoundReason(longFormResult.reason)) {
     errors.push(
       toUserFacingErrorMessage(longFormResult.reason, "Failed to load long-form articles.")
     );
   }
   if (bookmarksResult.status === "fulfilled") {
     bookmarksPayload = bookmarksResult.value;
-  } else if (shouldLoadBookmarks && !isNotFoundReason(bookmarksResult.reason)) {
+  } else if (params.shouldLoadBookmarks && !isNotFoundReason(bookmarksResult.reason)) {
     errors.push(toUserFacingErrorMessage(bookmarksResult.reason, "Failed to load bookmarks."));
   }
   if (highlightsResult.status === "fulfilled") {
     highlightsPayload = highlightsResult.value;
-  } else if (shouldLoadHighlights && !isNotFoundReason(highlightsResult.reason)) {
+  } else if (params.shouldLoadHighlights && !isNotFoundReason(highlightsResult.reason)) {
     errors.push(toUserFacingErrorMessage(highlightsResult.reason, "Failed to load highlights."));
   }
   if (muteListResult.status === "fulfilled") {
     muteListPayload = muteListResult.value;
-  } else if (shouldLoadMuteList && !isNotFoundReason(muteListResult.reason)) {
+  } else if (params.shouldLoadMuteList && !isNotFoundReason(muteListResult.reason)) {
     errors.push(toUserFacingErrorMessage(muteListResult.reason, "Failed to load mute list."));
   }
   if (mutedByResult.status === "fulfilled") {
     mutedByPayload = mutedByResult.value;
-  } else if (shouldLoadMutedBy && !isNotFoundReason(mutedByResult.reason)) {
+  } else if (params.shouldLoadMutedBy && !isNotFoundReason(mutedByResult.reason)) {
     errors.push(
       toUserFacingErrorMessage(mutedByResult.reason, "Failed to load muted-by accounts.")
     );
   }
-  if (relatedFallbackResult.status === "fulfilled") {
-    relatedProfilesFallbackPayload = relatedFallbackResult.value;
-  } else if (shouldLoadRelatedProfilesFallback && !isNotFoundReason(relatedFallbackResult.reason)) {
-    errors.push(
-      toUserFacingErrorMessage(relatedFallbackResult.reason, "Failed to load related profiles.")
-    );
-  }
-  if (risingProfilesResult.status === "fulfilled") {
-    risingProfilesPayload = risingProfilesResult.value;
-  } else if (shouldLoadRisingProfilesFallback && !isNotFoundReason(risingProfilesResult.reason)) {
-    errors.push(
-      toUserFacingErrorMessage(risingProfilesResult.reason, "Failed to load rising profiles.")
-    );
-  }
 
-  const profile = mergeProfile(summaryProfile, profileEnrichment);
   const summaryRecentNotePreviews = filterAuthoredNotes(
     normalizeEventRecords(summaryRecord?.recent_note_previews ?? summaryRecord?.recent_notes)
   );
@@ -277,22 +286,6 @@ export async function loadProfilePageData(
   const highlights = highlightsPayload?.highlights ?? [];
   const mutedProfiles = muteListPayload?.profiles ?? [];
   const mutedByProfiles = mutedByPayload?.profiles ?? [];
-  const semantics = extractNativeApiSemantics(
-    summary,
-    profileEnrichment,
-    authoredNotesPayload,
-    authoredRepliesPayload,
-    authoredReactionsPayload,
-    authoredZapsPayload
-  );
-  const relatedProfiles =
-    summaryRelatedProfiles.length > 0
-      ? summaryRelatedProfiles
-      : (relatedProfilesFallbackPayload?.related_profiles ?? []);
-  const risingProfiles =
-    summaryRisingProfiles.length > 0
-      ? summaryRisingProfiles
-      : (risingProfilesPayload?.profiles ?? []);
 
   const notesNextCursor = extractNativeApiSemantics(authoredNotesPayload).next_cursor;
   const repliesNextCursor = extractNativeApiSemantics(authoredRepliesPayload).next_cursor;
@@ -303,9 +296,7 @@ export async function loadProfilePageData(
   const highlightsNextCursor = extractNativeApiSemantics(highlightsPayload).next_cursor;
   const muteListNextCursor = extractNativeApiSemantics(muteListPayload).next_cursor;
   const mutedByNextCursor = extractNativeApiSemantics(mutedByPayload).next_cursor;
-  const relatedProfilesNextCursor = extractNativeApiSemantics(
-    relatedProfilesFallbackPayload
-  ).next_cursor;
+
   const activityTabs = PROFILE_ACTIVITY_TABS.map((tab) => ({
     id: tab.id,
     label: tab.label,
@@ -378,12 +369,6 @@ export async function loadProfilePageData(
       mutedByNextCursor
     ),
   };
-  const relatedProfilesContinuationHref = buildContinuationHref(
-    profileRoute,
-    currentSearchParams,
-    "related_profiles_cursor",
-    relatedProfilesNextCursor
-  );
 
   const targetEventIds = [...reactions, ...zaps].flatMap((entry) => {
     const ids: string[] = [];
@@ -420,13 +405,12 @@ export async function loadProfilePageData(
     profile?.pubkey && profile.pubkey.length > 0
       ? { [profile.pubkey.toLowerCase()]: profile }
       : undefined;
-  const activeTabMeta = PROFILE_ACTIVITY_TABS.find((tab) => tab.id === activityTab);
-  const activeNextCursor = activityNextCursorByTab[activityTab];
-  const activeContinuationHref = activityContinuationByTab[activityTab];
-  const errorMessage = errors.length > 0 ? errors.join(" | ") : "";
+  const activeTabMeta = PROFILE_ACTIVITY_TABS.find((tab) => tab.id === params.activityTab);
+  const activeNextCursor = activityNextCursorByTab[params.activityTab];
+  const activeContinuationHref = activityContinuationByTab[params.activityTab];
 
   return {
-    activityTab,
+    activityTab: params.activityTab,
     activityTabs,
     activeContinuationHref,
     activeNextCursor,
@@ -437,36 +421,149 @@ export async function loadProfilePageData(
     authoredZapsPayload,
     bookmarks,
     bookmarksPayload,
-    currentSearchParams,
-    errorMessage,
+    errorMessage: errors.filter(Boolean).join(" | "),
     eventListAuthorsByPubkey,
     highlights,
     highlightsPayload,
     longFormArticles,
     longFormPayload,
-    lookupKey,
     muteListPayload,
     mutedByPayload,
     mutedByProfiles,
     mutedProfiles,
     notes,
     notesAuthorMap,
-    profile,
-    profileEnrichment,
-    profileRoute,
     reactions,
+    replies,
+    targetNoteAuthorsByPubkey,
+    targetNotesById,
+    zaps,
+  };
+}
+
+export async function loadProfileDiscoveryData(
+  {
+    lookupKey,
+    summaryRecord,
+    profileRoute,
+  }: {
+    lookupKey: string;
+    summaryRecord: Record<string, unknown> | null;
+    profileRoute: string;
+  },
+  resolvedSearchParams: Record<string, string | string[] | undefined>
+) {
+  const relatedProfilesCursor = readSearchParam(resolvedSearchParams, "related_profiles_cursor");
+  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
+  const errors: string[] = [];
+
+  const summaryRelatedDiscovery = isRecord(summaryRecord?.related_discovery)
+    ? summaryRecord.related_discovery
+    : null;
+  const summaryRelatedProfiles = normalizeProfiles(summaryRelatedDiscovery?.related_profiles);
+  const summaryRisingProfiles = normalizeProfiles(summaryRelatedDiscovery?.rising_profiles);
+
+  const shouldLoadRelatedProfilesFallback =
+    typeof relatedProfilesCursor === "string" || summaryRelatedProfiles.length === 0;
+  const shouldLoadRisingProfilesFallback = summaryRisingProfiles.length === 0;
+
+  let relatedProfilesFallbackPayload: Awaited<ReturnType<typeof getRelatedProfiles>> | null = null;
+  let risingProfilesPayload: Awaited<ReturnType<typeof getRisingProfiles>> | null = null;
+
+  const [relatedFallbackResult, risingProfilesResult] = await Promise.allSettled([
+    shouldLoadRelatedProfilesFallback
+      ? getRelatedProfiles(lookupKey, "shortTtl", { cursor: relatedProfilesCursor })
+      : Promise.resolve(null),
+    shouldLoadRisingProfilesFallback ? getRisingProfiles("shortTtl") : Promise.resolve(null),
+  ]);
+
+  if (relatedFallbackResult.status === "fulfilled") {
+    relatedProfilesFallbackPayload = relatedFallbackResult.value;
+  } else if (shouldLoadRelatedProfilesFallback && !isNotFoundReason(relatedFallbackResult.reason)) {
+    errors.push(
+      toUserFacingErrorMessage(relatedFallbackResult.reason, "Failed to load related profiles.")
+    );
+  }
+  if (risingProfilesResult.status === "fulfilled") {
+    risingProfilesPayload = risingProfilesResult.value;
+  } else if (shouldLoadRisingProfilesFallback && !isNotFoundReason(risingProfilesResult.reason)) {
+    errors.push(
+      toUserFacingErrorMessage(risingProfilesResult.reason, "Failed to load rising profiles.")
+    );
+  }
+
+  const relatedProfiles =
+    summaryRelatedProfiles.length > 0
+      ? summaryRelatedProfiles
+      : (relatedProfilesFallbackPayload?.related_profiles ?? []);
+  const risingProfiles =
+    summaryRisingProfiles.length > 0
+      ? summaryRisingProfiles
+      : (risingProfilesPayload?.profiles ?? []);
+  const relatedProfilesNextCursor = extractNativeApiSemantics(
+    relatedProfilesFallbackPayload
+  ).next_cursor;
+  const relatedProfilesContinuationHref = buildContinuationHref(
+    profileRoute,
+    currentSearchParams,
+    "related_profiles_cursor",
+    relatedProfilesNextCursor
+  );
+
+  return {
+    errorMessage: errors.filter(Boolean).join(" | "),
     relatedProfiles,
     relatedProfilesContinuationHref,
     relatedProfilesFallbackPayload,
     relatedProfilesNextCursor,
-    replies,
     risingProfiles,
     risingProfilesPayload,
+  };
+}
+
+/** Full loader kept for unit tests and any non-streaming callers. */
+export async function loadProfilePageData(
+  pubkeyOrNpub: string,
+  resolvedSearchParams: Record<string, string | string[] | undefined>
+) {
+  const focal = await loadProfileFocalData(pubkeyOrNpub);
+  const [activity, discovery] = await Promise.all([
+    loadProfileActivityData(
+      {
+        lookupKey: focal.lookupKey,
+        profile: focal.profile,
+        profileRoute: focal.profileRoute,
+        summaryRecord: focal.summaryRecord,
+      },
+      resolvedSearchParams
+    ),
+    loadProfileDiscoveryData(
+      {
+        lookupKey: focal.lookupKey,
+        summaryRecord: focal.summaryRecord,
+        profileRoute: focal.profileRoute,
+      },
+      resolvedSearchParams
+    ),
+  ]);
+
+  const semantics = extractNativeApiSemantics(
+    focal.summary,
+    focal.profileEnrichment,
+    activity.authoredNotesPayload,
+    activity.authoredRepliesPayload,
+    activity.authoredReactionsPayload,
+    activity.authoredZapsPayload
+  );
+
+  return {
+    ...focal,
+    ...activity,
+    ...discovery,
+    currentSearchParams: toUrlSearchParams(resolvedSearchParams),
+    errorMessage: [focal.errorMessage, activity.errorMessage, discovery.errorMessage]
+      .filter(Boolean)
+      .join(" | "),
     semantics,
-    summary,
-    summaryRecord,
-    targetNoteAuthorsByPubkey,
-    targetNotesById,
-    zaps,
   };
 }

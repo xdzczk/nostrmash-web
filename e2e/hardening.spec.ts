@@ -17,4 +17,23 @@ test.describe("edge hardening", () => {
     await page.goto("/domains/not%20a%20domain");
     await expect(page.getByText(/page not found/i)).toBeVisible();
   });
+
+  test("document responses include a nonced CSP without script unsafe-inline", async ({
+    request,
+  }) => {
+    const response = await request.get("/");
+    expect(response.ok()).toBeTruthy();
+    const csp = response.headers()["content-security-policy"] ?? "";
+    expect(csp).toMatch(/script-src[^;]*'nonce-/);
+    expect(csp).not.toMatch(/script-src[^;]*'unsafe-inline'/);
+    expect(csp).toMatch(/frame-ancestors 'none'/);
+  });
+
+  test("embed routes carve out frame-ancestors", async ({ request }) => {
+    const response = await request.get(`/embed/notes/${"a".repeat(64)}`);
+    expect(response.ok()).toBeTruthy();
+    const csp = response.headers()["content-security-policy"] ?? "";
+    expect(csp).toMatch(/frame-ancestors \*/);
+    expect(response.headers()["x-frame-options"]).toBeFalsy();
+  });
 });

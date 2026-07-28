@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { EntityActions } from "@/components/actions/entity-actions";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
@@ -20,15 +21,19 @@ import {
   isRecord,
   truncateMiddle,
 } from "@/components/explorer/utils";
+import {
+  DeferredNoteActivity,
+  DeferredNoteRelated,
+  DeferredNoteThread,
+} from "@/components/notes/deferred-note-sections";
 import { JsonLd } from "@/components/seo/json-ld";
-import { ThreadView } from "@/components/thread/thread-view";
 import { Disclosure } from "@/components/ui/disclosure";
 import { SectionCard } from "@/components/ui/section-card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { encodeNevent, hexToNote } from "@/lib/nostr/nip19";
-import { getNoteSummaryCached, loadNotePageData } from "@/lib/notes/load-note-page-data";
+import { getNoteSummaryCached, loadNoteFocalData } from "@/lib/notes/load-note-page-data";
 import { isValidEventIdParam, resolveEventIdParam } from "@/lib/routing/params";
-import { buildContinuationHref } from "@/lib/search-params/pagination";
 import { absoluteUrl, buildEntityMetadata } from "@/lib/seo/metadata";
 
 type Params = Promise<{ eventId: string }>;
@@ -36,10 +41,6 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 function isNonNull<T>(value: T | null): value is T {
   return value !== null;
-}
-
-function toThreadRoute(eventId: string): string {
-  return `/search?q=${encodeURIComponent(eventId)}&tab=notes`;
 }
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
@@ -93,35 +94,20 @@ export default async function NotePage({
   const eventId = resolveEventIdParam(eventIdParam) ?? eventIdParam;
   const resolvedSearchParams = await searchParams;
   const {
-    activity,
-    activityNextCursor,
-    ancestors,
-    ancestorsPayload,
     authorsByPubkey,
     contentResolution,
-    currentSearchParams,
     errorMessage,
     eventCountsPayload,
     eventPayload,
     eventSeenOnPayload,
     focal,
-    includeRelatedNotes,
-    includeThreadActivity,
-    missingAncestorIds,
     noteSummary,
-    relatedNextCursor,
-    relatedNotes,
-    relatedPayload,
-    replies,
-    repliesNextCursor,
-    repliesPayload,
+    parentEventId,
     resolvedAuthor,
+    rootEventId,
     semantics,
     summaryProvenance,
-    threadActivityPayload,
-    threadPayload,
-    threadSummaryPayload,
-  } = await loadNotePageData(eventId, resolvedSearchParams);
+  } = await loadNoteFocalData(eventId);
 
   const noteDetails = focal
     ? buildMetadataEntries(focal as Record<string, unknown>, ["id", "pubkey", "created_at", "kind"])
@@ -204,51 +190,6 @@ export default async function NotePage({
   const quoteDetails = isRecord(noteSummary?.quote_repost_context)
     ? Object.entries(noteSummary.quote_repost_context).map(([label, value]) => ({ label, value }))
     : [];
-  const threadContext = isRecord(noteSummary?.thread) ? noteSummary.thread : {};
-  const rootEventId =
-    (typeof threadContext.root_event_id === "string" ? threadContext.root_event_id : undefined) ??
-    threadSummaryPayload?.root_event_id ??
-    repliesPayload?.root_event_id ??
-    threadPayload?.root?.id;
-  const parentEventId =
-    (typeof threadContext.parent_event_id === "string"
-      ? threadContext.parent_event_id
-      : undefined) ?? ancestors.at(-1)?.id;
-  const threadSummaryStats = extractPrimitiveStats(
-    {
-      ...(isRecord(threadSummaryPayload?.summary) ? threadSummaryPayload.summary : {}),
-      ...(isRecord(threadSummaryPayload?.counts) ? threadSummaryPayload.counts : {}),
-    },
-    []
-  )
-    .filter((entry) =>
-      /(count|reply|reaction|repost|zap|quote|participant|author|depth)/i.test(entry.label)
-    )
-    .slice(0, 8);
-  const repliesContinuationHref = buildContinuationHref(
-    `/notes/${encodeURIComponent(eventId)}`,
-    currentSearchParams,
-    "replies_cursor",
-    repliesNextCursor
-  );
-  const activityContinuationHref = buildContinuationHref(
-    `/notes/${encodeURIComponent(eventId)}`,
-    currentSearchParams,
-    "activity_cursor",
-    activityNextCursor
-  );
-  const relatedContinuationHref = buildContinuationHref(
-    `/notes/${encodeURIComponent(eventId)}`,
-    currentSearchParams,
-    "related_cursor",
-    relatedNextCursor
-  );
-  const extendedContextHref = buildContinuationHref(
-    `/notes/${encodeURIComponent(eventId)}`,
-    currentSearchParams,
-    "view",
-    "full"
-  );
   const noteBech32 =
     encodeNevent({
       id: eventId,
@@ -435,177 +376,33 @@ export default async function NotePage({
         </SectionCard>
       ) : null}
 
-      {threadSummaryStats.length > 0 ? (
-        <section className="space-y-3">
-          <p className="text-ink-dim text-sm font-medium">Thread activity summary</p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {threadSummaryStats.map((stat) => (
-              <StatCard key={stat.label} label={stat.label} value={stat.value} />
-            ))}
-          </div>
-        </section>
-      ) : null}
+      <Suspense fallback={<Skeleton className="h-48 w-full rounded-xl" />}>
+        <DeferredNoteThread
+          eventId={eventId}
+          searchParams={resolvedSearchParams}
+          focal={focal}
+          rootEventId={rootEventId}
+          parentEventId={parentEventId}
+        />
+      </Suspense>
 
-      <div id="conversation-context">
-        <SectionCard
-          title="Conversation context"
-          description="The surrounding thread for this note."
-        >
-          <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
-            <Link
-              href="/discovery/conversations/hot"
-              className="border-edge-strong text-ink-dim hover:text-ink-strong rounded-full border px-2 py-1"
-            >
-              Explore hot conversations
-            </Link>
-            <Link
-              href="/discovery/profiles/rising"
-              className="border-edge-strong text-ink-dim hover:text-ink-strong rounded-full border px-2 py-1"
-            >
-              Explore rising profiles
-            </Link>
-            {rootEventId ? (
-              <Link
-                href={`/notes/${encodeURIComponent(rootEventId)}`}
-                className="border-edge-strong text-ink-dim hover:text-ink-strong rounded-full border px-2 py-1"
-              >
-                Open thread root
-              </Link>
-            ) : null}
-            {parentEventId ? (
-              <Link
-                href={`/notes/${encodeURIComponent(parentEventId)}`}
-                className="border-edge-strong text-ink-dim hover:text-ink-strong rounded-full border px-2 py-1"
-              >
-                Open parent note
-              </Link>
-            ) : null}
-            <Link
-              href={toThreadRoute(rootEventId ?? eventId)}
-              className="border-edge-strong text-ink-dim hover:text-ink-strong rounded-full border px-2 py-1"
-            >
-              View related thread activity
-            </Link>
-          </div>
-          <ThreadView
-            ancestors={ancestors}
-            focal={focal}
-            replies={replies}
-            missingAncestorIds={missingAncestorIds}
-            nextCursor={repliesNextCursor}
-            continuationHref={repliesContinuationHref}
-            continuationLabel="Continue replies"
-            authorsByPubkey={authorsByPubkey}
-          />
-        </SectionCard>
-      </div>
+      <Suspense fallback={<Skeleton className="h-32 w-full rounded-xl" />}>
+        <DeferredNoteActivity
+          eventId={eventId}
+          rootEventId={rootEventId ?? eventId}
+          searchParams={resolvedSearchParams}
+        />
+      </Suspense>
 
-      <div id="thread-activity">
-        {includeThreadActivity ? (
-          <SectionCard title="Thread activity" description="Recent activity from this thread.">
-            {activity.length > 0 ? (
-              <div className="space-y-3">
-                {activity.map((note, index) => (
-                  <NoteCard
-                    key={note.id ?? `activity-${index}`}
-                    note={note}
-                    author={
-                      typeof note.pubkey === "string"
-                        ? authorsByPubkey[note.pubkey.toLowerCase()]
-                        : undefined
-                    }
-                  />
-                ))}
-              </div>
-            ) : (
-              <EmptyState message="No activity entries were returned for this thread." />
-            )}
-            {typeof activityNextCursor === "string" && activityNextCursor.length > 0 ? (
-              <div className="border-accent/30 bg-accent/10 mt-4 rounded-md border p-3">
-                <p className="text-accent-ink text-xs">More thread activity is available.</p>
-                <Link
-                  href={activityContinuationHref}
-                  className="border-accent/40 text-link-hover hover:text-accent-ink mt-2 inline-block rounded-full border px-3 py-1 text-xs"
-                >
-                  Continue activity
-                </Link>
-              </div>
-            ) : null}
-          </SectionCard>
-        ) : (
-          <SectionCard title="Thread activity" description="Recent activity from this thread.">
-            <div className="hover:bg-surface/40 rounded-lg p-3 transition-colors">
-              <p className="text-ink-dim text-xs">
-                Extended thread context is skipped for faster initial loads.
-              </p>
-              <Link href={extendedContextHref} className="text-link mt-2 inline-block text-xs">
-                Load full context
-              </Link>
-            </div>
-          </SectionCard>
-        )}
-      </div>
-
-      <div id="related-notes">
-        {includeRelatedNotes ? (
-          <SectionCard title="Related notes" description="Other notes linked to this one.">
-            {relatedNotes.length > 0 ? (
-              <div className="space-y-3">
-                {relatedNotes.map((note, index) => (
-                  <NoteCard
-                    key={note.id ?? `related-${index}`}
-                    note={note}
-                    author={
-                      typeof note.pubkey === "string"
-                        ? authorsByPubkey[note.pubkey.toLowerCase()]
-                        : undefined
-                    }
-                  />
-                ))}
-              </div>
-            ) : (
-              <EmptyState message="No related notes were returned for this event." />
-            )}
-            {typeof relatedNextCursor === "string" && relatedNextCursor.length > 0 ? (
-              <div className="border-accent/30 bg-accent/10 mt-4 rounded-md border p-3">
-                <p className="text-accent-ink text-xs">More related notes are available.</p>
-                <Link
-                  href={relatedContinuationHref}
-                  className="border-accent/40 text-link-hover hover:text-accent-ink mt-2 inline-block rounded-full border px-3 py-1 text-xs"
-                >
-                  Continue related notes
-                </Link>
-              </div>
-            ) : null}
-          </SectionCard>
-        ) : (
-          <SectionCard title="Related notes" description="Other notes linked to this one.">
-            <div className="hover:bg-surface/40 rounded-lg p-3 transition-colors">
-              <p className="text-ink-dim text-xs">
-                Related-note expansion is skipped for faster initial loads.
-              </p>
-              <Link href={extendedContextHref} className="text-link mt-2 inline-block text-xs">
-                Load full context
-              </Link>
-            </div>
-          </SectionCard>
-        )}
-      </div>
+      <Suspense fallback={<Skeleton className="h-32 w-full rounded-xl" />}>
+        <DeferredNoteRelated eventId={eventId} searchParams={resolvedSearchParams} />
+      </Suspense>
 
       <div className="space-y-3">
         <DebugDisclosure title="Debug payload: canonical event" data={eventPayload ?? {}} />
         <DebugDisclosure title="Debug payload: note summary" data={noteSummary ?? {}} />
         <DebugDisclosure title="Debug payload: event counts" data={eventCountsPayload ?? {}} />
         <DebugDisclosure title="Debug payload: event seen-on" data={eventSeenOnPayload ?? {}} />
-        <DebugDisclosure title="Debug payload: thread" data={threadPayload ?? {}} />
-        <DebugDisclosure title="Debug payload: ancestors" data={ancestorsPayload ?? {}} />
-        <DebugDisclosure title="Debug payload: replies" data={repliesPayload ?? {}} />
-        <DebugDisclosure title="Debug payload: thread summary" data={threadSummaryPayload ?? {}} />
-        <DebugDisclosure
-          title="Debug payload: thread activity"
-          data={threadActivityPayload ?? {}}
-        />
-        <DebugDisclosure title="Debug payload: related notes" data={relatedPayload ?? {}} />
       </div>
     </div>
   );

@@ -24,13 +24,14 @@ test.describe("explorer smoke", () => {
   });
 
   test("profile page renders with mock API data", async ({ page }) => {
-    await page.goto(`/profiles/${"e".repeat(64)}`);
-    await expect(page.getByText(/mock profile/i).first()).toBeVisible();
+    await page.goto(`/profiles/${"b".repeat(64)}`);
+    await expect(page.getByText(/mock author/i).first()).toBeVisible();
   });
 
   test("note page renders with mock API data", async ({ page }) => {
     await page.goto(`/notes/${"a".repeat(64)}`);
-    await expect(page.getByText(/mock note content/i).first()).toBeVisible();
+    await expect(page.getByText(/hello/i).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "#nostr" }).first()).toBeVisible();
   });
 
   test("unknown routes show the not-found page", async ({ page }) => {

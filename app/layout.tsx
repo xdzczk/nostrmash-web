@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import { SiteShell } from "@/components/layout/site-shell";
+import { WebVitals } from "@/components/telemetry/web-vitals";
 import { appConfig } from "@/lib/config";
 
 const geistSans = Geist({
@@ -55,11 +57,14 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headerStore = await headers();
+  const nonce = headerStore.get("x-nonce") ?? undefined;
+
   return (
     <html
       lang="en"
@@ -71,12 +76,14 @@ export default function RootLayout({
         {/* Apply the saved theme before first paint to avoid a flash. When no
             choice is stored, the site stays on dark mode. */}
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`,
           }}
         />
       </head>
       <body className="bg-background text-foreground flex min-h-full flex-col">
+        <WebVitals />
         <SiteShell>{children}</SiteShell>
       </body>
     </html>

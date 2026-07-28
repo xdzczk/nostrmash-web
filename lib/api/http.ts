@@ -4,10 +4,53 @@ import { ApiError } from "@/lib/api/errors";
 import { appConfig } from "@/lib/config";
 import { toNextFetchConfig, type CacheClass } from "@/lib/caching/policies";
 import { softParseApiPayload } from "@/lib/api/schemas/parse";
+import { captureApiError } from "@/lib/telemetry/sentry";
 import { traceApiCall } from "@/lib/telemetry/trace";
 import type { ApiErrorBody, ApiErrorDetails } from "@/lib/types/api";
 
 export { ApiError, isApiError } from "@/lib/api/errors";
+
+/** Light sampling/dedupe so a flapping upstream does not flood Sentry. */
+const recentApiErrorKeys = new Map<string, number>();
+const API_ERROR_DEDUP_MS = 60_000;
+const API_ERROR_SAMPLE_RATE = 0.25;
+
+function shouldReportApiError(key: string): boolean {
+  const now = Date.now();
+  const last = recentApiErrorKeys.get(key) ?? 0;
+  if (now - last < API_ERROR_DEDUP_MS) return false;
+  if (Math.random() > API_ERROR_SAMPLE_RATE) return false;
+  recentApiErrorKeys.set(key, now);
+  if (recentApiErrorKeys.size > 200) {
+    for (const [entryKey, seenAt] of recentApiErrorKeys) {
+      if (now - seenAt > API_ERROR_DEDUP_MS) recentApiErrorKeys.delete(entryKey);
+    }
+  }
+  return true;
+}
+
+function reportUpstreamFailure(error: unknown, path: string, requestId?: string) {
+  const status =
+    error instanceof ApiError ? error.status : isApiTimeoutError(error) ? 408 : undefined;
+  const key = `${path}:${status ?? "network"}`;
+  if (!shouldReportApiError(key)) return;
+  captureApiError(error, {
+    path,
+    requestId,
+    kind: isApiTimeoutError(error) ? "timeout" : "upstream",
+  });
+}
+
+function createOutboundRequestId(): string {
+  try {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+  } catch {
+    // fall through
+  }
+  return `nm-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 /** Bound upstream waits so SSR pages cannot hang indefinitely when the API is slow. */
 const DEFAULT_TIMEOUT_MS: Record<CacheClass, number> = {
@@ -134,6 +177,7 @@ export async function fetchApiJson<T>(
     [timeoutSignal, options?.init?.signal].filter((value): value is AbortSignal => Boolean(value))
   );
 
+  const outboundRequestId = createOutboundRequestId();
   let response: Response;
   try {
     response = await traceApiCall(`api:${path}`, async () =>
@@ -144,14 +188,18 @@ export async function fetchApiJson<T>(
         signal,
         headers: {
           Accept: "application/json",
+          "X-Request-Id": outboundRequestId,
           ...(options?.init?.headers ?? {}),
         },
       })
     );
   } catch (error) {
     if (isAbortError(error)) {
-      throw new Error(`API request timed out after ${timeoutMs}ms: ${path}`);
+      const timeoutError = new Error(`API request timed out after ${timeoutMs}ms: ${path}`);
+      reportUpstreamFailure(timeoutError, path, outboundRequestId);
+      throw timeoutError;
     }
+    reportUpstreamFailure(error, path, outboundRequestId);
     throw error;
   }
 
@@ -171,14 +219,16 @@ export async function fetchApiJson<T>(
 
     const message = parseErrorMessage(errorBody, response.statusText);
     const details = errorText ? ` (${errorText.slice(0, 240)})` : "";
-    throw ApiError.fromResponse(
+    const apiError = ApiError.fromResponse(
       response.status,
       response.statusText,
       path,
       errorBody,
-      response.headers.get("x-request-id"),
+      response.headers.get("x-request-id") ?? outboundRequestId,
       `${message}${details}`
     );
+    reportUpstreamFailure(apiError, path, apiError.requestId ?? outboundRequestId);
+    throw apiError;
   }
 
   const json = (await response.json()) as T;

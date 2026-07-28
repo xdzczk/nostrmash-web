@@ -34,60 +34,38 @@ function hasCanonicalPayloadFields(note: EventRecord | undefined, eventId: strin
   return typeof note.kind === "number" && Number.isFinite(note.kind);
 }
 
-export async function loadNotePageData(
-  eventId: string,
-  resolvedSearchParams: Record<string, string | string[] | undefined>
-) {
+function readContextFlags(resolvedSearchParams: Record<string, string | string[] | undefined>) {
   const repliesCursor = readSearchParam(resolvedSearchParams, "replies_cursor");
   const activityCursor = readSearchParam(resolvedSearchParams, "activity_cursor");
   const relatedCursor = readSearchParam(resolvedSearchParams, "related_cursor");
   const viewMode = readSearchParam(resolvedSearchParams, "view");
   const includeExtendedContext = viewMode === "full";
-  const includeThreadActivity = includeExtendedContext || typeof activityCursor === "string";
-  const includeRelatedNotes = includeExtendedContext || typeof relatedCursor === "string";
-  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
+  return {
+    repliesCursor,
+    activityCursor,
+    relatedCursor,
+    includeExtendedContext,
+    includeThreadActivity: includeExtendedContext || typeof activityCursor === "string",
+    includeRelatedNotes: includeExtendedContext || typeof relatedCursor === "string",
+    currentSearchParams: toUrlSearchParams(resolvedSearchParams),
+  };
+}
 
-  let errorMessage = "";
+/** Fast path: summary + optional enrichment + focal author/content refs only. */
+export async function loadNoteFocalData(eventId: string) {
+  const errors: string[] = [];
+  let noteSummary: Awaited<ReturnType<typeof getNoteSummary>> | null = null;
   let eventPayload: Awaited<ReturnType<typeof getEvent>> | null = null;
   let eventSeenOnPayload: Awaited<ReturnType<typeof getEventSeenOn>> | null = null;
   let eventCountsPayload: Awaited<ReturnType<typeof getEventCounts>> | null = null;
-  let noteSummary: Awaited<ReturnType<typeof getNoteSummary>> | null = null;
-  let threadPayload: Awaited<ReturnType<typeof getThread>> | null = null;
-  let ancestorsPayload: Awaited<ReturnType<typeof getEventAncestors>> | null = null;
-  let repliesPayload: Awaited<ReturnType<typeof getEventReplies>> | null = null;
-  let relatedPayload: Awaited<ReturnType<typeof getRelatedNotes>> | null = null;
-  let threadSummaryPayload: Awaited<ReturnType<typeof getThreadSummary>> | null = null;
-  let threadActivityPayload: Awaited<ReturnType<typeof getThreadActivity>> | null = null;
-  let authorsByPubkey: Record<string, Profile> = {};
 
-  const [noteSummaryResult, threadResult, ancestorsResult, repliesResult, relatedResult] =
-    await Promise.allSettled([
-      getNoteSummaryCached(eventId),
-      getThread(eventId, "shortTtl"),
-      getEventAncestors(eventId, "shortTtl"),
-      getEventReplies(eventId, "shortTtl", { cursor: repliesCursor }),
-      includeRelatedNotes
-        ? getRelatedNotes(eventId, "shortTtl", { cursor: relatedCursor })
-        : Promise.resolve(null),
-    ]);
-
-  if (noteSummaryResult.status === "fulfilled") {
-    noteSummary = noteSummaryResult.value;
-  }
-  if (threadResult.status === "fulfilled") {
-    threadPayload = threadResult.value;
-  }
-  if (ancestorsResult.status === "fulfilled") {
-    ancestorsPayload = ancestorsResult.value;
-  }
-  if (repliesResult.status === "fulfilled") {
-    repliesPayload = repliesResult.value;
-  }
-  if (relatedResult.status === "fulfilled") {
-    relatedPayload = relatedResult.value;
+  try {
+    noteSummary = await getNoteSummaryCached(eventId);
+  } catch (error) {
+    errors.push(toUserFacingErrorMessage(error, "Failed to load note summary."));
   }
 
-  const focalFromPrimary = noteSummary?.note ?? threadPayload?.root;
+  const focalFromPrimary = noteSummary?.note;
   const shouldFetchCanonicalEvent = !hasCanonicalPayloadFields(focalFromPrimary, eventId);
   const shouldFetchCounts =
     !isRecord(noteSummary?.counts) || Object.keys(noteSummary.counts).length === 0;
@@ -96,7 +74,6 @@ export async function loadNotePageData(
     (isRecord(noteSummary) && Array.isArray((noteSummary as Record<string, unknown>).seen_on)) ||
     (isRecord(summaryProvenance) && Array.isArray(summaryProvenance.relays));
   const shouldFetchSeenOn = !summaryRelayHints;
-  const enrichmentErrors: string[] = [];
 
   const [eventResult, seenOnResult, countsResult] = await Promise.allSettled([
     shouldFetchCanonicalEvent ? getEvent(eventId, "shortTtl") : Promise.resolve(null),
@@ -104,80 +81,17 @@ export async function loadNotePageData(
     shouldFetchCounts ? getEventCounts(eventId, "shortTtl") : Promise.resolve(null),
   ]);
 
-  if (eventResult.status === "fulfilled") {
-    eventPayload = eventResult.value;
-  } else if (shouldFetchCanonicalEvent) {
-    enrichmentErrors.push(toUserFacingErrorMessage(eventResult.reason, ""));
+  if (eventResult.status === "fulfilled") eventPayload = eventResult.value;
+  else if (shouldFetchCanonicalEvent) {
+    errors.push(toUserFacingErrorMessage(eventResult.reason, ""));
   }
-  if (seenOnResult.status === "fulfilled") {
-    eventSeenOnPayload = seenOnResult.value;
-  } else if (shouldFetchSeenOn) {
-    enrichmentErrors.push(toUserFacingErrorMessage(seenOnResult.reason, ""));
+  if (seenOnResult.status === "fulfilled") eventSeenOnPayload = seenOnResult.value;
+  else if (shouldFetchSeenOn) {
+    errors.push(toUserFacingErrorMessage(seenOnResult.reason, ""));
   }
-  if (countsResult.status === "fulfilled") {
-    eventCountsPayload = countsResult.value;
-  } else if (shouldFetchCounts) {
-    enrichmentErrors.push(toUserFacingErrorMessage(countsResult.reason, ""));
-  }
-
-  if (!noteSummary && noteSummaryResult.status === "rejected") {
-    enrichmentErrors.unshift(
-      toUserFacingErrorMessage(noteSummaryResult.reason, "Failed to load note summary.")
-    );
-  }
-  if (!threadPayload && threadResult.status === "rejected") {
-    enrichmentErrors.unshift(
-      toUserFacingErrorMessage(threadResult.reason, "Failed to load note thread.")
-    );
-  }
-  if (!ancestorsPayload && ancestorsResult.status === "rejected") {
-    enrichmentErrors.push(
-      toUserFacingErrorMessage(ancestorsResult.reason, "Failed to load ancestors.")
-    );
-  }
-  if (!repliesPayload && repliesResult.status === "rejected") {
-    enrichmentErrors.push(
-      toUserFacingErrorMessage(repliesResult.reason, "Failed to load replies.")
-    );
-  }
-  if (!relatedPayload && relatedResult.status === "rejected") {
-    enrichmentErrors.push(
-      toUserFacingErrorMessage(relatedResult.reason, "Failed to load related notes.")
-    );
-  }
-  const compactErrors = enrichmentErrors.filter((value) => value.length > 0);
-  if (!noteSummary && !threadPayload && !eventPayload && compactErrors.length > 0) {
-    errorMessage = compactErrors.join(" | ");
-  }
-
-  const threadContextFromSummary = isRecord(noteSummary?.thread) ? noteSummary.thread : {};
-  const rootEventIdCandidate =
-    (typeof threadContextFromSummary.root_event_id === "string"
-      ? threadContextFromSummary.root_event_id
-      : undefined) ??
-    repliesPayload?.root_event_id ??
-    threadPayload?.root?.id ??
-    ancestorsPayload?.ancestors?.[0]?.id;
-
-  if (rootEventIdCandidate && includeThreadActivity) {
-    const [threadSummaryResult, threadActivityResult] = await Promise.allSettled([
-      getThreadSummary(rootEventIdCandidate, "shortTtl"),
-      getThreadActivity(rootEventIdCandidate, "shortTtl", { cursor: activityCursor }),
-    ]);
-    if (threadSummaryResult.status === "fulfilled") {
-      threadSummaryPayload = threadSummaryResult.value;
-    } else {
-      enrichmentErrors.push(
-        toUserFacingErrorMessage(threadSummaryResult.reason, "Failed to load thread summary.")
-      );
-    }
-    if (threadActivityResult.status === "fulfilled") {
-      threadActivityPayload = threadActivityResult.value;
-    } else {
-      enrichmentErrors.push(
-        toUserFacingErrorMessage(threadActivityResult.reason, "Failed to load thread activity.")
-      );
-    }
+  if (countsResult.status === "fulfilled") eventCountsPayload = countsResult.value;
+  else if (shouldFetchCounts) {
+    errors.push(toUserFacingErrorMessage(countsResult.reason, ""));
   }
 
   const authorProfileFromSummary =
@@ -185,19 +99,113 @@ export async function loadNotePageData(
       ? (noteSummary.author.profile as Profile)
       : undefined;
 
+  const focal = noteSummary?.note ?? eventPayload?.event;
+  let authorsByPubkey: Record<string, Profile> = {};
   try {
     authorsByPubkey = await fetchProfilesByPubkey(
       listHydratablePubkeys(
-        [
-          eventPayload?.event,
-          noteSummary?.note,
-          threadPayload?.root,
-          ...(ancestorsPayload?.ancestors ?? threadPayload?.ancestors ?? []),
-          ...(repliesPayload?.replies ?? threadPayload?.replies ?? []),
-          ...(threadActivityPayload?.activity ?? []),
-          ...(relatedPayload?.related ?? []),
-          authorProfileFromSummary,
-        ].flatMap((note) => (note?.pubkey ? [note.pubkey] : []))
+        [focal?.pubkey, authorProfileFromSummary?.pubkey].filter(
+          (value): value is string => typeof value === "string" && value.length > 0
+        )
+      ),
+      "shortTtl"
+    );
+  } catch {
+    authorsByPubkey = {};
+  }
+  if (authorProfileFromSummary?.pubkey) {
+    authorsByPubkey[authorProfileFromSummary.pubkey.toLowerCase()] = authorProfileFromSummary;
+  }
+
+  const contentResolution = await resolveContentReferences(
+    typeof focal?.content === "string" && focal.content.length > 0 ? [focal.content] : []
+  ).catch(() => ({ profilesByPubkey: {}, eventsById: {} }));
+  contentResolution.profilesByPubkey = {
+    ...contentResolution.profilesByPubkey,
+    ...authorsByPubkey,
+  };
+
+  const threadContextFromSummary = isRecord(noteSummary?.thread) ? noteSummary.thread : {};
+  const rootEventId =
+    typeof threadContextFromSummary.root_event_id === "string"
+      ? threadContextFromSummary.root_event_id
+      : undefined;
+  const parentEventId =
+    typeof threadContextFromSummary.parent_event_id === "string"
+      ? threadContextFromSummary.parent_event_id
+      : undefined;
+
+  const compactErrors = errors.filter((value) => value.length > 0);
+  const errorMessage =
+    !noteSummary && !eventPayload && compactErrors.length > 0 ? compactErrors.join(" | ") : "";
+
+  const semantics = extractNativeApiSemantics(
+    noteSummary,
+    eventSeenOnPayload,
+    eventCountsPayload,
+    eventPayload
+  );
+  const resolvedAuthor =
+    (typeof focal?.pubkey === "string" ? authorsByPubkey[focal.pubkey.toLowerCase()] : undefined) ??
+    authorProfileFromSummary;
+
+  return {
+    authorsByPubkey,
+    contentResolution,
+    errorMessage,
+    eventCountsPayload,
+    eventPayload,
+    eventSeenOnPayload,
+    focal,
+    noteSummary,
+    parentEventId,
+    resolvedAuthor,
+    rootEventId,
+    semantics,
+    summaryProvenance,
+  };
+}
+
+export async function loadNoteThreadData(
+  eventId: string,
+  resolvedSearchParams: Record<string, string | string[] | undefined>
+) {
+  const { repliesCursor } = readContextFlags(resolvedSearchParams);
+  const errors: string[] = [];
+  let threadPayload: Awaited<ReturnType<typeof getThread>> | null = null;
+  let ancestorsPayload: Awaited<ReturnType<typeof getEventAncestors>> | null = null;
+  let repliesPayload: Awaited<ReturnType<typeof getEventReplies>> | null = null;
+
+  const [threadResult, ancestorsResult, repliesResult] = await Promise.allSettled([
+    getThread(eventId, "shortTtl"),
+    getEventAncestors(eventId, "shortTtl"),
+    getEventReplies(eventId, "shortTtl", { cursor: repliesCursor }),
+  ]);
+
+  if (threadResult.status === "fulfilled") threadPayload = threadResult.value;
+  else errors.push(toUserFacingErrorMessage(threadResult.reason, "Failed to load note thread."));
+  if (ancestorsResult.status === "fulfilled") ancestorsPayload = ancestorsResult.value;
+  else errors.push(toUserFacingErrorMessage(ancestorsResult.reason, "Failed to load ancestors."));
+  if (repliesResult.status === "fulfilled") repliesPayload = repliesResult.value;
+  else errors.push(toUserFacingErrorMessage(repliesResult.reason, "Failed to load replies."));
+
+  const ancestors = ancestorsPayload?.ancestors ?? threadPayload?.ancestors ?? [];
+  const replies = repliesPayload?.replies ?? threadPayload?.replies ?? [];
+  const missingAncestorIds =
+    ancestorsPayload?.missing_ancestor_ids ?? threadPayload?.missing_ancestor_ids ?? [];
+  const repliesNextCursor = repliesPayload?.next_cursor ?? threadPayload?.next_cursor;
+  const rootEventId =
+    repliesPayload?.root_event_id ??
+    threadPayload?.root?.id ??
+    ancestorsPayload?.ancestors?.[0]?.id;
+
+  let authorsByPubkey: Record<string, Profile> = {};
+  try {
+    authorsByPubkey = await fetchProfilesByPubkey(
+      listHydratablePubkeys(
+        [...ancestors, ...replies, threadPayload?.root]
+          .flatMap((note) => (note?.pubkey ? [note.pubkey] : []))
+          .filter(Boolean)
       ),
       "shortTtl"
     );
@@ -205,81 +213,194 @@ export async function loadNotePageData(
     authorsByPubkey = {};
   }
 
-  if (authorProfileFromSummary?.pubkey) {
-    authorsByPubkey[authorProfileFromSummary.pubkey.toLowerCase()] = authorProfileFromSummary;
-  }
-
-  const focal = noteSummary?.note ?? eventPayload?.event ?? threadPayload?.root;
-  const ancestors = ancestorsPayload?.ancestors ?? threadPayload?.ancestors ?? [];
-  const replies = repliesPayload?.replies ?? threadPayload?.replies ?? [];
-  const missingAncestorIds =
-    ancestorsPayload?.missing_ancestor_ids ?? threadPayload?.missing_ancestor_ids ?? [];
-  const activity = threadActivityPayload?.activity ?? [];
-  const relatedNotes = (relatedPayload?.related ?? []).filter((note) => note.id !== focal?.id);
-  const repliesNextCursor = repliesPayload?.next_cursor ?? threadPayload?.next_cursor;
-  const activityNextCursor = threadActivityPayload?.next_cursor;
-  const relatedNextCursor = relatedPayload?.next_cursor;
-  const semantics = extractNativeApiSemantics(
-    noteSummary,
-    eventSeenOnPayload,
-    eventCountsPayload,
-    threadPayload,
-    ancestorsPayload,
-    repliesPayload,
-    threadSummaryPayload,
-    threadActivityPayload,
-    relatedPayload,
-    eventPayload
-  );
-  const resolvedAuthor =
-    (typeof focal?.pubkey === "string" ? authorsByPubkey[focal.pubkey.toLowerCase()] : undefined) ??
-    authorProfileFromSummary;
-
-  const contentBodies = [
-    focal?.content,
-    ...ancestors.map((note) => note.content),
-    ...replies.map((note) => note.content),
-  ].filter((value): value is string => typeof value === "string" && value.length > 0);
-
-  const contentResolution = await resolveContentReferences(contentBodies).catch(() => ({
-    profilesByPubkey: {},
-    eventsById: {},
-  }));
-
-  // Prefer already-hydrated authors when available.
+  const contentResolution = await resolveContentReferences(
+    [...ancestors, ...replies]
+      .map((note) => note.content)
+      .filter((value): value is string => typeof value === "string" && value.length > 0)
+  ).catch(() => ({ profilesByPubkey: {}, eventsById: {} }));
   contentResolution.profilesByPubkey = {
     ...contentResolution.profilesByPubkey,
     ...authorsByPubkey,
   };
 
   return {
-    activity,
-    activityNextCursor,
     ancestors,
     ancestorsPayload,
     authorsByPubkey,
     contentResolution,
-    currentSearchParams,
-    errorMessage,
-    eventCountsPayload,
-    eventPayload,
-    eventSeenOnPayload,
-    focal,
-    includeRelatedNotes,
-    includeThreadActivity,
+    errorMessage: errors.filter(Boolean).join(" | "),
     missingAncestorIds,
-    noteSummary,
-    relatedNextCursor,
-    relatedNotes,
-    relatedPayload,
     replies,
     repliesNextCursor,
     repliesPayload,
-    resolvedAuthor,
-    semantics,
-    summaryProvenance,
-    threadActivityPayload,
+    rootEventId,
     threadPayload,
+  };
+}
+
+export async function loadNoteActivityData(
+  rootEventId: string,
+  resolvedSearchParams: Record<string, string | string[] | undefined>
+) {
+  const { activityCursor, includeThreadActivity } = readContextFlags(resolvedSearchParams);
+  if (!includeThreadActivity) {
+    return {
+      activity: [] as EventRecord[],
+      activityNextCursor: undefined as string | undefined,
+      includeThreadActivity: false,
+      threadActivityPayload: null,
+      threadSummaryPayload: null,
+      authorsByPubkey: {} as Record<string, Profile>,
+    };
+  }
+
+  const [threadSummaryResult, threadActivityResult] = await Promise.allSettled([
+    getThreadSummary(rootEventId, "shortTtl"),
+    getThreadActivity(rootEventId, "shortTtl", { cursor: activityCursor }),
+  ]);
+
+  const threadSummaryPayload =
+    threadSummaryResult.status === "fulfilled" ? threadSummaryResult.value : null;
+  const threadActivityPayload =
+    threadActivityResult.status === "fulfilled" ? threadActivityResult.value : null;
+  const activity = threadActivityPayload?.activity ?? [];
+
+  let authorsByPubkey: Record<string, Profile> = {};
+  try {
+    authorsByPubkey = await fetchProfilesByPubkey(
+      listHydratablePubkeys(activity.flatMap((note) => (note.pubkey ? [note.pubkey] : []))),
+      "shortTtl"
+    );
+  } catch {
+    authorsByPubkey = {};
+  }
+
+  return {
+    activity,
+    activityNextCursor: threadActivityPayload?.next_cursor,
+    authorsByPubkey,
+    includeThreadActivity: true,
+    threadActivityPayload,
     threadSummaryPayload,
+  };
+}
+
+export async function loadNoteRelatedData(
+  eventId: string,
+  resolvedSearchParams: Record<string, string | string[] | undefined>
+) {
+  const { relatedCursor, includeRelatedNotes } = readContextFlags(resolvedSearchParams);
+  if (!includeRelatedNotes) {
+    return {
+      authorsByPubkey: {} as Record<string, Profile>,
+      includeRelatedNotes: false,
+      relatedNextCursor: undefined as string | undefined,
+      relatedNotes: [] as EventRecord[],
+      relatedPayload: null,
+    };
+  }
+
+  let relatedPayload: Awaited<ReturnType<typeof getRelatedNotes>> | null = null;
+  try {
+    relatedPayload = await getRelatedNotes(eventId, "shortTtl", { cursor: relatedCursor });
+  } catch {
+    relatedPayload = null;
+  }
+
+  const relatedNotes = (relatedPayload?.related ?? []).filter((note) => note.id !== eventId);
+  let authorsByPubkey: Record<string, Profile> = {};
+  try {
+    authorsByPubkey = await fetchProfilesByPubkey(
+      listHydratablePubkeys(relatedNotes.flatMap((note) => (note.pubkey ? [note.pubkey] : []))),
+      "shortTtl"
+    );
+  } catch {
+    authorsByPubkey = {};
+  }
+
+  return {
+    authorsByPubkey,
+    includeRelatedNotes: true,
+    relatedNextCursor: relatedPayload?.next_cursor,
+    relatedNotes,
+    relatedPayload,
+  };
+}
+
+/** Full loader kept for unit tests and any non-streaming callers. */
+export async function loadNotePageData(
+  eventId: string,
+  resolvedSearchParams: Record<string, string | string[] | undefined>
+) {
+  const flags = readContextFlags(resolvedSearchParams);
+  const [focal, thread, related] = await Promise.all([
+    loadNoteFocalData(eventId),
+    loadNoteThreadData(eventId, resolvedSearchParams),
+    loadNoteRelatedData(eventId, resolvedSearchParams),
+  ]);
+
+  const rootEventId = focal.rootEventId ?? thread.rootEventId ?? eventId;
+  const activityData = await loadNoteActivityData(rootEventId, resolvedSearchParams);
+
+  const authorsByPubkey = {
+    ...focal.authorsByPubkey,
+    ...thread.authorsByPubkey,
+    ...activityData.authorsByPubkey,
+    ...related.authorsByPubkey,
+  };
+  const contentResolution = {
+    profilesByPubkey: {
+      ...focal.contentResolution.profilesByPubkey,
+      ...thread.contentResolution.profilesByPubkey,
+      ...authorsByPubkey,
+    },
+    eventsById: {
+      ...focal.contentResolution.eventsById,
+      ...thread.contentResolution.eventsById,
+    },
+  };
+
+  const semantics = extractNativeApiSemantics(
+    focal.noteSummary,
+    focal.eventSeenOnPayload,
+    focal.eventCountsPayload,
+    thread.threadPayload,
+    thread.ancestorsPayload,
+    thread.repliesPayload,
+    activityData.threadSummaryPayload,
+    activityData.threadActivityPayload,
+    related.relatedPayload,
+    focal.eventPayload
+  );
+
+  return {
+    activity: activityData.activity,
+    activityNextCursor: activityData.activityNextCursor,
+    ancestors: thread.ancestors,
+    ancestorsPayload: thread.ancestorsPayload,
+    authorsByPubkey,
+    contentResolution,
+    currentSearchParams: flags.currentSearchParams,
+    errorMessage: [focal.errorMessage, thread.errorMessage].filter(Boolean).join(" | "),
+    eventCountsPayload: focal.eventCountsPayload,
+    eventPayload: focal.eventPayload,
+    eventSeenOnPayload: focal.eventSeenOnPayload,
+    focal: focal.focal ?? thread.threadPayload?.root,
+    includeRelatedNotes: related.includeRelatedNotes,
+    includeThreadActivity: activityData.includeThreadActivity,
+    missingAncestorIds: thread.missingAncestorIds,
+    noteSummary: focal.noteSummary,
+    relatedNextCursor: related.relatedNextCursor,
+    relatedNotes: related.relatedNotes,
+    relatedPayload: related.relatedPayload,
+    replies: thread.replies,
+    repliesNextCursor: thread.repliesNextCursor,
+    repliesPayload: thread.repliesPayload,
+    resolvedAuthor: focal.resolvedAuthor,
+    semantics,
+    summaryProvenance: focal.summaryProvenance,
+    threadActivityPayload: activityData.threadActivityPayload,
+    threadPayload: thread.threadPayload,
+    threadSummaryPayload: activityData.threadSummaryPayload,
   };
 }

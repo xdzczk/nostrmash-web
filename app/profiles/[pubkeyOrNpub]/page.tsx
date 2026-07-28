@@ -2,13 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
-import { ArticlesList, NotesList, ProfilesList } from "@/components/data/renderers";
-import { ProfileActivityTabs } from "@/components/profile/profile-activity-tabs";
-import {
-  ProfileReactionsActivityList,
-  ProfileZapsActivityList,
-} from "@/components/profile/profile-engagement-activity-list";
+import { CopyValueButton } from "@/components/actions/copy-value-button";
+import { EntityActions } from "@/components/actions/entity-actions";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
@@ -22,16 +19,23 @@ import {
   sanitizeExternalHref,
   truncateMiddle,
 } from "@/components/explorer/utils";
-import { CopyValueButton } from "@/components/actions/copy-value-button";
-import { EntityActions } from "@/components/actions/entity-actions";
+import {
+  DeferredProfileActivity,
+  DeferredProfileDiscovery,
+} from "@/components/profile/deferred-profile-sections";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Disclosure } from "@/components/ui/disclosure";
 import { SectionCard } from "@/components/ui/section-card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { hexToNpub } from "@/lib/nostr/nip19";
-import { buildProfileActivityTabHref, type ProfileActivityTab } from "@/lib/profile/activity-tabs";
-import { getProfileSummaryCached, loadProfilePageData } from "@/lib/profile/load-profile-page-data";
+import { buildProfileActivityTabHref } from "@/lib/profile/activity-tabs";
+import {
+  getProfileSummaryCached,
+  loadProfileFocalData,
+} from "@/lib/profile/load-profile-page-data";
 import { isValidPubkeyOrNpubParam, resolvePubkeyParam } from "@/lib/routing/params";
+import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import { absoluteUrl, buildEntityMetadata } from "@/lib/seo/metadata";
 import type { Profile, ProfileStats } from "@/lib/types/api";
 
@@ -120,29 +124,6 @@ function fallbackIdentityDetails(
   return rows;
 }
 
-function activityEmptyMessage(tab: ProfileActivityTab): string {
-  switch (tab) {
-    case "notes":
-      return "No recent notes were returned for this profile.";
-    case "replies":
-      return "No recent replies were returned for this profile.";
-    case "reactions":
-      return "No recent reactions were returned for this profile.";
-    case "zaps":
-      return "No recent zaps were returned for this profile.";
-    case "long_form":
-      return "No long-form articles were returned for this profile.";
-    case "bookmarks":
-      return "No bookmarks were returned for this profile.";
-    case "highlights":
-      return "No highlights were returned for this profile.";
-    case "mute_list":
-      return "This profile's mute list is empty or unavailable.";
-    case "muted_by":
-      return "No accounts muting this profile were returned.";
-  }
-}
-
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { pubkeyOrNpub } = await params;
   if (!isValidPubkeyOrNpubParam(pubkeyOrNpub)) {
@@ -194,50 +175,17 @@ export default async function ProfilePage({
     notFound();
   }
   const resolvedSearchParams = await searchParams;
+  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   const {
-    activityTab,
-    activityTabs,
-    activeContinuationHref,
-    activeNextCursor,
-    activeTabMeta,
-    authoredNotesPayload,
-    authoredReactionsPayload,
-    authoredRepliesPayload,
-    authoredZapsPayload,
-    bookmarks,
-    bookmarksPayload,
-    currentSearchParams,
     errorMessage,
-    eventListAuthorsByPubkey,
-    highlights,
-    highlightsPayload,
-    longFormArticles,
-    longFormPayload,
     lookupKey,
-    muteListPayload,
-    mutedByPayload,
-    mutedByProfiles,
-    mutedProfiles,
-    notes,
-    notesAuthorMap,
     profile,
     profileEnrichment,
     profileRoute,
-    reactions,
-    relatedProfiles,
-    relatedProfilesContinuationHref,
-    relatedProfilesFallbackPayload,
-    relatedProfilesNextCursor,
-    replies,
-    risingProfiles,
-    risingProfilesPayload,
     semantics,
     summary,
     summaryRecord,
-    targetNoteAuthorsByPubkey,
-    targetNotesById,
-    zaps,
-  } = await loadProfilePageData(pubkeyOrNpub, resolvedSearchParams);
+  } = await loadProfileFocalData(pubkeyOrNpub);
 
   const hero = isRecord(summaryRecord?.hero) ? summaryRecord.hero : null;
   const heroMetadata = isRecord(hero?.metadata) ? hero.metadata : null;
@@ -432,147 +380,24 @@ export default async function ProfilePage({
         }}
       />
 
-      <div id="profile-activity">
-        <SectionCard
-          title="Recent activity"
-          description="Browse this profile's latest notes, replies, reactions, and zaps."
-        >
-          <div className="space-y-4">
-            <ProfileActivityTabs activeTab={activityTab} tabs={activityTabs} />
-            {activityTab === "notes" ? (
-              notes.length > 0 ? (
-                <NotesList notes={notes} authorsByPubkey={notesAuthorMap} />
-              ) : (
-                <EmptyState message={activityEmptyMessage("notes")} />
-              )
-            ) : null}
-            {activityTab === "replies" ? (
-              replies.length > 0 ? (
-                <NotesList notes={replies} authorsByPubkey={notesAuthorMap} />
-              ) : (
-                <EmptyState message={activityEmptyMessage("replies")} />
-              )
-            ) : null}
-            {activityTab === "reactions" ? (
-              reactions.length > 0 ? (
-                <ProfileReactionsActivityList
-                  reactions={reactions}
-                  targetNotesById={targetNotesById}
-                  authorsByPubkey={{ ...notesAuthorMap, ...targetNoteAuthorsByPubkey }}
-                />
-              ) : (
-                <EmptyState message={activityEmptyMessage("reactions")} />
-              )
-            ) : null}
-            {activityTab === "zaps" ? (
-              zaps.length > 0 ? (
-                <ProfileZapsActivityList
-                  zaps={zaps}
-                  targetNotesById={targetNotesById}
-                  authorsByPubkey={{ ...notesAuthorMap, ...targetNoteAuthorsByPubkey }}
-                />
-              ) : (
-                <EmptyState message={activityEmptyMessage("zaps")} />
-              )
-            ) : null}
-            {activityTab === "long_form" ? (
-              longFormArticles.length > 0 ? (
-                <ArticlesList
-                  articles={longFormArticles}
-                  authorsByPubkey={{ ...notesAuthorMap, ...eventListAuthorsByPubkey }}
-                />
-              ) : (
-                <EmptyState message={activityEmptyMessage("long_form")} />
-              )
-            ) : null}
-            {activityTab === "bookmarks" ? (
-              bookmarks.length > 0 ? (
-                <NotesList
-                  notes={bookmarks}
-                  authorsByPubkey={{ ...notesAuthorMap, ...eventListAuthorsByPubkey }}
-                />
-              ) : (
-                <EmptyState message={activityEmptyMessage("bookmarks")} />
-              )
-            ) : null}
-            {activityTab === "highlights" ? (
-              highlights.length > 0 ? (
-                <NotesList
-                  notes={highlights}
-                  authorsByPubkey={{ ...notesAuthorMap, ...eventListAuthorsByPubkey }}
-                />
-              ) : (
-                <EmptyState message={activityEmptyMessage("highlights")} />
-              )
-            ) : null}
-            {activityTab === "mute_list" ? (
-              mutedProfiles.length > 0 ? (
-                <ProfilesList profiles={mutedProfiles} />
-              ) : (
-                <EmptyState message={activityEmptyMessage("mute_list")} />
-              )
-            ) : null}
-            {activityTab === "muted_by" ? (
-              mutedByProfiles.length > 0 ? (
-                <ProfilesList profiles={mutedByProfiles} />
-              ) : (
-                <EmptyState message={activityEmptyMessage("muted_by")} />
-              )
-            ) : null}
-            {typeof activeNextCursor === "string" && activeNextCursor.length > 0 ? (
-              <div className="border-accent/30 bg-accent/10 rounded-md border p-3">
-                <p className="text-accent-ink text-xs">
-                  More {activeTabMeta?.label.toLowerCase() ?? "activity"} are available.
-                </p>
-                <Link
-                  href={activeContinuationHref}
-                  className="border-accent/40 text-link-hover hover:text-accent-ink mt-2 inline-block rounded-full border px-3 py-1 text-xs"
-                >
-                  Continue {activeTabMeta?.label.toLowerCase() ?? "activity"}
-                </Link>
-              </div>
-            ) : null}
-          </div>
-        </SectionCard>
-      </div>
+      <Suspense fallback={<Skeleton className="h-48 w-full rounded-xl" />}>
+        <DeferredProfileActivity
+          lookupKey={lookupKey}
+          profile={profile}
+          profileRoute={profileRoute}
+          summaryRecord={summaryRecord}
+          searchParams={resolvedSearchParams}
+        />
+      </Suspense>
 
-      <div id="related-profiles">
-        <SectionCard
-          title="Related discovery"
-          description="Connected profiles and rising discovery surfaces related to this profile."
-        >
-          <div className="space-y-5">
-            <div className="space-y-2">
-              <p className="text-ink-muted text-xs font-medium">Related profiles</p>
-              {relatedProfiles.length > 0 ? (
-                <>
-                  <ProfilesList profiles={relatedProfiles.slice(0, 8)} />
-                  {typeof relatedProfilesNextCursor === "string" &&
-                  relatedProfilesNextCursor.length > 0 ? (
-                    <Link
-                      href={relatedProfilesContinuationHref}
-                      className="text-link inline-block text-sm"
-                    >
-                      Continue related profiles
-                    </Link>
-                  ) : null}
-                </>
-              ) : (
-                <EmptyState message="No related profiles were returned for this profile yet." />
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-ink-muted text-xs font-medium">Rising profiles</p>
-              {risingProfiles.length > 0 ? (
-                <ProfilesList profiles={risingProfiles.slice(0, 8)} />
-              ) : (
-                <EmptyState message="No rising profiles are available right now." />
-              )}
-            </div>
-          </div>
-        </SectionCard>
-      </div>
+      <Suspense fallback={<Skeleton className="h-40 w-full rounded-xl" />}>
+        <DeferredProfileDiscovery
+          lookupKey={lookupKey}
+          profileRoute={profileRoute}
+          summaryRecord={summaryRecord}
+          searchParams={resolvedSearchParams}
+        />
+      </Suspense>
 
       <Disclosure
         title="Identity details"
@@ -627,29 +452,6 @@ export default async function ProfilePage({
       <div className="space-y-3">
         <DebugDisclosure title="Debug payload: profile summary" data={summary ?? {}} />
         <DebugDisclosure title="Debug payload: profile enrichment" data={profileEnrichment ?? {}} />
-        <DebugDisclosure title="Debug payload: authored notes" data={authoredNotesPayload ?? {}} />
-        <DebugDisclosure
-          title="Debug payload: authored replies"
-          data={authoredRepliesPayload ?? {}}
-        />
-        <DebugDisclosure
-          title="Debug payload: authored reactions"
-          data={authoredReactionsPayload ?? {}}
-        />
-        <DebugDisclosure title="Debug payload: authored zaps" data={authoredZapsPayload ?? {}} />
-        <DebugDisclosure title="Debug payload: long-form" data={longFormPayload ?? {}} />
-        <DebugDisclosure title="Debug payload: bookmarks" data={bookmarksPayload ?? {}} />
-        <DebugDisclosure title="Debug payload: highlights" data={highlightsPayload ?? {}} />
-        <DebugDisclosure title="Debug payload: mute list" data={muteListPayload ?? {}} />
-        <DebugDisclosure title="Debug payload: muted by" data={mutedByPayload ?? {}} />
-        <DebugDisclosure
-          title="Debug payload: related profiles fallback"
-          data={relatedProfilesFallbackPayload ?? {}}
-        />
-        <DebugDisclosure
-          title="Debug payload: rising profiles fallback"
-          data={risingProfilesPayload ?? {}}
-        />
       </div>
     </div>
   );

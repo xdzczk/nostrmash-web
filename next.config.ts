@@ -8,32 +8,11 @@ if (process.env.NODE_ENV === "development") {
   void initOpenNextCloudflareForDev();
 }
 
-const isDev = process.env.NODE_ENV === "development";
-
+// CSP (incl. per-request script nonce + embed frame-ancestors carve-out) is set
+// in proxy.ts so Next can stamp nonces onto framework scripts during SSR.
 const securityHeaders = [
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      // Inline theme boot script in root layout; Next may emit inline chunks in prod.
-      // unsafe-eval is kept only for local Next/Turbopack tooling.
-      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-      "style-src 'self' 'unsafe-inline'",
-      // Note content and avatars are arbitrary-origin HTTPS media from the index.
-      "img-src 'self' data: blob: https:",
-      "media-src 'self' https:",
-      "font-src 'self' data:",
-      "connect-src 'self' https: http://localhost:* http://127.0.0.1:*",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'none'",
-      "upgrade-insecure-requests",
-    ].join("; "),
-  },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
   {
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=(), payment=()",
@@ -72,18 +51,7 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
-    const embedCsp = securityHeaders.map((header) => {
-      if (header.key !== "Content-Security-Policy") return header;
-      return {
-        ...header,
-        value: header.value.replace("frame-ancestors 'none'", "frame-ancestors *"),
-      };
-    });
     return [
-      {
-        source: "/embed/:path*",
-        headers: embedCsp.filter((header) => header.key !== "X-Frame-Options"),
-      },
       {
         source: "/:path*",
         headers: securityHeaders,
