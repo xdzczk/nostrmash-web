@@ -28,6 +28,7 @@ export {
 } from "@/lib/api/endpoints/profiles";
 export {
   getEvent,
+  getEventsBatch,
   getEventSeenOn,
   getEventCounts,
   getThread,

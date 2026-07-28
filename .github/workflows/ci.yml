@@ -35,8 +35,20 @@ jobs:
       - name: Validate (format, lint, typecheck)
         run: pnpm validate
 
-      - name: Test
-        run: pnpm test
+      - name: Audit production dependencies
+        continue-on-error: true
+        run: pnpm audit --prod
+
+      - name: Test with coverage
+        run: pnpm test:coverage
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          if-no-files-found: ignore
 
       - name: Build
         run: pnpm build
@@ -107,3 +119,45 @@ jobs:
         env:
           CI: "true"
           NOSTRMASH_API_BASE_URL: http://127.0.0.1:8080
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: [quality, cf-build, e2e]
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cloudflare OpenNext build
+        run: pnpm cf:build
+        env:
+          NOSTRMASH_API_BASE_URL: https://api.nostrmash.com
+          NEXT_PUBLIC_SITE_URL: https://nostrmash.com
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --keep-vars

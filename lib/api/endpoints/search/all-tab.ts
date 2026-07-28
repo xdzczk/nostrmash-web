@@ -25,7 +25,20 @@ import {
 } from "@/lib/api/endpoints/search/fetchers";
 import { dedupeProfiles } from "@/lib/api/endpoints/search/helpers";
 
-export async function searchAllTab(
+function hasSuggestBundle(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  if (Array.isArray(record.include) && record.include.map(String).includes("suggest")) {
+    return true;
+  }
+  return (
+    Array.isArray(record.suggested_profiles) ||
+    Array.isArray(record.profile_suggestions) ||
+    Array.isArray(record.suggested_hashtags)
+  );
+}
+
+async function searchAllTabLegacy(
   query: SearchQuery,
   normalizedQueryText: string,
   normalizedProfileQueryText: string,
@@ -77,12 +90,44 @@ export async function searchAllTab(
       : Promise.resolve(null),
   ]);
 
+  return mergeAllTabResults({
+    query,
+    searchResult,
+    notesResult,
+    profilesResult,
+    suggestResult,
+    directProfileResult,
+    directNoteResult,
+  });
+}
+
+type Settled<T> = PromiseSettledResult<T>;
+
+function mergeAllTabResults(args: {
+  query: SearchQuery;
+  searchResult: Settled<Awaited<ReturnType<typeof fetchSearch>>>;
+  notesResult?: Settled<Awaited<ReturnType<typeof fetchSearchNotes>>>;
+  profilesResult?: Settled<Awaited<ReturnType<typeof fetchSearchProfiles>>>;
+  suggestResult?: Settled<Awaited<ReturnType<typeof fetchSearchSuggest>>>;
+  directProfileResult: Settled<Awaited<ReturnType<typeof getProfile>> | null>;
+  directNoteResult: Settled<Awaited<ReturnType<typeof getEvent>> | null>;
+}): SearchResponse {
+  const {
+    query,
+    searchResult,
+    notesResult,
+    profilesResult,
+    suggestResult,
+    directProfileResult,
+    directNoteResult,
+  } = args;
+
   const notesFromSearch =
     searchResult.status === "fulfilled"
       ? normalizeEventRecords(searchResult.value.notes ?? searchResult.value.events)
       : [];
   const notesFromNotesSurface =
-    notesResult.status === "fulfilled" ? normalizeEventRecords(notesResult.value.notes) : [];
+    notesResult?.status === "fulfilled" ? normalizeEventRecords(notesResult.value.notes) : [];
   const directNoteMatch =
     directNoteResult.status === "fulfilled" && directNoteResult.value
       ? (() => {
@@ -104,29 +149,33 @@ export async function searchAllTab(
   const profilesFromSearch =
     searchResult.status === "fulfilled" ? normalizeProfiles(searchResult.value.profiles) : [];
   const profilesFromProfilesSurface =
-    profilesResult.status === "fulfilled" ? normalizeProfiles(profilesResult.value.profiles) : [];
+    profilesResult?.status === "fulfilled" ? normalizeProfiles(profilesResult.value.profiles) : [];
   const profiles = dedupeProfiles(
     profilesFromProfilesSurface.length > 0 ? profilesFromProfilesSurface : profilesFromSearch
   );
   const profileSuggestions =
-    suggestResult.status === "fulfilled"
-      ? normalizeProfiles(suggestResult.value.profiles ?? suggestResult.value.suggested_profiles)
+    suggestResult?.status === "fulfilled"
+      ? normalizeProfiles(suggestResult.value?.profiles ?? suggestResult.value?.suggested_profiles)
       : searchResult.status === "fulfilled"
-        ? normalizeProfiles(searchResult.value.profile_suggestions)
+        ? normalizeProfiles(
+            searchResult.value?.profile_suggestions ?? searchResult.value?.suggested_profiles
+          )
         : [];
   const hashtags =
-    suggestResult.status === "fulfilled"
+    suggestResult?.status === "fulfilled"
       ? normalizeHashtagEntries(
-          suggestResult.value.hashtags ?? suggestResult.value.suggested_hashtags
+          suggestResult.value?.hashtags ?? suggestResult.value?.suggested_hashtags
         )
       : searchResult.status === "fulfilled"
-        ? normalizeHashtagEntries(searchResult.value.hashtags)
+        ? normalizeHashtagEntries(
+            searchResult.value?.hashtags ?? searchResult.value?.suggested_hashtags
+          )
         : [];
   const relays =
-    suggestResult.status === "fulfilled"
-      ? normalizeRelayHints(suggestResult.value.relays)
+    suggestResult?.status === "fulfilled"
+      ? normalizeRelayHints(suggestResult.value?.relays)
       : searchResult.status === "fulfilled"
-        ? normalizeRelayHints(searchResult.value.relays)
+        ? normalizeRelayHints(searchResult.value?.relays)
         : [];
   const directProfileMatch =
     directProfileResult.status === "fulfilled" && directProfileResult.value
@@ -149,26 +198,26 @@ export async function searchAllTab(
     surfaceErrors.search =
       searchResult.reason instanceof Error ? searchResult.reason.message : "Search failed.";
   }
-  if (notesResult.status === "rejected") {
+  if (notesResult?.status === "rejected") {
     surfaceErrors.notes =
       notesResult.reason instanceof Error ? notesResult.reason.message : "Notes search failed.";
   }
-  if (profilesResult.status === "rejected") {
+  if (profilesResult?.status === "rejected") {
     surfaceErrors.profiles =
       profilesResult.reason instanceof Error
         ? profilesResult.reason.message
         : "Profiles search failed.";
   }
-  if (suggestResult.status === "rejected") {
+  if (suggestResult?.status === "rejected") {
     surfaceErrors.suggest =
       suggestResult.reason instanceof Error ? suggestResult.reason.message : "Suggest failed.";
   }
 
   if (
     searchResult.status === "rejected" &&
-    notesResult.status === "rejected" &&
-    profilesResult.status === "rejected" &&
-    suggestResult.status === "rejected"
+    notesResult?.status === "rejected" &&
+    profilesResult?.status === "rejected" &&
+    suggestResult?.status === "rejected"
   ) {
     throw new Error(
       Object.values(surfaceErrors).join(" | ") || "All search surfaces failed for this query."
@@ -180,33 +229,34 @@ export async function searchAllTab(
       (
         result
       ): result is PromiseFulfilledResult<{ section_totals?: SearchResponse["section_totals"] }> =>
-        result.status === "fulfilled"
+        Boolean(result) && result!.status === "fulfilled"
     )
     .map((result) => result.value.section_totals)
     .find((entry) => entry !== undefined);
 
   const semantics = extractNativeApiSemantics(
     searchResult.status === "fulfilled" ? searchResult.value : undefined,
-    notesResult.status === "fulfilled" ? notesResult.value : undefined,
-    profilesResult.status === "fulfilled" ? profilesResult.value : undefined,
-    suggestResult.status === "fulfilled" ? suggestResult.value : undefined
+    notesResult?.status === "fulfilled" ? notesResult.value : undefined,
+    profilesResult?.status === "fulfilled" ? profilesResult.value : undefined,
+    suggestResult?.status === "fulfilled" ? suggestResult.value : undefined
   );
   const surfaceCursors = {
     search: searchResult.status === "fulfilled" ? toSearchCursor(searchResult.value) : undefined,
-    notes: notesResult.status === "fulfilled" ? toSearchCursor(notesResult.value) : undefined,
+    notes: notesResult?.status === "fulfilled" ? toSearchCursor(notesResult.value) : undefined,
     profiles:
-      profilesResult.status === "fulfilled" ? toSearchCursor(profilesResult.value) : undefined,
-    suggest: suggestResult.status === "fulfilled" ? toSearchCursor(suggestResult.value) : undefined,
+      profilesResult?.status === "fulfilled" ? toSearchCursor(profilesResult.value) : undefined,
+    suggest:
+      suggestResult?.status === "fulfilled" ? toSearchCursor(suggestResult.value) : undefined,
   } satisfies NonNullable<SearchResponse["surface_cursors"]>;
   const surfaceOffsets = {
     notes:
-      notesResult.status === "fulfilled" &&
+      notesResult?.status === "fulfilled" &&
       typeof query.limit === "number" &&
       notesFromNotesSurface.length >= query.limit
         ? notesFromNotesSurface.length
         : undefined,
     profiles:
-      profilesResult.status === "fulfilled" &&
+      profilesResult?.status === "fulfilled" &&
       typeof query.limit === "number" &&
       profilesFromProfilesSurface.length >= query.limit
         ? profilesFromProfilesSurface.length
@@ -254,4 +304,40 @@ export async function searchAllTab(
     },
     errors: errors.length > 0 ? errors : undefined,
   } satisfies SearchResponse;
+}
+
+export async function searchAllTab(
+  query: SearchQuery,
+  normalizedQueryText: string,
+  normalizedProfileQueryText: string,
+  cacheClass: CacheClass
+): Promise<SearchResponse> {
+  const [bundleResult, directProfileResult, directNoteResult] = await Promise.allSettled([
+    fetchSearch(
+      {
+        q: normalizedQueryText,
+        limit: query.limit,
+        include: "suggest",
+      },
+      cacheClass
+    ),
+    looksLikeProfileIdentifier(normalizedProfileQueryText)
+      ? getProfile(normalizedProfileQueryText, cacheClass)
+      : Promise.resolve(null),
+    looksLikeEventIdentifier(normalizedQueryText)
+      ? getEvent(normalizedQueryText, cacheClass)
+      : Promise.resolve(null),
+  ]);
+
+  if (bundleResult.status === "fulfilled" && hasSuggestBundle(bundleResult.value)) {
+    return mergeAllTabResults({
+      query,
+      searchResult: bundleResult,
+      directProfileResult,
+      directNoteResult,
+    });
+  }
+
+  // Fallback for older backends that ignore include=suggest.
+  return searchAllTabLegacy(query, normalizedQueryText, normalizedProfileQueryText, cacheClass);
 }

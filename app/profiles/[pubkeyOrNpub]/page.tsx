@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import { ArticlesList, NotesList, ProfilesList } from "@/components/data/renderers";
 import { ProfileActivityTabs } from "@/components/profile/profile-activity-tabs";
@@ -14,15 +15,18 @@ import { IdBadge } from "@/components/explorer/id-badge";
 import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
 import {
   isRecord,
+  normalizeImageSrc,
   profileFallbackAvatarDataUrl,
   profileLabel,
   profilePictureUrl,
+  sanitizeExternalHref,
   truncateMiddle,
 } from "@/components/explorer/utils";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { buildProfileActivityTabHref, type ProfileActivityTab } from "@/lib/profile/activity-tabs";
 import { getProfileSummaryCached, loadProfilePageData } from "@/lib/profile/load-profile-page-data";
+import { isValidPubkeyOrNpubParam } from "@/lib/routing/params";
 import type { Profile, ProfileStats } from "@/lib/types/api";
 
 type Params = Promise<{ pubkeyOrNpub: string }>;
@@ -58,7 +62,7 @@ function normalizeHeroActions(value: unknown): HeroAction[] {
       if (!isRecord(entry)) return null;
       const id = typeof entry.id === "string" ? entry.id : "";
       const label = typeof entry.label === "string" ? entry.label : "";
-      const href = typeof entry.href === "string" ? entry.href : "";
+      const href = typeof entry.href === "string" ? sanitizeExternalHref(entry.href) : null;
       if (!label || !href) return null;
       return {
         id: id || label.toLowerCase().replace(/\s+/g, "_"),
@@ -135,6 +139,12 @@ function activityEmptyMessage(tab: ProfileActivityTab): string {
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { pubkeyOrNpub } = await params;
+  if (!isValidPubkeyOrNpubParam(pubkeyOrNpub)) {
+    return {
+      title: "Profile not found",
+      description: "This profile identifier is invalid.",
+    };
+  }
   try {
     const summary = await getProfileSummaryCached(pubkeyOrNpub);
     const profile = summary.profile ?? (summary as unknown as Profile);
@@ -160,6 +170,9 @@ export default async function ProfilePage({
   searchParams: SearchParams;
 }) {
   const { pubkeyOrNpub } = await params;
+  if (!isValidPubkeyOrNpubParam(pubkeyOrNpub)) {
+    notFound();
+  }
   const resolvedSearchParams = await searchParams;
   const {
     activityTab,
@@ -241,7 +254,9 @@ export default async function ProfilePage({
             truncated: true,
           }
         : null);
-  const heroWebsite = asMetadataPrimitiveValue(heroMetadata?.website) ?? null;
+  const heroWebsiteRaw = asMetadataPrimitiveValue(heroMetadata?.website) ?? null;
+  const heroWebsiteHref = heroWebsiteRaw?.raw ? sanitizeExternalHref(heroWebsiteRaw.raw) : null;
+  const heroWebsite = heroWebsiteHref ? { ...heroWebsiteRaw, raw: heroWebsiteHref } : null;
   const heroLud16 = asMetadataPrimitiveValue(heroMetadata?.lud16) ?? null;
 
   const identityDetailsFromSummary = (() => {
@@ -282,7 +297,7 @@ export default async function ProfilePage({
     (typeof profile?.about === "string" ? profile.about : undefined) ??
     "Explore public identity, activity, and discovery context for this profile.";
   const avatar =
-    (typeof hero?.avatar === "string" ? hero.avatar : undefined) ??
+    normalizeImageSrc(typeof hero?.avatar === "string" ? hero.avatar : undefined) ??
     (profile ? profilePictureUrl(profile) : null) ??
     (profile
       ? profileFallbackAvatarDataUrl(profile)
@@ -322,6 +337,8 @@ export default async function ProfilePage({
             {heroWebsite?.raw ? (
               <Link
                 href={heroWebsite.raw}
+                rel="noopener noreferrer nofollow"
+                target="_blank"
                 className="border-edge-strong bg-surface/80 text-ink-dim hover:text-ink rounded-full border px-2 py-1"
               >
                 {heroWebsite.display ?? truncateMiddle(heroWebsite.raw, 28)}
@@ -516,7 +533,7 @@ export default async function ProfilePage({
             {identityDetails.map((field) => {
               const raw = field.value.raw ?? "";
               const display = field.value.display ?? raw;
-              const isUrl = /^https?:\/\//i.test(raw);
+              const safeUrl = sanitizeExternalHref(raw);
               const isLud16 = field.key.toLowerCase() === "lud16";
               return (
                 <li
@@ -524,8 +541,13 @@ export default async function ProfilePage({
                   className="bg-surface-sunken/40 hover:bg-surface-sunken/60 rounded-lg p-3 transition-colors"
                 >
                   <p className="text-ink-faint mb-1 text-[11px]">{field.label}</p>
-                  {isUrl ? (
-                    <Link href={raw} className="text-link hover:text-link-hover text-sm break-all">
+                  {safeUrl ? (
+                    <Link
+                      href={safeUrl}
+                      rel="noopener noreferrer nofollow"
+                      target="_blank"
+                      className="text-link hover:text-link-hover text-sm break-all"
+                    >
                       {display}
                     </Link>
                   ) : isLud16 ? (

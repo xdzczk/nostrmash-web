@@ -41,45 +41,29 @@ import {
   normalizeUserMutedByResponse,
 } from "@/lib/api/normalize";
 import type { CacheClass } from "@/lib/caching/policies";
-import { npubToHex } from "@/lib/nostr/npub";
 import {
   buildCursorQuery,
-  buildPubkeyCandidates,
   type CursorQuery,
   nativeApiV1Routes,
+  withPubkeyCandidates,
 } from "@/lib/api/endpoints/shared";
 
 export async function getProfile(pubkey: string, cacheClass: CacheClass = "requestTime") {
-  const normalized = pubkey.trim().replace(/^nostr:/i, "");
-  const decodedHex = normalized.toLowerCase().startsWith("npub1") ? npubToHex(normalized) : null;
-  const candidates = Array.from(
-    new Set(
-      [normalized, decodedHex].filter(
-        (candidate): candidate is string => typeof candidate === "string"
-      )
-    )
-  );
-  let lastError: Error | null = null;
-
-  for (const candidate of candidates) {
-    try {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
       const response = await fetchApiJson<ProfileApiResponse>(
         nativeApiV1Routes.profileByPubkey(candidate),
-        {
-          cacheClass,
-        }
+        { cacheClass }
       );
       const profile = normalizeProfile(response);
-      if (profile) {
-        return profile;
+      if (!profile) {
+        throw new Error("API returned an invalid profile payload.");
       }
-      lastError = new Error("API returned an invalid profile payload.");
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("Profile lookup failed.");
-    }
-  }
-
-  throw lastError ?? new Error("Profile lookup failed.");
+      return profile;
+    },
+    "Profile lookup failed."
+  );
 }
 
 export async function getProfilesBatch(pubkeys: string[], cacheClass: CacheClass = "requestTime") {
@@ -106,30 +90,17 @@ export async function getProfilesBatch(pubkeys: string[], cacheClass: CacheClass
 }
 
 export async function getProfileSummary(pubkey: string, cacheClass: CacheClass = "requestTime") {
-  const normalized = pubkey.trim().replace(/^nostr:/i, "");
-  const decodedHex = normalized.toLowerCase().startsWith("npub1") ? npubToHex(normalized) : null;
-  const candidates = Array.from(
-    new Set(
-      [normalized, decodedHex].filter(
-        (candidate): candidate is string => typeof candidate === "string"
-      )
-    )
-  );
-  let lastError: Error | null = null;
-
-  for (const candidate of candidates) {
-    try {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
       const response = await fetchApiJson<ProfileSummaryApiResponse>(
         nativeApiV1Routes.profileSummaryByPubkey(candidate),
         { cacheClass }
       );
       return normalizeProfileSummaryResponse(response);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("Profile summary lookup failed.");
-    }
-  }
-
-  throw lastError ?? new Error("Profile summary lookup failed.");
+    },
+    "Profile summary lookup failed."
+  );
 }
 
 export async function getUserLongForm(
@@ -137,11 +108,9 @@ export async function getUserLongForm(
   cacheClass: CacheClass = "requestTime",
   query?: CursorQuery
 ): Promise<UserLongFormResponse> {
-  const candidates = buildPubkeyCandidates(pubkey);
-  let lastError: Error | null = null;
-
-  for (const candidate of candidates) {
-    try {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
       const response = await fetchApiJson<UserLongFormApiResponse>(
         nativeApiV1Routes.userLongFormByPubkey(candidate),
         {
@@ -150,12 +119,9 @@ export async function getUserLongForm(
         }
       );
       return normalizeUserLongFormResponse(response);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("User long-form lookup failed.");
-    }
-  }
-
-  throw lastError ?? new Error("User long-form lookup failed.");
+    },
+    "User long-form lookup failed."
+  );
 }
 
 export async function getUserBookmarks(
@@ -163,11 +129,9 @@ export async function getUserBookmarks(
   cacheClass: CacheClass = "requestTime",
   query?: CursorQuery
 ): Promise<UserBookmarksResponse> {
-  const candidates = buildPubkeyCandidates(pubkey);
-  let lastError: Error | null = null;
-
-  for (const candidate of candidates) {
-    try {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
       const response = await fetchApiJson<UserBookmarksApiResponse>(
         nativeApiV1Routes.userBookmarksByPubkey(candidate),
         {
@@ -176,12 +140,9 @@ export async function getUserBookmarks(
         }
       );
       return normalizeUserBookmarksResponse(response);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("User bookmarks lookup failed.");
-    }
-  }
-
-  throw lastError ?? new Error("User bookmarks lookup failed.");
+    },
+    "User bookmarks lookup failed."
+  );
 }
 
 export async function getUserHighlights(
@@ -189,11 +150,9 @@ export async function getUserHighlights(
   cacheClass: CacheClass = "requestTime",
   query?: CursorQuery
 ): Promise<UserHighlightsResponse> {
-  const candidates = buildPubkeyCandidates(pubkey);
-  let lastError: Error | null = null;
-
-  for (const candidate of candidates) {
-    try {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
       const response = await fetchApiJson<UserHighlightsApiResponse>(
         nativeApiV1Routes.userHighlightsByPubkey(candidate),
         {
@@ -202,12 +161,9 @@ export async function getUserHighlights(
         }
       );
       return normalizeUserHighlightsResponse(response);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("User highlights lookup failed.");
-    }
-  }
-
-  throw lastError ?? new Error("User highlights lookup failed.");
+    },
+    "User highlights lookup failed."
+  );
 }
 
 export async function getUserMuteList(
@@ -215,11 +171,9 @@ export async function getUserMuteList(
   cacheClass: CacheClass = "requestTime",
   query?: CursorQuery
 ): Promise<UserMuteListResponse> {
-  const candidates = buildPubkeyCandidates(pubkey);
-  let lastError: Error | null = null;
-
-  for (const candidate of candidates) {
-    try {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
       const response = await fetchApiJson<UserMuteListApiResponse>(
         nativeApiV1Routes.userMuteListByPubkey(candidate),
         {
@@ -228,12 +182,9 @@ export async function getUserMuteList(
         }
       );
       return normalizeUserMuteListResponse(response);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("User mute list lookup failed.");
-    }
-  }
-
-  throw lastError ?? new Error("User mute list lookup failed.");
+    },
+    "User mute list lookup failed."
+  );
 }
 
 export async function getUserMutedBy(
@@ -241,11 +192,9 @@ export async function getUserMutedBy(
   cacheClass: CacheClass = "requestTime",
   query?: CursorQuery
 ): Promise<UserMutedByResponse> {
-  const candidates = buildPubkeyCandidates(pubkey);
-  let lastError: Error | null = null;
-
-  for (const candidate of candidates) {
-    try {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
       const response = await fetchApiJson<UserMutedByApiResponse>(
         nativeApiV1Routes.userMutedByByPubkey(candidate),
         {
@@ -254,12 +203,9 @@ export async function getUserMutedBy(
         }
       );
       return normalizeUserMutedByResponse(response);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("User muted-by lookup failed.");
-    }
-  }
-
-  throw lastError ?? new Error("User muted-by lookup failed.");
+    },
+    "User muted-by lookup failed."
+  );
 }
 
 export async function getRelatedProfiles(
@@ -267,11 +213,9 @@ export async function getRelatedProfiles(
   cacheClass: CacheClass = "requestTime",
   query?: CursorQuery
 ): Promise<RelatedProfilesResponse> {
-  const candidates = buildPubkeyCandidates(pubkey);
-  let lastError: Error | null = null;
-
-  for (const candidate of candidates) {
-    try {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
       const response = await fetchApiJson<RelatedProfilesApiResponse>(
         nativeApiV1Routes.relatedProfilesByPubkey(candidate),
         {
@@ -280,12 +224,9 @@ export async function getRelatedProfiles(
         }
       );
       return normalizeRelatedProfilesResponse(response);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("Related profiles lookup failed.");
-    }
-  }
-
-  throw lastError ?? new Error("Related profiles lookup failed.");
+    },
+    "Related profiles lookup failed."
+  );
 }
 
 export async function getAuthorEvents(
@@ -293,19 +234,9 @@ export async function getAuthorEvents(
   cacheClass: CacheClass = "requestTime",
   query?: CursorQuery
 ): Promise<AuthorEventsResponse> {
-  const normalized = pubkey.trim().replace(/^nostr:/i, "");
-  const decodedHex = normalized.toLowerCase().startsWith("npub1") ? npubToHex(normalized) : null;
-  const candidates = Array.from(
-    new Set(
-      [normalized, decodedHex].filter(
-        (candidate): candidate is string => typeof candidate === "string"
-      )
-    )
-  );
-  let lastError: Error | null = null;
-
-  for (const candidate of candidates) {
-    try {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
       const response = await fetchApiJson<AuthorEventsApiResponse>(
         nativeApiV1Routes.authorEventsByPubkey(candidate),
         {
@@ -314,12 +245,9 @@ export async function getAuthorEvents(
         }
       );
       return normalizeAuthorEventsResponse(response);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("Author events lookup failed.");
-    }
-  }
-
-  throw lastError ?? new Error("Author events lookup failed.");
+    },
+    "Author events lookup failed."
+  );
 }
 
 export async function getAuthorReplies(
@@ -327,19 +255,9 @@ export async function getAuthorReplies(
   cacheClass: CacheClass = "requestTime",
   query?: CursorQuery
 ): Promise<AuthorRepliesResponse> {
-  const normalized = pubkey.trim().replace(/^nostr:/i, "");
-  const decodedHex = normalized.toLowerCase().startsWith("npub1") ? npubToHex(normalized) : null;
-  const candidates = Array.from(
-    new Set(
-      [normalized, decodedHex].filter(
-        (candidate): candidate is string => typeof candidate === "string"
-      )
-    )
-  );
-  let lastError: Error | null = null;
-
-  for (const candidate of candidates) {
-    try {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
       const response = await fetchApiJson<AuthorRepliesApiResponse>(
         nativeApiV1Routes.authorRepliesByPubkey(candidate),
         {
@@ -348,12 +266,9 @@ export async function getAuthorReplies(
         }
       );
       return normalizeAuthorRepliesResponse(response);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("Author replies lookup failed.");
-    }
-  }
-
-  throw lastError ?? new Error("Author replies lookup failed.");
+    },
+    "Author replies lookup failed."
+  );
 }
 
 export async function getAuthorReactions(
@@ -361,11 +276,9 @@ export async function getAuthorReactions(
   cacheClass: CacheClass = "requestTime",
   query?: CursorQuery
 ): Promise<AuthorReactionsResponse> {
-  const candidates = buildPubkeyCandidates(pubkey);
-  let lastError: Error | null = null;
-
-  for (const candidate of candidates) {
-    try {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
       const response = await fetchApiJson<AuthorReactionsApiResponse>(
         nativeApiV1Routes.authorReactionsByPubkey(candidate),
         {
@@ -374,12 +287,9 @@ export async function getAuthorReactions(
         }
       );
       return normalizeAuthorReactionsResponse(response);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("Author reactions lookup failed.");
-    }
-  }
-
-  throw lastError ?? new Error("Author reactions lookup failed.");
+    },
+    "Author reactions lookup failed."
+  );
 }
 
 export async function getAuthorZaps(
@@ -387,11 +297,9 @@ export async function getAuthorZaps(
   cacheClass: CacheClass = "requestTime",
   query?: CursorQuery
 ): Promise<AuthorZapsResponse> {
-  const candidates = buildPubkeyCandidates(pubkey);
-  let lastError: Error | null = null;
-
-  for (const candidate of candidates) {
-    try {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
       const response = await fetchApiJson<AuthorZapsApiResponse>(
         nativeApiV1Routes.authorZapsByPubkey(candidate),
         {
@@ -400,10 +308,7 @@ export async function getAuthorZaps(
         }
       );
       return normalizeAuthorZapsResponse(response);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error("Author zaps lookup failed.");
-    }
-  }
-
-  throw lastError ?? new Error("Author zaps lookup failed.");
+    },
+    "Author zaps lookup failed."
+  );
 }

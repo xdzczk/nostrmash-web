@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 import {
   classifyStats,
@@ -20,20 +21,28 @@ import { ErrorPanel } from "@/components/ui/status-panels";
 import { getRelayHealth, getRelayStats } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
+import { isValidRelayHostParam, normalizeValidatedRelayHost } from "@/lib/routing/params";
 
 type Params = Promise<{ relayHost: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { relayHost } = await params;
+  const label = normalizeValidatedRelayHost(relayHost) ?? relayHost;
   return {
-    title: `Relay ${relayHost}`,
-    description: `NostrMash relay explorer page for ${relayHost}.`,
+    title: `Relay ${label}`,
+    description: `NostrMash relay explorer page for ${label}.`,
   };
 }
 
 export default async function RelayPage({ params }: { params: Params }) {
   const { relayHost } = await params;
-  const normalizedRelayHost = normalizeRelayHost(relayHost) || relayHost.toLowerCase();
+  if (!isValidRelayHostParam(relayHost)) {
+    notFound();
+  }
+  const normalizedRelayHost =
+    normalizeValidatedRelayHost(relayHost) ||
+    normalizeRelayHost(relayHost) ||
+    relayHost.toLowerCase();
   const errors: string[] = [];
   let payload: Awaited<ReturnType<typeof getRelayStats>> | null = null;
   let healthPayload: Awaited<ReturnType<typeof getRelayHealth>> | null = null;

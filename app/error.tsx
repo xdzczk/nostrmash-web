@@ -10,9 +10,15 @@ export default function Error({
   reset: () => void;
 }) {
   return (
-    <div className="space-y-3 rounded-md border border-red-900/50 bg-red-950/30 p-4 text-sm text-red-200">
-      <p className="font-medium">This page ran into a loading issue</p>
-      <p className="text-red-300">{error.message || "Unexpected rendering error."}</p>
+    <div className="border-edge bg-surface-sunken/40 space-y-3 rounded-md border p-4 text-sm">
+      <p className="text-ink font-medium">This page ran into a loading issue</p>
+      <p className="text-ink-muted">
+        Something went wrong while rendering this page. You can retry, or go back and try another
+        route.
+      </p>
+      {error.digest ? (
+        <p className="text-ink-faint font-mono text-xs">Reference: {error.digest}</p>
+      ) : null}
       <Button variant="danger" size="sm" onClick={reset}>
         Retry page
       </Button>

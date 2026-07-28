@@ -31,4 +31,12 @@ describe("softParseApiPayload", () => {
     expect(warn).toHaveBeenCalledOnce();
     expect(String(warn.mock.calls[0]?.[0])).toContain("[schema] event failed soft validation");
   });
+
+  it("accepts hex64 event identities", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const id = "a".repeat(64);
+    const parsed = softParseApiPayload(eventRecordSchema, { id, content: "hi" }, "event");
+    expect(parsed.id).toBe(id);
+    expect(warn).not.toHaveBeenCalled();
+  });
 });

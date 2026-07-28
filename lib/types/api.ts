@@ -1,3 +1,5 @@
+import type { GeneratedBatchEventsResponse } from "@/lib/types/generated";
+
 export type Consistency = "strong" | "eventual";
 export type TrustMode = "off" | "best_effort" | "required" | string;
 
@@ -467,8 +469,17 @@ export interface SearchSuggestApiResponse extends NativeApiSemantics {
   [key: string]: unknown;
 }
 
+/** OpenAPI-backed shapes with a normalize-boundary index signature. */
+export type BatchEventsApiResponse = GeneratedBatchEventsResponse &
+  NativeApiSemantics & {
+    events?: EventRecord[] | unknown[];
+    missing?: string[];
+    [key: string]: unknown;
+  };
+
 export interface BatchProfilesApiResponse extends NativeApiSemantics {
   profiles?: unknown[];
+  missing_pubkeys?: string[];
   [key: string]: unknown;
 }
 

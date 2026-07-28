@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 void initOpenNextCloudflareForDev();
+
+const isDev = process.env.NODE_ENV === "development";
 
 const securityHeaders = [
   {
@@ -9,7 +12,8 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       // Inline theme boot script in root layout; Next may emit inline chunks in prod.
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      // unsafe-eval is kept only for local Next/Turbopack tooling.
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       // Note content and avatars are arbitrary-origin HTTPS media from the index.
       "img-src 'self' data: blob: https:",
@@ -29,6 +33,10 @@ const securityHeaders = [
   {
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=(), payment=()",
+  },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=31536000; includeSubDomains; preload",
   },
 ];
 
@@ -52,4 +60,17 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  // Disable automatic tunnel route; OpenNext/Workers handle routing themselves.
+  tunnelRoute: undefined,
+  webpack: {
+    treeshake: {
+      removeDebugLogging: true,
+    },
+  },
+});

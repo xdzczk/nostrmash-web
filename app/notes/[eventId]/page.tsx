@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
@@ -22,6 +23,7 @@ import { ThreadView } from "@/components/thread/thread-view";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { getNoteSummaryCached, loadNotePageData } from "@/lib/notes/load-note-page-data";
+import { isValidEventIdParam } from "@/lib/routing/params";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
 
 type Params = Promise<{ eventId: string }>;
@@ -37,6 +39,12 @@ function toThreadRoute(eventId: string): string {
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { eventId } = await params;
+  if (!isValidEventIdParam(eventId)) {
+    return {
+      title: "Note not found",
+      description: "This note identifier is invalid.",
+    };
+  }
   try {
     const payload = await getNoteSummaryCached(eventId);
     const content = payload.note?.content;
@@ -67,6 +75,9 @@ export default async function NotePage({
   searchParams: SearchParams;
 }) {
   const { eventId } = await params;
+  if (!isValidEventIdParam(eventId)) {
+    notFound();
+  }
   const resolvedSearchParams = await searchParams;
   const {
     activity,

@@ -1,10 +1,13 @@
 import type { z } from "zod";
 
+import { ApiError } from "@/lib/api/errors";
 import { appConfig } from "@/lib/config";
 import { toNextFetchConfig, type CacheClass } from "@/lib/caching/policies";
 import { softParseApiPayload } from "@/lib/api/schemas/parse";
 import { traceApiCall } from "@/lib/telemetry/trace";
 import type { ApiErrorBody, ApiErrorDetails } from "@/lib/types/api";
+
+export { ApiError, isApiError } from "@/lib/api/errors";
 
 /** Bound upstream waits so SSR pages cannot hang indefinitely when the API is slow. */
 const DEFAULT_TIMEOUT_MS: Record<CacheClass, number> = {
@@ -168,7 +171,14 @@ export async function fetchApiJson<T>(
 
     const message = parseErrorMessage(errorBody, response.statusText);
     const details = errorText ? ` (${errorText.slice(0, 240)})` : "";
-    throw new Error(`API ${response.status}: ${message}${details}`);
+    throw ApiError.fromResponse(
+      response.status,
+      response.statusText,
+      path,
+      errorBody,
+      response.headers.get("x-request-id"),
+      `${message}${details}`
+    );
   }
 
   const json = (await response.json()) as T;

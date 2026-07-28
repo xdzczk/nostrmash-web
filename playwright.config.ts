@@ -23,7 +23,7 @@ export default defineConfig({
   webServer: [
     {
       command: "node e2e/mock-api.mjs",
-      url: "http://127.0.0.1:8080/api/v1/discovery/home",
+      url: "http://127.0.0.1:8080/healthz",
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
     },

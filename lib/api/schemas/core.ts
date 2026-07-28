@@ -31,9 +31,11 @@ export const profileSchema = z
   })
   .passthrough();
 
+const hex64 = z.string().regex(/^[0-9a-f]{64}$/i, "expected 64-char hex identity");
+
 export const eventRecordSchema = z
   .object({
-    id: z.string().min(1),
+    id: hex64,
     pubkey: z.string().optional(),
     kind: z.number().optional(),
     created_at: z.number().optional(),
@@ -55,6 +57,18 @@ export const profileListResponseSchema = nativeApiSemanticsSchema
   })
   .passthrough();
 
+export const searchSuggestResponseSchema = nativeApiSemanticsSchema
+  .extend({
+    query: z.string().optional(),
+    profiles: z.array(profileSchema).optional(),
+    suggested_profiles: z.array(profileSchema).optional(),
+    hashtags: z.array(z.unknown()).optional(),
+    suggested_hashtags: z.array(z.unknown()).optional(),
+    relays: z.array(z.unknown()).optional(),
+  })
+  .passthrough();
+
 export type ProfileSchema = z.infer<typeof profileSchema>;
 export type EventRecordSchema = z.infer<typeof eventRecordSchema>;
 export type NativeApiSemanticsSchema = z.infer<typeof nativeApiSemanticsSchema>;
+export type SearchSuggestResponseSchema = z.infer<typeof searchSuggestResponseSchema>;

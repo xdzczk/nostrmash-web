@@ -225,7 +225,7 @@ function readProfileText(profile: Profile, keys: string[]): string | undefined {
   return undefined;
 }
 
-function normalizeImageSrc(value: string | undefined): string | null {
+export function normalizeImageSrc(value: string | undefined): string | null {
   if (!value) return null;
   if (/^https?:\/\//i.test(value) || /^data:image\//i.test(value) || /^blob:/i.test(value)) {
     return value;
@@ -237,6 +237,30 @@ function normalizeImageSrc(value: string | undefined): string | null {
     return `https://${value}`;
   }
   return null;
+}
+
+/**
+ * Allow only http(s) absolute URLs (or same-origin relative paths starting with `/`).
+ * Rejects javascript:, data:, and other dangerous schemes used in UGC link fields.
+ */
+export function sanitizeExternalHref(value: string | null | undefined): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
+    return trimmed;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.toString();
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 function hashString(value: string): number {

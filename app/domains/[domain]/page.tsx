@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
@@ -15,27 +16,12 @@ import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import type { Profile } from "@/lib/types/api";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
+import { normalizeValidatedDomain } from "@/lib/routing/params";
 
 type Params = Promise<{ domain: string }>;
 
-function normalizeDomainParam(value: string): string {
-  const decoded = decodeURIComponent(value).trim().toLowerCase();
-  if (decoded.length === 0) return "";
-  const candidate = decoded.includes("://") ? decoded : `https://${decoded}`;
-  try {
-    return new URL(candidate).hostname.toLowerCase().replace(/\.$/, "");
-  } catch {
-    const hostname = decoded
-      .replace(/^https?:\/\//, "")
-      .replace(/^www\./, "")
-      .split("/")[0];
-    return (hostname ?? "").replace(/\.$/, "");
-  }
-}
-
 function domainTitle(value: string): string {
-  const normalized = normalizeDomainParam(value);
-  return normalized.length > 0 ? normalized : "unknown.domain";
+  return normalizeValidatedDomain(value) ?? "unknown.domain";
 }
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
@@ -49,7 +35,10 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function DomainPage({ params }: { params: Params }) {
   const { domain } = await params;
-  const normalizedDomain = normalizeDomainParam(domain);
+  const normalizedDomain = normalizeValidatedDomain(domain);
+  if (!normalizedDomain) {
+    notFound();
+  }
   const errors: string[] = [];
   let domainDetailPayload: Awaited<ReturnType<typeof getDomainDetail>> | null = null;
   let domainNotesPayload: Awaited<ReturnType<typeof getDomainNotes>> | null = null;

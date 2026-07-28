@@ -18,22 +18,27 @@ import {
   parseNumericAmount,
 } from "@/lib/api/normalize/helpers";
 import { eventRecordSchema, profileSchema } from "@/lib/api/schemas/core";
-import { softParseApiPayload } from "@/lib/api/schemas/parse";
+import { parseEntityWithIdentity } from "@/lib/api/schemas/parse";
 
 export function normalizeEventRecord(value: unknown): EventRecord | null {
   const record = asRecord(value);
   if (!record) return null;
   const counts = asRecord(record.counts);
 
+  const id =
+    asString(record.id) ??
+    asString(record.event_id) ??
+    asString(record.eventId) ??
+    asString(record.note_id) ??
+    asString(record.noteId) ??
+    "";
+
+  // Fail closed: events without a usable identity must not enter list UIs.
+  if (!id) return null;
+
   const normalized = {
     ...record,
-    id:
-      asString(record.id) ??
-      asString(record.event_id) ??
-      asString(record.eventId) ??
-      asString(record.note_id) ??
-      asString(record.noteId) ??
-      "",
+    id,
     pubkey: asString(record.pubkey) ?? asString(record.author_pubkey),
     reply_count:
       asNumber(record.reply_count) ?? asNumber(record.replies) ?? asNumber(counts?.reply_count),
@@ -47,8 +52,11 @@ export function normalizeEventRecord(value: unknown): EventRecord | null {
     zap_msats: asNumber(record.zap_msats) ?? asNumber(counts?.zap_msats),
   } satisfies EventRecord;
 
-  if (!normalized.id) return normalized;
-  return softParseApiPayload(eventRecordSchema, normalized, "normalizeEventRecord") as EventRecord;
+  return parseEntityWithIdentity(eventRecordSchema, normalized, "normalizeEventRecord", {
+    requireId: true,
+    strictHexId: true,
+    requirePubkey: false,
+  }) as EventRecord | null;
 }
 
 export function normalizeEventRecords(value: unknown): EventRecord[] {
@@ -195,14 +203,18 @@ export function normalizeProfile(value: unknown): Profile | null {
     ),
   };
 
-  if (!normalized.pubkey) return normalized as Profile;
-  return softParseApiPayload(profileSchema, normalized, "normalizeProfile") as Profile;
+  if (!normalized.pubkey) return null;
+  return parseEntityWithIdentity(profileSchema, normalized, "normalizeProfile", {
+    requireId: false,
+    requirePubkey: true,
+    strictHexPubkey: false,
+  }) as Profile | null;
 }
 
 export function normalizeProfiles(value: unknown): Profile[] {
   return asArray(value)
     .map((entry) => normalizeProfile(entry))
-    .filter((entry): entry is Profile => entry !== null);
+    .filter((entry): entry is Profile => entry !== null && entry.pubkey.length > 0);
 }
 
 export function normalizeProfileStats(value: unknown): ProfileStats | undefined {

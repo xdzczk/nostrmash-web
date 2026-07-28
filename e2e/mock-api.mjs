@@ -11,9 +11,22 @@ function json(res, status, body) {
   res.end(payload);
 }
 
+const forceDown = process.env.MOCK_API_FORCE_DOWN === "1";
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url ?? "/", `http://127.0.0.1:${port}`);
   const path = url.pathname;
+
+  // Always-up probe used by Playwright webServer readiness checks.
+  if (path === "/healthz") {
+    return json(res, 200, { ok: true, forceDown });
+  }
+
+  if (forceDown) {
+    return json(res, 503, {
+      error: { code: "dependency_unavailable", message: "Mock API forced down" },
+    });
+  }
 
   if (path === "/api/v1/discovery/home") {
     return json(res, 200, {

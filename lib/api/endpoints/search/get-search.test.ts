@@ -73,7 +73,13 @@ describe("getSearch", () => {
   });
 
   it("merges all-tab surfaces and keeps partial failures as surface errors", async () => {
+    // Bundle call (include=suggest) — no suggest payload, so code falls back to legacy fan-out.
     mockedFetch
+      .mockResolvedValueOnce({
+        notes: [{ id: noteId, pubkey, kind: 1, content: "from search", created_at: 1 }],
+        profiles: [],
+        total: 1,
+      })
       .mockResolvedValueOnce({
         notes: [{ id: noteId, pubkey, kind: 1, content: "from search", created_at: 1 }],
         profiles: [],
@@ -96,6 +102,25 @@ describe("getSearch", () => {
     expect(result.hashtags?.[0]?.hashtag).toBe("bitcoin");
     expect(result.relays).toContain("wss://relay.example");
     expect(result.surface_errors?.notes).toMatch(/notes surface down/i);
+  });
+
+  it("uses the search bundle when include=suggest data is present", async () => {
+    mockedFetch.mockResolvedValueOnce({
+      notes: [{ id: noteId, pubkey, kind: 1, content: "bundled", created_at: 1 }],
+      profiles: [{ pubkey, display_name: "Ada" }],
+      suggested_profiles: [{ pubkey: "c".repeat(64), display_name: "Suggested" }],
+      suggested_hashtags: [{ hashtag: "bitcoin" }],
+      include: ["suggest"],
+      section_totals: { notes: 1, profiles: 1 },
+      total: 1,
+    });
+
+    const result = await getSearch({ q: "bitcoin", limit: 20 });
+
+    expect(result.notes).toHaveLength(1);
+    expect(result.profiles?.some((profile) => profile.display_name === "Ada")).toBe(true);
+    expect(result.hashtags?.[0]?.hashtag).toBe("bitcoin");
+    expect(mockedFetch).toHaveBeenCalledTimes(1);
   });
 
   it("throws when every all-tab surface fails", async () => {

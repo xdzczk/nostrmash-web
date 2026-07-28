@@ -111,8 +111,9 @@ describe("normalizeProfile", () => {
 
 describe("normalizeEventRecord", () => {
   it("lifts nested counts aliases to top-level engagement fields", () => {
+    const eventId = "ab".repeat(32);
     const note = normalizeEventRecord({
-      event_id: "event_123",
+      event_id: eventId,
       author_pubkey: "pubkey_abc",
       content: "hello nostr",
       counts: {
@@ -125,13 +126,18 @@ describe("normalizeEventRecord", () => {
     });
 
     expect(note).not.toBeNull();
-    expect(note?.id).toBe("event_123");
+    expect(note?.id).toBe(eventId);
     expect(note?.pubkey).toBe("pubkey_abc");
     expect(note?.reply_count).toBe(3);
     expect(note?.reaction_count).toBe(5);
     expect(note?.repost_count).toBe(2);
     expect(note?.zap_count).toBe(7);
     expect(note?.zap_msats).toBe(42000);
+  });
+
+  it("drops records without a hex64 identity", () => {
+    expect(normalizeEventRecord({ event_id: "not-hex", content: "x" })).toBeNull();
+    expect(normalizeEventRecord({ content: "missing id" })).toBeNull();
   });
 });
 
@@ -222,14 +228,14 @@ describe("normalizeAuthorZapsResponse", () => {
     const payload = normalizeAuthorZapsResponse({
       zaps: [
         {
-          id: "zap-event-1",
+          id: "cd".repeat(32),
           kind: 9735,
           pubkey: "sender-pubkey",
           created_at: 1_700_000_000,
           content: "",
           tags: [
             ["p", "receiver-pubkey"],
-            ["e", "target-note-id"],
+            ["e", "ef".repeat(32)],
             [
               "description",
               JSON.stringify({
@@ -243,7 +249,7 @@ describe("normalizeAuthorZapsResponse", () => {
     });
 
     expect(payload.zaps?.[0]?.sender_pubkey).toBe("sender-pubkey");
-    expect(payload.zaps?.[0]?.target_event_id).toBe("target-note-id");
+    expect(payload.zaps?.[0]?.target_event_id).toBe("ef".repeat(32));
     expect(payload.zaps?.[0]?.sats).toBe(21);
     expect(payload.zaps?.[0]?.zap_text).toBe("great post");
   });

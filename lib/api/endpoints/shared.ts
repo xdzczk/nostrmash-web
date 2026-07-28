@@ -1,4 +1,5 @@
 import type { SearchResponse } from "@/lib/types/api";
+import { ApiError, isApiTimeoutError } from "@/lib/api/http";
 import { normalizeEventRecord, normalizeEventRecords } from "@/lib/api/normalize";
 import { npubToHex } from "@/lib/nostr/npub";
 
@@ -7,6 +8,8 @@ export interface SearchQuery {
   tab?: "all" | "notes" | "profiles";
   limit?: number;
   offset?: number;
+  /** Opt-in search bundle extras, e.g. "suggest". */
+  include?: string;
 }
 
 export const nativeApiV1Routes = {
@@ -34,6 +37,7 @@ export const nativeApiV1Routes = {
     `/api/v1/authors/${encodeURIComponent(pubkey)}/reactions`,
   authorZapsByPubkey: (pubkey: string) => `/api/v1/authors/${encodeURIComponent(pubkey)}/zaps`,
   eventById: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}`,
+  eventsBatch: "/api/v1/events/batch",
   eventAncestorsById: (eventId: string) =>
     `/api/v1/events/${encodeURIComponent(eventId)}/ancestors`,
   eventRepliesById: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/replies`,
@@ -111,14 +115,43 @@ export const looksLikeEventIdentifier = (value: string): boolean => /^[0-9a-f]{6
 
 export function buildPubkeyCandidates(pubkey: string): string[] {
   const normalized = pubkey.trim().replace(/^nostr:/i, "");
-  const decodedHex = normalized.toLowerCase().startsWith("npub1") ? npubToHex(normalized) : null;
+  const isNpub = normalized.toLowerCase().startsWith("npub1");
+  const decodedHex = isNpub ? npubToHex(normalized) : null;
+  // Prefer hex first when an npub decodes, so the common path wins before a 404 retry.
+  const ordered = decodedHex ? [decodedHex, normalized] : [normalized];
   return Array.from(
-    new Set(
-      [normalized, decodedHex].filter(
-        (candidate): candidate is string => typeof candidate === "string"
-      )
-    )
+    new Set(ordered.filter((candidate): candidate is string => typeof candidate === "string"))
   );
+}
+
+/**
+ * Try pubkey candidates (hex-first). Retry the alternate form only on 404;
+ * never retry after timeouts or other failures.
+ */
+export async function withPubkeyCandidates<T>(
+  pubkey: string,
+  operation: (candidate: string) => Promise<T>,
+  fallbackMessage = "Profile lookup failed."
+): Promise<T> {
+  const candidates = buildPubkeyCandidates(pubkey);
+  let lastError: Error | null = null;
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index]!;
+    try {
+      return await operation(candidate);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(fallbackMessage);
+      const isTimeout = isApiTimeoutError(error);
+      const isNotFound = error instanceof ApiError && error.isNotFound;
+      const hasNext = index < candidates.length - 1;
+      if (!hasNext || isTimeout || !isNotFound) {
+        throw lastError;
+      }
+    }
+  }
+
+  throw lastError ?? new Error(fallbackMessage);
 }
 
 export function toSearchCursor(value: unknown): string | undefined {

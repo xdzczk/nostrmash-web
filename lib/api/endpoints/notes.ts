@@ -1,9 +1,11 @@
 import type {
+  BatchEventsApiResponse,
   EventAncestorsApiResponse,
   EventAncestorsResponse,
   EventCountsApiResponse,
   EventCountsResponse,
   EventDetailResponse,
+  EventRecord,
   EventRepliesApiResponse,
   EventRepliesResponse,
   EventSeenOnApiResponse,
@@ -21,6 +23,7 @@ import { fetchApiJson } from "@/lib/api/http";
 import {
   normalizeEventAncestorsResponse,
   normalizeEventCountsResponse,
+  normalizeEventRecords,
   normalizeEventRepliesResponse,
   normalizeEventSeenOnResponse,
   normalizeNoteSummaryResponse,
@@ -32,10 +35,47 @@ import {
 import type { CacheClass } from "@/lib/caching/policies";
 import { buildCursorQuery, type CursorQuery, nativeApiV1Routes } from "@/lib/api/endpoints/shared";
 
+const EVENTS_BATCH_MAX = 200;
+
 export async function getEvent(eventId: string, cacheClass: CacheClass = "requestTime") {
   return fetchApiJson<EventDetailResponse>(nativeApiV1Routes.eventById(eventId), {
     cacheClass,
   });
+}
+
+export async function getEventsBatch(
+  eventIds: string[],
+  cacheClass: CacheClass = "requestTime"
+): Promise<{ events: EventRecord[]; missing: string[] }> {
+  const normalizedIds = Array.from(
+    new Set(eventIds.map((id) => id.trim().toLowerCase()).filter((id) => id.length > 0))
+  );
+  if (normalizedIds.length === 0) {
+    return { events: [], missing: [] };
+  }
+
+  const events: EventRecord[] = [];
+  const missing: string[] = [];
+
+  for (let offset = 0; offset < normalizedIds.length; offset += EVENTS_BATCH_MAX) {
+    const chunk = normalizedIds.slice(offset, offset + EVENTS_BATCH_MAX);
+    const response = await fetchApiJson<BatchEventsApiResponse>(nativeApiV1Routes.eventsBatch, {
+      cacheClass,
+      init: {
+        method: "POST",
+        body: JSON.stringify({ ids: chunk }),
+        headers: { "Content-Type": "application/json" },
+      },
+    });
+    events.push(...normalizeEventRecords(response.events));
+    if (Array.isArray(response.missing)) {
+      for (const id of response.missing) {
+        if (typeof id === "string" && id.length > 0) missing.push(id.toLowerCase());
+      }
+    }
+  }
+
+  return { events, missing };
 }
 
 export async function getEventSeenOn(

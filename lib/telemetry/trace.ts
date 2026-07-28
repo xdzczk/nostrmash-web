@@ -1,3 +1,5 @@
+import { captureSlowApiCall } from "@/lib/telemetry/sentry";
+
 export async function traceApiCall<T>(spanName: string, operation: () => Promise<T>): Promise<T> {
   const startedAt = Date.now();
   try {
@@ -5,6 +7,7 @@ export async function traceApiCall<T>(spanName: string, operation: () => Promise
     const durationMs = Date.now() - startedAt;
     if (durationMs > 800) {
       console.info(`[trace] ${spanName} succeeded in ${durationMs}ms`);
+      captureSlowApiCall(spanName, durationMs);
     }
     return result;
   } catch (error) {

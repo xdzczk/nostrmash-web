@@ -1,38 +1,20 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { DiscoveryActionLinks } from "@/components/explorer/card-grammar";
 import { EmptyState } from "@/components/explorer/empty-state";
-import { extractRelayRows, pickTopPrimitiveStats } from "@/components/explorer/stats-utils";
 import { WindowSelector } from "@/components/explorer/window-selector";
-import { isRecord, truncateIdentifier } from "@/components/explorer/utils";
+import { truncateIdentifier } from "@/components/explorer/utils";
 import { ClosingDiscoveryRail } from "@/components/home/closing-discovery-rail";
-import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
+import { DeferredNetworkPulse } from "@/components/home/deferred-network-pulse";
 import { ProfilesInMotionSpotlight } from "@/components/home/profiles-in-motion-spotlight";
 import { TrendingFeaturedModule } from "@/components/home/trending-featured-module";
 import { SearchForm } from "@/components/search/search-form";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorPanel } from "@/components/ui/status-panels";
-import {
-  getDiscoveryHome,
-  getNetworkStats,
-  getRelayStats,
-  getTrendingDomains,
-  getTrendingHashtags,
-  getTrendingNotes,
-  getTrendingProfiles,
-} from "@/lib/api/endpoints";
-import { isApiTimeoutError } from "@/lib/api/http";
-import { fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
-import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
-import { toUrlSearchParams } from "@/lib/search-params/pagination";
-import {
-  buildWindowHref,
-  formatStatsWindowLabel,
-  networkPulsePreferredKeys,
-  readStatsWindow,
-} from "@/lib/search-params/window";
-import { traceHomeFanOut } from "@/lib/telemetry/trace";
-import type { Profile } from "@/lib/types/api";
+import { loadHomePageData } from "@/lib/home/load-home-page-data";
+import { buildWindowHref, formatStatsWindowLabel } from "@/lib/search-params/window";
 
 export const metadata: Metadata = {
   title: "NostrMash",
@@ -43,237 +25,37 @@ export const revalidate = 60;
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
+function normalizeUnixSeconds(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  if (value > 1_000_000_000_000) return Math.floor(value / 1000);
+  if (value > 1_000_000_000) return Math.floor(value);
+  return null;
+}
+
+function formatFreshness(value: unknown): string | null {
+  const unixSeconds = normalizeUnixSeconds(value);
+  if (!unixSeconds) return null;
+  const observedAt = new Date(unixSeconds * 1000);
+  if (Number.isNaN(observedAt.getTime())) return null;
+  return `Updated ${observedAt.toLocaleString()}`;
+}
+
 export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
   const resolvedSearchParams = await searchParams;
-  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
-  const window = readStatsWindow(resolvedSearchParams);
+  const {
+    window,
+    currentSearchParams,
+    errorMessage,
+    homeNotes,
+    hydratedHomeProfiles,
+    homeHashtags,
+    homeDomains,
+    noteAuthorsByPubkey,
+    pulseStats,
+    relayLeaders,
+  } = await loadHomePageData(resolvedSearchParams);
+
   const trendWindowLabel = formatStatsWindowLabel(window);
-  const asRecord = (value: unknown): Record<string, unknown> | null =>
-    isRecord(value) ? value : null;
-  const normalizeUnixSeconds = (value: unknown): number | null => {
-    if (typeof value !== "number" || !Number.isFinite(value)) return null;
-    if (value > 1_000_000_000_000) return Math.floor(value / 1000);
-    if (value > 1_000_000_000) return Math.floor(value);
-    return null;
-  };
-  const formatFreshness = (value: unknown): string | null => {
-    const unixSeconds = normalizeUnixSeconds(value);
-    if (!unixSeconds) return null;
-    const observedAt = new Date(unixSeconds * 1000);
-    if (Number.isNaN(observedAt.getTime())) return null;
-    return `Updated ${observedAt.toLocaleString()}`;
-  };
-
-  const hasRichIdentity = (profile: Profile | undefined): boolean => {
-    if (!profile) return false;
-    const displayName = typeof profile.display_name === "string" ? profile.display_name.trim() : "";
-    const name = typeof profile.name === "string" ? profile.name.trim() : "";
-    const picture = typeof profile.picture === "string" ? profile.picture.trim() : "";
-    return displayName.length > 0 || name.length > 0 || picture.length > 0;
-  };
-
-  const failedMessages: string[] = [];
-  let payload: Awaited<ReturnType<typeof getDiscoveryHome>> | null = null;
-  let networkStats: Awaited<ReturnType<typeof getNetworkStats>> | null = null;
-  let relayStats: Awaited<ReturnType<typeof getRelayStats>> | null = null;
-  let trendingNotes: Awaited<ReturnType<typeof getTrendingNotes>> | null = null;
-  let trendingProfiles: Awaited<ReturnType<typeof getTrendingProfiles>> | null = null;
-  let trendingHashtags: Awaited<ReturnType<typeof getTrendingHashtags>> | null = null;
-  let trendingDomains: Awaited<ReturnType<typeof getTrendingDomains>> | null = null;
-  let noteAuthorsByPubkey: Record<string, Profile> = {};
-  let homeTimedOut = false;
-  let upstreamCallCount = 0;
-  try {
-    upstreamCallCount += 1;
-    payload = await getDiscoveryHome("shortTtl");
-  } catch (error) {
-    homeTimedOut = isApiTimeoutError(error);
-    failedMessages.push(toUserFacingErrorMessage(error, "Failed to load discovery home payload."));
-  }
-
-  let homeNotes = payload?.notes ?? [];
-  let homeProfiles = payload?.profiles ?? [];
-  let homeHashtags = payload?.hashtags ?? [];
-  let homeDomains = payload?.domains ?? [];
-
-  // When the API is saturated, cascading fallbacks just multiply wait time.
-  // Render a degraded homepage quickly instead of hanging the SSR request.
-  if (!homeTimedOut && window !== "24h") {
-    upstreamCallCount += 4;
-    const windowedResults = await Promise.allSettled([
-      getTrendingNotes("shortTtl", { window, limit: 20 }),
-      getTrendingProfiles("shortTtl", { window, limit: 20 }),
-      getTrendingHashtags("shortTtl", { window, limit: 20 }),
-      getTrendingDomains("shortTtl", { window, limit: 20 }),
-    ]);
-    const [notesResult, profilesResult, hashtagsResult, domainsResult] = windowedResults;
-    if (notesResult.status === "fulfilled") {
-      trendingNotes = notesResult.value;
-      homeNotes = trendingNotes.notes ?? [];
-    }
-    if (profilesResult.status === "fulfilled") {
-      trendingProfiles = profilesResult.value;
-      homeProfiles = trendingProfiles.profiles ?? [];
-    }
-    if (hashtagsResult.status === "fulfilled") {
-      trendingHashtags = hashtagsResult.value;
-      homeHashtags = trendingHashtags.hashtags ?? [];
-    }
-    if (domainsResult.status === "fulfilled") {
-      trendingDomains = domainsResult.value;
-      homeDomains = trendingDomains.domains ?? [];
-    }
-    for (const result of windowedResults) {
-      if (result.status === "rejected") {
-        failedMessages.push(
-          toUserFacingErrorMessage(result.reason, "Failed to load windowed trends.")
-        );
-      }
-    }
-  }
-
-  const needsNotesFallback = !homeTimedOut && window === "24h" && homeNotes.length === 0;
-  const needsProfilesFallback = !homeTimedOut && window === "24h" && homeProfiles.length === 0;
-  const needsHashtagsFallback = !homeTimedOut && window === "24h" && homeHashtags.length === 0;
-  const needsDomainsFallback = !homeTimedOut && window === "24h" && homeDomains.length === 0;
-  if (
-    !homeTimedOut &&
-    (needsNotesFallback ||
-      needsProfilesFallback ||
-      needsHashtagsFallback ||
-      needsDomainsFallback ||
-      !payload)
-  ) {
-    const fallbackRequests: Array<Promise<unknown>> = [];
-    if (needsNotesFallback) fallbackRequests.push(getTrendingNotes("shortTtl", { window }));
-    if (needsProfilesFallback) fallbackRequests.push(getTrendingProfiles("shortTtl", { window }));
-    if (needsHashtagsFallback) fallbackRequests.push(getTrendingHashtags("shortTtl", { window }));
-    if (needsDomainsFallback) fallbackRequests.push(getTrendingDomains("shortTtl", { window }));
-    upstreamCallCount += fallbackRequests.length;
-    const fallbackResults = await Promise.allSettled(fallbackRequests);
-    let fallbackIndex = 0;
-    if (needsNotesFallback) {
-      const result = fallbackResults[fallbackIndex];
-      if (result?.status === "fulfilled") {
-        trendingNotes = result.value as Awaited<ReturnType<typeof getTrendingNotes>>;
-        homeNotes = trendingNotes.notes ?? [];
-      } else if (result?.status === "rejected") {
-        failedMessages.push(
-          toUserFacingErrorMessage(result.reason, "Failed to load trending notes.")
-        );
-      }
-      fallbackIndex += 1;
-    }
-    if (needsProfilesFallback) {
-      const result = fallbackResults[fallbackIndex];
-      if (result?.status === "fulfilled") {
-        trendingProfiles = result.value as Awaited<ReturnType<typeof getTrendingProfiles>>;
-        homeProfiles = trendingProfiles.profiles ?? [];
-      } else if (result?.status === "rejected") {
-        failedMessages.push(
-          toUserFacingErrorMessage(result.reason, "Failed to load trending profiles.")
-        );
-      }
-      fallbackIndex += 1;
-    }
-    if (needsHashtagsFallback) {
-      const result = fallbackResults[fallbackIndex];
-      if (result?.status === "fulfilled") {
-        trendingHashtags = result.value as Awaited<ReturnType<typeof getTrendingHashtags>>;
-        homeHashtags = trendingHashtags.hashtags ?? [];
-      } else if (result?.status === "rejected") {
-        failedMessages.push(
-          toUserFacingErrorMessage(result.reason, "Failed to load trending hashtags.")
-        );
-      }
-      fallbackIndex += 1;
-    }
-    if (needsDomainsFallback) {
-      const result = fallbackResults[fallbackIndex];
-      if (result?.status === "fulfilled") {
-        trendingDomains = result.value as Awaited<ReturnType<typeof getTrendingDomains>>;
-        homeDomains = trendingDomains.domains ?? [];
-      } else if (result?.status === "rejected") {
-        failedMessages.push(
-          toUserFacingErrorMessage(result.reason, "Failed to load trending domains.")
-        );
-      }
-    }
-  }
-
-  let hydratedHomeProfiles = homeProfiles;
-  const notePreviewPubkeys = homeNotes
-    .slice(0, 5)
-    .map((note) => note.pubkey)
-    .filter((pubkey): pubkey is string => typeof pubkey === "string" && pubkey.length > 0);
-  const profilePreviewPubkeys = homeProfiles
-    .slice(0, 5)
-    .filter((profile) => !hasRichIdentity(profile))
-    .map((profile) => profile.pubkey)
-    .filter((pubkey): pubkey is string => typeof pubkey === "string" && pubkey.length > 0);
-  const pubkeysToHydrate = Array.from(
-    new Set([...notePreviewPubkeys, ...profilePreviewPubkeys].map((pubkey) => pubkey.toLowerCase()))
-  );
-  if (pubkeysToHydrate.length > 0) {
-    try {
-      upstreamCallCount += 1;
-      noteAuthorsByPubkey = await fetchProfilesByPubkey(pubkeysToHydrate, "shortTtl");
-      hydratedHomeProfiles = homeProfiles.map((profile) => {
-        const key = typeof profile.pubkey === "string" ? profile.pubkey.toLowerCase() : "";
-        const hydrated = key ? noteAuthorsByPubkey[key] : undefined;
-        return { ...profile, ...(hydrated ?? {}) };
-      });
-    } catch {
-      noteAuthorsByPubkey = {};
-      hydratedHomeProfiles = homeProfiles;
-    }
-  }
-
-  const sections = asRecord(payload?.sections);
-  const networkSummary = asRecord(sections?.network_summary);
-
-  const homeStats = isRecord(payload?.stats) ? payload.stats : {};
-  let pulseStats = pickTopPrimitiveStats(homeStats, networkPulsePreferredKeys(window), 6, window);
-
-  let relayLeaders = extractRelayRows(networkSummary ?? payload, 1);
-  const needsNetworkFallback =
-    !homeTimedOut && (pulseStats.length === 0 || relayLeaders.length === 0 || window !== "24h");
-  if (needsNetworkFallback) {
-    upstreamCallCount += 2;
-    const fallbackStatsResults = await Promise.allSettled([
-      getNetworkStats("shortTtl"),
-      getRelayStats("shortTtl"),
-    ]);
-    const [networkResult, relayResult] = fallbackStatsResults;
-    networkStats = networkResult.status === "fulfilled" ? networkResult.value : null;
-    relayStats = relayResult.status === "fulfilled" ? relayResult.value : null;
-
-    for (const result of fallbackStatsResults) {
-      if (result.status === "rejected") {
-        failedMessages.push(
-          toUserFacingErrorMessage(result.reason, "Failed to load network fallback.")
-        );
-      }
-    }
-    pulseStats = pickTopPrimitiveStats(
-      { ...homeStats, ...(networkStats ?? {}) },
-      networkPulsePreferredKeys(window),
-      6,
-      window
-    );
-    if (relayLeaders.length === 0) {
-      relayLeaders = extractRelayRows(relayStats, 1);
-    }
-  }
-
-  const errorMessage = failedMessages.length > 0 ? failedMessages.join(" | ") : "";
-  traceHomeFanOut(upstreamCallCount, {
-    window: window === "7d" ? 7 : 1,
-    homeTimedOut: homeTimedOut ? 1 : 0,
-    hydratedPubkeys: pubkeysToHydrate.length,
-    failedMessages: failedMessages.length,
-  });
-
   const topRelay = relayLeaders[0]?.relay;
   const topEventId = homeNotes[0]?.id ?? "0".repeat(64);
   const freshness = formatFreshness(homeNotes[0]?.created_at) ?? "Live now";
@@ -446,15 +228,19 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
           />
         </div>
 
-        <NetworkPulseStrip title="Network pulse" stats={pulseStats} />
+        <Suspense fallback={<Skeleton className="h-28 w-full rounded-[1.5rem]" />}>
+          <DeferredNetworkPulse window={window} seedStats={pulseStats} />
+        </Suspense>
 
-        <ClosingDiscoveryRail
-          hashtags={hashtagHighlights}
-          domains={domainHighlights}
-          trendWindowLabel={trendWindowLabel}
-          hashtagsFreshness={hashtagsFreshness}
-          domainsFreshness={domainsFreshness}
-        />
+        <Suspense fallback={<Skeleton className="h-40 w-full rounded-[1.5rem]" />}>
+          <ClosingDiscoveryRail
+            hashtags={hashtagHighlights}
+            domains={domainHighlights}
+            trendWindowLabel={trendWindowLabel}
+            hashtagsFreshness={hashtagsFreshness}
+            domainsFreshness={domainsFreshness}
+          />
+        </Suspense>
       </div>
     </div>
   );
