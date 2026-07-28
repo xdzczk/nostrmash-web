@@ -19,8 +19,9 @@
   --edge: #27272a; /* zinc-800 */
   --edge-strong: #3f3f46; /* zinc-700 */
 
-  --accent: #6366f1; /* indigo-500 */
-  --accent-soft: #818cf8; /* indigo-400 */
+  --accent: #4f46e5; /* indigo-600 — AA white text on solid buttons */
+  --accent-soft: #818cf8; /* indigo-400 — rings / soft fills (not solid text) */
+  --accent-hover: #4338ca; /* indigo-700 — primary button hover (AA with white) */
   --accent-ink: #e0e7ff; /* bright text on accent-tinted surfaces */
   --accent-strong: #a5b4fc; /* indigo-300 — stronger hover accent text */
 
@@ -90,7 +91,8 @@
   --edge-strong: #d4d4d8;
 
   --accent: #4f46e5; /* indigo-600 — AA white text on buttons */
-  --accent-soft: #6366f1; /* indigo-500 */
+  --accent-soft: #6366f1; /* indigo-500 — rings / soft fills */
+  --accent-hover: #3730a3; /* indigo-800 — primary button hover */
   --accent-ink: #3730a3; /* indigo-800 — dark accent text on light tint */
   --accent-strong: #4338ca; /* indigo-700 — stronger hover accent text */
 
@@ -99,10 +101,10 @@
   --ink-soft: #27272a;
   --ink-dim: #3f3f46;
   --ink-muted: #52525b;
-  --ink-faint: #71717a; /* AA on white */
+  --ink-faint: #64646e; /* AA on off-white panels (#f6f6f7), not only pure white */
 
-  --link: #4f46e5; /* indigo-600 */
-  --link-hover: #4338ca; /* indigo-700 */
+  --link: #4338ca; /* indigo-700 — AA even when action rows sit at opacity-80 */
+  --link-hover: #3730a3; /* indigo-800 */
 
   --success: #059669; /* emerald-600 */
   --success-soft: rgba(16, 185, 129, 0.12);
@@ -110,11 +112,11 @@
 
   --warning: #d97706; /* amber-600 */
   --warning-soft: rgba(245, 158, 11, 0.14);
-  --warning-ink: #b45309; /* amber-700 */
+  --warning-ink: #92400e; /* amber-800 — AA on warning-soft over page bg */
 
   --danger: #dc2626; /* red-600 */
   --danger-soft: rgba(239, 68, 68, 0.12);
-  --danger-ink: #b91c1c; /* red-700 */
+  --danger-ink: #991b1b; /* red-800 — AA on danger-soft over page bg */
 
   --accent-fuchsia: #c026d3;
   --accent-fuchsia-ink: #a21caf;
@@ -152,6 +154,7 @@
 
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
+  --color-accent-hover: var(--accent-hover);
   --color-accent-ink: var(--accent-ink);
   --color-accent-strong: var(--accent-strong);
 

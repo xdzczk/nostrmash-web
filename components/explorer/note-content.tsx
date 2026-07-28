@@ -107,7 +107,7 @@ export function NoteContent({
               <Link
                 key={key}
                 href={`/profiles/${encodeURIComponent(npub)}`}
-                className="text-accent hover:text-accent-strong font-medium"
+                className="text-link hover:text-link-hover font-medium"
                 title={npub}
               >
                 {mentionLabel(token.pubkey, resolution?.profilesByPubkey)}

@@ -56,7 +56,7 @@ export function NetworkPulseStrip({ title, stats }: { title: string; stats: Puls
                     : formatValue(stat.value)}
               </p>
               {hasSeries ? (
-                <div className="text-accent mt-2.5">
+                <div className="text-link mt-2.5">
                   <Sparkline points={stat.series!} width={220} height={36} />
                 </div>
               ) : (

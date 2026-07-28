@@ -21,12 +21,28 @@ async function setTheme(page: Page, theme: "dark" | "light") {
   }, theme);
 }
 
+async function disableMotion(page: Page) {
+  // Page-enter fades opacity 0→1; axe mid-animation reports false contrast failures.
+  await page.addStyleTag({
+    content: `
+      *, *::before, *::after {
+        animation: none !important;
+        animation-duration: 0s !important;
+        animation-delay: 0s !important;
+        transition: none !important;
+        transition-duration: 0s !important;
+      }
+    `,
+  });
+}
+
 async function expectNoSeriousViolations(page: Page, route: string, theme: "dark" | "light") {
   await page.goto(route);
   await setTheme(page, theme);
   if (theme === "light") {
     await page.reload();
   }
+  await disableMotion(page);
 
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])

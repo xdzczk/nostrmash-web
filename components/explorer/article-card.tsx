@@ -186,7 +186,7 @@ export function ArticleCard({
       <DiscoveryStatPills stats={metrics} className="mt-2.5 sm:mt-3" />
 
       {resolvedArticleId ? (
-        <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs opacity-80 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 sm:mt-3">
+        <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
           <DiscoveryActionLinks
             actions={[
               { label: "Read article", href: articleHref },

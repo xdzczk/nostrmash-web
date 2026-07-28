@@ -154,7 +154,7 @@ function ProfileDiscoveryRow({ profile, rank }: { profile: Profile; rank: number
 
           <WhyNow reasons={reasons} maxReasons={1} showLabel={false} className="mt-2" />
 
-          <div className="text-ink-faint mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs opacity-80 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+          <div className="text-ink-faint mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             {identifier !== "unknown" && !href ? (
               <IdBadge
                 id={identifier}
