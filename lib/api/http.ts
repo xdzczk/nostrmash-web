@@ -1,6 +1,13 @@
 import type { z } from "zod";
 
 import { ApiError } from "@/lib/api/errors";
+import {
+  buildLkgKey,
+  isLkgCacheClass,
+  markStaleDataServed,
+  readLastKnownGood,
+  storeLastKnownGood,
+} from "@/lib/api/last-known-good";
 import { appConfig } from "@/lib/config";
 import { toNextFetchConfig, type CacheClass } from "@/lib/caching/policies";
 import { softParseApiPayload } from "@/lib/api/schemas/parse";
@@ -9,6 +16,7 @@ import { traceApiCall } from "@/lib/telemetry/trace";
 import type { ApiErrorBody, ApiErrorDetails } from "@/lib/types/api";
 
 export { ApiError, isApiError } from "@/lib/api/errors";
+export { getStaleDataNotice } from "@/lib/api/last-known-good";
 
 /** Light sampling/dedupe so a flapping upstream does not flood Sentry. */
 const recentApiErrorKeys = new Map<string, number>();
@@ -189,6 +197,16 @@ export async function fetchApiJson<T>(
   );
 
   const outboundRequestId = createOutboundRequestId();
+  const lkgKey = isLkgCacheClass(cacheClass) ? buildLkgKey(path, query) : null;
+
+  async function tryServeLastKnownGood(error: unknown): Promise<T> {
+    if (!lkgKey) throw error;
+    const entry = await readLastKnownGood(lkgKey);
+    if (!entry) throw error;
+    markStaleDataServed();
+    return entry.payload as T;
+  }
+
   let response: Response;
   try {
     response = await traceApiCall(`api:${path}`, async () =>
@@ -208,10 +226,10 @@ export async function fetchApiJson<T>(
     if (isAbortError(error)) {
       const timeoutError = new Error(`API request timed out after ${timeoutMs}ms: ${path}`);
       reportUpstreamFailure(timeoutError, path, outboundRequestId);
-      throw timeoutError;
+      return tryServeLastKnownGood(timeoutError);
     }
     reportUpstreamFailure(error, path, outboundRequestId);
-    throw error;
+    return tryServeLastKnownGood(error);
   }
 
   if (!response.ok) {
@@ -239,12 +257,20 @@ export async function fetchApiJson<T>(
       `${message}${details}`
     );
     reportUpstreamFailure(apiError, path, apiError.requestId ?? outboundRequestId);
+
+    // Serve LKG for transient upstream failures; keep throwing for client/auth errors.
+    if (apiError.status === 429 || apiError.status >= 500) {
+      return tryServeLastKnownGood(apiError);
+    }
     throw apiError;
   }
 
   const json = (await response.json()) as T;
-  if (options?.schema) {
-    return softParseApiPayload(options.schema, json, `api:${path}`) as T;
+  const parsed = options?.schema
+    ? (softParseApiPayload(options.schema, json, `api:${path}`) as T)
+    : json;
+  if (lkgKey) {
+    await storeLastKnownGood(lkgKey, parsed);
   }
-  return json;
+  return parsed;
 }

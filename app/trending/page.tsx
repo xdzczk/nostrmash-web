@@ -29,6 +29,7 @@ import {
   getTrendingNotes,
   getTrendingProfiles,
 } from "@/lib/api/endpoints";
+import { getStaleDataNotice } from "@/lib/api/http";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import {
   extractEventAuthorPubkeys,
@@ -37,6 +38,7 @@ import {
 } from "@/lib/api/profile-hydration";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
+import { formatUpdatedRelative } from "@/lib/time/freshness";
 import type { EventRecord, Profile } from "@/lib/types/api";
 import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
@@ -85,13 +87,6 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
     if (value > 1_000_000_000_000) return Math.floor(value / 1000);
     if (value > 1_000_000_000) return Math.floor(value);
     return null;
-  };
-  const formatFreshness = (value: unknown): string | null => {
-    const unixSeconds = normalizeUnixSeconds(value);
-    if (!unixSeconds) return null;
-    const observedAt = new Date(unixSeconds * 1000);
-    if (Number.isNaN(observedAt.getTime())) return null;
-    return `Updated ${observedAt.toLocaleString()}`;
   };
   const formatObservedAt = (value: unknown): string | null => {
     const unixSeconds = normalizeUnixSeconds(value);
@@ -186,7 +181,7 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
     typeof domains?.next_cursor === "string" && domains.next_cursor.length > 0
       ? `/trending/domains?cursor=${encodeURIComponent(domains.next_cursor)}`
       : null;
-  const notesFreshness = formatFreshness(notes?.notes?.[0]?.created_at) ?? "Updated recently";
+  const notesFreshness = formatUpdatedRelative(notes?.notes?.[0]?.created_at);
   const profileActivityCandidates = hydratedProfiles
     .map((profile) =>
       [
@@ -201,11 +196,11 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
   const latestProfileActivity =
     profileActivityCandidates.length > 0 ? Math.max(...profileActivityCandidates) : null;
   const profilesFreshness =
-    formatFreshness(latestProfileActivity) ??
-    formatFreshness(notes?.notes?.[0]?.created_at) ??
-    "Updated recently";
-  const hashtagsFreshness = formatFreshness(notes?.notes?.[0]?.created_at) ?? "Updated recently";
-  const domainsFreshness = formatFreshness(notes?.notes?.[0]?.created_at) ?? "Updated recently";
+    formatUpdatedRelative(latestProfileActivity) ??
+    formatUpdatedRelative(notes?.notes?.[0]?.created_at);
+  const hashtagsFreshness = formatUpdatedRelative(notes?.notes?.[0]?.created_at);
+  const domainsFreshness = formatUpdatedRelative(notes?.notes?.[0]?.created_at);
+  const staleNotice = getStaleDataNotice();
   const semantics = extractNativeApiSemantics(notes, profiles, hashtags, domains);
   const rankedNotes = notes?.notes?.slice(0, 4) ?? [];
   const leadNote = rankedNotes[0];
@@ -298,6 +293,7 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
           </div>
         }
       />
+      {staleNotice ? <SoftRefreshNote message={staleNotice} /> : null}
       {errorMessage ? (
         (notes?.notes?.length ?? 0) > 0 || (profiles?.profiles?.length ?? 0) > 0 ? (
           <SoftRefreshNote message={errorMessage} />
@@ -313,10 +309,14 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
           >
             <div className="text-ink-muted mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] sm:mb-4">
               <span>{trendWindowLabel}</span>
-              <span aria-hidden className="text-ink-faint/70">
-                •
-              </span>
-              <span>{notesFreshness}</span>
+              {notesFreshness ? (
+                <>
+                  <span aria-hidden className="text-ink-faint/70">
+                    •
+                  </span>
+                  <span>{notesFreshness}</span>
+                </>
+              ) : null}
             </div>
             {leadNote ? (
               <div className="space-y-3">
@@ -403,10 +403,14 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
             </header>
             <div className="text-ink-muted mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
               <span>{trendWindowLabel}</span>
-              <span aria-hidden className="text-ink-faint/70">
-                •
-              </span>
-              <span>{profilesFreshness}</span>
+              {profilesFreshness ? (
+                <>
+                  <span aria-hidden className="text-ink-faint/70">
+                    •
+                  </span>
+                  <span>{profilesFreshness}</span>
+                </>
+              ) : null}
             </div>
             {compactProfiles.length > 0 ? (
               <ol className="space-y-1.5">
@@ -496,10 +500,14 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
             </header>
             <div className="text-ink-muted mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
               <span>{trendWindowLabel}</span>
-              <span aria-hidden className="text-ink-faint/70">
-                •
-              </span>
-              <span>{hashtagsFreshness}</span>
+              {hashtagsFreshness ? (
+                <>
+                  <span aria-hidden className="text-ink-faint/70">
+                    •
+                  </span>
+                  <span>{hashtagsFreshness}</span>
+                </>
+              ) : null}
             </div>
             {hashtagEntries.length > 0 ? (
               <ol className="divide-edge/70 border-edge/80 bg-surface-sunken/45 divide-y rounded-lg border">
@@ -568,10 +576,14 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
             </header>
             <div className="text-ink-muted mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
               <span>{trendWindowLabel}</span>
-              <span aria-hidden className="text-ink-faint/70">
-                •
-              </span>
-              <span>{domainsFreshness}</span>
+              {domainsFreshness ? (
+                <>
+                  <span aria-hidden className="text-ink-faint/70">
+                    •
+                  </span>
+                  <span>{domainsFreshness}</span>
+                </>
+              ) : null}
             </div>
             {domainEntries.length > 0 ? (
               <ol className="divide-edge/70 border-edge/80 bg-surface-sunken/45 divide-y rounded-lg border">

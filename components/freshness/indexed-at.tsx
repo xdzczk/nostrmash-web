@@ -1,28 +1,5 @@
+import { formatUpdatedRelative, isFreshTimestamp, parseTimestamp } from "@/lib/time/freshness";
 import { getRequestNowMs } from "@/lib/time/request-now";
-
-const STALE_AFTER_MS = 30 * 60 * 1000;
-
-function parseComputedAt(computedAt: string | number): Date | null {
-  if (typeof computedAt === "number" && Number.isFinite(computedAt)) {
-    return new Date(computedAt * (computedAt < 1e12 ? 1000 : 1));
-  }
-  if (typeof computedAt === "string") {
-    const parsed = Date.parse(computedAt);
-    return Number.isFinite(parsed) ? new Date(parsed) : null;
-  }
-  return null;
-}
-
-function formatAge(date: Date, nowMs: number): string {
-  const deltaMs = nowMs - date.getTime();
-  if (deltaMs < 60_000) return "just now";
-  const minutes = Math.round(deltaMs / 60_000);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 48) return `${hours}h ago`;
-  const days = Math.round(hours / 24);
-  return `${days}d ago`;
-}
 
 export function IndexedAt({
   computedAt,
@@ -35,14 +12,16 @@ export function IndexedAt({
 }) {
   if (computedAt == null || computedAt === "") return null;
 
-  const date = parseComputedAt(computedAt);
+  const date = parseTimestamp(computedAt);
   if (!date) return null;
 
   const now = typeof nowMs === "number" ? nowMs : getRequestNowMs();
-  const ageMs = now - date.getTime();
-  const isStale = ageMs > STALE_AFTER_MS;
+  const isStale = !isFreshTimestamp(computedAt, now);
   const absolute = date.toLocaleString();
-  const ageLabel = formatAge(date, now);
+  const ageLabel = (formatUpdatedRelative(computedAt, now) ?? "Updated just now").replace(
+    /^Updated\s+/,
+    ""
+  );
 
   if (isStale) {
     return (

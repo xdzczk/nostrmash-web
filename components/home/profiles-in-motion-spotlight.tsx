@@ -182,10 +182,12 @@ export function ProfilesInMotionSpotlight({
   profiles,
   trendWindowLabel,
   freshnessLabel,
+  degraded = false,
 }: {
   profiles: Profile[];
   trendWindowLabel: string;
-  freshnessLabel: string;
+  freshnessLabel?: string | null;
+  degraded?: boolean;
 }) {
   return (
     <section className="border-edge/90 nm-panel-emerald relative overflow-hidden rounded-[1.6rem] border p-5 sm:p-6 xl:p-7">
@@ -199,10 +201,14 @@ export function ProfilesInMotionSpotlight({
           </div>
           <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <span>{trendWindowLabel}</span>
-            <span aria-hidden className="text-ink-faint/70">
-              •
-            </span>
-            <span>{freshnessLabel}</span>
+            {freshnessLabel ? (
+              <>
+                <span aria-hidden className="text-ink-faint/70">
+                  •
+                </span>
+                <span>{freshnessLabel}</span>
+              </>
+            ) : null}
           </div>
         </header>
 
@@ -220,8 +226,12 @@ export function ProfilesInMotionSpotlight({
           ) : (
             <div className="flex min-h-64 items-center">
               <EmptyState
-                title="Profile ranking is quiet"
-                message="No clear profile movement was returned for this window."
+                title={degraded ? "Couldn't refresh this section" : "Profile ranking is quiet"}
+                message={
+                  degraded
+                    ? "It will retry shortly."
+                    : "No clear profile movement was returned for this window."
+                }
               />
             </div>
           )}

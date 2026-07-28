@@ -9,11 +9,16 @@ import { QuickEntryGrid } from "@/components/home/quick-entry-grid";
 import { SearchForm } from "@/components/search/search-form";
 import { NotesList, ProfilesList, HashtagsList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
-import { ErrorPanel } from "@/components/ui/status-panels";
+import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
 import { Pill } from "@/components/ui/pill";
 import { TabBar } from "@/components/ui/tabs";
 import { getSearch, getTrendingHashtags, getTrendingProfiles } from "@/lib/api/endpoints";
-import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
+import { getStaleDataNotice } from "@/lib/api/http";
+import {
+  extractEventAuthorPubkeys,
+  fetchProfilesByPubkey,
+  hydrateProfiles,
+} from "@/lib/api/profile-hydration";
 import { parseSearchQuery } from "@/lib/search-params/search";
 import type { Profile } from "@/lib/types/api";
 import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
@@ -105,6 +110,24 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
       noteAuthorsByPubkey = {};
     }
   }
+
+  if (hydratedProfiles.length > 0) {
+    try {
+      hydratedProfiles = await hydrateProfiles(hydratedProfiles, "shortTtl");
+    } catch {
+      // keep raw search profile rows
+    }
+  }
+
+  if (hydratedSuggestedProfiles.length > 0) {
+    try {
+      hydratedSuggestedProfiles = await hydrateProfiles(hydratedSuggestedProfiles, "shortTtl");
+    } catch {
+      // keep raw suggestion rows
+    }
+  }
+
+  const staleNotice = getStaleDataNotice();
 
   if (
     canQuery &&
@@ -213,6 +236,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
         }
         actions={<SearchForm initialQuery={query.q} className="max-w-3xl" />}
       />
+
+      {staleNotice ? <SoftRefreshNote message={staleNotice} /> : null}
 
       {!canQuery ? (
         <SectionCard

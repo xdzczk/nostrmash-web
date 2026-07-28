@@ -16,9 +16,11 @@ import { SearchForm } from "@/components/search/search-form";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
+import { getStaleDataNotice } from "@/lib/api/http";
 import { loadHomePageData } from "@/lib/home/load-home-page-data";
 import { absoluteUrl } from "@/lib/seo/metadata";
 import { buildWindowHref, formatStatsWindowLabel } from "@/lib/search-params/window";
+import { formatUpdatedRelative, isFreshTimestamp } from "@/lib/time/freshness";
 
 export const metadata: Metadata = {
   title: "NostrMash",
@@ -34,21 +36,6 @@ export const revalidate = 60;
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-function normalizeUnixSeconds(value: unknown): number | null {
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  if (value > 1_000_000_000_000) return Math.floor(value / 1000);
-  if (value > 1_000_000_000) return Math.floor(value);
-  return null;
-}
-
-function formatFreshness(value: unknown): string | null {
-  const unixSeconds = normalizeUnixSeconds(value);
-  if (!unixSeconds) return null;
-  const observedAt = new Date(unixSeconds * 1000);
-  if (Number.isNaN(observedAt.getTime())) return null;
-  return `Updated ${observedAt.toLocaleString()}`;
-}
-
 export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
   const resolvedSearchParams = await searchParams;
   const {
@@ -63,32 +50,19 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
     pulseStats,
     relayLeaders,
     computedAt,
+    sectionFailures,
   } = await loadHomePageData(resolvedSearchParams);
 
   const trendWindowLabel = formatStatsWindowLabel(window);
   const topRelay = relayLeaders[0]?.relay;
   const topEventId = homeNotes[0]?.id ?? "0".repeat(64);
-  const freshness = formatFreshness(homeNotes[0]?.created_at) ?? "Live now";
-  const notesFreshness = formatFreshness(homeNotes[0]?.created_at) ?? "Updated recently";
-  const profileActivityCandidates = hydratedHomeProfiles
-    .map((profile) =>
-      [
-        profile.recent_activity_at,
-        profile.last_activity_at,
-        profile.updated_at,
-        profile.created_at,
-      ].map(normalizeUnixSeconds)
-    )
-    .flat()
-    .filter((value): value is number => typeof value === "number");
-  const latestProfileActivity =
-    profileActivityCandidates.length > 0 ? Math.max(...profileActivityCandidates) : null;
-  const profilesFreshness =
-    formatFreshness(latestProfileActivity) ??
-    formatFreshness(homeNotes[0]?.created_at) ??
-    "Updated recently";
-  const hashtagsFreshness = formatFreshness(homeNotes[0]?.created_at) ?? "Updated recently";
-  const domainsFreshness = formatFreshness(homeNotes[0]?.created_at) ?? "Updated recently";
+  const freshness = formatUpdatedRelative(computedAt);
+  const indexIsFresh = isFreshTimestamp(computedAt);
+  const notesFreshness = freshness;
+  const profilesFreshness = freshness;
+  const hashtagsFreshness = freshness;
+  const domainsFreshness = freshness;
+  const staleNotice = getStaleDataNotice();
   const trendingNotesHref = buildWindowHref("/trending/notes", currentSearchParams, window);
   const heroSearchShortcuts = [
     { label: "#bitcoin", query: "#bitcoin" },
@@ -137,6 +111,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         }}
       />
       <div className="mx-auto w-full max-w-[92rem] space-y-12 sm:space-y-16 xl:space-y-[5.1rem]">
+        {staleNotice ? <SoftRefreshNote message={staleNotice} /> : null}
         {errorMessage ? (
           flagshipNotes.length > 0 || profileHighlights.length > 0 ? (
             <SoftRefreshNote message={errorMessage} />
@@ -172,13 +147,17 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
               <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                 <WindowSelector path="/" searchParams={currentSearchParams} activeWindow={window} />
                 <span>{trendWindowLabel}</span>
-                <span aria-hidden className="text-ink-faint/70">
-                  •
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="nm-live-dot" aria-hidden />
-                  {freshness}
-                </span>
+                {freshness ? (
+                  <>
+                    <span aria-hidden className="text-ink-faint/70">
+                      •
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      {indexIsFresh ? <span className="nm-live-dot" aria-hidden /> : null}
+                      {freshness}
+                    </span>
+                  </>
+                ) : null}
               </div>
             </div>
             <aside className="border-edge/90 bg-surface-sunken/35 rounded-[1.5rem] border p-4 sm:p-5 lg:self-stretch lg:justify-self-end lg:p-6">
@@ -190,10 +169,12 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                   <dt className="text-ink-faint text-[11px] lg:text-sm">Window</dt>
                   <dd className="text-ink truncate font-medium">{trendWindowLabel}</dd>
                 </div>
-                <div className="flex min-w-0 flex-col gap-0.5 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
-                  <dt className="text-ink-faint text-[11px] lg:text-sm">Freshness</dt>
-                  <dd className="text-ink truncate font-medium">{freshness}</dd>
-                </div>
+                {freshness ? (
+                  <div className="flex min-w-0 flex-col gap-0.5 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
+                    <dt className="text-ink-faint text-[11px] lg:text-sm">Freshness</dt>
+                    <dd className="text-ink truncate font-medium">{freshness}</dd>
+                  </div>
+                ) : null}
                 <div className="col-span-2 flex min-w-0 flex-col gap-0.5 lg:col-span-1 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
                   <dt className="text-ink-faint text-[11px] lg:text-sm">Top relay</dt>
                   <dd className="min-w-0">
@@ -239,10 +220,14 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
               </div>
               <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                 <span>{trendWindowLabel}</span>
-                <span aria-hidden className="text-ink-faint/70">
-                  •
-                </span>
-                <span>{notesFreshness}</span>
+                {notesFreshness ? (
+                  <>
+                    <span aria-hidden className="text-ink-faint/70">
+                      •
+                    </span>
+                    <span>{notesFreshness}</span>
+                  </>
+                ) : null}
               </div>
             </header>
             {flagshipNotes.length > 0 ? (
@@ -250,8 +235,16 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
             ) : (
               <div className="flex min-h-80 items-center">
                 <EmptyState
-                  title="Notes ranking is quiet"
-                  message="No clear note movement was returned for this window."
+                  title={
+                    sectionFailures.notes
+                      ? "Couldn't refresh this section"
+                      : "Notes ranking is quiet"
+                  }
+                  message={
+                    sectionFailures.notes
+                      ? "It will retry shortly."
+                      : "No clear note movement was returned for this window."
+                  }
                 />
               </div>
             )}
@@ -265,6 +258,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
             profiles={profileHighlights}
             trendWindowLabel={trendWindowLabel}
             freshnessLabel={profilesFreshness}
+            degraded={sectionFailures.profiles}
           />
         </div>
 
@@ -279,6 +273,8 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
             trendWindowLabel={trendWindowLabel}
             hashtagsFreshness={hashtagsFreshness}
             domainsFreshness={domainsFreshness}
+            hashtagsDegraded={sectionFailures.hashtags}
+            domainsDegraded={sectionFailures.domains}
           />
         </Suspense>
       </div>

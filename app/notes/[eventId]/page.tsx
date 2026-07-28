@@ -60,26 +60,24 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     const payload = await getNoteSummaryCached(resolvedId);
     const content = payload.note?.content;
     const authorFromSummary = payload.author?.profile;
-    const authorLabel = authorFromSummary
-      ? profileLabel(authorFromSummary)
-      : typeof payload.note?.pubkey === "string"
-        ? truncateMiddle(payload.note.pubkey, 20)
-        : null;
-    const preview =
+    const authorLabel = authorFromSummary ? profileLabel(authorFromSummary) : null;
+    const contentPreview =
       typeof content === "string" && content.trim().length > 0
         ? truncateMiddle(content.trim(), 140)
-        : truncateMiddle(resolvedId, 20);
-    const title = authorLabel ? `Note by ${authorLabel}` : `Note ${truncateMiddle(resolvedId, 18)}`;
+        : null;
+    const title = authorLabel ? `Note by ${authorLabel}` : contentPreview ? contentPreview : "Note";
     return buildEntityMetadata({
       title,
-      description: `View the note, thread, and related activity: ${preview}`,
+      description: contentPreview
+        ? `View the note, thread, and related activity: ${contentPreview}`
+        : "View the note, thread, and related activity.",
       path: `/notes/${encodeURIComponent(resolvedId)}`,
       imagePath: `/notes/${encodeURIComponent(resolvedId)}/opengraph-image`,
       type: "article",
     });
   } catch {
     return buildEntityMetadata({
-      title: `Note ${truncateMiddle(resolvedId, 18)}`,
+      title: "Note",
       description: "View the note, thread, and related activity.",
       path: `/notes/${encodeURIComponent(resolvedId)}`,
       type: "article",

@@ -54,6 +54,12 @@ describe("loadHomePageData", () => {
     expect(data.homeNotes).toHaveLength(1);
     expect(data.hydratedHomeProfiles[0]?.display_name).toBe("Ada");
     expect(data.homeHashtags[0]?.hashtag).toBe("bitcoin");
+    expect(data.sectionFailures).toEqual({
+      notes: false,
+      profiles: false,
+      hashtags: false,
+      domains: false,
+    });
     expect(getTrendingNotes).not.toHaveBeenCalled();
     expect(getDiscoveryHome).toHaveBeenCalledOnce();
     expect(getNetworkStats).toHaveBeenCalledOnce();
@@ -98,5 +104,11 @@ describe("loadHomePageData", () => {
 
     expect(data.homeNotes).toEqual([]);
     expect(data.errorMessage.length).toBeGreaterThan(0);
+    expect(data.sectionFailures).toEqual({
+      notes: true,
+      profiles: true,
+      hashtags: true,
+      domains: true,
+    });
   });
 });

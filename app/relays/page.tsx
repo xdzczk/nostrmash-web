@@ -13,8 +13,9 @@ import { PageHero } from "@/components/explorer/page-hero";
 import { StatCard } from "@/components/explorer/stat-card";
 import { formatMetricLabel, formatValue } from "@/components/explorer/utils";
 import { SectionCard } from "@/components/ui/section-card";
-import { LoadErrors } from "@/components/ui/status-panels";
+import { LoadErrors, SoftRefreshNote } from "@/components/ui/status-panels";
 import { getRelayHealth, getRelayStats } from "@/lib/api/endpoints";
+import { getStaleDataNotice } from "@/lib/api/http";
 import {
   buildContinuationHref,
   readSearchParam,
@@ -52,6 +53,7 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
   } else {
     errors.push(toUserFacingErrorMessage(healthResult.reason, "Relay health failed."));
   }
+  const staleNotice = getStaleDataNotice();
 
   const rankedRelays = rankRelayActivity(relayStats, 40);
   const healthRows = extractRelayHealthRows(relayHealth, 200);
@@ -102,11 +104,12 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
         }
       />
 
+      {staleNotice ? <SoftRefreshNote message={staleNotice} /> : null}
       <LoadErrors errors={errors} />
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="active relay rows" value={rankedRelays.length} />
-        {posture.healthy + posture.unhealthy === 0 && posture.unknown > 0 ? (
+        {posture.healthy + posture.unhealthy === 0 ? (
           <div className="border-edge/80 bg-surface/35 text-ink-muted col-span-full rounded-xl border px-4 py-3 text-sm sm:col-span-3">
             Health probes unavailable for this window. Activity rankings below still reflect
             observed relay share.

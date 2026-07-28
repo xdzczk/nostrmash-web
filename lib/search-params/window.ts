@@ -59,7 +59,6 @@ export function networkPulsePreferredKeys(window: StatsWindow): string[] {
     `active_authors_${window}`,
     `note_volume_${window}`,
     window === "7d" ? "active_7d" : "active_24h",
-    `unique_authors_${window}`,
   ];
 }
 

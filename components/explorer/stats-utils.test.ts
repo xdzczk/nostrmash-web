@@ -121,6 +121,32 @@ describe("flattenPrimitiveStats", () => {
       { label: "note_volume_24h", value: 60433 },
     ]);
   });
+
+  it("excludes computed_at timestamps and unique_authors when active_authors is present", () => {
+    const payload = {
+      network: {
+        computed_at: "2026-07-28T12:00:00.000Z",
+        active_authors_24h: 8250,
+        unique_authors_24h: 8100,
+        note_volume_24h: 59876,
+      },
+    };
+
+    const picked = pickTopPrimitiveStats(
+      payload,
+      ["active_authors_24h", "unique_authors_24h", "note_volume_24h", "computed_at"],
+      6
+    );
+
+    const labels = picked.map((stat) => stat.label);
+    expect(labels).toContain("active_authors_24h");
+    expect(labels).toContain("note_volume_24h");
+    expect(labels.some((label) => label.includes("unique_authors"))).toBe(false);
+    expect(labels).not.toContain("computed_at");
+    expect(flattenPrimitiveStats(payload.network).map((stat) => stat.label)).not.toContain(
+      "computed_at"
+    );
+  });
 });
 
 describe("collectStatsArraySections", () => {

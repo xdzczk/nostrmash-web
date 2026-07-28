@@ -323,13 +323,22 @@ const STATS_METADATA_KEYS = new Set([
   "generated_at",
   "updated_at",
   "as_of",
+  "computed_at",
 ]);
+
+const ISO_TIMESTAMP_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$/;
 
 const STATS_WRAPPER_KEYS = ["network", "content", "relays", "stats", "summary", "data"] as const;
 const TIME_WINDOW_KEYS = new Set(["24h", "7d", "1h", "30d", "1d"]);
 
 function isPrimitiveStatValue(value: unknown): value is string | number | boolean {
   return typeof value === "string" || typeof value === "number" || typeof value === "boolean";
+}
+
+function isTimestampStatValue(value: string | number | boolean): boolean {
+  if (typeof value === "string") return ISO_TIMESTAMP_PATTERN.test(value.trim());
+  return false;
 }
 
 function unwrapStatsSources(payload: unknown): Record<string, unknown>[] {
@@ -357,6 +366,7 @@ export function flattenPrimitiveStats(
     if (STATS_METADATA_KEYS.has(key)) continue;
 
     if (isPrimitiveStatValue(fieldValue)) {
+      if (isTimestampStatValue(fieldValue)) continue;
       const label = prefix ? `${prefix}_${key}` : key;
       stats.push({ label, value: fieldValue });
       if (prefix && /_(24h|7d|1h|30d|1d)$/.test(key)) {
@@ -564,16 +574,32 @@ export function pickTopPrimitiveStats(
   const selected: Array<{ label: string; value: string | number | boolean }> = [];
   const seen = new Set<string>();
 
+  const isActiveAuthorsKey = (label: string) => /(^|_)active_authors(?:_|$)/.test(label);
+  const isUniqueAuthorsKey = (label: string) => /(^|_)unique_authors(?:_|$)/.test(label);
+  const isComputedAtKey = (label: string) =>
+    label === "computed_at" || label.endsWith("_computed_at");
+
   for (const key of resolvedPreferredKeys) {
     const stat = byKey.get(key);
     if (!stat) continue;
+    if (isComputedAtKey(stat.label) || isTimestampStatValue(stat.value)) continue;
+    if (
+      isUniqueAuthorsKey(stat.label) &&
+      selected.some((entry) => isActiveAuthorsKey(entry.label))
+    ) {
+      continue;
+    }
     selected.push(stat);
     seen.add(key);
     if (selected.length >= limit) return selected;
   }
 
+  const hasActiveAuthors = selected.some((stat) => isActiveAuthorsKey(stat.label));
+
   for (const stat of primitives) {
     if (seen.has(stat.label)) continue;
+    if (isComputedAtKey(stat.label) || isTimestampStatValue(stat.value)) continue;
+    if (hasActiveAuthors && isUniqueAuthorsKey(stat.label)) continue;
     selected.push(stat);
     if (selected.length >= limit) break;
   }

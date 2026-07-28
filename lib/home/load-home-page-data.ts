@@ -36,6 +36,13 @@ function hasRichIdentity(profile: Profile | undefined): boolean {
   return displayName.length > 0 || name.length > 0 || picture.length > 0;
 }
 
+export type HomeSectionFailures = {
+  notes: boolean;
+  profiles: boolean;
+  hashtags: boolean;
+  domains: boolean;
+};
+
 export type HomePageData = {
   window: StatsWindow;
   currentSearchParams: URLSearchParams;
@@ -50,6 +57,7 @@ export type HomePageData = {
   relayLeaders: ReturnType<typeof extractRelayRows>;
   upstreamCallCount: number;
   computedAt?: string | null;
+  sectionFailures: HomeSectionFailures;
 };
 
 /**
@@ -65,6 +73,12 @@ export async function loadHomePageData(
   const failedMessages: string[] = [];
   let upstreamCallCount = 0;
   let homeTimedOut = false;
+  const sectionFailures: HomeSectionFailures = {
+    notes: false,
+    profiles: false,
+    hashtags: false,
+    domains: false,
+  };
 
   let payload: Awaited<ReturnType<typeof getDiscoveryHome>> | null = null;
   let homeNotes: EventRecord[] = [];
@@ -118,6 +132,10 @@ export async function loadHomePageData(
     homeDomains = payload.domains ?? [];
   } else {
     homeTimedOut = isApiTimeoutError(homeResult.reason);
+    sectionFailures.notes = true;
+    sectionFailures.profiles = true;
+    sectionFailures.hashtags = true;
+    sectionFailures.domains = true;
     failedMessages.push(
       toUserFacingErrorMessage(homeResult.reason, "Failed to load discovery home payload.")
     );
@@ -126,28 +144,36 @@ export async function loadHomePageData(
   if (!homeTimedOut && needsWindowedTrends) {
     if (notesResult.status === "fulfilled" && notesResult.value) {
       homeNotes = notesResult.value.notes ?? homeNotes;
+      sectionFailures.notes = false;
     } else if (notesResult.status === "rejected") {
+      sectionFailures.notes = true;
       failedMessages.push(
         toUserFacingErrorMessage(notesResult.reason, "Failed to load windowed trends.")
       );
     }
     if (profilesResult.status === "fulfilled" && profilesResult.value) {
       homeProfiles = profilesResult.value.profiles ?? homeProfiles;
+      sectionFailures.profiles = false;
     } else if (profilesResult.status === "rejected") {
+      sectionFailures.profiles = true;
       failedMessages.push(
         toUserFacingErrorMessage(profilesResult.reason, "Failed to load windowed trends.")
       );
     }
     if (hashtagsResult.status === "fulfilled" && hashtagsResult.value) {
       homeHashtags = hashtagsResult.value.hashtags ?? homeHashtags;
+      sectionFailures.hashtags = false;
     } else if (hashtagsResult.status === "rejected") {
+      sectionFailures.hashtags = true;
       failedMessages.push(
         toUserFacingErrorMessage(hashtagsResult.reason, "Failed to load windowed trends.")
       );
     }
     if (domainsResult.status === "fulfilled" && domainsResult.value) {
       homeDomains = domainsResult.value.domains ?? homeDomains;
+      sectionFailures.domains = false;
     } else if (domainsResult.status === "rejected") {
+      sectionFailures.domains = true;
       failedMessages.push(
         toUserFacingErrorMessage(domainsResult.reason, "Failed to load windowed trends.")
       );
@@ -193,12 +219,14 @@ export async function loadHomePageData(
         const entry = fallbackRequests[index]!;
         const result = fallbackResults[index]!;
         if (result.status !== "fulfilled") {
+          sectionFailures[entry.key] = true;
           failedMessages.push(
             toUserFacingErrorMessage(result.reason, `Failed to load trending ${entry.key}.`)
           );
           continue;
         }
         const value = result.value as Record<string, unknown>;
+        sectionFailures[entry.key] = false;
         if (entry.key === "notes") homeNotes = (value.notes as EventRecord[] | undefined) ?? [];
         if (entry.key === "profiles")
           homeProfiles = (value.profiles as Profile[] | undefined) ?? [];
@@ -320,5 +348,6 @@ export async function loadHomePageData(
     relayLeaders,
     upstreamCallCount,
     computedAt,
+    sectionFailures,
   };
 }

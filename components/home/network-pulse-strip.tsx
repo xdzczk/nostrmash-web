@@ -11,8 +11,19 @@ function isEmptyNumeric(value: PulseStat["value"]): boolean {
   return typeof value === "number" && Number.isFinite(value) && value === 0;
 }
 
+function hasRealValue(stat: PulseStat): boolean {
+  if (stat.value == null) return false;
+  if (isEmptyNumeric(stat.value)) return false;
+  if (typeof stat.value === "string" && stat.value.trim().length === 0) return false;
+  return true;
+}
+
 export function NetworkPulseStrip({ title, stats }: { title: string; stats: PulseStat[] }) {
   if (stats.length === 0) return null;
+
+  const hasAnyReal = stats.some(hasRealValue);
+  const visibleStats = hasAnyReal ? stats.filter(hasRealValue) : stats;
+  if (visibleStats.length === 0) return null;
 
   return (
     <section className="space-y-3.5">
@@ -27,7 +38,7 @@ export function NetworkPulseStrip({ title, stats }: { title: string; stats: Puls
         </p>
       </div>
       <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-        {stats.map((stat) => {
+        {visibleStats.map((stat) => {
           const hasSeries = Boolean(stat.series && stat.series.length >= 2);
           const empty = isEmptyNumeric(stat.value);
 

@@ -115,10 +115,12 @@ function HashtagDiscoveryModule({
   hashtags,
   trendWindowLabel,
   freshnessLabel,
+  degraded = false,
 }: {
   hashtags: HashtagEntry[];
   trendWindowLabel: string;
-  freshnessLabel: string;
+  freshnessLabel?: string | null;
+  degraded?: boolean;
 }) {
   const items = normalizeHashtags(hashtags);
   const columns = splitIntoColumns(items, 2);
@@ -137,10 +139,14 @@ function HashtagDiscoveryModule({
         </p>
         <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
           <span>{trendWindowLabel}</span>
-          <span aria-hidden className="text-ink-faint/70">
-            •
-          </span>
-          <span>{freshnessLabel}</span>
+          {freshnessLabel ? (
+            <>
+              <span aria-hidden className="text-ink-faint/70">
+                •
+              </span>
+              <span>{freshnessLabel}</span>
+            </>
+          ) : null}
         </div>
       </header>
 
@@ -195,8 +201,12 @@ function HashtagDiscoveryModule({
         ) : (
           <div className="flex h-full items-center">
             <EmptyState
-              title="Hashtag ranking is quiet"
-              message="No clear hashtag movement was returned for this window."
+              title={degraded ? "Couldn't refresh this section" : "Hashtag ranking is quiet"}
+              message={
+                degraded
+                  ? "It will retry shortly."
+                  : "No clear hashtag movement was returned for this window."
+              }
             />
           </div>
         )}
@@ -215,10 +225,12 @@ function DomainDiscoveryModule({
   domains,
   trendWindowLabel,
   freshnessLabel,
+  degraded = false,
 }: {
   domains: DomainEntry[];
   trendWindowLabel: string;
-  freshnessLabel: string;
+  freshnessLabel?: string | null;
+  degraded?: boolean;
 }) {
   const items = normalizeDomains(domains);
   const columns = splitIntoColumns(items, 2);
@@ -237,10 +249,14 @@ function DomainDiscoveryModule({
         </p>
         <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
           <span>{trendWindowLabel}</span>
-          <span aria-hidden className="text-ink-faint/70">
-            •
-          </span>
-          <span>{freshnessLabel}</span>
+          {freshnessLabel ? (
+            <>
+              <span aria-hidden className="text-ink-faint/70">
+                •
+              </span>
+              <span>{freshnessLabel}</span>
+            </>
+          ) : null}
         </div>
       </header>
 
@@ -292,8 +308,12 @@ function DomainDiscoveryModule({
         ) : (
           <div className="flex h-full items-center">
             <EmptyState
-              title="Domain ranking is quiet"
-              message="No clear link movement was returned for this window."
+              title={degraded ? "Couldn't refresh this section" : "Domain ranking is quiet"}
+              message={
+                degraded
+                  ? "It will retry shortly."
+                  : "No clear link movement was returned for this window."
+              }
             />
           </div>
         )}
@@ -314,12 +334,16 @@ export function ClosingDiscoveryRail({
   trendWindowLabel,
   hashtagsFreshness,
   domainsFreshness,
+  hashtagsDegraded = false,
+  domainsDegraded = false,
 }: {
   hashtags: HashtagEntry[];
   domains: DomainEntry[];
   trendWindowLabel: string;
-  hashtagsFreshness: string;
-  domainsFreshness: string;
+  hashtagsFreshness?: string | null;
+  domainsFreshness?: string | null;
+  hashtagsDegraded?: boolean;
+  domainsDegraded?: boolean;
 }) {
   return (
     <section className="border-edge/90 nm-panel-close relative overflow-hidden rounded-[1.7rem] border p-5 sm:p-7 lg:p-8 2xl:px-9">
@@ -340,11 +364,13 @@ export function ClosingDiscoveryRail({
           hashtags={hashtags}
           trendWindowLabel={trendWindowLabel}
           freshnessLabel={hashtagsFreshness}
+          degraded={hashtagsDegraded}
         />
         <DomainDiscoveryModule
           domains={domains}
           trendWindowLabel={trendWindowLabel}
           freshnessLabel={domainsFreshness}
+          degraded={domainsDegraded}
         />
       </div>
 

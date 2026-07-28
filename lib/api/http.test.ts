@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { fetchApiJson, isApiTimeoutError } from "@/lib/api/http";
+import { __resetLkgMemoryForTests } from "@/lib/api/last-known-good";
 import type * as SentryModule from "@/lib/telemetry/sentry";
 
 const captureApiError = vi.fn();
@@ -16,14 +17,16 @@ vi.mock("@/lib/telemetry/sentry", async () => {
 describe("fetchApiJson timeouts", () => {
   beforeEach(() => {
     captureApiError.mockClear();
+    __resetLkgMemoryForTests();
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    __resetLkgMemoryForTests();
   });
 
-  it("aborts slow upstream calls", async () => {
+  it("aborts slow upstream calls when no last-known-good entry exists", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((_url: string, init?: RequestInit) => {
