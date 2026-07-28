@@ -4,7 +4,7 @@ import { ApiError } from "@/lib/api/errors";
 import { appConfig } from "@/lib/config";
 import { toNextFetchConfig, type CacheClass } from "@/lib/caching/policies";
 import { softParseApiPayload } from "@/lib/api/schemas/parse";
-import { captureApiError } from "@/lib/telemetry/sentry";
+import { captureApiError, isExpectedApiStatus, normalizeApiPath } from "@/lib/telemetry/sentry";
 import { traceApiCall } from "@/lib/telemetry/trace";
 import type { ApiErrorBody, ApiErrorDetails } from "@/lib/types/api";
 
@@ -13,7 +13,8 @@ export { ApiError, isApiError } from "@/lib/api/errors";
 /** Light sampling/dedupe so a flapping upstream does not flood Sentry. */
 const recentApiErrorKeys = new Map<string, number>();
 const API_ERROR_DEDUP_MS = 60_000;
-const API_ERROR_SAMPLE_RATE = 0.25;
+/** Report at most ~10% of unexpected upstream failures per route/status. */
+const API_ERROR_SAMPLE_RATE = 0.1;
 
 function shouldReportApiError(key: string): boolean {
   const now = Date.now();
@@ -32,12 +33,24 @@ function shouldReportApiError(key: string): boolean {
 function reportUpstreamFailure(error: unknown, path: string, requestId?: string) {
   const status =
     error instanceof ApiError ? error.status : isApiTimeoutError(error) ? 408 : undefined;
-  const key = `${path}:${status ?? "network"}`;
+
+  // Soft-handled page loaders already absorb 404/429; recording them as issues
+  // flooded Sentry after observability wiring (and inflated Cloudflare error counts).
+  if (error instanceof ApiError && isExpectedApiStatus(error.status)) {
+    captureApiError(error, { path, requestId, kind: "expected" });
+    return;
+  }
+
+  const route = normalizeApiPath(path);
+  const key = `${route}:${status ?? "network"}`;
   if (!shouldReportApiError(key)) return;
+
+  const isTimeout = isApiTimeoutError(error);
   captureApiError(error, {
-    path,
+    path: route,
     requestId,
-    kind: isApiTimeoutError(error) ? "timeout" : "upstream",
+    kind: isTimeout ? "timeout" : "upstream",
+    level: isTimeout || (typeof status === "number" && status < 500) ? "warning" : "error",
   });
 }
 

@@ -26,8 +26,16 @@ function buildCsp(nonce: string, isEmbed: boolean): string {
   ].join("; ");
 }
 
+function createRequestNonce(): string {
+  // Prefer Web Crypto over Node Buffer — Edge/OpenNext Workers are not Node.
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
 export function middleware(request: NextRequest) {
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const nonce = createRequestNonce();
   const isEmbed = request.nextUrl.pathname.startsWith("/embed/");
   const csp = buildCsp(nonce, isEmbed);
 

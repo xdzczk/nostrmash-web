@@ -15,6 +15,23 @@ export async function register() {
     enabled: true,
     tracesSampleRate: 0.05,
     sendDefaultPii: false,
+    // Defense in depth: page loaders soft-handle these, but onRequestError can
+    // still see them if a route lets an ApiError bubble.
+    ignoreErrors: [/API 404\b/i, /API 429\b/i, /too many requests/i, /hashtag not found/i],
+    beforeSend(event, hint) {
+      const message =
+        (typeof hint.originalException === "object" &&
+        hint.originalException &&
+        "message" in hint.originalException
+          ? String((hint.originalException as { message?: unknown }).message)
+          : undefined) ??
+        event.exception?.values?.[0]?.value ??
+        event.message;
+      if (typeof message === "string" && /API (404|429)\b/i.test(message)) {
+        return null;
+      }
+      return event;
+    },
   });
 
   if (process.env.NEXT_RUNTIME === "nodejs") {
