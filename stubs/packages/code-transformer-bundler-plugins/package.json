@@ -1,0 +1,17 @@
+{
+  "name": "@apm-js-collab/code-transformer-bundler-plugins",
+  "version": "0.0.0-stub",
+  "type": "commonjs",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./core": "./index.js",
+    "./rollup": "./index.js",
+    "./webpack": "./index.js",
+    "./vite": "./index.js",
+    "./esbuild": "./index.js",
+    "./bun": "./index.js",
+    "./webpack-loader": "./index.js",
+    "./dist/*": "./index.js"
+  }
+}

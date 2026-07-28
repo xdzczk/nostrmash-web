@@ -1,0 +1,10 @@
+{
+  "name": "@apm-js-collab/code-transformer",
+  "version": "0.0.0-stub",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": "./index.js",
+    "./lib/*": "./index.js"
+  }
+}

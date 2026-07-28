@@ -2,7 +2,11 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
-void initOpenNextCloudflareForDev();
+// Only needed for `next dev` bindings. Running during `next build` can crash
+// local Miniflare/workerd (SQLite schema mismatch) and is unused in CI builds.
+if (process.env.NODE_ENV === "development") {
+  void initOpenNextCloudflareForDev();
+}
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -42,6 +46,23 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // @sentry/nextjs (node entry) pulls Orchestrion / APM packages that load
+  // es-module-lexer's inline WASM. Cloudflare Workers reject WebAssembly.compile()
+  // from buffers ("Wasm code generation disallowed by embedder"). Stub them —
+  // they only exist for Node Module._compile instrumentation.
+  serverExternalPackages: [
+    "@apm-js-collab/code-transformer",
+    "@apm-js-collab/code-transformer-bundler-plugins",
+    "@apm-js-collab/tracing-hooks",
+  ],
+  turbopack: {
+    resolveAlias: {
+      "@apm-js-collab/code-transformer": "./stubs/empty-code-transformer.js",
+      "@apm-js-collab/code-transformer-bundler-plugins":
+        "./stubs/empty-code-transformer-bundler-plugins.js",
+      "@apm-js-collab/tracing-hooks": "./stubs/empty-tracing-hooks.js",
+    },
+  },
   images: {
     // Cloudflare Workers image optimization is enabled via the IMAGES binding in wrangler.jsonc.
     remotePatterns: [

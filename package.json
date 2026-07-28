@@ -67,5 +67,12 @@
     "*.{json,md,yml,yaml}": [
       "prettier --write"
     ]
+  },
+  "pnpm": {
+    "overrides": {
+      "@apm-js-collab/code-transformer": "link:./stubs/packages/code-transformer",
+      "@apm-js-collab/code-transformer-bundler-plugins": "link:./stubs/packages/code-transformer-bundler-plugins",
+      "@apm-js-collab/tracing-hooks": "link:./stubs/packages/tracing-hooks"
+    }
   }
 }

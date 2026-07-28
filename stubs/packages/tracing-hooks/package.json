@@ -1,0 +1,11 @@
+{
+  "name": "@apm-js-collab/tracing-hooks",
+  "version": "0.0.0-stub",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./lib/*": "./index.js",
+    "./hook.mjs": "./hook.mjs",
+    "./package.json": "./package.json"
+  }
+}
