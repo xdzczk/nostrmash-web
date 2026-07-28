@@ -4,11 +4,13 @@ import { DomainsList } from "@/components/data/renderers";
 import { RankedListPage } from "@/components/explorer/ranked-list-page";
 import { getTrendingDomains } from "@/lib/api/endpoints";
 import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
+import { buildEntityMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildEntityMetadata({
   title: "Trending Domains",
   description: "Explore the domains spreading most widely through active notes.",
-};
+  path: "/trending/domains",
+});
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -28,6 +30,13 @@ export default async function TrendingDomainsPage({
   );
   const domains = payload?.domains ?? [];
   const nextCursor = payload?.next_cursor;
+  const itemListUrls = domains
+    .map((entry) => {
+      const domain =
+        typeof entry === "string" ? entry : typeof entry.domain === "string" ? entry.domain : "";
+      return domain ? `/domains/${encodeURIComponent(domain)}` : "";
+    })
+    .filter(Boolean);
 
   return (
     <RankedListPage
@@ -50,6 +59,7 @@ export default async function TrendingDomainsPage({
           : undefined
       }
       continuationLabel="Load more domains"
+      itemListUrls={itemListUrls}
       debugPayload={payload ?? {}}
     >
       <DomainsList domains={domains} ranked searchable />

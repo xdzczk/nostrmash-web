@@ -16,6 +16,7 @@ import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/prof
 import { isValidHashtag } from "@/lib/hashtags";
 import type { Profile } from "@/lib/types/api";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
+import { buildEntityMetadata } from "@/lib/seo/metadata";
 
 type Params = Promise<{ hashtag: string }>;
 
@@ -31,10 +32,17 @@ function hashtagTitle(value: string): string {
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { hashtag } = await params;
   const label = hashtagTitle(hashtag);
-  return {
-    title: `${label}`,
+  const normalized = normalizeHashtagParam(hashtag);
+  return buildEntityMetadata({
+    title: label,
     description: `See notes and related hashtags for ${label}.`,
-  };
+    path: `/hashtags/${encodeURIComponent(normalized || hashtag)}`,
+    imagePath: `/hashtags/${encodeURIComponent(normalized || hashtag)}/opengraph-image`,
+    rss: {
+      url: `/feeds/hashtags/${encodeURIComponent(normalized || hashtag)}.xml`,
+      title: `${label} notes`,
+    },
+  });
 }
 
 export default async function HashtagPage({ params }: { params: Params }) {

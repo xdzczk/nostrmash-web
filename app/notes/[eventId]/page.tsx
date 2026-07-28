@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { EntityActions } from "@/components/actions/entity-actions";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
@@ -19,12 +20,16 @@ import {
   isRecord,
   truncateMiddle,
 } from "@/components/explorer/utils";
+import { JsonLd } from "@/components/seo/json-ld";
 import { ThreadView } from "@/components/thread/thread-view";
+import { Disclosure } from "@/components/ui/disclosure";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
+import { encodeNevent, hexToNote } from "@/lib/nostr/nip19";
 import { getNoteSummaryCached, loadNotePageData } from "@/lib/notes/load-note-page-data";
-import { isValidEventIdParam } from "@/lib/routing/params";
+import { isValidEventIdParam, resolveEventIdParam } from "@/lib/routing/params";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
+import { absoluteUrl, buildEntityMetadata } from "@/lib/seo/metadata";
 
 type Params = Promise<{ eventId: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -45,25 +50,32 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       description: "This note identifier is invalid.",
     };
   }
+  const resolvedId = resolveEventIdParam(eventId) ?? eventId;
   try {
-    const payload = await getNoteSummaryCached(eventId);
+    const payload = await getNoteSummaryCached(resolvedId);
     const content = payload.note?.content;
     const author = payload.note?.pubkey;
     const preview =
       typeof content === "string" && content.trim().length > 0
-        ? truncateMiddle(content.trim(), 64)
-        : truncateMiddle(eventId, 20);
-    return {
-      title: author
-        ? `Note by ${truncateMiddle(author, 20)}`
-        : `Note ${truncateMiddle(eventId, 18)}`,
+        ? truncateMiddle(content.trim(), 140)
+        : truncateMiddle(resolvedId, 20);
+    const title = author
+      ? `Note by ${truncateMiddle(author, 20)}`
+      : `Note ${truncateMiddle(resolvedId, 18)}`;
+    return buildEntityMetadata({
+      title,
       description: `View the note, thread, and related activity: ${preview}`,
-    };
+      path: `/notes/${encodeURIComponent(resolvedId)}`,
+      imagePath: `/notes/${encodeURIComponent(resolvedId)}/opengraph-image`,
+      type: "article",
+    });
   } catch {
-    return {
-      title: `Note ${truncateMiddle(eventId, 18)}`,
+    return buildEntityMetadata({
+      title: `Note ${truncateMiddle(resolvedId, 18)}`,
       description: "View the note, thread, and related activity.",
-    };
+      path: `/notes/${encodeURIComponent(resolvedId)}`,
+      type: "article",
+    });
   }
 }
 
@@ -74,10 +86,11 @@ export default async function NotePage({
   params: Params;
   searchParams: SearchParams;
 }) {
-  const { eventId } = await params;
-  if (!isValidEventIdParam(eventId)) {
+  const { eventId: eventIdParam } = await params;
+  if (!isValidEventIdParam(eventIdParam)) {
     notFound();
   }
+  const eventId = resolveEventIdParam(eventIdParam) ?? eventIdParam;
   const resolvedSearchParams = await searchParams;
   const {
     activity,
@@ -85,6 +98,7 @@ export default async function NotePage({
     ancestors,
     ancestorsPayload,
     authorsByPubkey,
+    contentResolution,
     currentSearchParams,
     errorMessage,
     eventCountsPayload,
@@ -235,11 +249,61 @@ export default async function NotePage({
     "view",
     "full"
   );
+  const noteBech32 =
+    encodeNevent({
+      id: eventId,
+      author: typeof focal?.pubkey === "string" ? focal.pubkey : undefined,
+      kind: typeof focal?.kind === "number" ? focal.kind : 1,
+    }) ??
+    hexToNote(eventId) ??
+    eventId;
+  const noteAbsoluteUrl = absoluteUrl(`/notes/${encodeURIComponent(eventId)}`);
+  const embedHtml = `<iframe src="${absoluteUrl(`/embed/notes/${encodeURIComponent(eventId)}`)}" width="560" height="220" style="border:0;border-radius:12px;max-width:100%" loading="lazy"></iframe>`;
+  const noteContent =
+    typeof focal?.content === "string" && focal.content.trim().length > 0
+      ? focal.content.trim()
+      : "";
+
   return (
     <div className="space-y-8">
+      <link
+        rel="alternate"
+        type="application/json+oembed"
+        href={absoluteUrl(`/api/oembed?url=${encodeURIComponent(noteAbsoluteUrl)}`)}
+      />
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "SocialMediaPosting",
+          headline: noteContent.slice(0, 110) || `Note ${eventId.slice(0, 12)}`,
+          articleBody: noteContent.slice(0, 500) || undefined,
+          url: noteAbsoluteUrl,
+          datePublished:
+            typeof focal?.created_at === "number"
+              ? new Date(focal.created_at * 1000).toISOString()
+              : undefined,
+          author: resolvedAuthor
+            ? {
+                "@type": "Person",
+                name:
+                  (typeof resolvedAuthor.display_name === "string" &&
+                    resolvedAuthor.display_name) ||
+                  (typeof resolvedAuthor.name === "string" && resolvedAuthor.name) ||
+                  resolvedAuthor.pubkey,
+                url: absoluteUrl(
+                  `/profiles/${encodeURIComponent(
+                    (typeof resolvedAuthor.npub === "string" && resolvedAuthor.npub) ||
+                      (typeof resolvedAuthor.pubkey === "string" && resolvedAuthor.pubkey) ||
+                      ""
+                  )}`
+                ),
+              }
+            : undefined,
+        }}
+      />
       <PageHero
-        title="Note explorer"
-        subtitle="View the note, its thread, and the activity around it."
+        title="Note"
+        subtitle="Author, content, and conversation — with provenance available when you need it."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <NativeSemanticsBadges semantics={semantics} />
@@ -257,24 +321,35 @@ export default async function NotePage({
 
       {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
 
-      <SectionCard title="Focal note" description="The note and its core fields.">
+      <SectionCard title="Note" description="The reading surface for this event.">
         {focal ? (
-          <NoteCard
-            note={focal}
-            author={
-              typeof focal.pubkey === "string"
-                ? authorsByPubkey[focal.pubkey.toLowerCase()]
-                : undefined
-            }
-            showFullContent
-          />
+          <div className="space-y-4">
+            <NoteCard
+              note={focal}
+              author={
+                typeof focal.pubkey === "string"
+                  ? authorsByPubkey[focal.pubkey.toLowerCase()]
+                  : undefined
+              }
+              showFullContent
+              contentResolution={contentResolution}
+            />
+            <EntityActions
+              kind="note"
+              absoluteUrl={noteAbsoluteUrl}
+              identifier={noteBech32}
+              nostrUri={`nostr:${noteBech32}`}
+              njumpUrl={`https://njump.me/${noteBech32}`}
+              embedHtml={embedHtml}
+            />
+          </div>
         ) : (
           <EmptyState message="No focal note payload was returned." />
         )}
       </SectionCard>
 
       {resolvedAuthor ? (
-        <SectionCard title="Author identity" description="The author behind this note.">
+        <SectionCard title="Author" description="Who published this note.">
           <ProfileCard
             profile={resolvedAuthor}
             summary={isRecord(noteSummary?.author) ? noteSummary.author : undefined}
@@ -284,7 +359,7 @@ export default async function NotePage({
 
       {countStats.length > 0 ? (
         <section className="space-y-3">
-          <p className="text-ink-dim text-sm font-medium">Counts</p>
+          <p className="text-ink-dim text-sm font-medium">Engagement</p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {countStats.map((stat) => (
               <StatCard key={stat.label} label={stat.label} value={stat.value} />
@@ -293,39 +368,29 @@ export default async function NotePage({
         </section>
       ) : null}
 
-      {summaryStats.length > 0 ? (
-        <section className="space-y-3">
-          <p className="text-ink-dim text-sm font-medium">Canonical summary</p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {summaryStats.map((stat) => (
-              <StatCard key={stat.label} label={stat.label} value={stat.value} />
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {noteDetails.length > 0 ? (
-        <SectionCard title="Note metadata" description="Core fields returned for this event.">
-          <MetadataList items={noteDetails} columns={2} />
-        </SectionCard>
-      ) : null}
-
-      <div id="note-provenance">
-        <SectionCard
-          title="Provenance"
-          description="Where this event was seen and the trust data attached to it."
-        >
-          {provenanceDetails.length > 0 ? (
-            <MetadataList items={provenanceDetails} columns={2} />
+      <Disclosure
+        title="Details & provenance"
+        description="Canonical summary, metadata, and relay observations."
+      >
+        <div className="space-y-4">
+          {summaryStats.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {summaryStats.map((stat) => (
+                <StatCard key={stat.label} label={stat.label} value={stat.value} />
+              ))}
+            </div>
           ) : null}
-          {provenanceRelayLinks.length > 0 ? (
-            <div className="mt-3">
-              <p className="text-ink-faint mb-2 text-xs">Relay observations</p>
+          {noteDetails.length > 0 ? <MetadataList items={noteDetails} columns={2} /> : null}
+          <div id="note-provenance" className="space-y-3">
+            {provenanceDetails.length > 0 ? (
+              <MetadataList items={provenanceDetails} columns={2} />
+            ) : null}
+            {provenanceRelayLinks.length > 0 ? (
               <ul className="space-y-2">
                 {provenanceRelayLinks.map((observation) => (
                   <li
                     key={observation.key}
-                    className="bg-surface/30 hover:bg-surface/45 flex flex-wrap items-center justify-between gap-2 rounded-lg p-3 transition-colors"
+                    className="bg-surface/30 flex flex-wrap items-center justify-between gap-2 rounded-lg p-3"
                   >
                     <div className="min-w-0">
                       <p className="text-ink-soft truncate text-sm">{observation.relay}</p>
@@ -335,30 +400,22 @@ export default async function NotePage({
                           : "seen timestamp not provided"}
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      <Link
-                        href={`/relays/${encodeURIComponent(observation.routeHost)}`}
-                        className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1"
-                      >
-                        Open relay
-                      </Link>
-                      <Link
-                        href={`/relays/health#relay-${encodeURIComponent(observation.routeHost)}`}
-                        className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1"
-                      >
-                        Health posture
-                      </Link>
-                    </div>
+                    <Link
+                      href={`/relays/${encodeURIComponent(observation.routeHost)}`}
+                      className="border-edge-strong text-link rounded-full border px-3 py-1 text-xs"
+                    >
+                      Open relay
+                    </Link>
                   </li>
                 ))}
               </ul>
-            </div>
-          ) : null}
-          {provenanceDetails.length === 0 && provenanceRelayLinks.length === 0 ? (
-            <EmptyState message="No relay observations or trust data were returned for this event." />
-          ) : null}
-        </SectionCard>
-      </div>
+            ) : null}
+            {provenanceDetails.length === 0 && provenanceRelayLinks.length === 0 ? (
+              <EmptyState message="No relay observations or trust data were returned for this event." />
+            ) : null}
+          </div>
+        </div>
+      </Disclosure>
 
       {mediaDetails.length > 0 ? (
         <SectionCard

@@ -6,12 +6,15 @@ import { RankedListPage } from "@/components/explorer/ranked-list-page";
 import { getTrendingNotes } from "@/lib/api/endpoints";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
+import { buildEntityMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildEntityMetadata({
   title: "Trending Notes",
   description: "Explore the notes leading the network.",
-};
+  path: "/trending/notes",
+  rss: { url: "/feeds/trending-notes.xml", title: "Trending notes" },
+});
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -37,6 +40,16 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
     }
   }
 
+  const itemListUrls = notes
+    .map((note) => {
+      const id =
+        (typeof note.id === "string" && note.id) ||
+        (typeof note.event_id === "string" && note.event_id) ||
+        "";
+      return id ? `/notes/${encodeURIComponent(id)}` : "";
+    })
+    .filter(Boolean);
+
   return (
     <RankedListPage
       eyebrow="Ranked notes"
@@ -58,6 +71,7 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
           : undefined
       }
       continuationLabel="Load more notes"
+      itemListUrls={itemListUrls}
       footer={
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
           <Link

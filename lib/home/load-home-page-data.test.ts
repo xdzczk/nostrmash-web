@@ -4,6 +4,8 @@ vi.mock("@/lib/api/endpoints", () => ({
   getDiscoveryHome: vi.fn(),
   getNetworkStats: vi.fn(),
   getRelayStats: vi.fn(),
+  getStatsSeries: vi.fn(),
+  normalizeSeriesPoints: vi.fn(() => []),
   getTrendingDomains: vi.fn(),
   getTrendingHashtags: vi.fn(),
   getTrendingNotes: vi.fn(),
@@ -18,6 +20,7 @@ import {
   getDiscoveryHome,
   getNetworkStats,
   getRelayStats,
+  getStatsSeries,
   getTrendingDomains,
   getTrendingHashtags,
   getTrendingNotes,
@@ -41,6 +44,10 @@ describe("loadHomePageData", () => {
     } as never);
     vi.mocked(getNetworkStats).mockResolvedValue({ events_ingested: 12 } as never);
     vi.mocked(getRelayStats).mockResolvedValue({ relays: [] } as never);
+    vi.mocked(getStatsSeries).mockResolvedValue({
+      points: [],
+      computed_at: "2026-07-28T00:00:00Z",
+    } as never);
 
     const data = await loadHomePageData({});
 
@@ -67,6 +74,7 @@ describe("loadHomePageData", () => {
     vi.mocked(getTrendingDomains).mockResolvedValue({ domains: [] } as never);
     vi.mocked(getNetworkStats).mockResolvedValue({} as never);
     vi.mocked(getRelayStats).mockResolvedValue({} as never);
+    vi.mocked(getStatsSeries).mockResolvedValue({ points: [] } as never);
 
     const data = await loadHomePageData({ window: "7d" });
 
@@ -80,6 +88,7 @@ describe("loadHomePageData", () => {
     vi.mocked(getDiscoveryHome).mockRejectedValue(new Error("API 503: down"));
     vi.mocked(getNetworkStats).mockRejectedValue(new Error("API 503: down"));
     vi.mocked(getRelayStats).mockRejectedValue(new Error("API 503: down"));
+    vi.mocked(getStatsSeries).mockRejectedValue(new Error("API 503: down"));
     vi.mocked(getTrendingNotes).mockRejectedValue(new Error("API 503: down"));
     vi.mocked(getTrendingProfiles).mockRejectedValue(new Error("API 503: down"));
     vi.mocked(getTrendingHashtags).mockRejectedValue(new Error("API 503: down"));

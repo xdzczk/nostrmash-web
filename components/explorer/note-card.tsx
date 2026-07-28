@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { NoteContent, type NoteContentResolution } from "@/components/explorer/note-content";
 import { NoteMedia } from "@/components/explorer/note-media";
 import { getNotePreviewPresentation } from "@/components/explorer/note-preview";
 import { Timestamp } from "@/components/explorer/timestamp";
@@ -26,6 +27,7 @@ import {
   extractRelayHostsFromNote,
   truncateIdentifier,
 } from "@/components/explorer/utils";
+import { tokenizeNoteContent } from "@/lib/notes/tokenize";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
 export function NoteCard({
@@ -35,6 +37,7 @@ export function NoteCard({
   rank,
   showFullContent = false,
   discoverySignals = false,
+  contentResolution,
 }: {
   note: EventRecord;
   author?: Profile;
@@ -42,6 +45,7 @@ export function NoteCard({
   rank?: number;
   showFullContent?: boolean;
   discoverySignals?: boolean;
+  contentResolution?: NoteContentResolution;
 }) {
   const resolvedAuthor = author ?? noteInlineAuthorProfile(note);
   const resolvedNoteId =
@@ -154,11 +158,12 @@ export function NoteCard({
       {preview.prefersMediaFirst && typeof note.content === "string" && note.content.length > 0 ? (
         <NoteMedia content={note.content} />
       ) : null}
-      <p
-        className={`text-ink mt-2.5 text-sm leading-5 [overflow-wrap:anywhere] sm:leading-6 ${clampClassName}`}
-      >
-        {presentationContent}
-      </p>
+      <NoteContent
+        tokens={tokenizeNoteContent(presentationContent)}
+        className={`mt-2.5 ${clampClassName}`}
+        showQuotes={showFullContent}
+        resolution={contentResolution}
+      />
       {!preview.prefersMediaFirst && typeof note.content === "string" && note.content.length > 0 ? (
         <NoteMedia content={note.content} />
       ) : null}

@@ -68,6 +68,7 @@ export const nativeApiV1Routes = {
   networkStats: "/api/v1/discovery/stats/network",
   contentStats: "/api/v1/discovery/stats/content",
   relayStats: "/api/v1/discovery/stats/relays",
+  statsSeries: "/api/v1/discovery/stats/series",
   relayHealth: "/api/v1/relays/health",
   relayPopular: "/api/v1/relays/popular",
   relayProbeHealth: "/api/v1/relays/probe-health",
@@ -76,6 +77,7 @@ export const nativeApiV1Routes = {
 export interface CursorQuery {
   cursor?: string;
   limit?: number;
+  offset?: number;
   window?: string;
 }
 
@@ -269,6 +271,7 @@ export function buildCursorQuery(
   return {
     cursor: query.cursor,
     limit: query.limit,
+    offset: query.offset,
     window: query.window,
   };
 }

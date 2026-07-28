@@ -22,16 +22,18 @@ import { getRelayHealth, getRelayStats } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import { isValidRelayHostParam, normalizeValidatedRelayHost } from "@/lib/routing/params";
+import { buildEntityMetadata } from "@/lib/seo/metadata";
 
 type Params = Promise<{ relayHost: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { relayHost } = await params;
   const label = normalizeValidatedRelayHost(relayHost) ?? relayHost;
-  return {
+  return buildEntityMetadata({
     title: `Relay ${label}`,
     description: `NostrMash relay explorer page for ${label}.`,
-  };
+    path: `/relays/${encodeURIComponent(label)}`,
+  });
 }
 
 export default async function RelayPage({ params }: { params: Params }) {

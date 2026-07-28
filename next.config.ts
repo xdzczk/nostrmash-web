@@ -72,7 +72,18 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    const embedCsp = securityHeaders.map((header) => {
+      if (header.key !== "Content-Security-Policy") return header;
+      return {
+        ...header,
+        value: header.value.replace("frame-ancestors 'none'", "frame-ancestors *"),
+      };
+    });
     return [
+      {
+        source: "/embed/:path*",
+        headers: embedCsp.filter((header) => header.key !== "X-Frame-Options"),
+      },
       {
         source: "/:path*",
         headers: securityHeaders,

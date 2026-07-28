@@ -6,9 +6,11 @@ import { EmptyState } from "@/components/explorer/empty-state";
 import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
 import { PageHero } from "@/components/explorer/page-hero";
 import { WindowSelector } from "@/components/explorer/window-selector";
+import { JsonLd } from "@/components/seo/json-ld";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { hasNativeSemantics } from "@/lib/explorer/ranked-list";
+import { absoluteUrl } from "@/lib/seo/metadata";
 import { formatStatsWindowLabel, type StatsWindow } from "@/lib/search-params/window";
 import type { NativeApiSemantics } from "@/lib/types/api";
 
@@ -32,6 +34,7 @@ export function RankedListPage({
   continuationLabel = "Load more",
   footer,
   debugPayload,
+  itemListUrls,
 }: {
   eyebrow: string;
   title: string;
@@ -52,9 +55,24 @@ export function RankedListPage({
   continuationLabel?: string;
   footer?: ReactNode;
   debugPayload: unknown;
+  itemListUrls?: string[];
 }) {
   return (
     <div className="space-y-8">
+      {itemListUrls && itemListUrls.length > 0 ? (
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            name: title,
+            itemListElement: itemListUrls.map((url, index) => ({
+              "@type": "ListItem",
+              position: index + 1,
+              url: url.startsWith("http") ? url : absoluteUrl(url),
+            })),
+          }}
+        />
+      ) : null}
       <PageHero
         eyebrow={eyebrow}
         title={title}

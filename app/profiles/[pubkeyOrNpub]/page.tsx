@@ -22,11 +22,17 @@ import {
   sanitizeExternalHref,
   truncateMiddle,
 } from "@/components/explorer/utils";
+import { CopyValueButton } from "@/components/actions/copy-value-button";
+import { EntityActions } from "@/components/actions/entity-actions";
+import { JsonLd } from "@/components/seo/json-ld";
+import { Disclosure } from "@/components/ui/disclosure";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
+import { hexToNpub } from "@/lib/nostr/nip19";
 import { buildProfileActivityTabHref, type ProfileActivityTab } from "@/lib/profile/activity-tabs";
 import { getProfileSummaryCached, loadProfilePageData } from "@/lib/profile/load-profile-page-data";
-import { isValidPubkeyOrNpubParam } from "@/lib/routing/params";
+import { isValidPubkeyOrNpubParam, resolvePubkeyParam } from "@/lib/routing/params";
+import { absoluteUrl, buildEntityMetadata } from "@/lib/seo/metadata";
 import type { Profile, ProfileStats } from "@/lib/types/api";
 
 type Params = Promise<{ pubkeyOrNpub: string }>;
@@ -145,20 +151,34 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       description: "This profile identifier is invalid.",
     };
   }
+  const resolved = resolvePubkeyParam(pubkeyOrNpub) ?? pubkeyOrNpub;
   try {
     const summary = await getProfileSummaryCached(pubkeyOrNpub);
     const profile = summary.profile ?? (summary as unknown as Profile);
     const label =
       profile.display_name ?? profile.name ?? profile.npub ?? profile.pubkey ?? pubkeyOrNpub;
-    return {
-      title: label,
+    return buildEntityMetadata({
+      title: String(label),
       description: `View profile activity, notes, and network context for ${label}.`,
-    };
+      path: `/profiles/${encodeURIComponent(pubkeyOrNpub)}`,
+      imagePath: `/profiles/${encodeURIComponent(pubkeyOrNpub)}/opengraph-image`,
+      type: "profile",
+      rss: {
+        url: `/feeds/profiles/${encodeURIComponent(pubkeyOrNpub)}.xml`,
+        title: `${label} notes`,
+      },
+    });
   } catch {
-    return {
-      title: `Profile ${pubkeyOrNpub}`,
+    return buildEntityMetadata({
+      title: `Profile ${truncateMiddle(resolved, 24)}`,
       description: `View profile activity, notes, and network context for ${pubkeyOrNpub}.`,
-    };
+      path: `/profiles/${encodeURIComponent(pubkeyOrNpub)}`,
+      type: "profile",
+      rss: {
+        url: `/feeds/profiles/${encodeURIComponent(pubkeyOrNpub)}.xml`,
+        title: "Profile notes",
+      },
+    });
   }
 }
 
@@ -379,8 +399,38 @@ export default async function ProfilePage({
               </Link>
             ))}
           </div>
+
+          {(() => {
+            const pubkeyHex =
+              resolvePubkeyParam(pubkeyOrNpub) ??
+              (typeof profile?.pubkey === "string" ? profile.pubkey : null);
+            const npub =
+              (typeof profile?.npub === "string" && profile.npub) ||
+              (pubkeyHex ? hexToNpub(pubkeyHex) : null) ||
+              pubkeyOrNpub;
+            return (
+              <EntityActions
+                kind="profile"
+                absoluteUrl={absoluteUrl(`/profiles/${encodeURIComponent(npub)}`)}
+                identifier={npub}
+                nostrUri={`nostr:${npub}`}
+                njumpUrl={`https://njump.me/${npub}`}
+              />
+            );
+          })()}
         </div>
       </SectionCard>
+
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Person",
+          name: heroDisplayName,
+          description: heroBio,
+          url: absoluteUrl(`/profiles/${encodeURIComponent(pubkeyOrNpub)}`),
+          identifier: pubkeyOrNpub,
+        }}
+      />
 
       <div id="profile-activity">
         <SectionCard
@@ -524,7 +574,7 @@ export default async function ProfilePage({
         </SectionCard>
       </div>
 
-      <SectionCard
+      <Disclosure
         title="Identity details"
         description="Public metadata primitives with compact display and full-value access."
       >
@@ -540,7 +590,10 @@ export default async function ProfilePage({
                   key={`${field.key}-${field.label}`}
                   className="bg-surface-sunken/40 hover:bg-surface-sunken/60 rounded-lg p-3 transition-colors"
                 >
-                  <p className="text-ink-faint mb-1 text-[11px]">{field.label}</p>
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <p className="text-ink-faint text-[11px]">{field.label}</p>
+                    {field.value.copyable && raw ? <CopyValueButton value={raw} /> : null}
+                  </div>
                   {safeUrl ? (
                     <Link
                       href={safeUrl}
@@ -569,7 +622,7 @@ export default async function ProfilePage({
         ) : (
           <EmptyState message="No lower-level identity details were returned for this profile." />
         )}
-      </SectionCard>
+      </Disclosure>
 
       <div className="space-y-3">
         <DebugDisclosure title="Debug payload: profile summary" data={summary ?? {}} />

@@ -16,6 +16,7 @@ import {
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { fetchProfilesByPubkey, listHydratablePubkeys } from "@/lib/api/profile-hydration";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
+import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import { readSearchParam, toUrlSearchParams } from "@/lib/search-params/pagination";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
@@ -234,12 +235,30 @@ export async function loadNotePageData(
     (typeof focal?.pubkey === "string" ? authorsByPubkey[focal.pubkey.toLowerCase()] : undefined) ??
     authorProfileFromSummary;
 
+  const contentBodies = [
+    focal?.content,
+    ...ancestors.map((note) => note.content),
+    ...replies.map((note) => note.content),
+  ].filter((value): value is string => typeof value === "string" && value.length > 0);
+
+  const contentResolution = await resolveContentReferences(contentBodies).catch(() => ({
+    profilesByPubkey: {},
+    eventsById: {},
+  }));
+
+  // Prefer already-hydrated authors when available.
+  contentResolution.profilesByPubkey = {
+    ...contentResolution.profilesByPubkey,
+    ...authorsByPubkey,
+  };
+
   return {
     activity,
     activityNextCursor,
     ancestors,
     ancestorsPayload,
     authorsByPubkey,
+    contentResolution,
     currentSearchParams,
     errorMessage,
     eventCountsPayload,

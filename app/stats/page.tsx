@@ -15,8 +15,17 @@ import { StatCard } from "@/components/explorer/stat-card";
 import { formatMetricLabel, isRecord } from "@/components/explorer/utils";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
+import { BarChart } from "@/components/charts/bar-chart";
+import { IndexedAt } from "@/components/freshness/indexed-at";
+import { LiveRefresh } from "@/components/freshness/live-refresh";
 import { WindowSelector } from "@/components/explorer/window-selector";
-import { getContentStats, getNetworkStats, getRelayStats } from "@/lib/api/endpoints";
+import {
+  getContentStats,
+  getNetworkStats,
+  getRelayStats,
+  getStatsSeries,
+  normalizeSeriesPoints,
+} from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractRelayRows } from "@/components/explorer/stats-utils";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
@@ -26,11 +35,13 @@ import {
   type StatsWindow,
 } from "@/lib/search-params/window";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
+import { buildEntityMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildEntityMetadata({
   title: "Stats",
   description: "Network, content, and relay analytics from NostrMash discovery endpoints.",
-};
+  path: "/stats",
+});
 
 const NETWORK_PRIORITY_KEYS = [
   "active_authors_24h",
@@ -153,12 +164,40 @@ export default async function StatsPage({
   let content: Awaited<ReturnType<typeof getContentStats>> | null = null;
   let relays: Awaited<ReturnType<typeof getRelayStats>> | null = null;
 
+  let noteVolumeSeries: Array<{ t: number; v: number }> = [];
+  let activeAuthorsSeries: Array<{ t: number; v: number }> = [];
+  let relayEventsSeries: Array<{ t: number; v: number }> = [];
+  let computedAt: string | null = null;
+  const seriesWindow = window === "7d" ? "7d" : "7d";
+
   try {
-    [network, content, relays] = await Promise.all([
+    const [
+      networkResult,
+      contentResult,
+      relaysResult,
+      volumeResult,
+      authorsResult,
+      relaySeriesResult,
+    ] = await Promise.all([
       getNetworkStats("shortTtl"),
       getContentStats("shortTtl"),
       getRelayStats("shortTtl"),
+      getStatsSeries("note_volume", seriesWindow, "shortTtl"),
+      getStatsSeries("active_authors", seriesWindow, "shortTtl"),
+      getStatsSeries("relay_events", seriesWindow, "shortTtl"),
     ]);
+    network = networkResult;
+    content = contentResult;
+    relays = relaysResult;
+    noteVolumeSeries = normalizeSeriesPoints(volumeResult);
+    activeAuthorsSeries = normalizeSeriesPoints(authorsResult);
+    relayEventsSeries = normalizeSeriesPoints(relaySeriesResult);
+    computedAt =
+      (typeof volumeResult.computed_at === "string" && volumeResult.computed_at) ||
+      (isRecord(networkResult) &&
+        typeof (networkResult as Record<string, unknown>).computed_at === "string" &&
+        ((networkResult as Record<string, unknown>).computed_at as string)) ||
+      null;
   } catch (error) {
     errorMessage = toUserFacingErrorMessage(error, "Failed to load stats.");
   }
@@ -166,6 +205,7 @@ export default async function StatsPage({
 
   return (
     <div className="space-y-8">
+      <LiveRefresh />
       <PageHero
         eyebrow="Signal-first analytics"
         title="Network analytics"
@@ -184,8 +224,29 @@ export default async function StatsPage({
           </div>
         }
       />
+      <IndexedAt computedAt={computedAt} />
 
       {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
+
+      <SectionCard
+        title="Time series"
+        description="Hourly snapshot history for note volume, active authors, and relay events."
+      >
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div>
+            <p className="text-ink-faint mb-2 text-xs">Note volume</p>
+            <BarChart points={noteVolumeSeries} label="Note volume" height={140} />
+          </div>
+          <div>
+            <p className="text-ink-faint mb-2 text-xs">Active authors</p>
+            <BarChart points={activeAuthorsSeries} label="Active authors" height={140} />
+          </div>
+          <div>
+            <p className="text-ink-faint mb-2 text-xs">Relay events</p>
+            <BarChart points={relayEventsSeries} label="Relay events" height={140} />
+          </div>
+        </div>
+      </SectionCard>
 
       <StatsGroup
         title="Network"

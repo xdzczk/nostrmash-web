@@ -17,6 +17,7 @@ import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/prof
 import type { Profile } from "@/lib/types/api";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import { normalizeValidatedDomain } from "@/lib/routing/params";
+import { buildEntityMetadata } from "@/lib/seo/metadata";
 
 type Params = Promise<{ domain: string }>;
 
@@ -27,10 +28,11 @@ function domainTitle(value: string): string {
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { domain } = await params;
   const label = domainTitle(domain);
-  return {
-    title: `${label}`,
+  return buildEntityMetadata({
+    title: label,
     description: `See notes and activity connected to ${label}.`,
-  };
+    path: `/domains/${encodeURIComponent(label)}`,
+  });
 }
 
 export default async function DomainPage({ params }: { params: Params }) {

@@ -2,11 +2,14 @@ import {
   getDiscoveryHome,
   getNetworkStats,
   getRelayStats,
+  getStatsSeries,
   getTrendingDomains,
   getTrendingHashtags,
   getTrendingNotes,
   getTrendingProfiles,
+  normalizeSeriesPoints,
 } from "@/lib/api/endpoints";
+import type { SeriesPoint } from "@/components/charts/sparkline";
 import { isApiTimeoutError } from "@/lib/api/http";
 import { fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { extractRelayRows, pickTopPrimitiveStats } from "@/components/explorer/stats-utils";
@@ -43,9 +46,10 @@ export type HomePageData = {
   homeHashtags: HashtagEntry[];
   homeDomains: DomainEntry[];
   noteAuthorsByPubkey: Record<string, Profile>;
-  pulseStats: Array<{ label: string; value: string | number | boolean }>;
+  pulseStats: Array<{ label: string; value: string | number | boolean; series?: SeriesPoint[] }>;
   relayLeaders: ReturnType<typeof extractRelayRows>;
   upstreamCallCount: number;
+  computedAt?: string | null;
 };
 
 /**
@@ -89,7 +93,10 @@ export async function loadHomePageData(
       : Promise.resolve(null),
     getNetworkStats("shortTtl"),
     getRelayStats("shortTtl"),
+    getStatsSeries("note_volume", window === "7d" ? "7d" : "7d", "shortTtl"),
+    getStatsSeries("active_authors", "7d", "shortTtl"),
   ]);
+  upstreamCallCount += 2;
 
   const [
     homeResult,
@@ -99,6 +106,8 @@ export async function loadHomePageData(
     domainsResult,
     networkResult,
     relayResult,
+    noteVolumeSeriesResult,
+    activeAuthorsSeriesResult,
   ] = stageOne;
 
   if (homeResult.status === "fulfilled") {
@@ -249,16 +258,46 @@ export async function loadHomePageData(
   const sections = asRecord(payload?.sections);
   const networkSummary = asRecord(sections?.network_summary);
   const homeStats = isRecord(payload?.stats) ? payload.stats : {};
-  const pulseStats = pickTopPrimitiveStats(
+  const basePulseStats = pickTopPrimitiveStats(
     { ...homeStats, ...(networkStats ?? {}) },
     networkPulsePreferredKeys(window),
     6,
     window
   );
+  const noteVolumeSeries =
+    noteVolumeSeriesResult.status === "fulfilled"
+      ? normalizeSeriesPoints(noteVolumeSeriesResult.value)
+      : [];
+  const activeAuthorsSeries =
+    activeAuthorsSeriesResult.status === "fulfilled"
+      ? normalizeSeriesPoints(activeAuthorsSeriesResult.value)
+      : [];
+  const pulseStats = basePulseStats.map((stat) => {
+    const label = stat.label.toLowerCase();
+    if (label.includes("note") || label.includes("volume") || label.includes("event")) {
+      return { ...stat, series: noteVolumeSeries };
+    }
+    if (label.includes("author") || label.includes("profile")) {
+      return { ...stat, series: activeAuthorsSeries };
+    }
+    return stat;
+  });
   let relayLeaders = extractRelayRows(networkSummary ?? payload, 1);
   if (relayLeaders.length === 0) {
     relayLeaders = extractRelayRows(relayStats, 1);
   }
+
+  const computedAt =
+    (noteVolumeSeriesResult.status === "fulfilled" &&
+      typeof noteVolumeSeriesResult.value.computed_at === "string" &&
+      noteVolumeSeriesResult.value.computed_at) ||
+    (isRecord(networkStats) &&
+      typeof (networkStats as Record<string, unknown>).computed_at === "string" &&
+      ((networkStats as Record<string, unknown>).computed_at as string)) ||
+    (isRecord(payload) &&
+      typeof (payload as Record<string, unknown>).computed_at === "string" &&
+      ((payload as Record<string, unknown>).computed_at as string)) ||
+    null;
 
   traceHomeFanOut(upstreamCallCount, {
     window: window === "7d" ? 7 : 1,
@@ -280,5 +319,6 @@ export async function loadHomePageData(
     pulseStats,
     relayLeaders,
     upstreamCallCount,
+    computedAt,
   };
 }

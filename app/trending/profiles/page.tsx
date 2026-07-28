@@ -6,12 +6,15 @@ import { RankedListPage } from "@/components/explorer/ranked-list-page";
 import { getTrendingProfiles } from "@/lib/api/endpoints";
 import { hydrateProfiles } from "@/lib/api/profile-hydration";
 import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
+import { hexToNpub } from "@/lib/nostr/nip19";
+import { buildEntityMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildEntityMetadata({
   title: "Trending Profiles",
   description: "Explore the profiles with the strongest momentum.",
-};
+  path: "/trending/profiles",
+});
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -41,6 +44,16 @@ export default async function TrendingProfilesPage({
     }
   }
 
+  const itemListUrls = hydratedProfiles
+    .map((profile) => {
+      const npub =
+        (typeof profile.npub === "string" && profile.npub) ||
+        (typeof profile.pubkey === "string" ? hexToNpub(profile.pubkey) : null) ||
+        (typeof profile.pubkey === "string" ? profile.pubkey : "");
+      return npub ? `/profiles/${encodeURIComponent(npub)}` : "";
+    })
+    .filter(Boolean);
+
   return (
     <RankedListPage
       eyebrow="Ranked profiles"
@@ -62,6 +75,7 @@ export default async function TrendingProfilesPage({
           : undefined
       }
       continuationLabel="Load more profiles"
+      itemListUrls={itemListUrls}
       footer={
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
           <Link

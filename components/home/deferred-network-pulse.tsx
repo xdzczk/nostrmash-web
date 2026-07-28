@@ -8,7 +8,11 @@ export async function DeferredNetworkPulse({
   seedStats,
 }: {
   window: StatsWindow;
-  seedStats: Array<{ label: string; value: string | number | boolean }>;
+  seedStats: Array<{
+    label: string;
+    value: string | number | boolean;
+    series?: Array<{ t: number; v: number }>;
+  }>;
 }) {
   if (seedStats.length > 0) {
     return <NetworkPulseStrip title="Network pulse" stats={seedStats} />;

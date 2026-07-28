@@ -1,24 +1,55 @@
-import { npubToHex } from "@/lib/nostr/npub";
+import { decodeNip19, stripNostrPrefix } from "@/lib/nostr/nip19";
 
 const HEX_64 = /^[0-9a-f]{64}$/i;
 const BECH32_NOTE = /^note1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{6,}$/i;
 const BECH32_NEVENT = /^nevent1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{6,}$/i;
 const BECH32_NPUB = /^npub1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{6,}$/i;
+const BECH32_NPROFILE = /^nprofile1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{6,}$/i;
 const DOMAIN_HOSTNAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
 const RELAY_HOST = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?(?::\d{1,5})?$/i;
 
 export function isValidEventIdParam(value: string): boolean {
-  const trimmed = value.trim();
+  const trimmed = stripNostrPrefix(value);
   if (!trimmed) return false;
-  return HEX_64.test(trimmed) || BECH32_NOTE.test(trimmed) || BECH32_NEVENT.test(trimmed);
+  if (HEX_64.test(trimmed)) return true;
+  if (BECH32_NOTE.test(trimmed) || BECH32_NEVENT.test(trimmed)) {
+    const decoded = decodeNip19(trimmed);
+    return decoded?.type === "note" || decoded?.type === "nevent";
+  }
+  return false;
 }
 
 export function isValidPubkeyOrNpubParam(value: string): boolean {
-  const trimmed = value.trim();
+  const trimmed = stripNostrPrefix(value);
   if (!trimmed) return false;
   if (HEX_64.test(trimmed)) return true;
-  if (!BECH32_NPUB.test(trimmed)) return false;
-  return npubToHex(trimmed) !== null;
+  if (BECH32_NPUB.test(trimmed) || BECH32_NPROFILE.test(trimmed)) {
+    const decoded = decodeNip19(trimmed);
+    return decoded?.type === "npub" || decoded?.type === "nprofile";
+  }
+  return false;
+}
+
+/** Resolve a route param to a hex event id when possible. */
+export function resolveEventIdParam(value: string): string | null {
+  const trimmed = stripNostrPrefix(value);
+  if (!trimmed) return null;
+  if (HEX_64.test(trimmed)) return trimmed.toLowerCase();
+  const decoded = decodeNip19(trimmed);
+  if (decoded?.type === "note") return decoded.data;
+  if (decoded?.type === "nevent") return decoded.data.id;
+  return null;
+}
+
+/** Resolve a route param to a hex pubkey when possible. */
+export function resolvePubkeyParam(value: string): string | null {
+  const trimmed = stripNostrPrefix(value);
+  if (!trimmed) return null;
+  if (HEX_64.test(trimmed)) return trimmed.toLowerCase();
+  const decoded = decodeNip19(trimmed);
+  if (decoded?.type === "npub") return decoded.data;
+  if (decoded?.type === "nprofile") return decoded.data.pubkey;
+  return null;
 }
 
 export function isValidDomainParam(value: string): boolean {

@@ -1,4 +1,14 @@
+import type { Metadata } from "next";
+
 import { SectionCard } from "@/components/ui/section-card";
+import { buildEntityMetadata } from "@/lib/seo/metadata";
+
+export const metadata: Metadata = buildEntityMetadata({
+  title: "Methodology",
+  description:
+    "How NostrMash indexes public Nostr events and how to interpret freshness, ranking windows, and limits.",
+  path: "/methodology",
+});
 
 export default function MethodologyPage() {
   return (
@@ -28,24 +38,25 @@ export default function MethodologyPage() {
         <SectionCard title="Freshness classes" description="How to read staleness tradeoffs.">
           <ul className="text-ink-dim list-disc space-y-1 pl-5 text-sm">
             <li>Static pages are cached longer and change infrequently.</li>
-            <li>Trending and stats pages use short TTL caching to reduce request pressure.</li>
-            <li>Search, profile, and note pages prioritize request-time freshness.</li>
+            <li>Discovery surfaces refresh on a short TTL (about one minute).</li>
+            <li>Note and profile detail pages prefer request-time freshness.</li>
+            <li>Home and stats show an honest last-indexed timestamp when available.</li>
           </ul>
         </SectionCard>
 
-        <SectionCard title="Ranking windows" description="Time windows accepted by the API.">
+        <SectionCard title="Ranking windows" description="What 24h and 7d mean.">
           <ul className="text-ink-dim list-disc space-y-1 pl-5 text-sm">
-            <li>Typical windows are `24h`, `7d`, and `30d` depending on endpoint class.</li>
-            <li>Window constraints are enforced server-side by public request guards.</li>
-            <li>Scores and rank positions can shift as backfill and ingest complete.</li>
+            <li>Trending lists are scoped to a rolling window such as 24h or 7d.</li>
+            <li>Scores combine activity signals (replies, reactions, zaps, velocity).</li>
+            <li>Trust filters may prefer higher-trust authors depending on API mode.</li>
           </ul>
         </SectionCard>
 
-        <SectionCard title="Limits and pagination" description="Public API guardrails.">
+        <SectionCard title="Limits" description="Practical bounds for consumers.">
           <ul className="text-ink-dim list-disc space-y-1 pl-5 text-sm">
-            <li>Public endpoints cap `limit`, `offset`, and similar query parameters.</li>
-            <li>Large queries can be rejected to protect service reliability.</li>
-            <li>Use smaller windows and filters for more deterministic results.</li>
+            <li>Public API rate limits apply per IP and surface.</li>
+            <li>Batch endpoints cap payload size to keep responses bounded.</li>
+            <li>RSS feeds and sitemaps sample hot entities rather than the full index.</li>
           </ul>
         </SectionCard>
       </div>

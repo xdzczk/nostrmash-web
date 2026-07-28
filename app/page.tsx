@@ -6,20 +6,29 @@ import { DiscoveryActionLinks } from "@/components/explorer/card-grammar";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { WindowSelector } from "@/components/explorer/window-selector";
 import { truncateIdentifier } from "@/components/explorer/utils";
+import { IndexedAt } from "@/components/freshness/indexed-at";
+import { LiveRefresh } from "@/components/freshness/live-refresh";
 import { ClosingDiscoveryRail } from "@/components/home/closing-discovery-rail";
 import { DeferredNetworkPulse } from "@/components/home/deferred-network-pulse";
 import { ProfilesInMotionSpotlight } from "@/components/home/profiles-in-motion-spotlight";
 import { TrendingFeaturedModule } from "@/components/home/trending-featured-module";
 import { SearchForm } from "@/components/search/search-form";
+import { JsonLd } from "@/components/seo/json-ld";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { loadHomePageData } from "@/lib/home/load-home-page-data";
+import { absoluteUrl } from "@/lib/seo/metadata";
 import { buildWindowHref, formatStatsWindowLabel } from "@/lib/search-params/window";
 
 export const metadata: Metadata = {
   title: "NostrMash",
   description:
     "Explore Nostr notes, profiles, relays, and live trends through a public discovery index.",
+  alternates: {
+    types: {
+      "application/rss+xml": [{ url: "/feeds/trending-notes.xml", title: "Trending notes" }],
+    },
+  },
 };
 export const revalidate = 60;
 
@@ -53,6 +62,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
     noteAuthorsByPubkey,
     pulseStats,
     relayLeaders,
+    computedAt,
   } = await loadHomePageData(resolvedSearchParams);
 
   const trendWindowLabel = formatStatsWindowLabel(window);
@@ -96,7 +106,15 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
       if (!match) return null;
       return { ...match, label: heroPulseLabels[key] ?? match.label };
     })
-    .filter((stat): stat is { label: string; value: string | number | boolean } => stat !== null);
+    .filter(
+      (
+        stat
+      ): stat is {
+        label: string;
+        value: string | number | boolean;
+        series?: (typeof pulseStats)[number]["series"];
+      } => stat !== null
+    );
   const flagshipNotes = homeNotes.slice(0, 3);
   const profileHighlights = hydratedHomeProfiles.slice(0, 3);
   const hashtagHighlights = homeHashtags.slice(0, 8);
@@ -104,8 +122,23 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
 
   return (
     <div className="relative left-1/2 w-screen max-w-none -translate-x-1/2 px-4 sm:px-5 xl:px-8 2xl:px-10">
+      <LiveRefresh />
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "NostrMash",
+          url: absoluteUrl("/"),
+          potentialAction: {
+            "@type": "SearchAction",
+            target: `${absoluteUrl("/search")}?q={search_term_string}`,
+            "query-input": "required name=search_term_string",
+          },
+        }}
+      />
       <div className="mx-auto w-full max-w-[92rem] space-y-12 sm:space-y-16 xl:space-y-[5.1rem]">
         {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
+        <IndexedAt computedAt={computedAt} />
         <section className="border-edge/90 nm-panel-hero relative overflow-hidden rounded-[2rem] border p-5 sm:p-7 xl:p-9 2xl:px-10">
           <div aria-hidden className="nm-aurora-layer pointer-events-none absolute inset-0" />
           <div className="relative z-10 grid gap-7 sm:gap-8 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.72fr)] xl:items-start xl:gap-10 2xl:grid-cols-[minmax(0,1.52fr)_360px] 2xl:gap-12">

@@ -45,5 +45,16 @@ export {
   getRelatedHashtags,
 } from "@/lib/api/endpoints/hashtags";
 export { getDomainDetail, getDomainNotes } from "@/lib/api/endpoints/domains";
-export { getNetworkStats, getContentStats, getRelayStats } from "@/lib/api/endpoints/stats";
+export {
+  getNetworkStats,
+  getContentStats,
+  getRelayStats,
+  getStatsSeries,
+  normalizeSeriesPoints,
+} from "@/lib/api/endpoints/stats";
+export type {
+  StatsSeriesMetric,
+  StatsSeriesWindow,
+  StatsSeriesResponse,
+} from "@/lib/api/endpoints/stats";
 export { getRelayHealth, getPopularRelays, getRelayProbeHealth } from "@/lib/api/endpoints/relays";

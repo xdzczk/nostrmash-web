@@ -1,11 +1,18 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/branding/brand-logo";
 import { SiteNav } from "@/components/layout/site-nav";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 
-export function SiteShell({ children }: { children: ReactNode }) {
+export async function SiteShell({ children }: { children: ReactNode }) {
+  const headerStore = await headers();
+  const pathname = headerStore.get("x-pathname") ?? "";
+  if (pathname.startsWith("/embed")) {
+    return <>{children}</>;
+  }
+
   return (
     <>
       <a

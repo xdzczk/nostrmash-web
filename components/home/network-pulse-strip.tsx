@@ -1,9 +1,11 @@
+import { Sparkline, type SeriesPoint } from "@/components/charts/sparkline";
 import { PulseSparkline } from "@/components/home/pulse-sparkline";
 import { formatMetricLabel, formatValue } from "@/components/explorer/utils";
 
 type PulseStat = {
   label: string;
   value: string | number | boolean | null | undefined;
+  series?: SeriesPoint[];
 };
 
 export function NetworkPulseStrip({ title, stats }: { title: string; stats: PulseStat[] }) {
@@ -31,7 +33,13 @@ export function NetworkPulseStrip({ title, stats }: { title: string; stats: Puls
             <p className="text-ink mt-1.5 text-xl font-semibold tracking-tight tabular-nums">
               {formatValue(stat.value)}
             </p>
-            <PulseSparkline seed={stat.label} className="mt-2.5" />
+            {stat.series && stat.series.length >= 2 ? (
+              <div className="text-accent mt-2.5">
+                <Sparkline points={stat.series} width={220} height={36} />
+              </div>
+            ) : (
+              <PulseSparkline seed={stat.label} className="mt-2.5" />
+            )}
           </article>
         ))}
       </div>

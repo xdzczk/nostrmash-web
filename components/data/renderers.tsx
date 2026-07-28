@@ -6,6 +6,7 @@ import { NoteCard } from "@/components/explorer/note-card";
 import { mapDomainWhyNow, mapHashtagWhyNow } from "@/components/explorer/why-now";
 import { normalizeDomainLabel, noteInlineAuthorProfile } from "@/components/explorer/utils";
 import { ProfileCard } from "@/components/explorer/profile-card";
+import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import { LONG_FORM_KIND, type EventRecord, type Profile } from "@/lib/types/api";
 
 function isLongFormEvent(note: EventRecord): boolean {
@@ -24,7 +25,7 @@ function getAuthorByPubkey(
   return authorsByPubkey[normalized] ?? authorsByPubkey[pubkey];
 }
 
-export function NotesList({
+export async function NotesList({
   notes,
   authorsByPubkey,
   ranked = false,
@@ -37,6 +38,17 @@ export function NotesList({
   showFullContent?: boolean;
   discoverySignals?: boolean;
 }) {
+  const contents = notes
+    .map((note) => (typeof note.content === "string" ? note.content : ""))
+    .filter((content) => content.length > 0);
+  const contentResolution = await resolveContentReferences(contents).catch(() => undefined);
+  if (contentResolution && authorsByPubkey) {
+    contentResolution.profilesByPubkey = {
+      ...contentResolution.profilesByPubkey,
+      ...authorsByPubkey,
+    };
+  }
+
   return (
     <ul className="min-w-0 space-y-3">
       {notes.map((note, index) => (
@@ -55,6 +67,7 @@ export function NotesList({
               rank={ranked ? index + 1 : undefined}
               showFullContent={showFullContent}
               discoverySignals={discoverySignals}
+              contentResolution={contentResolution}
             />
           )}
         </li>

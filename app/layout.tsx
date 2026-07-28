@@ -15,12 +15,31 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(appConfig.siteUrl),
   title: {
     default: appConfig.siteName,
     template: `%s · ${appConfig.siteName}`,
   },
   description: "Explore Nostr search, trends, profiles, and relay activity in one place.",
   manifest: "/manifest.json",
+  alternates: {
+    canonical: "/",
+    types: {
+      "application/rss+xml": [{ url: "/feeds/trending-notes.xml", title: "Trending notes" }],
+    },
+  },
+  openGraph: {
+    type: "website",
+    siteName: appConfig.siteName,
+    title: appConfig.siteName,
+    description: "Explore Nostr search, trends, profiles, and relay activity in one place.",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: appConfig.siteName,
+    description: "Explore Nostr search, trends, profiles, and relay activity in one place.",
+  },
   icons: {
     icon: [
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },

@@ -4,11 +4,13 @@ import { HashtagsList } from "@/components/data/renderers";
 import { RankedListPage } from "@/components/explorer/ranked-list-page";
 import { getTrendingHashtags } from "@/lib/api/endpoints";
 import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
+import { buildEntityMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildEntityMetadata({
   title: "Trending Hashtags",
   description: "Explore the topics rising fastest across the network.",
-};
+  path: "/trending/hashtags",
+});
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -28,6 +30,13 @@ export default async function TrendingHashtagsPage({
   );
   const hashtags = payload?.hashtags ?? [];
   const nextCursor = payload?.next_cursor;
+  const itemListUrls = hashtags
+    .map((entry) => {
+      const tag =
+        typeof entry === "string" ? entry : typeof entry.hashtag === "string" ? entry.hashtag : "";
+      return tag ? `/hashtags/${encodeURIComponent(tag.replace(/^#/, ""))}` : "";
+    })
+    .filter(Boolean);
 
   return (
     <RankedListPage
@@ -50,6 +59,7 @@ export default async function TrendingHashtagsPage({
           : undefined
       }
       continuationLabel="Load more hashtags"
+      itemListUrls={itemListUrls}
       debugPayload={payload ?? {}}
     >
       <HashtagsList hashtags={hashtags} ranked searchable />
