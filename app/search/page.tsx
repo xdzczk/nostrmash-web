@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
-import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
+import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
 import { QuickEntryGrid } from "@/components/home/quick-entry-grid";
 import { SearchForm } from "@/components/search/search-form";
@@ -16,7 +16,7 @@ import { getSearch, getTrendingHashtags, getTrendingProfiles } from "@/lib/api/e
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { parseSearchQuery } from "@/lib/search-params/search";
 import type { Profile } from "@/lib/types/api";
-import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
+import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -180,7 +180,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
         badges={
           canQuery ? (
             <div className="flex flex-wrap gap-2 text-xs">
-              <NativeSemanticsBadges semantics={payload} />
               <Pill tone="neutral" className="max-w-full break-all">
                 Query: {query.q}
               </Pill>
@@ -238,13 +237,18 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
           />
 
           {payload?.errors && payload.errors.length > 0 ? (
-            <ErrorPanel message={payload.errors.join(" | ")} />
+            <ErrorPanel
+              message={
+                summarizeLoadErrors(payload.errors) ??
+                "Some search results are temporarily unavailable."
+              }
+            />
           ) : null}
 
           {visibleSections.notes ? (
             <SectionCard title="Notes" description="Notes matching the current query.">
-              {surfaceErrors.notes ? (
-                <ErrorPanel message={`Notes results unavailable: ${surfaceErrors.notes}`} />
+              {notesFailed && !notesAvailable ? (
+                <ErrorPanel message="Notes results are temporarily unavailable." />
               ) : null}
               {notesAvailable ? (
                 <NotesList notes={payload?.notes ?? []} authorsByPubkey={noteAuthorsByPubkey} />
@@ -266,8 +270,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
 
           {visibleSections.profiles ? (
             <SectionCard title="Profiles" description="Profiles relevant to the current query.">
-              {surfaceErrors.profiles ? (
-                <ErrorPanel message={`Profile results unavailable: ${surfaceErrors.profiles}`} />
+              {profilesFailed && !profilesAvailable ? (
+                <ErrorPanel message="Profile results are temporarily unavailable." />
               ) : null}
               {profilesAvailable ? (
                 <ProfilesList profiles={hydratedProfiles} />
@@ -292,8 +296,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               title="Suggested profiles"
               description="Additional profiles related to this query."
             >
-              {surfaceErrors.suggest ? (
-                <ErrorPanel message={`Suggestions unavailable: ${surfaceErrors.suggest}`} />
+              {suggestFailed && !suggestedProfilesAvailable ? (
+                <ErrorPanel message="Suggestions are temporarily unavailable." />
               ) : null}
               {suggestedProfilesAvailable ? (
                 <ProfilesList profiles={hydratedSuggestedProfiles} />
@@ -348,6 +352,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               )}
             </SectionCard>
           ) : null}
+          <AboutThisData semantics={payload} />
           <DebugDisclosure title="Debug payload" data={payload ?? {}} />
         </div>
       )}

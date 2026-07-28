@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -11,7 +12,7 @@ import { MetadataList } from "@/components/explorer/metadata-list";
 import { NoteCard } from "@/components/explorer/note-card";
 import { PageHero } from "@/components/explorer/page-hero";
 import { ProfileCard } from "@/components/explorer/profile-card";
-import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
+import { AboutThisData } from "@/components/explorer/about-this-data";
 import { StatCard } from "@/components/explorer/stat-card";
 import { normalizeRelayHost } from "@/components/explorer/stats-utils";
 import { Timestamp } from "@/components/explorer/timestamp";
@@ -19,6 +20,9 @@ import {
   buildMetadataEntries,
   extractPrimitiveStats,
   isRecord,
+  profileFallbackAvatarDataUrl,
+  profileLabel,
+  profilePictureUrl,
   truncateMiddle,
 } from "@/components/explorer/utils";
 import {
@@ -30,7 +34,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { Disclosure } from "@/components/ui/disclosure";
 import { SectionCard } from "@/components/ui/section-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ErrorPanel } from "@/components/ui/status-panels";
+import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
 import { encodeNevent, hexToNote } from "@/lib/nostr/nip19";
 import { getNoteSummaryCached, loadNoteFocalData } from "@/lib/notes/load-note-page-data";
 import { isValidEventIdParam, resolveEventIdParam } from "@/lib/routing/params";
@@ -55,14 +59,17 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   try {
     const payload = await getNoteSummaryCached(resolvedId);
     const content = payload.note?.content;
-    const author = payload.note?.pubkey;
+    const authorFromSummary = payload.author?.profile;
+    const authorLabel = authorFromSummary
+      ? profileLabel(authorFromSummary)
+      : typeof payload.note?.pubkey === "string"
+        ? truncateMiddle(payload.note.pubkey, 20)
+        : null;
     const preview =
       typeof content === "string" && content.trim().length > 0
         ? truncateMiddle(content.trim(), 140)
         : truncateMiddle(resolvedId, 20);
-    const title = author
-      ? `Note by ${truncateMiddle(author, 20)}`
-      : `Note ${truncateMiddle(resolvedId, 18)}`;
+    const title = authorLabel ? `Note by ${authorLabel}` : `Note ${truncateMiddle(resolvedId, 18)}`;
     return buildEntityMetadata({
       title,
       description: `View the note, thread, and related activity: ${preview}`,
@@ -247,20 +254,35 @@ export default async function NotePage({
         subtitle="Author, content, and conversation — with provenance available when you need it."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <NativeSemanticsBadges semantics={semantics} />
-            <IdBadge id={eventId} label="event" />
-            {focal?.pubkey ? <IdBadge id={focal.pubkey} label="author" /> : null}
-            <Timestamp unixSeconds={focal?.created_at} />
-            {typeof focal?.kind === "number" ? (
-              <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
-                kind {focal.kind}
+            {resolvedAuthor ? (
+              <span className="border-edge-strong bg-surface/50 text-ink-soft inline-flex items-center gap-2 rounded-full border px-2 py-1">
+                <Image
+                  src={
+                    profilePictureUrl(resolvedAuthor) ??
+                    profileFallbackAvatarDataUrl(resolvedAuthor)
+                  }
+                  alt=""
+                  width={18}
+                  height={18}
+                  className="h-[18px] w-[18px] rounded-full object-cover"
+                />
+                {profileLabel(resolvedAuthor)}
               </span>
+            ) : focal?.pubkey ? (
+              <IdBadge id={focal.pubkey} label="author" />
             ) : null}
+            <Timestamp unixSeconds={focal?.created_at} />
           </div>
         }
       />
 
-      {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
+      {errorMessage ? (
+        focal ? (
+          <SoftRefreshNote message={errorMessage} />
+        ) : (
+          <ErrorPanel message={errorMessage} />
+        )
+      ) : null}
 
       <SectionCard title="Note" description="The reading surface for this event.">
         {focal ? (
@@ -336,9 +358,25 @@ export default async function NotePage({
                     <div className="min-w-0">
                       <p className="text-ink-soft truncate text-sm">{observation.relay}</p>
                       <p className="text-ink-faint mt-1 truncate text-xs">
-                        {observation.seenAt !== undefined
-                          ? `seen at ${String(observation.seenAt)}`
-                          : "seen timestamp not provided"}
+                        {observation.seenAt !== undefined ? (
+                          <>
+                            seen{" "}
+                            <Timestamp
+                              unixSeconds={
+                                typeof observation.seenAt === "number"
+                                  ? observation.seenAt
+                                  : undefined
+                              }
+                              isoString={
+                                typeof observation.seenAt === "string"
+                                  ? observation.seenAt
+                                  : undefined
+                              }
+                            />
+                          </>
+                        ) : (
+                          "seen timestamp not provided"
+                        )}
                       </p>
                     </div>
                     <Link
@@ -397,6 +435,16 @@ export default async function NotePage({
       <Suspense fallback={<Skeleton className="h-32 w-full rounded-xl" />}>
         <DeferredNoteRelated eventId={eventId} searchParams={resolvedSearchParams} />
       </Suspense>
+
+      <AboutThisData semantics={semantics}>
+        <IdBadge id={eventId} label="event" />
+        {focal?.pubkey ? <IdBadge id={focal.pubkey} label="author" /> : null}
+        {typeof focal?.kind === "number" ? (
+          <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
+            kind {focal.kind}
+          </span>
+        ) : null}
+      </AboutThisData>
 
       <div className="space-y-3">
         <DebugDisclosure title="Debug payload: canonical event" data={eventPayload ?? {}} />

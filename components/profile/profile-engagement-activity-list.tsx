@@ -61,7 +61,7 @@ export function ProfileReactionsActivityList({
         return (
           <li key={reactionKey} className={`${cardTierClassName("standard")} space-y-3 p-4`}>
             <div className="text-ink-muted flex flex-wrap items-center gap-2 text-xs">
-              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-amber-100">
+              <span className="border-warning/30 bg-warning-soft text-warning-ink rounded-full border px-2.5 py-1">
                 Reaction: {reactionLabel}
               </span>
               <Timestamp unixSeconds={reaction.created_at} />
@@ -119,11 +119,11 @@ export function ProfileZapsActivityList({
           <li key={zapKey} className={`${cardTierClassName("standard")} space-y-3 p-4`}>
             <div className="text-ink-muted flex flex-wrap items-center gap-2 text-xs">
               {amountLabel ? (
-                <span className="rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2.5 py-1 text-yellow-100">
+                <span className="border-warning/30 bg-warning-soft text-warning-ink rounded-full border px-2.5 py-1">
                   {amountLabel}
                 </span>
               ) : (
-                <span className="rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2.5 py-1 text-yellow-100">
+                <span className="border-warning/30 bg-warning-soft text-warning-ink rounded-full border px-2.5 py-1">
                   Zap
                 </span>
               )}

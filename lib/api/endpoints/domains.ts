@@ -16,7 +16,7 @@ import {
 
 export async function getDomainDetail(
   domain: string,
-  cacheClass: CacheClass = "requestTime"
+  cacheClass: CacheClass = "shortTtl"
 ): Promise<DomainDetailResponse> {
   const normalizedDomain = normalizeDomainQuery(domain);
   const response = await fetchApiJson<DomainDetailApiResponse>(
@@ -30,7 +30,7 @@ export async function getDomainDetail(
 
 export async function getDomainNotes(
   domain: string,
-  cacheClass: CacheClass = "requestTime",
+  cacheClass: CacheClass = "shortTtl",
   query?: CursorQuery
 ): Promise<DomainNotesResponse> {
   const normalizedDomain = normalizeDomainQuery(domain);

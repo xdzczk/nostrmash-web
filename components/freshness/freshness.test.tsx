@@ -21,9 +21,17 @@ describe("IndexedAt", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("formats ISO timestamps", () => {
-    render(<IndexedAt computedAt="2026-07-28T12:00:00.000Z" />);
-    expect(screen.getByText(/last indexed/i)).toBeInTheDocument();
+  it("renders a fresh relative label", () => {
+    const nowMs = Date.parse("2026-07-28T12:10:00.000Z");
+    render(<IndexedAt computedAt="2026-07-28T12:00:00.000Z" nowMs={nowMs} label="Last indexed" />);
+    expect(screen.getByText(/Last indexed 10m ago/i)).toBeInTheDocument();
+  });
+
+  it("warns loudly when the index is stale", () => {
+    const nowMs = Date.parse("2026-07-28T14:00:00.000Z");
+    render(<IndexedAt computedAt="2026-07-28T12:00:00.000Z" nowMs={nowMs} />);
+    expect(screen.getByText(/Index last updated 2h ago/i)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeInTheDocument();
   });
 });
 

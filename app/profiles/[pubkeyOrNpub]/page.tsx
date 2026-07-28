@@ -9,7 +9,7 @@ import { EntityActions } from "@/components/actions/entity-actions";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
-import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
+import { AboutThisData } from "@/components/explorer/about-this-data";
 import {
   isRecord,
   normalizeImageSrc,
@@ -27,7 +27,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { Disclosure } from "@/components/ui/disclosure";
 import { SectionCard } from "@/components/ui/section-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ErrorPanel } from "@/components/ui/status-panels";
+import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
 import { hexToNpub } from "@/lib/nostr/nip19";
 import { buildProfileActivityTabHref } from "@/lib/profile/activity-tabs";
 import {
@@ -273,7 +273,13 @@ export default async function ProfilePage({
 
   return (
     <div className="space-y-8">
-      {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
+      {errorMessage ? (
+        profile ? (
+          <SoftRefreshNote message={errorMessage} />
+        ) : (
+          <ErrorPanel message={errorMessage} />
+        )
+      ) : null}
 
       <SectionCard title="Profile" description="Identity-first explorer surface for this account.">
         <div className="space-y-4">
@@ -295,7 +301,6 @@ export default async function ProfilePage({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <NativeSemanticsBadges semantics={semantics} />
             {heroNpubOrPubkey?.raw ? (
               <IdBadge
                 id={heroNpubOrPubkey.raw}
@@ -448,6 +453,8 @@ export default async function ProfilePage({
           <EmptyState message="No lower-level identity details were returned for this profile." />
         )}
       </Disclosure>
+
+      <AboutThisData semantics={semantics} />
 
       <div className="space-y-3">
         <DebugDisclosure title="Debug payload: profile summary" data={summary ?? {}} />

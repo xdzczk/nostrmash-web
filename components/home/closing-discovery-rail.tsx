@@ -124,7 +124,7 @@ function HashtagDiscoveryModule({
   return (
     <section className="border-edge/90 nm-panel-fuchsia flex h-full flex-col rounded-[1.4rem] border p-4 sm:p-5 xl:p-6">
       <header className="space-y-2.5">
-        <div className="text-[11px] font-medium tracking-[0.18em] text-fuchsia-300/90 uppercase">
+        <div className="text-accent-fuchsia-ink/90 text-[11px] font-medium tracking-[0.18em] uppercase">
           Hashtags
         </div>
         <h3 className="text-ink-strong text-lg font-semibold tracking-tight">
@@ -159,7 +159,7 @@ function HashtagDiscoveryModule({
                           href={item.href}
                           className="hover:bg-surface/40 flex items-baseline gap-4 rounded-2xl px-1 py-3 transition"
                         >
-                          <span className="w-9 shrink-0 text-right text-[11px] font-medium tracking-[0.2em] text-fuchsia-300/80 uppercase">
+                          <span className="text-accent-fuchsia-ink/80 w-9 shrink-0 text-right text-[11px] font-medium tracking-[0.2em] uppercase">
                             {String(rank).padStart(2, "0")}
                           </span>
                           <div className="min-w-0 flex-1">
@@ -196,7 +196,7 @@ function HashtagDiscoveryModule({
       </div>
 
       <div className="text-ink-faint mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-        <Link href="/trending/hashtags" className="hover:text-fuchsia-200">
+        <Link href="/trending/hashtags" className="hover:text-accent-fuchsia-ink">
           See all hashtags
         </Link>
       </div>
@@ -219,7 +219,7 @@ function DomainDiscoveryModule({
   return (
     <section className="border-edge/90 nm-panel-sky flex h-full flex-col rounded-[1.4rem] border p-4 sm:p-5 xl:p-6">
       <header className="space-y-2.5">
-        <div className="text-[11px] font-medium tracking-[0.18em] text-sky-300/90 uppercase">
+        <div className="text-accent-sky-ink/90 text-[11px] font-medium tracking-[0.18em] uppercase">
           Domains
         </div>
         <h3 className="text-ink-strong text-lg font-semibold tracking-tight">
@@ -260,7 +260,7 @@ function DomainDiscoveryModule({
                               <span title={item.rawLabel}>{item.label}</span>
                             </p>
                             {item.metric ? (
-                              <span className="inline-flex items-center rounded-full border border-sky-400/20 bg-sky-400/8 px-2 py-0.5 text-[10px] font-medium text-sky-100/90">
+                              <span className="border-accent-sky/25 bg-accent-sky/10 text-accent-sky-ink/90 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium">
                                 {item.metric.valueLabel}
                               </span>
                             ) : null}
@@ -287,7 +287,7 @@ function DomainDiscoveryModule({
       </div>
 
       <div className="text-ink-faint mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-        <Link href="/trending/domains" className="hover:text-sky-200">
+        <Link href="/trending/domains" className="hover:text-accent-sky-ink">
           See all domains
         </Link>
       </div>

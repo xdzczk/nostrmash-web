@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 
 import { EmptyState } from "@/components/explorer/empty-state";
 import { DiscoveryActionLinks } from "@/components/explorer/card-grammar";
-import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
+import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
 import { NoteCard } from "@/components/explorer/note-card";
 import { getNotePreviewPresentation } from "@/components/explorer/note-preview";
@@ -21,7 +21,7 @@ import {
   profileSecondaryLabel,
 } from "@/components/explorer/utils";
 import { SectionCard } from "@/components/ui/section-card";
-import { ErrorPanel } from "@/components/ui/status-panels";
+import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
 import { WindowSelector } from "@/components/explorer/window-selector";
 import {
   getTrendingDomains,
@@ -38,7 +38,7 @@ import {
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
 import type { EventRecord, Profile } from "@/lib/types/api";
-import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
+import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 const nextMoves = [
   {
@@ -150,9 +150,7 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
   const errors = [notesResult, profilesResult, hashtagsResult, domainsResult]
     .filter((result): result is PromiseRejectedResult => result.status === "rejected")
     .map((result) => toUserFacingErrorMessage(result.reason, "Trending request failed."));
-  if (errors.length > 0) {
-    errorMessage = errors.join(" | ");
-  }
+  errorMessage = summarizeLoadErrors(errors) ?? "";
 
   if (notes?.notes?.length) {
     try {
@@ -291,7 +289,6 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
             <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-0.5">
               {trendWindowLabel}
             </span>
-            <NativeSemanticsBadges semantics={semantics} />
             <span className="text-ink-muted">
               Notes {(notes?.notes?.length ?? 0).toLocaleString()} • Profiles{" "}
               {(profiles?.profiles?.length ?? 0).toLocaleString()} • Hashtags{" "}
@@ -301,7 +298,13 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
           </div>
         }
       />
-      {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
+      {errorMessage ? (
+        (notes?.notes?.length ?? 0) > 0 || (profiles?.profiles?.length ?? 0) > 0 ? (
+          <SoftRefreshNote message={errorMessage} />
+        ) : (
+          <ErrorPanel message={errorMessage} />
+        )
+      ) : null}
       <div className="space-y-5">
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
           <SectionCard
@@ -420,7 +423,7 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
                     >
                       <div className="min-w-0">
                         <div className="flex min-w-0 items-center gap-2 text-sm">
-                          <span className="shrink-0 text-xs font-medium text-emerald-300">
+                          <span className="text-success-ink shrink-0 text-xs font-medium">
                             #{rank}
                           </span>
                           {profileHref ? (
@@ -646,6 +649,7 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
           </div>
         </section>
       </div>
+      <AboutThisData semantics={semantics} />
     </div>
   );
 }

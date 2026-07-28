@@ -27,7 +27,7 @@ import {
   fetchEventsById,
   fetchProfilesByPubkey,
 } from "@/lib/api/profile-hydration";
-import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
+import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import {
   buildProfileActivityContinuationHref,
   buildProfileActivityTabHref,
@@ -148,7 +148,7 @@ export async function loadProfileFocalData(pubkeyOrNpub: string) {
     lookupKey,
     profileEnrichment,
     semantics,
-    errorMessage: errors.filter(Boolean).join(" | "),
+    errorMessage: summarizeLoadErrors(errors) ?? "",
     profileRoute,
   };
 }
@@ -421,7 +421,7 @@ export async function loadProfileActivityData(
     authoredZapsPayload,
     bookmarks,
     bookmarksPayload,
-    errorMessage: errors.filter(Boolean).join(" | "),
+    errorMessage: summarizeLoadErrors(errors) ?? "",
     eventListAuthorsByPubkey,
     highlights,
     highlightsPayload,
@@ -511,7 +511,7 @@ export async function loadProfileDiscoveryData(
   );
 
   return {
-    errorMessage: errors.filter(Boolean).join(" | "),
+    errorMessage: summarizeLoadErrors(errors) ?? "",
     relatedProfiles,
     relatedProfilesContinuationHref,
     relatedProfilesFallbackPayload,
@@ -561,9 +561,9 @@ export async function loadProfilePageData(
     ...activity,
     ...discovery,
     currentSearchParams: toUrlSearchParams(resolvedSearchParams),
-    errorMessage: [focal.errorMessage, activity.errorMessage, discovery.errorMessage]
-      .filter(Boolean)
-      .join(" | "),
+    errorMessage:
+      summarizeLoadErrors([focal.errorMessage, activity.errorMessage, discovery.errorMessage]) ??
+      "",
     semantics,
   };
 }

@@ -4,12 +4,12 @@ import Link from "next/link";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
-import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
+import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
 import { StatCard } from "@/components/explorer/stat-card";
 import { HashtagsList, NotesList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
-import { ErrorPanel } from "@/components/ui/status-panels";
+import { ErrorPanel, LoadErrors } from "@/components/ui/status-panels";
 import { getHashtagDetail, getHashtagNotes, getRelatedHashtags } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
@@ -139,7 +139,6 @@ export default async function HashtagPage({ params }: { params: Params }) {
         subtitle="See related notes and nearby topics for this hashtag."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <NativeSemanticsBadges semantics={semantics} />
             <IdBadge id={hashtagTitle(normalizedHashtag)} label="hashtag" />
             {typeof totalMentions === "number" ? (
               <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
@@ -171,7 +170,7 @@ export default async function HashtagPage({ params }: { params: Params }) {
         }
       />
 
-      {errors.length > 0 ? <ErrorPanel message={errors.join(" | ")} /> : null}
+      <LoadErrors errors={errors} />
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {typeof totalMentions === "number" ? (
@@ -209,6 +208,7 @@ export default async function HashtagPage({ params }: { params: Params }) {
       <div className="space-y-3">
         <DebugDisclosure title="Debug payload: hashtag detail" data={hashtagDetailPayload ?? {}} />
         <DebugDisclosure title="Debug payload: hashtag notes" data={hashtagNotesPayload ?? {}} />
+        <AboutThisData semantics={semantics} />
         <DebugDisclosure
           title="Debug payload: related hashtags"
           data={relatedHashtagsPayload ?? {}}

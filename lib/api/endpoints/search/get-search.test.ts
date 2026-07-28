@@ -50,7 +50,7 @@ describe("getSearch", () => {
     expect(result.notes).toHaveLength(1);
     expect(result.notes?.[0]?.id).toBe(noteId);
     expect(result.profiles).toEqual([]);
-    expect(mockedGetEvent).toHaveBeenCalledWith(noteId, "requestTime");
+    expect(mockedGetEvent).toHaveBeenCalledWith(noteId, "shortTtl");
   });
 
   it("returns profiles-tab results and falls back to direct profile lookup", async () => {
@@ -69,7 +69,7 @@ describe("getSearch", () => {
     expect(result.profiles).toHaveLength(1);
     expect(result.profiles?.[0]?.display_name).toBe("Ada");
     expect(result.notes).toEqual([]);
-    expect(mockedGetProfile).toHaveBeenCalledWith(pubkey, "requestTime");
+    expect(mockedGetProfile).toHaveBeenCalledWith(pubkey, "shortTtl");
   });
 
   it("merges all-tab surfaces and keeps partial failures as surface errors", async () => {
@@ -101,7 +101,7 @@ describe("getSearch", () => {
     expect(result.profiles?.some((profile) => profile.display_name === "Ada")).toBe(true);
     expect(result.hashtags?.[0]?.hashtag).toBe("bitcoin");
     expect(result.relays).toContain("wss://relay.example");
-    expect(result.surface_errors?.notes).toMatch(/notes surface down/i);
+    expect(result.surface_errors?.notes).toBe("Notes search failed.");
   });
 
   it("uses the search bundle when include=suggest data is present", async () => {

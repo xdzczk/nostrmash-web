@@ -69,7 +69,7 @@ export function ProfileCard({
   return (
     <article
       className={`group nm-lift ${cardTierClassName("standard")} ${
-        isTopRank ? "bg-surface/60 border-emerald-500/20" : "border-edge/85 bg-surface/45"
+        isTopRank ? "bg-surface/60 border-success/25" : "border-edge/85 bg-surface/45"
       }`}
     >
       <div className="flex items-start gap-3">

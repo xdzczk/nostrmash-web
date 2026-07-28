@@ -4,8 +4,8 @@ export type InputVariant = "default" | "hero";
 
 const VARIANT: Record<InputVariant, string> = {
   default:
-    "border-edge-strong bg-surface-sunken px-4 py-3 text-sm focus:ring-2 focus:ring-accent-soft",
-  hero: "border-edge-strong/90 bg-surface-sunken/90 px-5 py-3.5 text-[0.95rem] focus:border-edge-strong focus:ring-2 focus:ring-accent-soft/70 xl:py-4",
+    "border-edge-strong bg-surface-sunken px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-accent-soft",
+  hero: "border-edge-strong/90 bg-surface-sunken/90 px-5 py-3.5 text-[0.95rem] focus-visible:border-edge-strong focus-visible:ring-2 focus-visible:ring-accent-soft/70 xl:py-4",
 };
 
 const BASE =

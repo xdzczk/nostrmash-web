@@ -195,22 +195,16 @@ function mergeAllTabResults(args: {
 
   const surfaceErrors: NonNullable<SearchResponse["surface_errors"]> = {};
   if (searchResult.status === "rejected") {
-    surfaceErrors.search =
-      searchResult.reason instanceof Error ? searchResult.reason.message : "Search failed.";
+    surfaceErrors.search = "Search failed.";
   }
   if (notesResult?.status === "rejected") {
-    surfaceErrors.notes =
-      notesResult.reason instanceof Error ? notesResult.reason.message : "Notes search failed.";
+    surfaceErrors.notes = "Notes search failed.";
   }
   if (profilesResult?.status === "rejected") {
-    surfaceErrors.profiles =
-      profilesResult.reason instanceof Error
-        ? profilesResult.reason.message
-        : "Profiles search failed.";
+    surfaceErrors.profiles = "Profiles search failed.";
   }
   if (suggestResult?.status === "rejected") {
-    surfaceErrors.suggest =
-      suggestResult.reason instanceof Error ? suggestResult.reason.message : "Suggest failed.";
+    surfaceErrors.suggest = "Suggest failed.";
   }
 
   if (
@@ -219,9 +213,7 @@ function mergeAllTabResults(args: {
     profilesResult?.status === "rejected" &&
     suggestResult?.status === "rejected"
   ) {
-    throw new Error(
-      Object.values(surfaceErrors).join(" | ") || "All search surfaces failed for this query."
-    );
+    throw new Error("All search surfaces failed for this query.");
   }
 
   const sourceSectionTotals = [searchResult, notesResult, profilesResult, suggestResult]

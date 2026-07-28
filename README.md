@@ -38,7 +38,7 @@ Public explorer and analytics web surface for NostrMash.
 | `/stats`                       | Network and content stats   |
 | `/methodology`                 | How to interpret the index  |
 
-Primary nav: Home, Search, Trends, Relays, Methodology.
+Primary nav: Home, Search, Trends, Relays, Stats, Methodology (Methodology lives in the desktop nav and site footer; the mobile bottom bar keeps five primary destinations).
 
 ## API contract
 

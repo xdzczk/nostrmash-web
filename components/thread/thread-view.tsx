@@ -39,8 +39,8 @@ export function ThreadView({
   return (
     <div className="space-y-5">
       {missingAncestorIds.length > 0 ? (
-        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3">
-          <p className="text-xs break-all text-amber-200">
+        <div className="border-warning/30 bg-warning-soft rounded-md border p-3">
+          <p className="text-warning-ink text-xs break-all">
             Missing ancestors: {missingAncestorIds.slice(0, 4).join(", ")}
             {missingAncestorIds.length > 4 ? ` +${missingAncestorIds.length - 4} more` : ""}
           </p>

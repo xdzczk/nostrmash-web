@@ -19,13 +19,13 @@ export const metadata: Metadata = {
 function admissionBadge(state: string | undefined) {
   if (!state) return null;
   const colors: Record<string, string> = {
-    active: "border-emerald-700/60 text-emerald-300",
-    pinned: "border-sky-700/60 text-sky-300",
-    probation: "border-amber-700/60 text-amber-300",
+    active: "border-success/50 text-success-ink",
+    pinned: "border-accent-sky/50 text-accent-sky-ink",
+    probation: "border-warning/50 text-warning-ink",
     candidate: "border-edge-strong text-ink-muted",
     inactive: "border-edge-strong text-ink-faint",
-    blocked: "border-red-800/60 text-red-400",
-    draining: "border-orange-700/60 text-orange-300",
+    blocked: "border-danger/50 text-danger-ink",
+    draining: "border-warning/45 text-warning-ink",
   };
   return (
     <span

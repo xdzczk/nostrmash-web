@@ -14,7 +14,7 @@ import { isApiTimeoutError } from "@/lib/api/http";
 import { fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { extractRelayRows, pickTopPrimitiveStats } from "@/components/explorer/stats-utils";
 import { isRecord } from "@/components/explorer/utils";
-import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
+import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import {
   networkPulsePreferredKeys,
@@ -309,7 +309,7 @@ export async function loadHomePageData(
   return {
     window,
     currentSearchParams,
-    errorMessage: failedMessages.length > 0 ? failedMessages.join(" | ") : "",
+    errorMessage: summarizeLoadErrors(failedMessages) ?? "",
     homeTimedOut,
     homeNotes,
     hydratedHomeProfiles,

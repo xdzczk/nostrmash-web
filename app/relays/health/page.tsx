@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { extractRelayHealthRows, relayHealthPosture } from "@/components/explorer/stats-utils";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
-import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
+import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
 import { MetadataList } from "@/components/explorer/metadata-list";
 import { SectionCard } from "@/components/ui/section-card";
@@ -61,7 +61,6 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
         subtitle="Current relay health, shown directly from the health feed."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <NativeSemanticsBadges semantics={semantics} />
             <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
               healthy: {posture.healthy.toLocaleString()}
             </span>
@@ -132,6 +131,7 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
         ) : null}
       </SectionCard>
 
+      <AboutThisData semantics={semantics} />
       <DebugDisclosure title="Debug payload: relay health" data={payload ?? {}} />
     </div>
   );

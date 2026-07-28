@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { fetchApiJson, isApiTimeoutError } from "@/lib/api/http";
+import type * as SentryModule from "@/lib/telemetry/sentry";
 
 const captureApiError = vi.fn();
 
 vi.mock("@/lib/telemetry/sentry", async () => {
-  const actual =
-    await vi.importActual<typeof import("@/lib/telemetry/sentry")>("@/lib/telemetry/sentry");
+  const actual = await vi.importActual<typeof SentryModule>("@/lib/telemetry/sentry");
   return {
     ...actual,
     captureApiError: (...args: unknown[]) => captureApiError(...args),

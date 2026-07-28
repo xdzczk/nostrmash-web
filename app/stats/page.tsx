@@ -9,7 +9,7 @@ import {
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { MetadataList } from "@/components/explorer/metadata-list";
-import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
+import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
 import { StatCard } from "@/components/explorer/stat-card";
 import { formatMetricLabel, isRecord } from "@/components/explorer/utils";
@@ -220,7 +220,6 @@ export default async function StatsPage({
             <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1 text-xs">
               {formatStatsWindowLabel(window)}
             </span>
-            <NativeSemanticsBadges semantics={semantics} />
           </div>
         }
       />
@@ -320,6 +319,7 @@ export default async function StatsPage({
       <div className="space-y-3">
         <DebugDisclosure title="Debug payload: network stats" data={network ?? {}} />
         <DebugDisclosure title="Debug payload: content stats" data={content ?? {}} />
+        <AboutThisData semantics={semantics} />
         <DebugDisclosure title="Debug payload: relay stats" data={relays ?? {}} />
       </div>
     </div>

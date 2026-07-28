@@ -63,12 +63,17 @@ export function NoteCard({
     ? profileSecondaryLabel(resolvedAuthor)
     : noteAuthorIdentifier(note);
   const authorPictureUrl = resolvedAuthor ? profilePictureUrl(resolvedAuthor) : null;
-  const authorAvatarSrc =
-    resolvedAuthor && (authorPictureUrl ?? profileFallbackAvatarDataUrl(resolvedAuthor));
+  const authorAvatarSrc = resolvedAuthor
+    ? (authorPictureUrl ?? profileFallbackAvatarDataUrl(resolvedAuthor))
+    : typeof note.pubkey === "string" && note.pubkey.length > 0
+      ? profileFallbackAvatarDataUrl({ pubkey: note.pubkey })
+      : null;
   const authorHref =
     resolvedAuthor && profileIdentifier(resolvedAuthor) !== "unknown"
       ? `/profiles/${encodeURIComponent(profileIdentifier(resolvedAuthor))}`
-      : undefined;
+      : typeof note.pubkey === "string" && note.pubkey.length > 0
+        ? `/profiles/${encodeURIComponent(note.pubkey)}`
+        : undefined;
   const content =
     typeof note.content === "string" && note.content.length > 0 ? note.content : "(no content)";
   const preview = getNotePreviewPresentation(note);
@@ -121,8 +126,11 @@ export function NoteCard({
             className="border-edge-strong h-10 w-10 rounded-full border object-cover sm:h-11 sm:w-11"
           />
         ) : (
-          <div className="bg-surface-sunken/70 text-ink-faint flex h-10 w-10 items-center justify-center rounded-full text-xs sm:h-11 sm:w-11">
-            ?
+          <div
+            aria-hidden
+            className="bg-surface-sunken/70 text-ink-faint flex h-10 w-10 items-center justify-center rounded-full text-xs sm:h-11 sm:w-11"
+          >
+            {authorLabel.slice(0, 1).toUpperCase() || "?"}
           </div>
         )}
         <div className="min-w-0 flex-1">

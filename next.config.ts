@@ -9,7 +9,7 @@ if (process.env.NODE_ENV === "development") {
 }
 
 // CSP (incl. per-request script nonce + embed frame-ancestors carve-out) is set
-// in proxy.ts so Next can stamp nonces onto framework scripts during SSR.
+// in middleware.ts so Next can stamp nonces onto framework scripts during SSR.
 const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-Content-Type-Options", value: "nosniff" },

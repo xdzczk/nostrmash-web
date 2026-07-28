@@ -18,7 +18,7 @@ import { buildCursorQuery, type CursorQuery, nativeApiV1Routes } from "@/lib/api
 
 export async function getHashtagDetail(
   hashtag: string,
-  cacheClass: CacheClass = "requestTime"
+  cacheClass: CacheClass = "shortTtl"
 ): Promise<HashtagDetailResponse> {
   const normalizedHashtag = normalizeHashtagQuery(hashtag);
   const response = await fetchApiJson<HashtagDetailApiResponse>(
@@ -32,7 +32,7 @@ export async function getHashtagDetail(
 
 export async function getHashtagNotes(
   hashtag: string,
-  cacheClass: CacheClass = "requestTime",
+  cacheClass: CacheClass = "shortTtl",
   query?: CursorQuery
 ): Promise<HashtagNotesResponse> {
   const normalizedHashtag = normalizeHashtagQuery(hashtag);
@@ -48,7 +48,7 @@ export async function getHashtagNotes(
 
 export async function getRelatedHashtags(
   hashtag: string,
-  cacheClass: CacheClass = "requestTime",
+  cacheClass: CacheClass = "shortTtl",
   query?: CursorQuery
 ): Promise<RelatedHashtagsResponse> {
   const normalizedHashtag = normalizeHashtagQuery(hashtag);

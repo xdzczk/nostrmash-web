@@ -4,11 +4,11 @@ import Link from "next/link";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
-import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
+import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
 import { HashtagsList, NotesList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
-import { ErrorPanel } from "@/components/ui/status-panels";
+import { ErrorPanel, LoadErrors } from "@/components/ui/status-panels";
 import { getHashtagNotes, getRelatedHashtags } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
@@ -127,7 +127,6 @@ export default async function HashtagNotesPage({
         subtitle="All available notes returned by the hashtag notes endpoint."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <NativeSemanticsBadges semantics={semantics} />
             <IdBadge id={hashtagTitle(normalizedHashtag)} label="hashtag" />
             {typeof hashtagNotesPayload?.total === "number" ? (
               <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
@@ -159,7 +158,7 @@ export default async function HashtagNotesPage({
         }
       />
 
-      {errors.length > 0 ? <ErrorPanel message={errors.join(" | ")} /> : null}
+      <LoadErrors errors={errors} />
 
       <SectionCard title="Hashtag notes" description="Notes using this hashtag.">
         {notes.length > 0 ? (
@@ -192,6 +191,7 @@ export default async function HashtagNotesPage({
 
       <div className="space-y-3">
         <DebugDisclosure title="Debug payload: hashtag notes" data={hashtagNotesPayload ?? {}} />
+        <AboutThisData semantics={semantics} />
         <DebugDisclosure
           title="Debug payload: related hashtags"
           data={relatedHashtagsPayload ?? {}}

@@ -186,7 +186,7 @@ export async function getRelatedNotes(
   return normalizeRelatedNotesResponse(response);
 }
 
-export async function getNoteSummary(eventId: string, cacheClass: CacheClass = "requestTime") {
+export async function getNoteSummary(eventId: string, cacheClass: CacheClass = "shortTtl") {
   const response = await fetchApiJson<NoteSummaryApiResponse>(
     nativeApiV1Routes.noteSummaryByEventId(eventId),
     {

@@ -193,6 +193,21 @@ export function formatValue(value: unknown): string {
   return String(value);
 }
 
+/** Compact number for dense UI (33.1M, 615K). Falls back to locale string. */
+export function formatCompactNumber(value: unknown): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return formatValue(value);
+  }
+  try {
+    return new Intl.NumberFormat("en", {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(value);
+  } catch {
+    return value.toLocaleString();
+  }
+}
+
 function getProfileCandidateRecords(profile: Profile): Record<string, unknown>[] {
   const root = profile as Record<string, unknown>;
   const nestedProfile = isRecord(root.profile) ? root.profile : null;
@@ -377,9 +392,16 @@ export function profileInitial(profile: Profile): string {
 
 export function noteAuthorIdentifier(note: EventRecord): string {
   if (typeof note.pubkey === "string" && note.pubkey.length > 0) {
+    const npub = hexToNpub(note.pubkey);
+    if (npub) return truncateIdentifier(npub, "npub", "primary");
     return truncateIdentifier(note.pubkey, "pubkey", "primary");
   }
   return "Author";
+}
+
+/** Seeded gradient avatar for a pubkey when no Profile object is available. */
+export function pubkeyFallbackAvatarDataUrl(pubkey: string): string {
+  return profileFallbackAvatarDataUrl({ pubkey });
 }
 
 export function noteInlineAuthorProfile(note: EventRecord): Profile | undefined {

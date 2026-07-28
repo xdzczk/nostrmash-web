@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { DiscoveryActionLinks } from "@/components/explorer/card-grammar";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { WindowSelector } from "@/components/explorer/window-selector";
-import { truncateIdentifier } from "@/components/explorer/utils";
+import { formatCompactNumber, truncateIdentifier } from "@/components/explorer/utils";
 import { IndexedAt } from "@/components/freshness/indexed-at";
 import { LiveRefresh } from "@/components/freshness/live-refresh";
 import { ClosingDiscoveryRail } from "@/components/home/closing-discovery-rail";
@@ -15,7 +15,7 @@ import { TrendingFeaturedModule } from "@/components/home/trending-featured-modu
 import { SearchForm } from "@/components/search/search-form";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ErrorPanel } from "@/components/ui/status-panels";
+import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
 import { loadHomePageData } from "@/lib/home/load-home-page-data";
 import { absoluteUrl } from "@/lib/seo/metadata";
 import { buildWindowHref, formatStatsWindowLabel } from "@/lib/search-params/window";
@@ -137,7 +137,13 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         }}
       />
       <div className="mx-auto w-full max-w-[92rem] space-y-12 sm:space-y-16 xl:space-y-[5.1rem]">
-        {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
+        {errorMessage ? (
+          flagshipNotes.length > 0 || profileHighlights.length > 0 ? (
+            <SoftRefreshNote message={errorMessage} />
+          ) : (
+            <ErrorPanel message={errorMessage} />
+          )
+        ) : null}
         <IndexedAt computedAt={computedAt} />
         <section className="border-edge/90 nm-panel-hero relative overflow-hidden rounded-[2rem] border p-5 sm:p-7 xl:p-9 2xl:px-10">
           <div aria-hidden className="nm-aurora-layer pointer-events-none absolute inset-0" />
@@ -208,8 +214,10 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                       className="flex items-baseline justify-between gap-3 text-sm"
                     >
                       <p className="text-ink-faint text-[11px]">{stat.label}</p>
-                      <p className="text-ink text-base font-semibold tracking-tight">
-                        {String(stat.value)}
+                      <p className="text-ink text-base font-semibold tracking-tight tabular-nums">
+                        {typeof stat.value === "number"
+                          ? formatCompactNumber(stat.value)
+                          : String(stat.value)}
                       </p>
                     </article>
                   ))}

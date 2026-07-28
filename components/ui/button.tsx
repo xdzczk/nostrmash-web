@@ -9,7 +9,7 @@ const VARIANT: Record<ButtonVariant, string> = {
     "rounded-lg border border-edge-strong bg-surface/60 text-ink-soft hover:border-edge-strong/80 hover:bg-surface/80",
   ghost: "rounded-lg text-ink-dim hover:bg-surface/60 hover:text-ink",
   chip: "rounded-full border border-edge-strong/90 bg-surface/70 text-ink-dim hover:border-edge-strong hover:text-ink",
-  danger: "rounded-lg bg-red-500 text-white hover:bg-red-400 focus-visible:ring-red-300/70",
+  danger: "rounded-lg bg-danger text-white hover:bg-danger/90 focus-visible:ring-danger/70",
 };
 
 const SIZE: Record<ButtonSize, string> = {
@@ -20,6 +20,19 @@ const SIZE: Record<ButtonSize, string> = {
 
 const BASE =
   "nm-pressable inline-flex shrink-0 items-center justify-center gap-2 font-medium focus-visible:ring-2 focus-visible:ring-accent-soft/70 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50";
+
+/** Shared class recipe for `<button>` and link-styled buttons (e.g. not-found). */
+export function buttonClassName({
+  variant = "primary",
+  size = "md",
+  className = "",
+}: {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  className?: string;
+} = {}): string {
+  return `${BASE} ${SIZE[size]} ${VARIANT[variant]} ${className}`.trim();
+}
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -38,7 +51,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <button
       ref={ref}
       type={type}
-      className={`${BASE} ${SIZE[size]} ${VARIANT[variant]} ${className}`.trim()}
+      className={buttonClassName({ variant, size, className })}
       {...props}
     />
   );

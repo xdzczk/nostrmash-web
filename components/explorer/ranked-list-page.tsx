@@ -3,13 +3,12 @@ import type { ReactNode } from "react";
 
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
-import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
+import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
 import { WindowSelector } from "@/components/explorer/window-selector";
 import { JsonLd } from "@/components/seo/json-ld";
 import { SectionCard } from "@/components/ui/section-card";
-import { ErrorPanel } from "@/components/ui/status-panels";
-import { hasNativeSemantics } from "@/lib/explorer/ranked-list";
+import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
 import { absoluteUrl } from "@/lib/seo/metadata";
 import { formatStatsWindowLabel, type StatsWindow } from "@/lib/search-params/window";
 import type { NativeApiSemantics } from "@/lib/types/api";
@@ -84,12 +83,12 @@ export function RankedListPage({
               {formatStatsWindowLabel(window)}
             </span>
             {heroExtraBadges}
-            {hasNativeSemantics(semantics) ? <NativeSemanticsBadges semantics={semantics} /> : null}
           </div>
         }
       />
       <SectionCard title={sectionTitle} description={sectionDescription}>
-        {errorMessage ? (
+        {errorMessage && hasItems ? <SoftRefreshNote message={errorMessage} /> : null}
+        {errorMessage && !hasItems ? (
           <ErrorPanel message={errorMessage} />
         ) : hasItems ? (
           children
@@ -103,6 +102,7 @@ export function RankedListPage({
         ) : null}
         {footer}
       </SectionCard>
+      <AboutThisData semantics={semantics} />
       <DebugDisclosure title="Debug payload" data={debugPayload ?? {}} />
     </div>
   );

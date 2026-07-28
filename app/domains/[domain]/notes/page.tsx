@@ -5,11 +5,11 @@ import { notFound } from "next/navigation";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
-import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
+import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
 import { NotesList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
-import { ErrorPanel } from "@/components/ui/status-panels";
+import { LoadErrors } from "@/components/ui/status-panels";
 import { getDomainNotes } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
@@ -91,7 +91,6 @@ export default async function DomainNotesPage({
         subtitle="All available notes returned by the domain notes endpoint."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <NativeSemanticsBadges semantics={semantics} />
             <IdBadge id={domainTitle(normalizedDomain)} label="domain" />
             {typeof domainNotesPayload?.total === "number" ? (
               <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
@@ -123,7 +122,7 @@ export default async function DomainNotesPage({
         }
       />
 
-      {errors.length > 0 ? <ErrorPanel message={errors.join(" | ")} /> : null}
+      <LoadErrors errors={errors} />
 
       <SectionCard title="Domain notes" description="Notes linking to this domain.">
         {notes.length > 0 ? (
@@ -146,6 +145,7 @@ export default async function DomainNotesPage({
         )}
       </SectionCard>
 
+      <AboutThisData semantics={semantics} />
       <DebugDisclosure title="Debug payload: domain notes" data={domainNotesPayload ?? {}} />
     </div>
   );

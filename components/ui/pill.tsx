@@ -8,7 +8,7 @@ const PILL_TONE: Record<PillTone, string> = {
   entity: "border-accent-soft/30 bg-accent/10 text-link-hover",
   reason: "border-edge-strong/75 bg-surface/70 text-ink-dim",
   stat: "border-edge-strong/80 bg-surface/60 text-ink-soft",
-  rank: "border-emerald-500/35 bg-emerald-500/10 text-emerald-300",
+  rank: "border-success/35 bg-success-soft text-success-ink",
   neutral: "border-edge-strong bg-surface/40 text-ink-dim",
 };
 

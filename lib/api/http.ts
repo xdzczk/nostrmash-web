@@ -87,11 +87,9 @@ function buildApiUrl(path: string, query?: URLSearchParams): string {
 function formatErrorDetails(details: ApiErrorDetails): string {
   const message = typeof details.message === "string" ? details.message : undefined;
   const code = typeof details.code === "string" ? details.code : undefined;
-  const requestId = typeof details.request_id === "string" ? details.request_id : undefined;
-  const parts = [message ?? code, requestId ? `request_id: ${requestId}` : undefined].filter(
-    Boolean
-  );
-  return parts.join(" - ");
+  // Keep request_id on ApiError.requestId for Sentry — never embed it in the
+  // human-facing message string (it was leaking into ErrorPanels).
+  return message ?? code ?? "Unknown API error";
 }
 
 function formatErrorValue(

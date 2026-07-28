@@ -230,7 +230,7 @@ export function ProfilesInMotionSpotlight({
         </div>
 
         <div className="text-ink-faint mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-          <Link href="/trending/profiles" className="hover:text-emerald-200">
+          <Link href="/trending/profiles" className="hover:text-success-ink">
             See all profiles
           </Link>
         </div>

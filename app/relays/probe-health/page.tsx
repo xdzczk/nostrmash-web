@@ -19,12 +19,12 @@ export const metadata: Metadata = {
 function probeStatusBadge(status: string | undefined) {
   if (!status) return null;
   const colors: Record<string, string> = {
-    ok: "border-emerald-700/60 text-emerald-300",
-    connect_failed: "border-red-800/60 text-red-400",
-    subscribe_failed: "border-orange-700/60 text-orange-300",
-    eose_timeout: "border-amber-700/60 text-amber-300",
-    protocol_error: "border-red-800/60 text-red-400",
-    rate_limited: "border-yellow-700/60 text-yellow-300",
+    ok: "border-success/50 text-success-ink",
+    connect_failed: "border-danger/50 text-danger-ink",
+    subscribe_failed: "border-warning/50 text-warning-ink",
+    eose_timeout: "border-warning/50 text-warning-ink",
+    protocol_error: "border-danger/50 text-danger-ink",
+    rate_limited: "border-warning/45 text-warning-ink",
     unknown_error: "border-edge-strong text-ink-muted",
   };
   return (
@@ -38,13 +38,13 @@ function probeStatusBadge(status: string | undefined) {
 
 function admissionBadge(state: string) {
   const colors: Record<string, string> = {
-    active: "border-emerald-700/60 text-emerald-300",
-    pinned: "border-sky-700/60 text-sky-300",
-    probation: "border-amber-700/60 text-amber-300",
+    active: "border-success/50 text-success-ink",
+    pinned: "border-accent-sky/50 text-accent-sky-ink",
+    probation: "border-warning/50 text-warning-ink",
     candidate: "border-edge-strong text-ink-muted",
     inactive: "border-edge-strong text-ink-faint",
-    blocked: "border-red-800/60 text-red-400",
-    draining: "border-orange-700/60 text-orange-300",
+    blocked: "border-danger/50 text-danger-ink",
+    draining: "border-warning/45 text-warning-ink",
   };
   return (
     <span
@@ -119,10 +119,10 @@ export default async function RelayProbeHealthPage() {
             <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
               probed relays: {relays.length.toLocaleString()}
             </span>
-            <span className="rounded-full border border-emerald-800/50 px-2 py-1 text-emerald-300">
+            <span className="border-success/45 text-success-ink rounded-full border px-2 py-1">
               healthy: {healthy.toLocaleString()}
             </span>
-            <span className="rounded-full border border-red-800/50 px-2 py-1 text-red-300">
+            <span className="border-danger/45 text-danger-ink rounded-full border px-2 py-1">
               failing: {failing.toLocaleString()}
             </span>
             <Link
@@ -177,7 +177,9 @@ export default async function RelayProbeHealthPage() {
                   <div className="text-ink-faint mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
                     <span>
                       connect:{" "}
-                      <span className={relay.last_connect_ok ? "text-emerald-400" : "text-red-400"}>
+                      <span
+                        className={relay.last_connect_ok ? "text-success-ink" : "text-danger-ink"}
+                      >
                         {relay.last_connect_ok
                           ? "ok"
                           : relay.last_connect_ok === false
@@ -188,7 +190,7 @@ export default async function RelayProbeHealthPage() {
                     <span>
                       subscribe:{" "}
                       <span
-                        className={relay.last_subscribe_ok ? "text-emerald-400" : "text-red-400"}
+                        className={relay.last_subscribe_ok ? "text-success-ink" : "text-danger-ink"}
                       >
                         {relay.last_subscribe_ok
                           ? "ok"
@@ -199,7 +201,7 @@ export default async function RelayProbeHealthPage() {
                     </span>
                     <span>
                       EOSE:{" "}
-                      <span className={relay.last_eose_ok ? "text-emerald-400" : "text-red-400"}>
+                      <span className={relay.last_eose_ok ? "text-success-ink" : "text-danger-ink"}>
                         {relay.last_eose_ok ? "ok" : relay.last_eose_ok === false ? "fail" : "—"}
                       </span>
                     </span>

@@ -36,7 +36,7 @@ export function hasRichIdentity(profile: Profile | undefined): boolean {
 
 export async function fetchProfilesByPubkey(
   pubkeys: Array<string | null | undefined>,
-  cacheClass: CacheClass = "requestTime"
+  cacheClass: CacheClass = "shortTtl"
 ): Promise<ProfilesByPubkey> {
   const normalizedPubkeys = listHydratablePubkeys(pubkeys);
   if (normalizedPubkeys.length === 0) return {};
@@ -65,7 +65,7 @@ export async function fetchProfilesByPubkey(
 
 export async function hydrateProfiles(
   profiles: Profile[],
-  cacheClass: CacheClass = "requestTime"
+  cacheClass: CacheClass = "shortTtl"
 ): Promise<Profile[]> {
   if (profiles.length === 0) return [];
   const sparseProfiles = profiles.filter((profile) => !hasRichIdentity(profile));
@@ -124,7 +124,7 @@ export function extractEventAuthorPubkeys(notes: EventRecord[]): string[] {
 
 export async function fetchEventsById(
   eventIds: Array<string | null | undefined>,
-  cacheClass: CacheClass = "requestTime"
+  cacheClass: CacheClass = "shortTtl"
 ): Promise<Record<string, EventRecord>> {
   const normalizedIds = Array.from(
     new Set(

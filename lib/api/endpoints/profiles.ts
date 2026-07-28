@@ -48,7 +48,7 @@ import {
   withPubkeyCandidates,
 } from "@/lib/api/endpoints/shared";
 
-export async function getProfile(pubkey: string, cacheClass: CacheClass = "requestTime") {
+export async function getProfile(pubkey: string, cacheClass: CacheClass = "shortTtl") {
   return withPubkeyCandidates(
     pubkey,
     async (candidate) => {
@@ -66,7 +66,7 @@ export async function getProfile(pubkey: string, cacheClass: CacheClass = "reque
   );
 }
 
-export async function getProfilesBatch(pubkeys: string[], cacheClass: CacheClass = "requestTime") {
+export async function getProfilesBatch(pubkeys: string[], cacheClass: CacheClass = "shortTtl") {
   const normalizedPubkeys = Array.from(
     new Set(pubkeys.map((pubkey) => pubkey.trim()).filter((pubkey) => pubkey.length > 0))
   );
@@ -89,7 +89,7 @@ export async function getProfilesBatch(pubkeys: string[], cacheClass: CacheClass
   return normalizeProfiles(response.profiles);
 }
 
-export async function getProfileSummary(pubkey: string, cacheClass: CacheClass = "requestTime") {
+export async function getProfileSummary(pubkey: string, cacheClass: CacheClass = "shortTtl") {
   return withPubkeyCandidates(
     pubkey,
     async (candidate) => {
@@ -105,7 +105,7 @@ export async function getProfileSummary(pubkey: string, cacheClass: CacheClass =
 
 export async function getUserLongForm(
   pubkey: string,
-  cacheClass: CacheClass = "requestTime",
+  cacheClass: CacheClass = "shortTtl",
   query?: CursorQuery
 ): Promise<UserLongFormResponse> {
   return withPubkeyCandidates(
@@ -126,7 +126,7 @@ export async function getUserLongForm(
 
 export async function getUserBookmarks(
   pubkey: string,
-  cacheClass: CacheClass = "requestTime",
+  cacheClass: CacheClass = "shortTtl",
   query?: CursorQuery
 ): Promise<UserBookmarksResponse> {
   return withPubkeyCandidates(
@@ -147,7 +147,7 @@ export async function getUserBookmarks(
 
 export async function getUserHighlights(
   pubkey: string,
-  cacheClass: CacheClass = "requestTime",
+  cacheClass: CacheClass = "shortTtl",
   query?: CursorQuery
 ): Promise<UserHighlightsResponse> {
   return withPubkeyCandidates(
@@ -168,7 +168,7 @@ export async function getUserHighlights(
 
 export async function getUserMuteList(
   pubkey: string,
-  cacheClass: CacheClass = "requestTime",
+  cacheClass: CacheClass = "shortTtl",
   query?: CursorQuery
 ): Promise<UserMuteListResponse> {
   return withPubkeyCandidates(
@@ -189,7 +189,7 @@ export async function getUserMuteList(
 
 export async function getUserMutedBy(
   pubkey: string,
-  cacheClass: CacheClass = "requestTime",
+  cacheClass: CacheClass = "shortTtl",
   query?: CursorQuery
 ): Promise<UserMutedByResponse> {
   return withPubkeyCandidates(
@@ -210,7 +210,7 @@ export async function getUserMutedBy(
 
 export async function getRelatedProfiles(
   pubkey: string,
-  cacheClass: CacheClass = "requestTime",
+  cacheClass: CacheClass = "shortTtl",
   query?: CursorQuery
 ): Promise<RelatedProfilesResponse> {
   return withPubkeyCandidates(
@@ -231,7 +231,7 @@ export async function getRelatedProfiles(
 
 export async function getAuthorEvents(
   pubkey: string,
-  cacheClass: CacheClass = "requestTime",
+  cacheClass: CacheClass = "shortTtl",
   query?: CursorQuery
 ): Promise<AuthorEventsResponse> {
   return withPubkeyCandidates(
@@ -252,7 +252,7 @@ export async function getAuthorEvents(
 
 export async function getAuthorReplies(
   pubkey: string,
-  cacheClass: CacheClass = "requestTime",
+  cacheClass: CacheClass = "shortTtl",
   query?: CursorQuery
 ): Promise<AuthorRepliesResponse> {
   return withPubkeyCandidates(
@@ -273,7 +273,7 @@ export async function getAuthorReplies(
 
 export async function getAuthorReactions(
   pubkey: string,
-  cacheClass: CacheClass = "requestTime",
+  cacheClass: CacheClass = "shortTtl",
   query?: CursorQuery
 ): Promise<AuthorReactionsResponse> {
   return withPubkeyCandidates(
@@ -294,7 +294,7 @@ export async function getAuthorReactions(
 
 export async function getAuthorZaps(
   pubkey: string,
-  cacheClass: CacheClass = "requestTime",
+  cacheClass: CacheClass = "shortTtl",
   query?: CursorQuery
 ): Promise<AuthorZapsResponse> {
   return withPubkeyCandidates(

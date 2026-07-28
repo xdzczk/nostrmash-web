@@ -12,12 +12,12 @@ import {
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { MetadataList } from "@/components/explorer/metadata-list";
-import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
+import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
 import { RelayStatList } from "@/components/relays/relay-stat-list";
 import { RelaySummaryCard } from "@/components/relays/relay-summary-card";
 import { SectionCard } from "@/components/ui/section-card";
-import { ErrorPanel } from "@/components/ui/status-panels";
+import { LoadErrors } from "@/components/ui/status-panels";
 import { getRelayHealth, getRelayStats } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
@@ -93,7 +93,6 @@ export default async function RelayPage({ params }: { params: Params }) {
         subtitle="Relay detail with activity rank, health status, and provenance links."
         badges={
           <div className="flex flex-wrap gap-2">
-            <NativeSemanticsBadges semantics={semantics} />
             <Link
               href="/relays"
               className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1 text-xs"
@@ -128,7 +127,7 @@ export default async function RelayPage({ params }: { params: Params }) {
         }
       />
 
-      {errors.length > 0 ? <ErrorPanel message={errors.join(" | ")} /> : null}
+      <LoadErrors errors={errors} />
 
       <RelaySummaryCard
         relayHost={relayHost}
@@ -236,6 +235,7 @@ export default async function RelayPage({ params }: { params: Params }) {
       </div>
 
       <DebugDisclosure title="Debug payload: relay stats aggregate" data={payload ?? {}} />
+      <AboutThisData semantics={semantics} />
       <DebugDisclosure title="Debug payload: relay health" data={healthPayload ?? {}} />
     </div>
   );

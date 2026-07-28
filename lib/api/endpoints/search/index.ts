@@ -11,7 +11,7 @@ import { searchProfilesTab } from "@/lib/api/endpoints/search/profiles-tab";
 
 export async function getSearch(
   query: SearchQuery,
-  cacheClass: CacheClass = "requestTime"
+  cacheClass: CacheClass = "shortTtl"
 ): Promise<SearchResponse> {
   const normalizedQueryText = normalizeSearchQueryText(query.q);
   const normalizedProfileQueryText = normalizeProfileSearchQueryText(query.q);

@@ -15,7 +15,7 @@ import {
 } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { fetchProfilesByPubkey, listHydratablePubkeys } from "@/lib/api/profile-hydration";
-import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
+import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import { readSearchParam, toUrlSearchParams } from "@/lib/search-params/pagination";
 import type { EventRecord, Profile } from "@/lib/types/api";
@@ -137,7 +137,9 @@ export async function loadNoteFocalData(eventId: string) {
 
   const compactErrors = errors.filter((value) => value.length > 0);
   const errorMessage =
-    !noteSummary && !eventPayload && compactErrors.length > 0 ? compactErrors.join(" | ") : "";
+    !noteSummary && !eventPayload && compactErrors.length > 0
+      ? (summarizeLoadErrors(compactErrors) ?? "")
+      : "";
 
   const semantics = extractNativeApiSemantics(
     noteSummary,

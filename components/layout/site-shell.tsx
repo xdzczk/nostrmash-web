@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/branding/brand-logo";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteNav } from "@/components/layout/site-nav";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 
@@ -17,7 +18,7 @@ export async function SiteShell({ children }: { children: ReactNode }) {
     <>
       <a
         href="#main-content"
-        className="nm-pressable border-edge-strong bg-surface text-ink sr-only z-[100] rounded-lg border px-4 py-2 text-sm font-medium focus-visible:not-sr-only focus-visible:fixed focus-visible:top-3 focus-visible:left-4 focus-visible:ring-2 focus-visible:ring-indigo-400/70 focus-visible:outline-none"
+        className="nm-pressable border-edge-strong bg-surface text-ink focus-visible:ring-accent-soft/70 sr-only z-[100] rounded-lg border px-4 py-2 text-sm font-medium focus-visible:not-sr-only focus-visible:fixed focus-visible:top-3 focus-visible:left-4 focus-visible:ring-2 focus-visible:outline-none"
       >
         Skip to content
       </a>
@@ -46,6 +47,9 @@ export async function SiteShell({ children }: { children: ReactNode }) {
       >
         {children}
       </main>
+      <div className="pb-24 sm:pb-0">
+        <SiteFooter />
+      </div>
     </>
   );
 }
