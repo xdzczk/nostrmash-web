@@ -51,7 +51,7 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                   type="button"
                   role="option"
                   aria-selected={active}
-                  className={`flex w-full items-center gap-2.5 px-3 py-2 text-left transition ${
+                  className={`flex min-h-11 w-full items-center gap-2.5 px-3 py-2 text-left transition ${
                     active ? "bg-accent/15 text-ink" : "hover:bg-edge/60 text-ink-dim"
                   }`}
                   onMouseDown={(e) => {
@@ -93,7 +93,7 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                   type="button"
                   role="option"
                   aria-selected={active}
-                  className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition ${
+                  className={`flex min-h-11 w-full items-center justify-between px-3 py-2 text-left text-sm transition ${
                     active ? "bg-accent/15 text-ink" : "hover:bg-edge/60 text-ink-dim"
                   }`}
                   onMouseDown={(e) => {

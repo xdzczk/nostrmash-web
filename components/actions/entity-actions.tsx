@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 
 type ActionKind = "note" | "profile";
 
@@ -44,14 +45,8 @@ export function EntityActions({
   embedHtml?: string;
   njumpUrl?: string;
 }) {
-  const [status, setStatus] = useState<string | null>(null);
-
+  const toast = useToast();
   const label = useMemo(() => (kind === "note" ? "note" : "profile"), [kind]);
-
-  async function announce(message: string) {
-    setStatus(message);
-    window.setTimeout(() => setStatus(null), 2000);
-  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -61,7 +56,8 @@ export function EntityActions({
           variant="secondary"
           onClick={async () => {
             const ok = await copyText(identifier);
-            await announce(ok ? `Copied ${label} id` : "Copy failed");
+            if (ok) toast.success(`Copied ${label} id`);
+            else toast.danger("Copy failed");
           }}
         >
           Copy {kind === "note" ? "nevent" : "npub"}
@@ -73,14 +69,15 @@ export function EntityActions({
             if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
               try {
                 await navigator.share({ url: absoluteUrl, title: `NostrMash ${label}` });
-                await announce("Shared");
+                toast.success("Shared");
                 return;
               } catch {
                 // fall through to copy
               }
             }
             const ok = await copyText(absoluteUrl);
-            await announce(ok ? "Link copied" : "Share failed");
+            if (ok) toast.success("Link copied");
+            else toast.danger("Share failed");
           }}
         >
           Share
@@ -90,7 +87,8 @@ export function EntityActions({
           variant="secondary"
           onClick={async () => {
             const ok = await copyText(nostrUri);
-            await announce(ok ? "nostr: URI copied" : "Copy failed");
+            if (ok) toast.success("nostr: URI copied");
+            else toast.danger("Copy failed");
           }}
         >
           Copy nostr:
@@ -133,14 +131,14 @@ export function EntityActions({
             variant="chip"
             onClick={async () => {
               const ok = await copyText(embedHtml);
-              await announce(ok ? "Embed snippet copied" : "Copy failed");
+              if (ok) toast.success("Embed snippet copied");
+              else toast.danger("Copy failed");
             }}
           >
             Embed
           </Button>
         ) : null}
       </div>
-      {status ? <p className="text-ink-faint text-xs">{status}</p> : null}
     </div>
   );
 }

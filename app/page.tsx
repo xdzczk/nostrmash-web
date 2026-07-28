@@ -145,12 +145,18 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
           )
         ) : null}
         <IndexedAt computedAt={computedAt} />
-        <section className="border-edge/90 nm-panel-hero relative overflow-hidden rounded-[2rem] border p-5 sm:p-7 xl:p-9 2xl:px-10">
-          <div aria-hidden className="nm-aurora-layer pointer-events-none absolute inset-0" />
-          <div className="relative z-10 grid gap-7 sm:gap-8 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.72fr)] xl:items-start xl:gap-10 2xl:grid-cols-[minmax(0,1.52fr)_360px] 2xl:gap-12">
+        <section className="border-edge/90 nm-panel-hero relative rounded-[2rem] border p-5 sm:p-7 xl:p-9 2xl:px-10">
+          {/* Clip aurora to the rounded panel without clipping the search dropdown. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 overflow-hidden rounded-[2rem]"
+          >
+            <div className="nm-aurora-layer absolute inset-0" />
+          </div>
+          <div className="relative z-10 grid gap-7 sm:gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.72fr)] lg:items-start lg:gap-10 2xl:grid-cols-[minmax(0,1.52fr)_360px] 2xl:gap-12">
             <div className="space-y-6 sm:space-y-7">
               <div className="space-y-4 sm:space-y-5">
-                <h1 className="text-ink max-w-4xl text-4xl font-semibold tracking-tight sm:text-5xl xl:max-w-[15ch] xl:text-[3.7rem] xl:leading-[1.02] 2xl:max-w-[16ch] 2xl:text-[4rem]">
+                <h1 className="nm-display-xl text-ink max-w-4xl lg:max-w-[15ch] 2xl:max-w-[16ch]">
                   Track what is moving on Nostr.
                 </h1>
                 <p className="text-ink-muted max-w-2xl text-sm leading-6 sm:text-base">
@@ -175,21 +181,21 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                 </span>
               </div>
             </div>
-            <aside className="border-edge/90 bg-surface-sunken/35 rounded-[1.5rem] border p-4 sm:p-5 xl:self-stretch xl:justify-self-end xl:p-6">
+            <aside className="border-edge/90 bg-surface-sunken/35 rounded-[1.5rem] border p-4 sm:p-5 lg:self-stretch lg:justify-self-end lg:p-6">
               <p className="text-ink-faint text-[11px] font-medium tracking-[0.18em] uppercase">
                 Snapshot
               </p>
-              <dl className="border-edge/70 mt-4 space-y-3 border-t pt-4 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-ink-faint">Window</dt>
-                  <dd className="text-ink font-medium">{trendWindowLabel}</dd>
+              <dl className="border-edge/70 mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-3 text-sm sm:mt-4 sm:space-y-0 sm:border-t sm:pt-4 lg:grid-cols-1 lg:gap-y-3">
+                <div className="flex min-w-0 flex-col gap-0.5 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
+                  <dt className="text-ink-faint text-[11px] lg:text-sm">Window</dt>
+                  <dd className="text-ink truncate font-medium">{trendWindowLabel}</dd>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-ink-faint">Freshness</dt>
-                  <dd className="text-ink font-medium">{freshness}</dd>
+                <div className="flex min-w-0 flex-col gap-0.5 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
+                  <dt className="text-ink-faint text-[11px] lg:text-sm">Freshness</dt>
+                  <dd className="text-ink truncate font-medium">{freshness}</dd>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-ink-faint">Top relay</dt>
+                <div className="col-span-2 flex min-w-0 flex-col gap-0.5 lg:col-span-1 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
+                  <dt className="text-ink-faint text-[11px] lg:text-sm">Top relay</dt>
                   <dd className="min-w-0">
                     {topRelay ? (
                       <Link
@@ -204,36 +210,29 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                     )}
                   </dd>
                 </div>
+                {heroPulseStats.map((stat) => (
+                  <div
+                    key={stat.label}
+                    className="flex min-w-0 flex-col gap-0.5 lg:flex-row lg:items-baseline lg:justify-between lg:gap-3"
+                  >
+                    <dt className="text-ink-faint text-[11px]">{stat.label}</dt>
+                    <dd className="text-ink text-base font-semibold tracking-tight tabular-nums">
+                      {typeof stat.value === "number"
+                        ? formatCompactNumber(stat.value)
+                        : String(stat.value)}
+                    </dd>
+                  </div>
+                ))}
               </dl>
-
-              {heroPulseStats.length > 0 ? (
-                <div className="border-edge/70 mt-5 space-y-2.5 border-t pt-4">
-                  {heroPulseStats.map((stat) => (
-                    <article
-                      key={stat.label}
-                      className="flex items-baseline justify-between gap-3 text-sm"
-                    >
-                      <p className="text-ink-faint text-[11px]">{stat.label}</p>
-                      <p className="text-ink text-base font-semibold tracking-tight tabular-nums">
-                        {typeof stat.value === "number"
-                          ? formatCompactNumber(stat.value)
-                          : String(stat.value)}
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              ) : null}
             </aside>
           </div>
         </section>
 
-        <div className="grid gap-8 xl:grid-cols-[minmax(0,1.76fr)_minmax(320px,0.8fr)] xl:items-start xl:gap-7 2xl:grid-cols-[minmax(0,1.9fr)_minmax(340px,0.74fr)]">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.76fr)_minmax(300px,0.8fr)] lg:items-start lg:gap-7 2xl:grid-cols-[minmax(0,1.9fr)_minmax(340px,0.74fr)]">
           <section className="border-accent-soft/15 nm-panel-feature overflow-hidden rounded-[1.72rem] border p-5 ring-1 ring-white/5 sm:p-6 xl:p-7">
             <header className="mb-6 space-y-3.5 sm:mb-7">
               <div className="space-y-2.5">
-                <h2 className="text-ink-strong text-[1.65rem] font-semibold tracking-tight sm:text-[2.05rem]">
-                  The note to read first
-                </h2>
+                <h2 className="nm-display-lg text-ink-strong">The note to read first</h2>
                 <p className="text-ink-muted max-w-3xl text-sm leading-6 sm:text-base">
                   One lead note with two strong follow-ups.
                 </p>

@@ -1,11 +1,10 @@
-import { ImageResponse } from "next/og";
-
 import { getNoteSummaryCached } from "@/lib/notes/load-note-page-data";
+import { createOgImage, ogContentType, ogSize } from "@/lib/og/template";
 import { isValidEventIdParam, resolveEventIdParam } from "@/lib/routing/params";
 
 export const runtime = "nodejs";
-export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
+export const size = ogSize;
+export const contentType = ogContentType;
 
 type Params = Promise<{ eventId: string }>;
 
@@ -32,28 +31,11 @@ export default async function NoteOpenGraphImage({ params }: { params: Params })
     }
   }
 
-  return new ImageResponse(
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        padding: 64,
-        background: "linear-gradient(145deg, #0b1020 0%, #171f3d 60%, #24306a 100%)",
-        color: "#f4f6ff",
-        fontFamily: "sans-serif",
-      }}
-    >
-      <div style={{ fontSize: 24, letterSpacing: 3, opacity: 0.65 }}>NOSTRMASH · NOTE</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        <div style={{ fontSize: 48, fontWeight: 650, lineHeight: 1.15, maxHeight: 280 }}>
-          {title}
-        </div>
-        <div style={{ fontSize: 28, opacity: 0.8 }}>{subtitle}</div>
-      </div>
-    </div>,
-    { ...size }
-  );
+  return createOgImage({
+    eyebrow: "NOSTRMASH · NOTE",
+    title,
+    subtitle,
+    variant: "note",
+    titleSize: 48,
+  });
 }

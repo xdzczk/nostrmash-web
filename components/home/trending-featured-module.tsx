@@ -466,14 +466,14 @@ export function TrendingFeaturedModule({
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(290px,0.72fr)] xl:items-start xl:gap-6 2xl:grid-cols-[minmax(0,1.82fr)_minmax(310px,0.68fr)]">
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(290px,0.72fr)] lg:items-start lg:gap-6 2xl:grid-cols-[minmax(0,1.82fr)_minmax(310px,0.68fr)]">
       <FeaturedNoteCard
         note={featuredNote}
         author={getAuthorByPubkey(authorsByPubkey, featuredNote)}
         rank={1}
       />
 
-      <div className="grid gap-3.5 xl:gap-4">
+      <div className="grid gap-3.5 lg:gap-4">
         {secondaryNotes.map((note, index) => (
           <SecondaryNoteCard
             key={resolveNoteId(note) ?? `trending-secondary-${index}`}

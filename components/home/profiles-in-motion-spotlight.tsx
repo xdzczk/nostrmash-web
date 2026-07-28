@@ -192,9 +192,7 @@ export function ProfilesInMotionSpotlight({
       <div className="flex h-full flex-col">
         <header className="space-y-3">
           <div className="space-y-2">
-            <h2 className="text-ink-strong text-[1.4rem] font-semibold tracking-tight sm:text-[1.75rem]">
-              Profiles in motion
-            </h2>
+            <h2 className="nm-title text-ink-strong">Profiles in motion</h2>
             <p className="text-ink-muted max-w-lg text-sm leading-6 sm:text-base">
               The profiles gaining the most momentum.
             </p>

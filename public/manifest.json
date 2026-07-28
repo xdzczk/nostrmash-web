@@ -4,8 +4,8 @@
   "description": "Explore Nostr search, trends, profiles, and relay activity in one place.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
   "icons": [
     {
       "src": "/icon-192.png",

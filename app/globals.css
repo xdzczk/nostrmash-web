@@ -22,6 +22,7 @@
   --accent: #6366f1; /* indigo-500 */
   --accent-soft: #818cf8; /* indigo-400 */
   --accent-ink: #e0e7ff; /* bright text on accent-tinted surfaces */
+  --accent-strong: #a5b4fc; /* indigo-300 — stronger hover accent text */
 
   --ink-strong: #fafafa; /* zinc-50  — strongest headlines */
   --ink: #f4f4f5; /* zinc-100 — default headings / key text */
@@ -56,10 +57,25 @@
   --panel-base: linear-gradient(180deg, rgba(24, 24, 27, 0.94), rgba(14, 14, 16, 0.98));
   --panel-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
   --panel-glow: 0 30px 95px rgba(30, 64, 175, 0.18);
+  --panel-tint-hero: rgba(99, 102, 241, 0.12);
+  --panel-tint-feature: rgba(99, 102, 241, 0.16);
+  --panel-tint-featured: rgba(99, 102, 241, 0.14);
+  --panel-tint-emerald: rgba(16, 185, 129, 0.1);
+  --panel-tint-fuchsia: rgba(217, 70, 239, 0.08);
+  --panel-tint-sky: rgba(14, 165, 233, 0.08);
+  --panel-tint-close: rgba(99, 102, 241, 0.08);
 
   /* Soft container elevation — lets surfaces read as raised instead of relying
      on hard 1px outlines for separation. */
   --elev-1: inset 0 1px 0 0 rgba(255, 255, 255, 0.03), 0 14px 34px -20px rgba(0, 0, 0, 0.55);
+  --lift-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+
+  /* Signature visuals (theme-tuned). */
+  --aurora-a: rgba(99, 102, 241, 0.22);
+  --aurora-b: rgba(129, 140, 248, 0.16);
+  --aurora-c: rgba(99, 102, 241, 0.12);
+  --skeleton-base: rgba(63, 63, 70, 0.3);
+  --skeleton-shimmer: rgba(244, 244, 245, 0.07);
 }
 
 :root[data-theme="light"] {
@@ -76,6 +92,7 @@
   --accent: #4f46e5; /* indigo-600 — AA white text on buttons */
   --accent-soft: #6366f1; /* indigo-500 */
   --accent-ink: #3730a3; /* indigo-800 — dark accent text on light tint */
+  --accent-strong: #4338ca; /* indigo-700 — stronger hover accent text */
 
   --ink-strong: #09090b;
   --ink: #18181b;
@@ -107,7 +124,21 @@
   --panel-base: linear-gradient(180deg, #ffffff, #f6f6f8);
   --panel-shadow: 0 16px 44px rgba(30, 30, 60, 0.1);
   --panel-glow: 0 18px 50px rgba(79, 70, 229, 0.12);
+  --panel-tint-hero: rgba(79, 70, 229, 0.1);
+  --panel-tint-feature: rgba(79, 70, 229, 0.12);
+  --panel-tint-featured: rgba(79, 70, 229, 0.11);
+  --panel-tint-emerald: rgba(5, 150, 105, 0.1);
+  --panel-tint-fuchsia: rgba(192, 38, 211, 0.08);
+  --panel-tint-sky: rgba(2, 132, 199, 0.08);
+  --panel-tint-close: rgba(79, 70, 229, 0.07);
   --elev-1: 0 1px 2px rgba(16, 24, 40, 0.04), 0 14px 30px -18px rgba(16, 24, 40, 0.14);
+  --lift-shadow: 0 14px 36px rgba(16, 24, 40, 0.12);
+
+  --aurora-a: rgba(79, 70, 229, 0.14);
+  --aurora-b: rgba(99, 102, 241, 0.1);
+  --aurora-c: rgba(79, 70, 229, 0.08);
+  --skeleton-base: rgba(212, 212, 216, 0.55);
+  --skeleton-shimmer: rgba(255, 255, 255, 0.55);
 }
 
 @theme inline {
@@ -122,6 +153,7 @@
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-accent-ink: var(--accent-ink);
+  --color-accent-strong: var(--accent-strong);
 
   --color-ink-strong: var(--ink-strong);
   --color-ink: var(--ink);
@@ -152,6 +184,7 @@
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-bricolage), var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
 /* Element resets live in @layer base so Tailwind utilities (text-*, etc.)
@@ -259,7 +292,7 @@
 @media (hover: hover) {
   .nm-lift:hover {
     transform: translateY(-2px);
-    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+    box-shadow: var(--lift-shadow);
   }
 }
 
@@ -268,19 +301,14 @@
   position: relative;
   overflow: hidden;
   border-radius: 0.5rem;
-  background-color: rgba(63, 63, 70, 0.3);
+  background-color: var(--skeleton-base);
 }
 .nm-skeleton::after {
   content: "";
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(244, 244, 245, 0.07) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg, transparent 0%, var(--skeleton-shimmer) 50%, transparent 100%);
   animation: nm-shimmer 1.6s ease-in-out infinite;
 }
 
@@ -321,9 +349,9 @@
 
 .nm-aurora-layer {
   background:
-    radial-gradient(38% 60% at 18% 22%, rgba(99, 102, 241, 0.22), transparent 70%),
-    radial-gradient(34% 52% at 82% 12%, rgba(129, 140, 248, 0.16), transparent 72%),
-    radial-gradient(46% 58% at 62% 92%, rgba(99, 102, 241, 0.12), transparent 70%);
+    radial-gradient(38% 60% at 18% 22%, var(--aurora-a), transparent 70%),
+    radial-gradient(34% 52% at 82% 12%, var(--aurora-b), transparent 72%),
+    radial-gradient(46% 58% at 62% 92%, var(--aurora-c), transparent 70%);
   filter: blur(26px);
   animation: nm-aurora-drift 19s ease-in-out infinite alternate;
   will-change: transform;
@@ -406,49 +434,69 @@
   box-shadow: var(--elev-1);
 }
 
-/* Decorative gradient panels. Dark/light share one themeable base + elevation;
-   each keeps its own faint hue tint (which reads fine on either theme). */
+/* Decorative gradient panels. Base, elevation, and hue tints are theme tokens. */
 .nm-panel-hero {
   background:
-    radial-gradient(circle at top left, rgba(99, 102, 241, 0.12), transparent 34%),
-    var(--panel-base);
+    radial-gradient(circle at top left, var(--panel-tint-hero), transparent 34%), var(--panel-base);
   box-shadow: var(--panel-shadow);
 }
 .nm-panel-feature {
   background:
-    radial-gradient(circle at top left, rgba(99, 102, 241, 0.16), transparent 40%),
+    radial-gradient(circle at top left, var(--panel-tint-feature), transparent 40%),
     var(--panel-base);
   box-shadow: var(--panel-glow);
 }
 .nm-panel-featured {
   background:
-    radial-gradient(circle at top left, rgba(99, 102, 241, 0.14), transparent 44%),
+    radial-gradient(circle at top left, var(--panel-tint-featured), transparent 44%),
     var(--panel-base);
   box-shadow: var(--panel-glow);
 }
 .nm-panel-emerald {
   background:
-    radial-gradient(circle at top right, rgba(16, 185, 129, 0.1), transparent 38%),
+    radial-gradient(circle at top right, var(--panel-tint-emerald), transparent 38%),
     var(--panel-base);
   box-shadow: var(--panel-shadow);
 }
 .nm-panel-fuchsia {
   background:
-    radial-gradient(circle at top left, rgba(217, 70, 239, 0.08), transparent 42%),
+    radial-gradient(circle at top left, var(--panel-tint-fuchsia), transparent 42%),
     var(--panel-base);
   box-shadow: var(--panel-shadow);
 }
 .nm-panel-sky {
   background:
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.08), transparent 40%),
-    var(--panel-base);
+    radial-gradient(circle at top right, var(--panel-tint-sky), transparent 40%), var(--panel-base);
   box-shadow: var(--panel-shadow);
 }
 .nm-panel-close {
   background:
-    radial-gradient(circle at bottom center, rgba(99, 102, 241, 0.08), transparent 40%),
+    radial-gradient(circle at bottom center, var(--panel-tint-close), transparent 40%),
     var(--panel-base);
   box-shadow: var(--panel-shadow);
+}
+
+/* Fluid display type scale — Bricolage for hero/section display headings. */
+.nm-display-xl {
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 1.6rem + 2.4vw, 4rem);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+}
+.nm-display-lg {
+  font-family: var(--font-display);
+  font-size: clamp(1.65rem, 1.3rem + 1.2vw, 2.05rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+.nm-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 1.2rem + 0.85vw, 1.9rem);
+  line-height: 1.15;
+  letter-spacing: -0.018em;
+  font-weight: 600;
 }
 
 /* Theme-conditional visibility (used to swap the logo asset without JS). */

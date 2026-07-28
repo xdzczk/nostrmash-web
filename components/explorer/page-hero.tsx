@@ -31,13 +31,7 @@ export function PageHero({
             {eyebrow}
           </p>
         ) : null}
-        <h1
-          className={`text-ink font-semibold tracking-tight ${
-            emphasize ? "text-[1.85rem] sm:text-[2.1rem]" : "text-[1.75rem] sm:text-2xl"
-          }`}
-        >
-          {title}
-        </h1>
+        <h1 className={`text-ink ${emphasize ? "nm-display-lg" : "nm-title"}`}>{title}</h1>
         {subtitle ? (
           <p className="text-ink-dim max-w-4xl text-sm leading-5 sm:text-[0.95rem] sm:leading-6">
             {subtitle}

@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
 import { SiteShell } from "@/components/layout/site-shell";
 import { WebVitals } from "@/components/telemetry/web-vitals";
+import { ToastProvider } from "@/components/ui/toast";
 import { appConfig } from "@/lib/config";
 
 const geistSans = Geist({
@@ -13,6 +14,11 @@ const geistSans = Geist({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
   subsets: ["latin"],
 });
 
@@ -69,7 +75,7 @@ export default async function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${bricolage.variable} h-full antialiased`}
     >
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -85,7 +91,9 @@ export default async function RootLayout({
       </head>
       <body className="bg-background text-foreground flex min-h-full flex-col">
         <WebVitals />
-        <SiteShell>{children}</SiteShell>
+        <ToastProvider>
+          <SiteShell>{children}</SiteShell>
+        </ToastProvider>
       </body>
     </html>
   );

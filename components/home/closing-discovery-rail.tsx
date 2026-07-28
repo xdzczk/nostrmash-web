@@ -109,6 +109,8 @@ function normalizeDomains(domains: DomainEntry[]): NormalizedDomain[] {
     .filter((entry): entry is NormalizedDomain => entry !== null);
 }
 
+const MOBILE_VISIBLE_ITEMS = 5;
+
 function HashtagDiscoveryModule({
   hashtags,
   trendWindowLabel,
@@ -122,7 +124,7 @@ function HashtagDiscoveryModule({
   const columns = splitIntoColumns(items, 2);
 
   return (
-    <section className="border-edge/90 nm-panel-fuchsia flex h-full flex-col rounded-[1.4rem] border p-4 sm:p-5 xl:p-6">
+    <section className="border-edge/90 nm-panel-fuchsia flex h-full flex-col rounded-[1.4rem] border p-4 sm:p-5 lg:p-6">
       <header className="space-y-2.5">
         <div className="text-accent-fuchsia-ink/90 text-[11px] font-medium tracking-[0.18em] uppercase">
           Hashtags
@@ -142,9 +144,9 @@ function HashtagDiscoveryModule({
         </div>
       </header>
 
-      <div className="mt-5 min-h-64 flex-1">
+      <div className="mt-5 min-h-48 flex-1 lg:min-h-64">
         {items.length > 0 ? (
-          <div className="grid gap-2.5 xl:grid-cols-2 xl:gap-x-6 xl:gap-y-0">
+          <div className="grid gap-2.5 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-0">
             {columns.map((column, columnIndex) => {
               const columnOffset = columnIndex * Math.ceil(items.length / columns.length);
 
@@ -154,7 +156,12 @@ function HashtagDiscoveryModule({
                     const rank = columnOffset + index + 1;
 
                     return (
-                      <li key={item.label} className="border-edge/55 border-b last:border-b-0">
+                      <li
+                        key={item.label}
+                        className={`border-edge/55 border-b last:border-b-0 ${
+                          rank > MOBILE_VISIBLE_ITEMS ? "max-lg:hidden" : ""
+                        }`}
+                      >
                         <Link
                           href={item.href}
                           className="hover:bg-surface/40 flex items-baseline gap-4 rounded-2xl px-1 py-3 transition"
@@ -217,7 +224,7 @@ function DomainDiscoveryModule({
   const columns = splitIntoColumns(items, 2);
 
   return (
-    <section className="border-edge/90 nm-panel-sky flex h-full flex-col rounded-[1.4rem] border p-4 sm:p-5 xl:p-6">
+    <section className="border-edge/90 nm-panel-sky flex h-full flex-col rounded-[1.4rem] border p-4 sm:p-5 lg:p-6">
       <header className="space-y-2.5">
         <div className="text-accent-sky-ink/90 text-[11px] font-medium tracking-[0.18em] uppercase">
           Domains
@@ -237,41 +244,47 @@ function DomainDiscoveryModule({
         </div>
       </header>
 
-      <div className="mt-5 min-h-64 flex-1">
+      <div className="mt-5 min-h-48 flex-1 lg:min-h-64">
         {items.length > 0 ? (
-          <div className="grid gap-2.5 xl:grid-cols-2 xl:gap-x-6 xl:gap-y-0">
+          <div className="grid gap-2.5 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-0">
             {columns.map((column, columnIndex) => {
               const columnOffset = columnIndex * Math.ceil(items.length / columns.length);
 
               return (
                 <ol key={`domains-column-${columnIndex}`} className="divide-edge/80 divide-y">
-                  {column.map((item, index) => (
-                    <li key={item.rawLabel}>
-                      <Link
-                        href={item.href}
-                        className="group hover:text-ink-strong flex items-start gap-3 py-2.5 transition first:pt-0 last:pb-0"
+                  {column.map((item, index) => {
+                    const rank = columnOffset + index + 1;
+                    return (
+                      <li
+                        key={item.rawLabel}
+                        className={rank > MOBILE_VISIBLE_ITEMS ? "max-lg:hidden" : undefined}
                       >
-                        <span className="border-edge-strong/80 bg-surface-sunken/70 text-ink-dim mt-0.5 flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full border px-1 text-[10px] font-semibold tracking-[0.14em] uppercase">
-                          {columnOffset + index + 1}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                            <p className="text-ink min-w-0 flex-1 truncate text-sm font-semibold sm:text-[0.97rem]">
-                              <span title={item.rawLabel}>{item.label}</span>
-                            </p>
-                            {item.metric ? (
-                              <span className="border-accent-sky/25 bg-accent-sky/10 text-accent-sky-ink/90 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium">
-                                {item.metric.valueLabel}
-                              </span>
+                        <Link
+                          href={item.href}
+                          className="group hover:text-ink-strong flex items-start gap-3 py-2.5 transition first:pt-0 last:pb-0"
+                        >
+                          <span className="border-edge-strong/80 bg-surface-sunken/70 text-ink-dim mt-0.5 flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full border px-1 text-[10px] font-semibold tracking-[0.14em] uppercase">
+                            {rank}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <p className="text-ink min-w-0 flex-1 truncate text-sm font-semibold sm:text-[0.97rem]">
+                                <span title={item.rawLabel}>{item.label}</span>
+                              </p>
+                              {item.metric ? (
+                                <span className="border-accent-sky/25 bg-accent-sky/10 text-accent-sky-ink/90 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium">
+                                  {item.metric.valueLabel}
+                                </span>
+                              ) : null}
+                            </div>
+                            {rank <= 3 ? (
+                              <WhyNow reasons={item.whyNow} maxReasons={1} className="mt-1.5" />
                             ) : null}
                           </div>
-                          {columnOffset + index + 1 <= 3 ? (
-                            <WhyNow reasons={item.whyNow} maxReasons={1} className="mt-1.5" />
-                          ) : null}
-                        </div>
-                      </Link>
-                    </li>
-                  ))}
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ol>
               );
             })}
@@ -309,11 +322,9 @@ export function ClosingDiscoveryRail({
   domainsFreshness: string;
 }) {
   return (
-    <section className="border-edge/90 nm-panel-close relative overflow-hidden rounded-[1.7rem] border p-5 sm:p-7 xl:p-8 2xl:px-9">
+    <section className="border-edge/90 nm-panel-close relative overflow-hidden rounded-[1.7rem] border p-5 sm:p-7 lg:p-8 2xl:px-9">
       <header className="max-w-3xl space-y-3">
-        <h2 className="text-ink-strong text-[1.5rem] font-semibold tracking-tight sm:text-[1.9rem]">
-          Follow what gains speed next
-        </h2>
+        <h2 className="nm-title text-ink-strong">Follow what gains speed next</h2>
         <p className="text-ink-muted max-w-2xl text-sm leading-6 sm:text-base">
           Track the hashtags and links shaping the current window.
         </p>
@@ -324,7 +335,7 @@ export function ClosingDiscoveryRail({
         </div>
       </header>
 
-      <div className="mt-7 grid gap-4 xl:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] xl:gap-5 2xl:grid-cols-[minmax(0,1.18fr)_minmax(0,0.82fr)]">
+      <div className="mt-7 grid gap-4 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] lg:gap-5 2xl:grid-cols-[minmax(0,1.18fr)_minmax(0,0.82fr)]">
         <HashtagDiscoveryModule
           hashtags={hashtags}
           trendWindowLabel={trendWindowLabel}
