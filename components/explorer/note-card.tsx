@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { NoteContent, type NoteContentResolution } from "@/components/explorer/note-content";
 import { NoteMedia } from "@/components/explorer/note-media";
 import { getNotePreviewPresentation } from "@/components/explorer/note-preview";
+import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
   cardTierClassName,
@@ -17,10 +17,8 @@ import {
   normalizeDomainLabel,
   noteInlineAuthorProfile,
   noteAuthorIdentifier,
-  profileFallbackAvatarDataUrl,
   profileIdentifier,
   profileLabel,
-  profilePictureUrl,
   profileSecondaryLabel,
   extractDomainsFromNote,
   extractHashtagsFromNote,
@@ -62,12 +60,9 @@ export function NoteCard({
   const authorSecondaryLabel = resolvedAuthor
     ? profileSecondaryLabel(resolvedAuthor)
     : noteAuthorIdentifier(note);
-  const authorPictureUrl = resolvedAuthor ? profilePictureUrl(resolvedAuthor) : null;
-  const authorAvatarSrc = resolvedAuthor
-    ? (authorPictureUrl ?? profileFallbackAvatarDataUrl(resolvedAuthor))
-    : typeof note.pubkey === "string" && note.pubkey.length > 0
-      ? profileFallbackAvatarDataUrl({ pubkey: note.pubkey })
-      : null;
+  const authorAvatarProfile =
+    resolvedAuthor ??
+    (typeof note.pubkey === "string" && note.pubkey.length > 0 ? { pubkey: note.pubkey } : null);
   const authorHref =
     resolvedAuthor && profileIdentifier(resolvedAuthor) !== "unknown"
       ? `/profiles/${encodeURIComponent(profileIdentifier(resolvedAuthor))}`
@@ -117,12 +112,11 @@ export function NoteCard({
       }`}
     >
       <div className="flex items-start gap-3">
-        {authorAvatarSrc ? (
-          <Image
-            src={authorAvatarSrc}
+        {authorAvatarProfile ? (
+          <ProfileAvatar
+            profile={authorAvatarProfile}
+            size={44}
             alt={authorLabel}
-            width={44}
-            height={44}
             className="border-edge-strong h-10 w-10 rounded-full border object-cover sm:h-11 sm:w-11"
           />
         ) : (

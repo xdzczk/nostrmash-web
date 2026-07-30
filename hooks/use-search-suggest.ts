@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { normalizeProfiles as normalizeApiProfiles } from "@/lib/api/normalize";
 import { isValidHashtag } from "@/lib/hashtags";
 import type { Profile, HashtagEntry } from "@/lib/types/api";
 
@@ -12,15 +13,7 @@ export interface SuggestResult {
 const EMPTY: SuggestResult = { profiles: [], hashtags: [] };
 
 function normalizeProfiles(raw: unknown): Profile[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter(
-      (entry): entry is Record<string, unknown> =>
-        typeof entry === "object" &&
-        entry !== null &&
-        typeof (entry as Record<string, unknown>).pubkey === "string"
-    )
-    .map((entry) => entry as Profile);
+  return normalizeApiProfiles(raw);
 }
 
 function normalizeHashtags(raw: unknown): HashtagEntry[] {

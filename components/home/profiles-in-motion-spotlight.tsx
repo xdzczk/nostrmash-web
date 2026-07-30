@@ -1,16 +1,14 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { DiscoveryActionLinks, DiscoveryStatPills } from "@/components/explorer/card-grammar";
 import { IdBadge } from "@/components/explorer/id-badge";
 import { EmptyState } from "@/components/explorer/empty-state";
+import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { mapProfileWhyNow, WhyNow } from "@/components/explorer/why-now";
 import {
   extractPrimitiveStats,
-  profileFallbackAvatarDataUrl,
   profileIdentifier,
   profileLabel,
-  profilePictureUrl,
   truncateIdentifier,
 } from "@/components/explorer/utils";
 import type { Profile } from "@/lib/types/api";
@@ -111,8 +109,6 @@ function buildSummaryMetrics(profile: Profile) {
 function ProfileDiscoveryRow({ profile, rank }: { profile: Profile; rank: number }) {
   const label = profileLabel(profile);
   const identifier = profileIdentifier(profile);
-  const pictureUrl = profilePictureUrl(profile);
-  const avatarSrc = pictureUrl ?? profileFallbackAvatarDataUrl(profile);
   const href = identifier !== "unknown" ? `/profiles/${encodeURIComponent(identifier)}` : undefined;
   const identityBits = buildIdentityBits(profile, label, identifier);
   const metrics = buildSummaryMetrics(profile);
@@ -121,11 +117,9 @@ function ProfileDiscoveryRow({ profile, rank }: { profile: Profile; rank: number
   return (
     <li className="group py-4 first:pt-0 last:pb-0">
       <div className="flex items-start gap-3">
-        <Image
-          src={avatarSrc}
-          alt={label}
-          width={52}
-          height={52}
+        <ProfileAvatar
+          profile={profile}
+          size={48}
           className="border-edge-strong/80 h-12 w-12 shrink-0 rounded-full border object-cover"
         />
 

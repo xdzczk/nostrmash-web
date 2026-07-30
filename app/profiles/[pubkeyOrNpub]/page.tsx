@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -10,12 +9,11 @@ import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
 import { AboutThisData } from "@/components/explorer/about-this-data";
+import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import {
   isRecord,
   normalizeImageSrc,
-  profileFallbackAvatarDataUrl,
   profileLabel,
-  profilePictureUrl,
   sanitizeExternalHref,
   truncateMiddle,
 } from "@/components/explorer/utils";
@@ -264,12 +262,11 @@ export default async function ProfilePage({
     (typeof hero?.bio === "string" ? hero.bio : undefined) ??
     (typeof profile?.about === "string" ? profile.about : undefined) ??
     "Explore public identity, activity, and discovery context for this profile.";
-  const avatar =
-    normalizeImageSrc(typeof hero?.avatar === "string" ? hero.avatar : undefined) ??
-    (profile ? profilePictureUrl(profile) : null) ??
-    (profile
-      ? profileFallbackAvatarDataUrl(profile)
-      : profileFallbackAvatarDataUrl({ pubkey: lookupKey }));
+  const heroAvatar = normalizeImageSrc(typeof hero?.avatar === "string" ? hero.avatar : undefined);
+  const avatarProfile: Profile = {
+    ...(profile ?? { pubkey: lookupKey }),
+    ...(heroAvatar ? { picture: heroAvatar } : {}),
+  };
 
   return (
     <div className="space-y-8">
@@ -284,11 +281,10 @@ export default async function ProfilePage({
       <SectionCard title="Profile" description="Identity-first explorer surface for this account.">
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <Image
-              src={avatar}
+            <ProfileAvatar
+              profile={avatarProfile}
+              size={72}
               alt={profile ? profileLabel(profile) : heroDisplayName}
-              width={72}
-              height={72}
               className="border-edge-strong h-16 w-16 rounded-full border object-cover sm:h-[72px] sm:w-[72px]"
             />
             <div className="min-w-0 flex-1 space-y-1">

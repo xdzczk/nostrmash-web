@@ -1,18 +1,15 @@
-import Image from "next/image";
-
 import {
   cardTierClassName,
   DiscoveryActionLinks,
   DiscoveryPill,
   DiscoveryStatPills,
 } from "@/components/explorer/card-grammar";
+import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { mapProfileWhyNow, WhyNow } from "@/components/explorer/why-now";
 import {
   extractPrimitiveStats,
-  profileFallbackAvatarDataUrl,
   profileIdentifier,
   profileLabel,
-  profilePictureUrl,
   profileSecondaryLabel,
   truncateIdentifier,
 } from "@/components/explorer/utils";
@@ -32,8 +29,6 @@ export function ProfileCard({
   const label = profileLabel(profile);
   const secondaryLabel = profileSecondaryLabel(profile);
   const identifier = profileIdentifier(profile);
-  const pictureUrl = profilePictureUrl(profile);
-  const avatarSrc = pictureUrl ?? profileFallbackAvatarDataUrl(profile);
   const href = identifier !== "unknown" ? `/profiles/${encodeURIComponent(identifier)}` : undefined;
   const rawMetrics = extractPrimitiveStats(summary ?? profile, [
     "pubkey",
@@ -73,11 +68,9 @@ export function ProfileCard({
       }`}
     >
       <div className="flex items-start gap-3">
-        <Image
-          src={avatarSrc}
-          alt={label}
-          width={44}
-          height={44}
+        <ProfileAvatar
+          profile={profile}
+          size={44}
           className="border-edge-strong h-10 w-10 rounded-full border object-cover sm:h-11 sm:w-11"
         />
         <div className="min-w-0 flex-1 space-y-1.5">

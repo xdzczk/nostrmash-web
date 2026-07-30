@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -11,6 +10,7 @@ import { IdBadge } from "@/components/explorer/id-badge";
 import { MetadataList } from "@/components/explorer/metadata-list";
 import { NoteCard } from "@/components/explorer/note-card";
 import { PageHero } from "@/components/explorer/page-hero";
+import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { ProfileCard } from "@/components/explorer/profile-card";
 import { AboutThisData } from "@/components/explorer/about-this-data";
 import { StatCard } from "@/components/explorer/stat-card";
@@ -20,9 +20,7 @@ import {
   buildMetadataEntries,
   extractPrimitiveStats,
   isRecord,
-  profileFallbackAvatarDataUrl,
   profileLabel,
-  profilePictureUrl,
   truncateMiddle,
 } from "@/components/explorer/utils";
 import {
@@ -254,14 +252,10 @@ export default async function NotePage({
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {resolvedAuthor ? (
               <span className="border-edge-strong bg-surface/50 text-ink-soft inline-flex items-center gap-2 rounded-full border px-2 py-1">
-                <Image
-                  src={
-                    profilePictureUrl(resolvedAuthor) ??
-                    profileFallbackAvatarDataUrl(resolvedAuthor)
-                  }
+                <ProfileAvatar
+                  profile={resolvedAuthor}
+                  size={18}
                   alt=""
-                  width={18}
-                  height={18}
                   className="h-[18px] w-[18px] rounded-full object-cover"
                 />
                 {profileLabel(resolvedAuthor)}

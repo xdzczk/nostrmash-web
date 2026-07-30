@@ -1,10 +1,10 @@
 /* eslint-disable @next/next/no-img-element */
 
-import Image from "next/image";
 import Link from "next/link";
 
 import { DiscoveryActionLinks, DiscoveryStatPills } from "@/components/explorer/card-grammar";
 import { getNotePreviewPresentation } from "@/components/explorer/note-preview";
+import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
 import { mapNoteWhyNow, WhyNow } from "@/components/explorer/why-now";
 import {
@@ -14,11 +14,9 @@ import {
   formatValue,
   noteInlineAuthorProfile,
   noteAuthorIdentifier,
-  profileFallbackAvatarDataUrl,
   profileIdentifier,
   profileInitial,
   profileLabel,
-  profilePictureUrl,
   profileSecondaryLabel,
   truncateIdentifier,
   truncateMiddle,
@@ -171,10 +169,9 @@ function NoteAuthor({
 }) {
   const authorLabel = author ? profileLabel(author) : noteAuthorIdentifier(note);
   const authorSecondaryLabel = author ? profileSecondaryLabel(author) : null;
-  const authorPictureUrl = author ? profilePictureUrl(author) : null;
-  const authorAvatarSrc = author
-    ? (authorPictureUrl ?? profileFallbackAvatarDataUrl(author))
-    : null;
+  const authorAvatarProfile =
+    author ??
+    (typeof note.pubkey === "string" && note.pubkey.length > 0 ? { pubkey: note.pubkey } : null);
   const authorIdentifier = author ? profileIdentifier(author) : "";
   const authorHref =
     authorIdentifier && authorIdentifier !== "unknown"
@@ -186,12 +183,11 @@ function NoteAuthor({
 
   return (
     <div className={compact ? "flex items-center gap-2.5" : "flex items-center gap-3.5"}>
-      {authorAvatarSrc ? (
-        <Image
-          src={authorAvatarSrc}
+      {authorAvatarProfile ? (
+        <ProfileAvatar
+          profile={authorAvatarProfile}
+          size={compact ? 40 : 48}
           alt={authorLabel}
-          width={compact ? 40 : 48}
-          height={compact ? 40 : 48}
           className={
             compact
               ? "border-edge-strong/50 h-10 w-10 rounded-full border object-cover"

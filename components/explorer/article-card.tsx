@@ -8,15 +8,14 @@ import {
   DiscoveryStatPills,
 } from "@/components/explorer/card-grammar";
 import { getArticlePresentation } from "@/components/explorer/article-meta";
+import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
   extractPrimitiveStats,
   noteAuthorIdentifier,
   noteInlineAuthorProfile,
-  profileFallbackAvatarDataUrl,
   profileIdentifier,
   profileLabel,
-  profilePictureUrl,
   profileSecondaryLabel,
   truncateIdentifier,
 } from "@/components/explorer/utils";
@@ -52,9 +51,6 @@ export function ArticleCard({
   const authorSecondaryLabel = resolvedAuthor
     ? profileSecondaryLabel(resolvedAuthor)
     : noteAuthorIdentifier(article);
-  const authorPictureUrl = resolvedAuthor ? profilePictureUrl(resolvedAuthor) : null;
-  const authorAvatarSrc =
-    resolvedAuthor && (authorPictureUrl ?? profileFallbackAvatarDataUrl(resolvedAuthor));
   const authorHref =
     resolvedAuthor && profileIdentifier(resolvedAuthor) !== "unknown"
       ? `/profiles/${encodeURIComponent(profileIdentifier(resolvedAuthor))}`
@@ -106,6 +102,7 @@ export function ArticleCard({
             alt={presentation.title}
             width={96}
             height={96}
+            unoptimized
             className="border-edge-strong h-16 w-16 shrink-0 rounded-lg border object-cover sm:h-20 sm:w-20"
           />
         ) : null}
@@ -130,12 +127,11 @@ export function ArticleCard({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-        {authorAvatarSrc ? (
-          <Image
-            src={authorAvatarSrc}
+        {resolvedAuthor ? (
+          <ProfileAvatar
+            profile={resolvedAuthor}
+            size={24}
             alt={authorLabel}
-            width={24}
-            height={24}
             className="border-edge-strong h-6 w-6 rounded-full border object-cover"
           />
         ) : null}

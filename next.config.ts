@@ -44,6 +44,10 @@ const nextConfig: NextConfig = {
   },
   images: {
     // Cloudflare Workers image optimization is enabled via the IMAGES binding in wrangler.jsonc.
+    // Remote transforms via that binding only succeed for a narrow width set in practice
+    // (notably 96); default Next sizes like 32/64/128 return 403 "Blocked" for https origins.
+    // Keep 96 so any remaining optimized remote <Image> requests a working width.
+    imageSizes: [96],
     remotePatterns: [
       { protocol: "https", hostname: "**" },
       { protocol: "http", hostname: "localhost" },

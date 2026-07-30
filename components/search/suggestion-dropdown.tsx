@@ -1,14 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { forwardRef } from "react";
 
-import {
-  profileFallbackAvatarDataUrl,
-  profileLabel,
-  profilePictureUrl,
-  profileSecondaryLabel,
-} from "@/components/explorer/utils";
+import { ProfileAvatar } from "@/components/explorer/profile-avatar";
+import { profileLabel, profileSecondaryLabel } from "@/components/explorer/utils";
 import type { HashtagEntry, Profile } from "@/lib/types/api";
 
 interface SuggestionDropdownProps {
@@ -41,8 +36,6 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
             {profiles.map((profile, index) => {
               const label = profileLabel(profile);
               const secondary = profileSecondaryLabel(profile);
-              const pictureUrl = profilePictureUrl(profile);
-              const avatarSrc = pictureUrl ?? profileFallbackAvatarDataUrl(profile);
               const active = index === activeIndex;
 
               return (
@@ -59,11 +52,9 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                     onSelectProfile(profile);
                   }}
                 >
-                  <Image
-                    src={avatarSrc}
-                    alt={label}
-                    width={28}
-                    height={28}
+                  <ProfileAvatar
+                    profile={profile}
+                    size={28}
                     className="border-edge-strong h-7 w-7 shrink-0 rounded-full border object-cover"
                   />
                   <div className="min-w-0 flex-1">
