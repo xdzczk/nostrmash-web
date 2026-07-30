@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { CopyValueButton } from "@/components/actions/copy-value-button";
 import { EntityActions } from "@/components/actions/entity-actions";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
+import { DiscoverNav } from "@/components/explorer/discover-nav";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
 import { AboutThisData } from "@/components/explorer/about-this-data";
@@ -23,7 +24,6 @@ import {
 } from "@/components/profile/deferred-profile-sections";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Disclosure } from "@/components/ui/disclosure";
-import { SectionCard } from "@/components/ui/section-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
 import { hexToNpub } from "@/lib/nostr/nip19";
@@ -278,97 +278,101 @@ export default async function ProfilePage({
         )
       ) : null}
 
-      <SectionCard title="Profile" description="Identity-first explorer surface for this account.">
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
+      <section className="nm-signal-rule border-edge/70 border-b pt-8 pb-10 sm:pt-12 sm:pb-14">
+        <p className="nm-kicker mb-6">Profile intelligence</p>
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="flex min-w-0 items-start gap-5 sm:gap-7">
             <ProfileAvatar
               profile={avatarProfile}
-              size={72}
+              size={112}
               alt={profile ? profileLabel(profile) : heroDisplayName}
-              className="border-edge-strong h-16 w-16 rounded-full border object-cover sm:h-[72px] sm:w-[72px]"
+              className="border-edge h-20 w-20 rounded-full border object-cover sm:h-28 sm:w-28"
             />
-            <div className="min-w-0 flex-1 space-y-1">
-              <p className="text-ink truncate text-xl font-semibold tracking-tight">
-                {heroDisplayName}
-              </p>
-              {heroHandle ? <p className="text-ink-muted truncate text-sm">{heroHandle}</p> : null}
-              <p className="text-ink-dim text-sm leading-6">{heroBio}</p>
+            <div className="min-w-0 flex-1 space-y-3">
+              <h1 className="nm-display-lg text-ink-strong truncate">{heroDisplayName}</h1>
+              {heroHandle ? (
+                <p className="text-ink-muted truncate text-base">{heroHandle}</p>
+              ) : null}
+              <p className="text-ink-dim max-w-3xl text-base leading-7">{heroBio}</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-3 text-sm lg:justify-end">
+            {heroWebsite?.raw ? (
+              <Link
+                href={heroWebsite.raw}
+                rel="noopener noreferrer nofollow"
+                target="_blank"
+                className="text-link hover:text-link-hover"
+              >
+                {heroWebsite.display ?? truncateMiddle(heroWebsite.raw, 28)}
+              </Link>
+            ) : null}
+            {heroLud16?.raw ? (
+              <a href={`lightning:${heroLud16.raw}`} className="text-link hover:text-link-hover">
+                {heroLud16.display ?? heroLud16.raw}
+              </a>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="border-edge/60 mt-9 grid gap-7 border-t pt-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          {heroCounters.length > 0 ? (
+            <dl className="grid grid-cols-2 gap-x-8 gap-y-5 sm:flex sm:flex-wrap sm:gap-10">
+              {heroCounters.map((counter) => (
+                <div key={counter.key} className="min-w-20">
+                  <dt className="text-ink-faint text-xs">{counter.label}</dt>
+                  <dd className="text-ink mt-1 text-lg font-medium tabular-nums">
+                    {counter.value.toLocaleString()}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+
+          <nav aria-label="Profile shortcuts" className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+            {heroActions.map((action) => (
+              <Link key={action.id} href={action.href} className="text-link hover:text-link-hover">
+                {action.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+
+        <Disclosure
+          title="Open, share, and technical identity"
+          description="Protocol identifiers and external client actions."
+          className="mt-8"
+        >
+          <div className="space-y-4">
             {heroNpubOrPubkey?.raw ? (
               <IdBadge
                 id={heroNpubOrPubkey.raw}
                 label={heroNpubOrPubkey.raw.startsWith("npub1") ? "npub" : "pubkey"}
               />
             ) : null}
-            {heroWebsite?.raw ? (
-              <Link
-                href={heroWebsite.raw}
-                rel="noopener noreferrer nofollow"
-                target="_blank"
-                className="border-edge-strong bg-surface/80 text-ink-dim hover:text-ink rounded-full border px-2 py-1"
-              >
-                {heroWebsite.display ?? truncateMiddle(heroWebsite.raw, 28)}
-              </Link>
-            ) : null}
-            {heroLud16?.raw ? (
-              <a
-                href={`lightning:${heroLud16.raw}`}
-                className="border-edge-strong bg-surface/80 text-ink-dim hover:text-ink rounded-full border px-2 py-1"
-              >
-                {heroLud16.display ?? heroLud16.raw}
-              </a>
-            ) : null}
+            {(() => {
+              const pubkeyHex =
+                resolvePubkeyParam(pubkeyOrNpub) ??
+                (typeof profile?.pubkey === "string" ? profile.pubkey : null);
+              const npub =
+                (typeof profile?.npub === "string" && profile.npub) ||
+                (pubkeyHex ? hexToNpub(pubkeyHex) : null) ||
+                pubkeyOrNpub;
+              return (
+                <EntityActions
+                  kind="profile"
+                  absoluteUrl={absoluteUrl(`/profiles/${encodeURIComponent(npub)}`)}
+                  identifier={npub}
+                  nostrUri={`nostr:${npub}`}
+                  njumpUrl={`https://njump.me/${npub}`}
+                />
+              );
+            })()}
           </div>
-
-          {heroCounters.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {heroCounters.map((counter) => (
-                <div
-                  key={counter.key}
-                  className="border-edge-strong bg-surface/80 text-ink-dim rounded-full border px-3 py-1.5 text-xs"
-                >
-                  <span className="text-ink-faint mr-2">{counter.label}</span>
-                  <span className="text-ink font-medium">{counter.value}</span>
-                </div>
-              ))}
-            </div>
-          ) : null}
-
-          <div className="flex flex-wrap gap-2 text-xs">
-            {heroActions.map((action) => (
-              <Link
-                key={action.id}
-                href={action.href}
-                className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
-              >
-                {action.label}
-              </Link>
-            ))}
-          </div>
-
-          {(() => {
-            const pubkeyHex =
-              resolvePubkeyParam(pubkeyOrNpub) ??
-              (typeof profile?.pubkey === "string" ? profile.pubkey : null);
-            const npub =
-              (typeof profile?.npub === "string" && profile.npub) ||
-              (pubkeyHex ? hexToNpub(pubkeyHex) : null) ||
-              pubkeyOrNpub;
-            return (
-              <EntityActions
-                kind="profile"
-                absoluteUrl={absoluteUrl(`/profiles/${encodeURIComponent(npub)}`)}
-                identifier={npub}
-                nostrUri={`nostr:${npub}`}
-                njumpUrl={`https://njump.me/${npub}`}
-              />
-            );
-          })()}
-        </div>
-      </SectionCard>
+        </Disclosure>
+      </section>
+      <DiscoverNav active="people" />
 
       <JsonLd
         data={{

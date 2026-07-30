@@ -39,6 +39,7 @@ test.describe("product + SEO surfaces", () => {
   test("note page linkifies content and exposes share/OG/JSON-LD", async ({ page }) => {
     await page.goto(`/notes/${FOCAL_ID}`);
 
+    await page.getByText("Open, share, and embed", { exact: true }).click();
     await expect(page.getByRole("button", { name: /share/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /copy nevent/i })).toBeVisible();
     await expect(page.getByRole("link", { name: "#nostr" }).first()).toHaveAttribute(
@@ -60,6 +61,7 @@ test.describe("product + SEO surfaces", () => {
 
   test("profile page exposes Person JSON-LD and actions", async ({ page }) => {
     await page.goto(`/profiles/${AUTHOR_PK}`);
+    await page.getByText("Open, share, and technical identity", { exact: true }).click();
     await expect(page.getByRole("button", { name: /share/i })).toBeVisible();
     const jsonLd = page.locator('script[type="application/ld+json"]');
     await expect(jsonLd.first()).toBeAttached();

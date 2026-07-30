@@ -107,8 +107,8 @@ export function NoteCard({
 
   return (
     <article
-      className={`group nm-lift ${cardTierClassName("standard")} ${
-        isTopRank ? "border-accent/20 bg-surface/60" : "border-edge/85 bg-surface/45"
+      className={`group ${cardTierClassName("standard")} ${
+        isTopRank ? "border-accent-soft/40" : "border-edge/70"
       }`}
     >
       <div className="flex items-start gap-3">

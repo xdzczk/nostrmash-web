@@ -24,13 +24,19 @@ export function SearchForm({
   variant = "default",
   placeholder,
   shortcuts = [],
+  inputId,
+  autoFocus = false,
+  onNavigate,
 }: {
   initialQuery?: string;
   className?: string;
   helperText?: string;
-  variant?: "default" | "hero";
+  variant?: "default" | "hero" | "global";
   placeholder?: string;
   shortcuts?: SearchShortcut[];
+  inputId?: string;
+  autoFocus?: boolean;
+  onNavigate?: () => void;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
@@ -39,11 +45,14 @@ export function SearchForm({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const heroVariant = variant === "hero";
+  const globalVariant = variant === "global";
   const inputPlaceholder =
     placeholder ??
     (heroVariant
       ? "Search notes, profiles, hashtags, relays, or event IDs"
-      : "Search notes, profiles, hashtags...");
+      : globalVariant
+        ? "Search NostrMash"
+        : "Search notes, profiles, hashtags...");
 
   const { profiles, hashtags, hasResults, clear: clearSuggest } = useSearchSuggest(query);
   const totalItems = profiles.length + hashtags.length;
@@ -55,9 +64,10 @@ export function SearchForm({
       if (!trimmed) return;
       setOpen(false);
       clearSuggest();
+      onNavigate?.();
       router.push(`/search?q=${encodeURIComponent(trimmed)}&tab=all`);
     },
-    [router, clearSuggest]
+    [router, clearSuggest, onNavigate]
   );
 
   const handleSelectProfile = useCallback(
@@ -65,9 +75,10 @@ export function SearchForm({
       const identifier = profileIdentifier(profile);
       setOpen(false);
       clearSuggest();
+      onNavigate?.();
       router.push(`/profiles/${encodeURIComponent(identifier)}`);
     },
-    [router, clearSuggest]
+    [router, clearSuggest, onNavigate]
   );
 
   const handleSelectHashtag = useCallback(
@@ -80,9 +91,10 @@ export function SearchForm({
       }
       setOpen(false);
       clearSuggest();
+      onNavigate?.();
       router.push(`/hashtags/${encodeURIComponent(normalized.toLowerCase())}`);
     },
-    [router, clearSuggest, navigateToSearch]
+    [router, clearSuggest, navigateToSearch, onNavigate]
   );
 
   const commitActiveItem = useCallback(() => {
@@ -139,7 +151,9 @@ export function SearchForm({
         <div className="relative w-full min-w-0">
           <Input
             ref={inputRef}
-            variant={heroVariant ? "hero" : "default"}
+            id={inputId}
+            autoFocus={autoFocus}
+            variant={heroVariant ? "hero" : globalVariant ? "global" : "default"}
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -172,10 +186,31 @@ export function SearchForm({
         </div>
         <Button
           type="submit"
-          size="lg"
-          className={`sm:min-w-[120px] ${heroVariant ? "xl:min-w-[148px] xl:px-6" : ""}`}
+          size={globalVariant ? "md" : "lg"}
+          variant={globalVariant ? "ghost" : "primary"}
+          aria-label={globalVariant ? "Submit search" : undefined}
+          className={
+            globalVariant
+              ? "absolute top-1/2 right-1.5 min-h-9 -translate-y-1/2 px-3"
+              : `sm:min-w-[120px] ${heroVariant ? "xl:min-w-[148px] xl:px-6" : ""}`
+          }
         >
-          Search
+          {globalVariant ? (
+            <svg
+              aria-hidden
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            >
+              <circle cx="11" cy="11" r="6.5" />
+              <path d="m16 16 4 4" />
+            </svg>
+          ) : (
+            "Search"
+          )}
         </Button>
       </div>
       {heroVariant && shortcuts.length > 0 ? (
@@ -188,6 +223,7 @@ export function SearchForm({
               className="min-h-0 px-2.5 py-1"
               onClick={() => {
                 if (shortcut.href) {
+                  onNavigate?.();
                   router.push(shortcut.href);
                   return;
                 }

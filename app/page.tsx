@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { DiscoveryActionLinks } from "@/components/explorer/card-grammar";
+import { DiscoverNav } from "@/components/explorer/discover-nav";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { WindowSelector } from "@/components/explorer/window-selector";
 import { formatCompactNumber, truncateIdentifier } from "@/components/explorer/utils";
@@ -12,7 +13,6 @@ import { ClosingDiscoveryRail } from "@/components/home/closing-discovery-rail";
 import { DeferredNetworkPulse } from "@/components/home/deferred-network-pulse";
 import { ProfilesInMotionSpotlight } from "@/components/home/profiles-in-motion-spotlight";
 import { TrendingFeaturedModule } from "@/components/home/trending-featured-module";
-import { SearchForm } from "@/components/search/search-form";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
@@ -55,7 +55,6 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
 
   const trendWindowLabel = formatStatsWindowLabel(window);
   const topRelay = relayLeaders[0]?.relay;
-  const topEventId = homeNotes[0]?.id ?? "0".repeat(64);
   const freshness = formatUpdatedRelative(computedAt);
   const indexIsFresh = isFreshTimestamp(computedAt);
   const notesFreshness = freshness;
@@ -64,12 +63,6 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   const domainsFreshness = freshness;
   const staleNotice = getStaleDataNotice();
   const trendingNotesHref = buildWindowHref("/trending/notes", currentSearchParams, window);
-  const heroSearchShortcuts = [
-    { label: "#bitcoin", query: "#bitcoin" },
-    { label: "npub", query: "npub1..." },
-    { label: "relay URL", query: "wss://relay.damus.io" },
-    { label: "note ID", query: topEventId },
-  ];
   const heroPulseLabels: Record<string, string> = {
     events_ingested: "Events ingested",
     projected_profiles: "Projected profiles",
@@ -95,7 +88,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   const domainHighlights = homeDomains.slice(0, 8);
 
   return (
-    <div className="relative left-1/2 w-screen max-w-none -translate-x-1/2 px-4 sm:px-5 xl:px-8 2xl:px-10">
+    <div className="w-full">
       <LiveRefresh />
       <JsonLd
         data={{
@@ -110,7 +103,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
           },
         }}
       />
-      <div className="mx-auto w-full max-w-[92rem] space-y-12 sm:space-y-16 xl:space-y-[5.1rem]">
+      <div className="w-full space-y-14 sm:space-y-20">
         {staleNotice ? <SoftRefreshNote message={staleNotice} /> : null}
         {errorMessage ? (
           flagshipNotes.length > 0 || profileHighlights.length > 0 ? (
@@ -120,30 +113,19 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
           )
         ) : null}
         <IndexedAt computedAt={computedAt} />
-        <section className="border-edge/90 nm-panel-hero relative rounded-[2rem] border p-5 sm:p-7 xl:p-9 2xl:px-10">
-          {/* Clip aurora to the rounded panel without clipping the search dropdown. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 overflow-hidden rounded-[2rem]"
-          >
-            <div className="nm-aurora-layer absolute inset-0" />
-          </div>
-          <div className="relative z-10 grid gap-7 sm:gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.72fr)] lg:items-start lg:gap-10 2xl:grid-cols-[minmax(0,1.52fr)_360px] 2xl:gap-12">
-            <div className="space-y-6 sm:space-y-7">
-              <div className="space-y-4 sm:space-y-5">
-                <h1 className="nm-display-xl text-ink max-w-4xl lg:max-w-[15ch] 2xl:max-w-[16ch]">
-                  Track what is moving on Nostr.
+        <section className="nm-signal-rule border-edge/70 border-b pt-8 pb-10 sm:pt-12 sm:pb-14 lg:pt-16 lg:pb-16">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.55fr)_minmax(260px,0.45fr)] lg:items-end lg:gap-16">
+            <div className="space-y-8">
+              <div className="space-y-5">
+                <p className="nm-kicker">Discover</p>
+                <h1 className="nm-display-xl text-ink-strong max-w-[13ch]">
+                  See what is moving on Nostr.
                 </h1>
-                <p className="text-ink-muted max-w-2xl text-sm leading-6 sm:text-base">
-                  One index for the lead note, rising profiles, relay pulse, and fast-moving topics.
+                <p className="text-ink-muted max-w-2xl text-base leading-7 sm:text-lg sm:leading-8">
+                  Ranked notes, conversations, people, and topics—with the evidence behind their
+                  momentum.
                 </p>
               </div>
-              <SearchForm
-                className="max-w-[56rem]"
-                variant="hero"
-                helperText="Search notes, profiles, hashtags, relays, and event IDs."
-                shortcuts={heroSearchShortcuts}
-              />
               <div className="text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                 <WindowSelector path="/" searchParams={currentSearchParams} activeWindow={window} />
                 <span>{trendWindowLabel}</span>
@@ -160,11 +142,9 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                 ) : null}
               </div>
             </div>
-            <aside className="border-edge/90 bg-surface-sunken/35 rounded-[1.5rem] border p-4 sm:p-5 lg:self-stretch lg:justify-self-end lg:p-6">
-              <p className="text-ink-faint text-[11px] font-medium tracking-[0.18em] uppercase">
-                Snapshot
-              </p>
-              <dl className="border-edge/70 mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-3 text-sm sm:mt-4 sm:space-y-0 sm:border-t sm:pt-4 lg:grid-cols-1 lg:gap-y-3">
+            <aside className="border-edge/70 border-l pl-5 sm:pl-7">
+              <p className="nm-kicker">Network context</p>
+              <dl className="mt-5 grid grid-cols-2 gap-x-5 gap-y-4 text-sm lg:grid-cols-1">
                 <div className="flex min-w-0 flex-col gap-0.5 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
                   <dt className="text-ink-faint text-[11px] lg:text-sm">Window</dt>
                   <dd className="text-ink truncate font-medium">{trendWindowLabel}</dd>
@@ -209,8 +189,10 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
           </div>
         </section>
 
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.76fr)_minmax(300px,0.8fr)] lg:items-start lg:gap-7 2xl:grid-cols-[minmax(0,1.9fr)_minmax(340px,0.74fr)]">
-          <section className="border-accent-soft/15 nm-panel-feature overflow-hidden rounded-[1.72rem] border p-5 ring-1 ring-white/5 sm:p-6 xl:p-7">
+        <DiscoverNav active="overview" />
+
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,1.8fr)_minmax(300px,0.72fr)] lg:items-start lg:gap-10">
+          <section className="min-w-0">
             <header className="mb-6 space-y-3.5 sm:mb-7">
               <div className="space-y-2.5">
                 <h2 className="nm-display-lg text-ink-strong">The note to read first</h2>

@@ -5,7 +5,6 @@ import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
-import { QuickEntryGrid } from "@/components/home/quick-entry-grid";
 import { SearchForm } from "@/components/search/search-form";
 import { NotesList, ProfilesList, HashtagsList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
@@ -36,44 +35,6 @@ const SEARCH_TABS: Array<{ key: SearchTab; label: string }> = [
   { key: "all", label: "All" },
   { key: "notes", label: "Notes" },
   { key: "profiles", label: "Profiles" },
-];
-
-const explorerJumpLinks = [
-  {
-    href: "/trending",
-    label: "Open trending surfaces",
-    description: "Compare leading notes, profiles, hashtags, and domains.",
-  },
-  {
-    href: "/stats",
-    label: "Inspect stats surfaces",
-    description: "Check network, content, and relay metrics in one view.",
-  },
-  {
-    href: "/trending/notes",
-    label: "Explore trending notes",
-    description: "Review ranked notes and open the threads behind them.",
-  },
-  {
-    href: "/trending/long-form",
-    label: "Read trending long-form",
-    description: "Browse the long-form articles leading the network.",
-  },
-  {
-    href: "/trending/profiles",
-    label: "View active profiles",
-    description: "Browse profiles gaining ground across the network.",
-  },
-  {
-    href: "/trending/hashtags",
-    label: "Check hashtag momentum",
-    description: "See which topics are moving fastest.",
-  },
-  {
-    href: "/relays",
-    label: "Open relay explorer",
-    description: "Inspect where relay activity is concentrated.",
-  },
 ];
 
 export default async function SearchPage({ searchParams }: { searchParams: SearchParams }) {
@@ -198,8 +159,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   return (
     <div className="space-y-8">
       <PageHero
-        title="Search"
-        subtitle="Search notes, profiles, hashtags, and relays from one focused index."
+        eyebrow="Global search"
+        title={canQuery ? `Results for “${query.q}”` : "Find any public signal."}
+        subtitle="Search notes, people, topics, links, event identifiers, and relays from one focused index."
         badges={
           canQuery ? (
             <div className="flex flex-wrap gap-2 text-xs">
@@ -241,10 +203,41 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
 
       {!canQuery ? (
         <SectionCard
-          title="Start exploring"
-          description="Search notes, profiles, hashtags, relays, or event IDs above — or jump straight into a discovery surface."
+          title="Start with discovery"
+          description="Search above, or continue with the strongest signals already moving across Nostr."
         >
-          <QuickEntryGrid links={explorerJumpLinks} />
+          <nav aria-label="Search alternatives" className="grid gap-0 sm:grid-cols-3">
+            {[
+              {
+                href: "/",
+                label: "Discover overview",
+                description: "The strongest signals across notes, people, topics, and links.",
+              },
+              {
+                href: "/discovery/conversations/hot",
+                label: "Active conversations",
+                description: "Threads drawing meaningful attention now.",
+              },
+              {
+                href: "/relays",
+                label: "Network intelligence",
+                description: "Relay concentration, reach, and health.",
+              },
+            ].map((entry) => (
+              <Link
+                key={entry.href}
+                href={entry.href}
+                className="border-edge/65 group border-t py-5 sm:border-l sm:px-5 sm:first:border-l-0"
+              >
+                <span className="text-ink group-hover:text-link text-sm font-medium">
+                  {entry.label}
+                </span>
+                <span className="text-ink-muted mt-2 block text-sm leading-6">
+                  {entry.description}
+                </span>
+              </Link>
+            ))}
+          </nav>
         </SectionCard>
       ) : errorMessage ? (
         <ErrorPanel message={errorMessage} />

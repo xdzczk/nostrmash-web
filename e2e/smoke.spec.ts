@@ -37,6 +37,8 @@ test.describe("explorer smoke", () => {
   test("unknown routes show the not-found page", async ({ page }) => {
     await page.goto("/this-route-does-not-exist");
     await expect(page.getByText(/page not found/i)).toBeVisible();
-    await expect(page.locator("#main-content").getByRole("link", { name: "Home" })).toBeVisible();
+    await expect(
+      page.locator("#main-content").getByRole("link", { name: "Open Discover" })
+    ).toBeVisible();
   });
 });

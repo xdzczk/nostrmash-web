@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/explorer/empty-state";
 import { MetadataList } from "@/components/explorer/metadata-list";
 import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
+import { NetworkNav } from "@/components/explorer/network-nav";
 import { StatCard } from "@/components/explorer/stat-card";
 import { formatMetricLabel, isRecord } from "@/components/explorer/utils";
 import { SectionCard } from "@/components/ui/section-card";
@@ -223,6 +224,7 @@ export default async function StatsPage({
           </div>
         }
       />
+      <NetworkNav active="stats" />
       <IndexedAt computedAt={computedAt} />
 
       {errorMessage ? <ErrorPanel message={errorMessage} /> : null}

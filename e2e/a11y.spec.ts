@@ -5,6 +5,12 @@ const ROUTES = [
   "/",
   "/search?q=bitcoin&tab=all",
   "/trending",
+  "/trending/notes",
+  "/discovery/conversations/hot",
+  "/relays",
+  "/relays/health",
+  "/stats",
+  "/hashtags/nostr",
   `/notes/${"a".repeat(64)}`,
   `/profiles/${"b".repeat(64)}`,
 ] as const;

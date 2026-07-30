@@ -4,12 +4,12 @@ export type ButtonVariant = "primary" | "secondary" | "ghost" | "chip" | "danger
 export type ButtonSize = "sm" | "md" | "lg";
 
 const VARIANT: Record<ButtonVariant, string> = {
-  primary: "rounded-lg bg-accent text-white hover:bg-accent-hover",
+  primary: "rounded-xl bg-accent text-white hover:bg-accent-hover",
   secondary:
-    "rounded-lg border border-edge-strong bg-surface/60 text-ink-soft hover:border-edge-strong/80 hover:bg-surface/80",
-  ghost: "rounded-lg text-ink-dim hover:bg-surface/60 hover:text-ink",
-  chip: "rounded-full border border-edge-strong/90 bg-surface/70 text-ink-dim hover:border-edge-strong hover:text-ink",
-  danger: "rounded-lg bg-danger text-white hover:bg-danger/90 focus-visible:ring-danger/70",
+    "rounded-xl border border-edge bg-surface/70 text-ink-soft hover:border-edge-strong hover:bg-surface",
+  ghost: "rounded-xl text-ink-dim hover:bg-surface hover:text-ink",
+  chip: "rounded-lg border border-edge bg-transparent text-ink-dim hover:border-edge-strong hover:bg-surface hover:text-ink",
+  danger: "rounded-xl bg-danger text-white hover:bg-danger/90 focus-visible:ring-danger/70",
 };
 
 const SIZE: Record<ButtonSize, string> = {
@@ -19,7 +19,7 @@ const SIZE: Record<ButtonSize, string> = {
 };
 
 const BASE =
-  "nm-pressable inline-flex shrink-0 items-center justify-center gap-2 font-medium focus-visible:ring-2 focus-visible:ring-accent-soft/70 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50";
+  "nm-pressable inline-flex shrink-0 items-center justify-center gap-2 font-medium tracking-[-0.01em] focus-visible:ring-2 focus-visible:ring-accent-soft/70 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50";
 
 /** Shared class recipe for `<button>` and link-styled buttons (e.g. not-found). */
 export function buttonClassName({

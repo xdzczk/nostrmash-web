@@ -184,7 +184,7 @@ export function ProfilesInMotionSpotlight({
   degraded?: boolean;
 }) {
   return (
-    <section className="border-edge/90 nm-panel-emerald relative overflow-hidden rounded-[1.6rem] border p-5 sm:p-6 xl:p-7">
+    <section className="border-edge/70 bg-surface/45 rounded-2xl border p-5 sm:p-6 xl:p-7">
       <div className="flex h-full flex-col">
         <header className="space-y-3">
           <div className="space-y-2">

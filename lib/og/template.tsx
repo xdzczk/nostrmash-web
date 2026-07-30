@@ -4,12 +4,12 @@ import type { ReactNode } from "react";
 export const ogSize = { width: 1200, height: 630 } as const;
 export const ogContentType = "image/png";
 
-/** Single source of truth for branded OG navy/indigo gradients. */
-export const OG_GRADIENT = {
-  default: "linear-gradient(145deg, #0b1020 0%, #151b33 55%, #1d2450 100%)",
-  hashtag: "linear-gradient(145deg, #0d1224 0%, #1b2750 100%)",
-  profile: "linear-gradient(145deg, #10152a 0%, #1a2344 55%, #2a3a72 100%)",
-  note: "linear-gradient(145deg, #0b1020 0%, #171f3d 60%, #24306a 100%)",
+/** Restrained surfaces keep shared images aligned with the product UI. */
+export const OG_SURFACE = {
+  default: "#090a0c",
+  hashtag: "#0b0a0e",
+  profile: "#0a0b0e",
+  note: "#090a0c",
 } as const;
 
 const OG_INK = "#f4f6ff";
@@ -34,7 +34,7 @@ function OgFrame({
 }: {
   eyebrow: string;
   children: ReactNode;
-  variant: keyof typeof OG_GRADIENT;
+  variant: keyof typeof OG_SURFACE;
 }) {
   return (
     <div
@@ -42,25 +42,42 @@ function OgFrame({
         width: "100%",
         height: "100%",
         display: "flex",
+        position: "relative",
         flexDirection: "column",
         justifyContent: "space-between",
         padding: 64,
-        background: OG_GRADIENT[variant],
+        background: OG_SURFACE[variant],
         color: OG_INK,
         fontFamily: `${DISPLAY_FONT_FAMILY}, sans-serif`,
       }}
     >
+      <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
+        <div style={{ width: 112, height: 4, borderRadius: 999, background: "#9b87f5" }} />
+        <div
+          style={{
+            fontSize: 20,
+            letterSpacing: 3.5,
+            opacity: 0.62,
+            fontFamily: "sans-serif",
+            textTransform: "uppercase",
+          }}
+        >
+          {eyebrow}
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>{children}</div>
       <div
         style={{
-          fontSize: 24,
-          letterSpacing: 3,
-          opacity: 0.65,
+          position: "absolute",
+          right: 64,
+          bottom: 64,
+          color: "#9d9e9c",
+          fontSize: 22,
           fontFamily: "sans-serif",
         }}
       >
-        {eyebrow}
+        NostrMash
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>{children}</div>
     </div>
   );
 }
@@ -75,7 +92,7 @@ export async function createOgImage({
   eyebrow: string;
   title: string;
   subtitle?: string;
-  variant?: keyof typeof OG_GRADIENT;
+  variant?: keyof typeof OG_SURFACE;
   titleSize?: number;
 }): Promise<ImageResponse> {
   const fontData = await loadDisplayFont();

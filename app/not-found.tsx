@@ -6,17 +6,17 @@ export default function NotFound() {
   return (
     <EmptyState
       title="Page not found"
-      message="That URL is not part of the explorer. Try search, trends, or head back home."
+      message="The signal ends here. Return to discovery or use the global search to find a note, person, topic, or relay."
       actions={
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Link href="/" className={buttonClassName({ variant: "primary" })}>
-            Home
+            Open Discover
           </Link>
           <Link href="/search" className={buttonClassName({ variant: "secondary" })}>
             Search
           </Link>
-          <Link href="/trending" className={buttonClassName({ variant: "ghost" })}>
-            Trends
+          <Link href="/relays" className={buttonClassName({ variant: "ghost" })}>
+            Network
           </Link>
         </div>
       }

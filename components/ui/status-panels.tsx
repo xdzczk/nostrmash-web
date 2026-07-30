@@ -16,12 +16,12 @@ export function ErrorPanel({
   return (
     <div
       role="alert"
-      className="border-danger/40 bg-danger-soft text-danger-ink rounded-lg border p-3.5 text-sm break-words"
+      className="border-danger/55 bg-surface text-ink rounded-xl border-l-2 px-4 py-4 text-sm break-words"
     >
-      <p className="text-danger-ink font-medium">{title}</p>
-      <p className="text-danger-ink/90 mt-1">{message}</p>
+      <p className="text-ink font-medium">{title}</p>
+      <p className="text-ink-muted mt-1.5 leading-6">{message}</p>
       {showDetail ? (
-        <details className="border-danger/25 mt-2 rounded-md border px-2 py-1.5 text-xs opacity-80">
+        <details className="border-edge mt-3 rounded-lg border px-3 py-2 text-xs">
           <summary className="cursor-pointer select-none">Technical details</summary>
           <p className="mt-1.5 font-mono break-all">{detail}</p>
         </details>
@@ -34,7 +34,7 @@ export function SoftRefreshNote({ message }: { message: string }) {
   return (
     <div
       role="status"
-      className="border-warning/35 bg-warning-soft text-warning-ink rounded-lg border px-3.5 py-2.5 text-sm"
+      className="border-edge/70 bg-surface/55 text-ink-muted rounded-xl border px-4 py-3 text-sm leading-6"
     >
       {message}
     </div>

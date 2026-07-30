@@ -4,15 +4,15 @@ import type { ReactNode } from "react";
 export type PillTone = "freshness" | "entity" | "reason" | "stat" | "rank" | "neutral";
 
 const PILL_TONE: Record<PillTone, string> = {
-  freshness: "border-edge-strong/80 bg-surface-sunken/45 text-ink-dim",
-  entity: "border-accent-soft/30 bg-accent/10 text-link-hover",
-  reason: "border-edge-strong/75 bg-surface/70 text-ink-dim",
-  stat: "border-edge-strong/80 bg-surface/60 text-ink-soft",
-  rank: "border-success/35 bg-success-soft text-success-ink",
-  neutral: "border-edge-strong bg-surface/40 text-ink-dim",
+  freshness: "border-edge bg-transparent text-ink-muted",
+  entity: "border-accent-soft/35 bg-accent/8 text-link-hover",
+  reason: "border-edge bg-transparent text-ink-muted",
+  stat: "border-edge bg-surface/45 text-ink-soft",
+  rank: "border-accent-soft/35 bg-accent/8 text-accent-ink",
+  neutral: "border-edge bg-transparent text-ink-muted",
 };
 
-const BASE = "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium";
+const BASE = "inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium";
 
 /**
  * Canonical pill / badge. Renders a static `<span>` by default, or an

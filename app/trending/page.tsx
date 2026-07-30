@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/explorer/empty-state";
 import { DiscoveryActionLinks } from "@/components/explorer/card-grammar";
 import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
+import { DiscoverNav } from "@/components/explorer/discover-nav";
 import { NoteCard } from "@/components/explorer/note-card";
 import { getNotePreviewPresentation } from "@/components/explorer/note-preview";
 import {
@@ -270,10 +271,9 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
   return (
     <div className="space-y-7">
       <PageHero
-        eyebrow="Trending now"
-        title="Trending now"
+        eyebrow="Discover"
+        title="Signals moving now."
         subtitle="Scan the strongest note, profile, topic, and link signals in one pass."
-        className="space-y-3 p-3.5 sm:p-4"
         badges={
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
             <WindowSelector
@@ -293,6 +293,7 @@ export default async function TrendingPage({ searchParams }: { searchParams: Sea
           </div>
         }
       />
+      <DiscoverNav active="overview" />
       {staleNotice ? <SoftRefreshNote message={staleNotice} /> : null}
       {errorMessage ? (
         (notes?.notes?.length ?? 0) > 0 || (profiles?.profiles?.length ?? 0) > 0 ? (

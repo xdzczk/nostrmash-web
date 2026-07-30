@@ -10,6 +10,7 @@ import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
+import { NetworkNav } from "@/components/explorer/network-nav";
 import { StatCard } from "@/components/explorer/stat-card";
 import { formatMetricLabel, formatValue } from "@/components/explorer/utils";
 import { SectionCard } from "@/components/ui/section-card";
@@ -25,8 +26,8 @@ import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
-  title: "Relay explorer",
-  description: "Explore relay activity rankings and current health status.",
+  title: "Network",
+  description: "Understand Nostr relay activity, reach, and current network health.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -71,9 +72,9 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
   return (
     <div className="space-y-8">
       <PageHero
-        eyebrow="Relay exploration"
-        title="Relay explorer"
-        subtitle="Track active relays, inspect health, and move into relay detail from one place."
+        eyebrow="Network intelligence"
+        title="The network behind the conversation."
+        subtitle="Understand where activity is concentrated, which relays are reachable, and how fresh the evidence is."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
@@ -103,6 +104,7 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
           </div>
         }
       />
+      <NetworkNav active="overview" />
 
       {staleNotice ? <SoftRefreshNote message={staleNotice} /> : null}
       <LoadErrors errors={errors} />

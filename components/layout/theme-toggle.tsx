@@ -28,7 +28,7 @@ export function ThemeToggle() {
       onClick={toggle}
       aria-label="Toggle color theme"
       title="Toggle color theme"
-      className="nm-pressable border-edge/75 bg-surface/35 text-ink-dim hover:border-edge-strong/80 hover:bg-surface/55 hover:text-ink focus-visible:ring-accent-soft/70 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border focus-visible:ring-2 focus-visible:outline-none"
+      className="nm-pressable text-ink-muted hover:bg-surface hover:text-ink focus-visible:ring-accent-soft/70 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl focus-visible:ring-2 focus-visible:outline-none"
     >
       {/* Sun — shown in dark theme (click switches to light). */}
       <svg

@@ -14,17 +14,17 @@ export type TabItem = {
  */
 export function TabBar({ items, ariaLabel }: { items: TabItem[]; ariaLabel?: string }) {
   return (
-    <nav aria-label={ariaLabel} className="border-edge bg-surface/45 rounded-xl border p-1">
-      <ul className="flex flex-wrap gap-1">
+    <nav aria-label={ariaLabel} className="border-edge/70 overflow-x-auto border-b">
+      <ul className="flex min-w-max gap-6">
         {items.map((tab) => (
           <li key={tab.key}>
             <Link
               href={tab.href}
               aria-current={tab.active ? "page" : undefined}
-              className={`nm-pressable focus-visible:ring-accent-soft/70 inline-flex items-center rounded-lg px-3 py-1.5 text-sm focus-visible:ring-2 focus-visible:outline-none ${
+              className={`nm-pressable focus-visible:ring-accent-soft/70 relative inline-flex min-h-11 items-center py-2 text-sm focus-visible:ring-2 focus-visible:outline-none ${
                 tab.active
-                  ? "bg-ink text-surface"
-                  : "hover:bg-surface/80 text-ink-dim hover:text-ink"
+                  ? "after:bg-accent-soft bg-surface text-ink after:absolute after:right-0 after:bottom-[-1px] after:left-0 after:h-0.5 after:rounded-full"
+                  : "text-ink-muted hover:text-ink"
               }`}
             >
               {tab.label}

@@ -6,6 +6,7 @@ import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
+import { NetworkNav } from "@/components/explorer/network-nav";
 import { MetadataList } from "@/components/explorer/metadata-list";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
@@ -79,6 +80,7 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
           </div>
         }
       />
+      <NetworkNav active="health" />
 
       {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
 

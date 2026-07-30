@@ -3,14 +3,14 @@ import Link from "next/link";
 import { Pill, type PillTone } from "@/components/ui/pill";
 import { formatMetricLabel, formatValue, truncateMiddle } from "@/components/explorer/utils";
 
-export type CardTier = "lead" | "standard" | "compact" | "utility";
+export type CardTier = "standard" | "compact" | "utility";
 export type { PillTone };
 
 const TIER_SURFACE: Record<CardTier, string> = {
-  lead: "nm-raised rounded-[1.65rem] border border-edge/45 bg-surface/55 p-5 sm:p-6",
-  standard: "rounded-[1.15rem] border border-edge/45 bg-surface/40 p-4 sm:p-5",
-  compact: "rounded-xl bg-surface-sunken/40 px-3 py-2.5",
-  utility: "nm-raised rounded-xl bg-surface/55 p-4",
+  standard:
+    "border-b border-edge/65 bg-transparent px-1 py-5 transition-colors hover:bg-surface/25 sm:px-2 sm:py-6",
+  compact: "rounded-lg bg-surface-sunken/45 px-3 py-2.5",
+  utility: "rounded-xl border border-edge/65 bg-surface/55 p-4",
 };
 
 export type DiscoveryAction = {
@@ -50,7 +50,7 @@ export function DiscoveryStatPills({
   if (stats.length === 0) return null;
   return (
     <div
-      className={`flex flex-wrap items-center gap-x-2.5 gap-y-1.5 ${compact ? "text-[11px]" : "text-xs"} ${className}`.trim()}
+      className={`flex flex-wrap items-center gap-x-2.5 gap-y-1.5 ${compact ? "text-xs" : "text-[13px]"} ${className}`.trim()}
     >
       {stats.map((metric, index) => (
         <span key={metric.label} className="inline-flex items-center gap-1.5">
@@ -83,7 +83,7 @@ export function DiscoveryActionLinks({
   if (visibleActions.length === 0) return null;
   return (
     <div
-      className={`text-ink-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-xs ${className}`.trim()}
+      className={`text-ink-muted flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] ${className}`.trim()}
     >
       {visibleActions.map((action, index) => (
         <span key={action.label} className="inline-flex items-center gap-2">

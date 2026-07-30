@@ -6,6 +6,7 @@ import { SiteShell } from "@/components/layout/site-shell";
 import { WebVitals } from "@/components/telemetry/web-vitals";
 import { ToastProvider } from "@/components/ui/toast";
 import { appConfig } from "@/lib/config";
+import { UI_VERSION } from "@/lib/ui/version";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
     default: appConfig.siteName,
     template: `%s · ${appConfig.siteName}`,
   },
-  description: "Explore Nostr search, trends, profiles, and relay activity in one place.",
+  description: "Understand what is moving on Nostr, who is shaping it, and why it matters.",
   manifest: "/manifest.json",
   alternates: {
     canonical: "/",
@@ -40,13 +41,13 @@ export const metadata: Metadata = {
     type: "website",
     siteName: appConfig.siteName,
     title: appConfig.siteName,
-    description: "Explore Nostr search, trends, profiles, and relay activity in one place.",
+    description: "Understand what is moving on Nostr, who is shaping it, and why it matters.",
     url: "/",
   },
   twitter: {
     card: "summary_large_image",
     title: appConfig.siteName,
-    description: "Explore Nostr search, trends, profiles, and relay activity in one place.",
+    description: "Understand what is moving on Nostr, who is shaping it, and why it matters.",
   },
   icons: {
     icon: [
@@ -74,6 +75,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
+      data-ui-version={UI_VERSION}
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${bricolage.variable} h-full antialiased`}
     >

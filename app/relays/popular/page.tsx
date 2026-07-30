@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { normalizeRelayHost } from "@/components/explorer/stats-utils";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { PageHero } from "@/components/explorer/page-hero";
+import { NetworkNav } from "@/components/explorer/network-nav";
 import { StatCard } from "@/components/explorer/stat-card";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
@@ -73,6 +74,7 @@ export default async function PopularRelaysPage() {
           </div>
         }
       />
+      <NetworkNav active="relays" />
 
       {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
 

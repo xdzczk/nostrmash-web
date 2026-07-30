@@ -355,7 +355,7 @@ function FeaturedNoteCard({
   const statusLabel = buildStatusLabel(rank, signals);
 
   return (
-    <article className="border-link/20 nm-panel-featured rounded-[1.7rem] border p-6 ring-1 ring-white/10 sm:p-7 xl:p-8">
+    <article className="border-edge/70 bg-surface/65 rounded-2xl border p-6 sm:p-7 xl:p-8">
       <div className="flex flex-wrap items-center gap-2.5 text-sm">
         <span className="bg-accent-soft/15 border-link/30 text-accent-ink inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold tracking-[0.18em] uppercase">
           Lead note
@@ -412,7 +412,7 @@ function SecondaryNoteCard({
   const statusLabel = buildStatusLabel(rank, signals);
 
   return (
-    <article className="bg-surface-sunken/30 rounded-[1.35rem] p-4 xl:p-[1.125rem]">
+    <article className="border-edge/65 border-t py-5">
       <div className="flex flex-wrap items-center gap-2 text-[11px]">
         <span className="text-ink-muted font-medium tracking-[0.16em] uppercase">#{rank}</span>
         <span aria-hidden className="text-ink-faint/70">

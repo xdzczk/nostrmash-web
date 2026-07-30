@@ -6,6 +6,7 @@ import { BrandLogo } from "@/components/branding/brand-logo";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteNav } from "@/components/layout/site-nav";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { GlobalSearch } from "@/components/search/global-search";
 
 export async function SiteShell({ children }: { children: ReactNode }) {
   const headerStore = await headers();
@@ -22,17 +23,20 @@ export async function SiteShell({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
-      <header className="border-edge/80 bg-surface-sunken/90 supports-[backdrop-filter]:bg-surface-sunken/78 relative border-b shadow-[0_1px_0_rgba(9,9,11,0.9)] backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-6xl items-center gap-4 px-4 py-3 sm:gap-6 sm:px-6 sm:py-3.5">
+      <header className="border-edge/70 bg-background/88 supports-[backdrop-filter]:bg-background/76 sticky top-0 z-50 border-b backdrop-blur-xl">
+        <div className="mx-auto flex w-full max-w-[90rem] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 sm:px-6 lg:flex-nowrap lg:gap-5 lg:px-8">
           <Link
             href="/"
             aria-label="NostrMash home"
-            className="nm-pressable border-edge/75 bg-surface/35 hover:border-edge-strong/80 hover:bg-surface/55 focus-visible:ring-accent-soft/70 shrink-0 rounded-lg border px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] focus-visible:ring-2 focus-visible:outline-none"
+            className="nm-pressable focus-visible:ring-accent-soft/70 shrink-0 rounded-lg px-1 py-1.5 focus-visible:ring-2 focus-visible:outline-none"
           >
-            <BrandLogo className="h-8 w-[138px] sm:w-[174px]" priority />
+            <BrandLogo className="h-7 w-[122px] sm:w-[144px]" priority />
           </Link>
-          <SiteNav />
-          <div className="ml-auto sm:ml-0">
+          <div className="border-edge/50 order-3 w-full border-t pt-1 lg:order-none lg:w-auto lg:border-0 lg:pt-0">
+            <SiteNav />
+          </div>
+          <div className="ml-auto flex min-w-0 items-center gap-2 lg:w-full lg:max-w-xl">
+            <GlobalSearch />
             <ThemeToggle />
           </div>
         </div>
@@ -43,13 +47,11 @@ export async function SiteShell({ children }: { children: ReactNode }) {
       </header>
       <main
         id="main-content"
-        className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-7 pb-28 sm:px-6 sm:py-9 sm:pb-8"
+        className="mx-auto flex w-full max-w-[90rem] flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12"
       >
         {children}
       </main>
-      <div className="pb-24 sm:pb-0">
-        <SiteFooter />
-      </div>
+      <SiteFooter />
     </>
   );
 }

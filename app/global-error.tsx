@@ -13,21 +13,35 @@ export default function GlobalError({
         style={{
           margin: 0,
           fontFamily: "system-ui, sans-serif",
-          background: "#0b0f14",
-          color: "#e8eef5",
+          background: "#090a0c",
+          color: "#f4f4f2",
           minHeight: "100vh",
           display: "grid",
           placeItems: "center",
           padding: 24,
         }}
       >
-        <div style={{ maxWidth: 420, display: "grid", gap: 12 }}>
-          <h1 style={{ margin: 0, fontSize: 20 }}>Something went wrong</h1>
-          <p style={{ margin: 0, color: "#9aa7b5", fontSize: 14, lineHeight: 1.5 }}>
-            The application hit an unexpected error. Retrying usually helps.
+        <div style={{ maxWidth: 620, display: "grid", gap: 18 }}>
+          <p
+            style={{
+              margin: 0,
+              color: "#9b87f5",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+            }}
+          >
+            Interrupted signal
+          </p>
+          <h1 style={{ margin: 0, fontSize: "clamp(34px, 7vw, 58px)", lineHeight: 1.02 }}>
+            NostrMash couldn’t finish loading.
+          </h1>
+          <p style={{ margin: 0, color: "#9d9e9c", fontSize: 16, lineHeight: 1.65 }}>
+            An unexpected interruption stopped the application. Retrying will reconnect this view.
           </p>
           {error.digest ? (
-            <p style={{ margin: 0, color: "#6b7785", fontFamily: "monospace", fontSize: 12 }}>
+            <p style={{ margin: 0, color: "#7f817f", fontFamily: "monospace", fontSize: 12 }}>
               Reference: {error.digest}
             </p>
           ) : null}
@@ -36,11 +50,11 @@ export default function GlobalError({
             onClick={reset}
             style={{
               justifySelf: "start",
-              border: "1px solid #3a4654",
-              background: "#15202b",
-              color: "#e8eef5",
-              borderRadius: 8,
-              padding: "8px 12px",
+              border: 0,
+              background: "#6447d9",
+              color: "#ffffff",
+              borderRadius: 12,
+              padding: "12px 18px",
               cursor: "pointer",
             }}
           >

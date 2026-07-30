@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/explorer/empty-state";
 import { MetadataList } from "@/components/explorer/metadata-list";
 import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
+import { NetworkNav } from "@/components/explorer/network-nav";
 import { RelayStatList } from "@/components/relays/relay-stat-list";
 import { RelaySummaryCard } from "@/components/relays/relay-summary-card";
 import { SectionCard } from "@/components/ui/section-card";
@@ -126,6 +127,7 @@ export default async function RelayPage({ params }: { params: Params }) {
           </div>
         }
       />
+      <NetworkNav active="relays" />
 
       <LoadErrors errors={errors} />
 

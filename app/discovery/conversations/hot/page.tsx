@@ -6,6 +6,7 @@ import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
+import { DiscoverNav } from "@/components/explorer/discover-nav";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { WindowSelector } from "@/components/explorer/window-selector";
@@ -88,6 +89,7 @@ export default async function HotConversationsPage({
           </div>
         }
       />
+      <DiscoverNav active="conversations" />
 
       <SectionCard title="Conversation feed" description="Ranked by live conversation activity.">
         {errorMessage ? (

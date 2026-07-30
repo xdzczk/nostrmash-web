@@ -10,18 +10,19 @@ export default function Error({
   reset: () => void;
 }) {
   return (
-    <div className="border-edge bg-surface-sunken/40 space-y-3 rounded-md border p-4 text-sm">
-      <p className="text-ink font-medium">This page ran into a loading issue</p>
-      <p className="text-ink-muted">
-        Something went wrong while rendering this page. You can retry, or go back and try another
-        route.
+    <section className="nm-signal-rule border-edge/70 border-y py-12 sm:py-16">
+      <p className="nm-kicker">Interrupted signal</p>
+      <h1 className="nm-display-lg text-ink-strong mt-5">This page couldn’t finish loading.</h1>
+      <p className="text-ink-muted mt-4 max-w-xl text-base leading-7">
+        The rest of NostrMash is still available. Retry this view now; if the interruption
+        continues, return to Discover and choose another signal.
       </p>
       {error.digest ? (
-        <p className="text-ink-faint font-mono text-xs">Reference: {error.digest}</p>
+        <p className="text-ink-faint mt-4 font-mono text-xs">Reference: {error.digest}</p>
       ) : null}
-      <Button variant="danger" size="sm" onClick={reset}>
+      <Button className="mt-7" size="md" onClick={reset}>
         Retry page
       </Button>
-    </div>
+    </section>
   );
 }

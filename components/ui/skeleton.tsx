@@ -74,10 +74,7 @@ export function ChipSkeleton() {
 
 export function PageHeroSkeleton() {
   return (
-    <div
-      className="border-edge/95 bg-surface/55 space-y-4 rounded-xl border p-4 sm:space-y-5 sm:p-6"
-      aria-hidden
-    >
+    <div className="border-edge/70 space-y-5 border-b pt-8 pb-10 sm:pt-12 sm:pb-12" aria-hidden>
       <div className="space-y-3">
         <Skeleton className="h-3 w-24" />
         <Skeleton className="h-7 w-2/3 sm:h-8" />

@@ -126,7 +126,7 @@ function HashtagDiscoveryModule({
   const columns = splitIntoColumns(items, 2);
 
   return (
-    <section className="border-edge/90 nm-panel-fuchsia flex h-full flex-col rounded-[1.4rem] border p-4 sm:p-5 lg:p-6">
+    <section className="border-edge/70 flex h-full flex-col border-t pt-6">
       <header className="space-y-2.5">
         <div className="text-accent-fuchsia-ink/90 text-[11px] font-medium tracking-[0.18em] uppercase">
           Hashtags
@@ -236,7 +236,7 @@ function DomainDiscoveryModule({
   const columns = splitIntoColumns(items, 2);
 
   return (
-    <section className="border-edge/90 nm-panel-sky flex h-full flex-col rounded-[1.4rem] border p-4 sm:p-5 lg:p-6">
+    <section className="border-edge/70 flex h-full flex-col border-t pt-6">
       <header className="space-y-2.5">
         <div className="text-accent-sky-ink/90 text-[11px] font-medium tracking-[0.18em] uppercase">
           Domains
@@ -346,7 +346,7 @@ export function ClosingDiscoveryRail({
   domainsDegraded?: boolean;
 }) {
   return (
-    <section className="border-edge/90 nm-panel-close relative overflow-hidden rounded-[1.7rem] border p-5 sm:p-7 lg:p-8 2xl:px-9">
+    <section className="border-edge/70 border-t pt-8 sm:pt-10">
       <header className="max-w-3xl space-y-3">
         <h2 className="nm-title text-ink-strong">Follow what gains speed next</h2>
         <p className="text-ink-muted max-w-2xl text-sm leading-6 sm:text-base">

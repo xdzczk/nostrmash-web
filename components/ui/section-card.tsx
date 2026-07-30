@@ -10,14 +10,10 @@ export function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <section className="border-edge/50 bg-surface/50 nm-raised rounded-2xl border p-3.5 sm:p-5">
-      <header className="mb-3 space-y-1 sm:mb-4">
-        <h2 className="text-ink text-base font-semibold tracking-tight sm:text-[1.1rem]">
-          {title}
-        </h2>
-        {description ? (
-          <p className="text-ink-muted text-sm leading-5 sm:leading-6">{description}</p>
-        ) : null}
+    <section className="border-edge/70 border-t py-6 sm:py-8">
+      <header className="mb-5 max-w-3xl space-y-2 sm:mb-6">
+        <h2 className="nm-title text-ink">{title}</h2>
+        {description ? <p className="text-ink-muted text-[15px] leading-6">{description}</p> : null}
       </header>
       {children}
     </section>

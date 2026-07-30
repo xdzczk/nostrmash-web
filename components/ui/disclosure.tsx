@@ -7,18 +7,20 @@ export function Disclosure({
   children,
   defaultOpen = false,
   id,
+  className = "",
 }: {
   title: string;
   description?: string;
   children: ReactNode;
   defaultOpen?: boolean;
   id?: string;
+  className?: string;
 }) {
   return (
     <details
       id={id}
       open={defaultOpen || undefined}
-      className="border-edge/80 bg-surface/35 group rounded-xl border px-4 py-3"
+      className={`border-edge/80 bg-surface/35 group rounded-xl border px-4 py-3 ${className}`}
     >
       <summary className="text-ink-soft focus-visible:ring-accent-soft/70 cursor-pointer list-none rounded-md font-medium outline-none marker:content-none focus-visible:ring-2 [&::-webkit-details-marker]:hidden">
         <div className="flex items-start justify-between gap-3">

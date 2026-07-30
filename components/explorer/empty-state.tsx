@@ -16,11 +16,8 @@ export function EmptyState({
   actions?: ReactNode;
 }) {
   return (
-    <div className="border-edge/70 bg-surface/20 flex flex-col items-center gap-3 rounded-xl border border-dashed px-5 py-9 text-center">
-      <span
-        aria-hidden
-        className="border-edge-strong/60 bg-surface-sunken/40 inline-flex h-11 w-11 items-center justify-center rounded-full border"
-      >
+    <div className="border-edge/65 flex flex-col items-center gap-4 border-y px-5 py-12 text-center sm:py-16">
+      <span aria-hidden className="inline-flex h-9 w-9 items-center justify-center">
         <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
           <circle cx="12" cy="12" r="2.5" className="fill-accent-soft" opacity={0.9} />
           <circle
@@ -41,14 +38,14 @@ export function EmptyState({
           />
         </svg>
       </span>
-      <div className="space-y-1">
+      <div className="space-y-2">
         {title ? (
           <>
-            <p className="text-ink text-sm font-medium">{title}</p>
-            <p className="text-ink-muted mx-auto max-w-md text-sm leading-6">{message}</p>
+            <p className="nm-title text-ink">{title}</p>
+            <p className="text-ink-muted mx-auto max-w-md text-[15px] leading-6">{message}</p>
           </>
         ) : (
-          <p className="text-ink-dim mx-auto max-w-md text-sm leading-6">{message}</p>
+          <p className="text-ink-dim mx-auto max-w-md text-[15px] leading-6">{message}</p>
         )}
       </div>
       {actions ? <div className="mt-1">{actions}</div> : null}

@@ -50,7 +50,7 @@ export async function NotesList({
   }
 
   return (
-    <ul className="min-w-0 space-y-3">
+    <ul className="min-w-0">
       {notes.map((note, index) => (
         <li key={note.id ?? `note-${index}`} className="min-w-0">
           {isLongFormEvent(note) ? (
@@ -88,7 +88,7 @@ export function ArticlesList({
   discoverySignals?: boolean;
 }) {
   return (
-    <ul className="min-w-0 space-y-3">
+    <ul className="min-w-0">
       {articles.map((article, index) => (
         <li key={article.id ?? `article-${index}`} className="min-w-0">
           <ArticleCard
@@ -113,7 +113,7 @@ export function ProfilesList({
   discoverySignals?: boolean;
 }) {
   return (
-    <ul className="space-y-3">
+    <ul>
       {profiles.map((profile, index) => (
         <li key={profile.pubkey ?? profile.npub ?? `profile-${index}`}>
           <ProfileCard

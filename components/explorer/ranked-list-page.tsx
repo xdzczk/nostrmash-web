@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
+import { DiscoverNav, type DiscoverView } from "@/components/explorer/discover-nav";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
@@ -56,6 +57,14 @@ export function RankedListPage({
   debugPayload: unknown;
   itemListUrls?: string[];
 }) {
+  const discoverView: DiscoverView = path.includes("profiles")
+    ? "people"
+    : path.includes("hashtags")
+      ? "topics"
+      : path.includes("domains")
+        ? "links"
+        : "notes";
+
   return (
     <div className="space-y-8">
       {itemListUrls && itemListUrls.length > 0 ? (
@@ -86,6 +95,7 @@ export function RankedListPage({
           </div>
         }
       />
+      <DiscoverNav active={discoverView} />
       <SectionCard title={sectionTitle} description={sectionDescription}>
         {errorMessage && hasItems ? <SoftRefreshNote message={errorMessage} /> : null}
         {errorMessage && !hasItems ? (
