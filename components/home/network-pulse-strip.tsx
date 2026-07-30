@@ -25,11 +25,12 @@ export function NetworkPulseStrip({ title, stats }: { title: string; stats: Puls
   const hasAnyReal = stats.some(hasRealValue);
   const visibleStats = hasAnyReal ? stats.filter(hasRealValue) : stats;
   if (visibleStats.length === 0) return null;
+  const seriesCount = visibleStats.filter((stat) => stat.series && stat.series.length >= 2).length;
 
   return (
     <section className="space-y-3.5">
       <div className="space-y-1.5">
-        <p className="text-ink-faint flex items-center gap-2 text-[11px] font-medium tracking-[0.18em] uppercase">
+        <p className="nm-kicker flex items-center gap-2">
           <span className="nm-live-dot" aria-hidden />
           {title}
         </p>
@@ -37,7 +38,7 @@ export function NetworkPulseStrip({ title, stats }: { title: string; stats: Puls
           Supporting network evidence for the selected ranking window.
         </p>
       </div>
-      <div className="border-edge/70 grid border-y sm:grid-cols-2 lg:grid-cols-3">
+      <div className="border-edge/80 grid border-y sm:grid-cols-2 lg:grid-cols-3">
         {visibleStats.map((stat, index) => {
           const hasSeries = Boolean(stat.series && stat.series.length >= 2);
           const empty = isEmptyNumeric(stat.value);
@@ -50,27 +51,34 @@ export function NetworkPulseStrip({ title, stats }: { title: string; stats: Puls
           return (
             <article
               key={stat.label}
-              className={`relative overflow-hidden py-4 ${
-                index > 0 ? "sm:border-edge/70 sm:border-l sm:pl-5" : ""
+              className={`border-edge/70 relative overflow-hidden py-5 ${
+                index > 0 ? "border-t" : ""
+              } ${index % 2 === 1 ? "sm:border-t-0 sm:border-l sm:pl-5" : ""} ${
+                index >= 2 ? "sm:border-t" : ""
+              } ${index % 3 !== 0 ? "lg:border-l lg:pl-5" : "lg:border-l-0 lg:pl-0"} ${
+                index >= 3 ? "lg:border-t" : "lg:border-t-0"
               }`}
             >
-              <p className="text-ink-faint text-[11px]">{formatMetricLabel(stat.label)}</p>
-              <p className="text-ink mt-1.5 text-xl font-semibold tracking-tight tabular-nums">
+              <p className="nm-meta">{formatMetricLabel(stat.label)}</p>
+              <p className="text-ink mt-1.5 text-2xl font-semibold tracking-[-0.025em] tabular-nums">
                 <CausalValue value={displayValue}>{displayValue}</CausalValue>
               </p>
               {hasSeries ? (
                 <div className="text-link mt-2.5">
                   <Sparkline points={stat.series!} width={220} height={36} />
                 </div>
-              ) : (
-                <p className="text-ink-faint mt-2.5 text-[11px]">
-                  {empty ? "No data yet for this window" : "Trend history not available"}
-                </p>
-              )}
+              ) : null}
             </article>
           );
         })}
       </div>
+      {seriesCount < visibleStats.length ? (
+        <p className="nm-meta">
+          {seriesCount > 0
+            ? `Trend history is available for ${seriesCount} of ${visibleStats.length} metrics.`
+            : "Historical trend series are still building for this window."}
+        </p>
+      ) : null}
     </section>
   );
 }

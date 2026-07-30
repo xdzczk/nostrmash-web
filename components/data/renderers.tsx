@@ -13,7 +13,13 @@ import {
 } from "@/components/explorer/utils";
 import { ProfileCard } from "@/components/explorer/profile-card";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
-import { LONG_FORM_KIND, type EventRecord, type Profile } from "@/lib/types/api";
+import {
+  LONG_FORM_KIND,
+  type DomainEntry,
+  type EventRecord,
+  type HashtagEntry,
+  type Profile,
+} from "@/lib/types/api";
 
 function isLongFormEvent(note: EventRecord): boolean {
   return typeof note.kind === "number" && note.kind === LONG_FORM_KIND;
@@ -63,14 +69,14 @@ export async function NotesList({
             <ArticleCard
               article={note}
               author={getAuthorByPubkey(authorsByPubkey, note)}
-              rank={ranked ? index + 1 : undefined}
+              rank={ranked ? (note.ranking?.rank ?? index + 1) : undefined}
               discoverySignals={discoverySignals}
             />
           ) : (
             <NoteCard
               note={note}
               author={getAuthorByPubkey(authorsByPubkey, note)}
-              rank={ranked ? index + 1 : undefined}
+              rank={ranked ? (note.ranking?.rank ?? index + 1) : undefined}
               showFullContent={showFullContent}
               discoverySignals={discoverySignals}
               contentResolution={contentResolution}
@@ -100,7 +106,7 @@ export function ArticlesList({
           <ArticleCard
             article={article}
             author={getAuthorByPubkey(authorsByPubkey, article)}
-            rank={ranked ? index + 1 : undefined}
+            rank={ranked ? (article.ranking?.rank ?? index + 1) : undefined}
             discoverySignals={discoverySignals}
           />
         </li>
@@ -124,7 +130,7 @@ export function ProfilesList({
         <li key={profile.pubkey ?? profile.npub ?? `profile-${index}`}>
           <ProfileCard
             profile={profile}
-            rank={ranked ? index + 1 : undefined}
+            rank={ranked ? (profile.ranking?.rank ?? index + 1) : undefined}
             discoverySignals={discoverySignals}
           />
         </li>
@@ -139,7 +145,7 @@ export function HashtagsList({
   searchable = false,
   linkMode = "explorer",
 }: {
-  hashtags: Array<string | { hashtag?: string; count?: number; event_count?: number }>;
+  hashtags: Array<string | HashtagEntry>;
   ranked?: boolean;
   searchable?: boolean;
   linkMode?: "explorer" | "search";
@@ -166,7 +172,11 @@ export function HashtagsList({
       hashtag: normalizedHashtag,
       count,
       href,
-      rank: ranked ? index + 1 : undefined,
+      rank: ranked
+        ? typeof entry === "string"
+          ? index + 1
+          : (entry.ranking?.rank ?? index + 1)
+        : undefined,
       whyNow: typeof entry === "string" ? [] : mapHashtagWhyNow(entry),
     });
   });
@@ -245,9 +255,7 @@ export function DomainsList({
   ranked = false,
   searchable = false,
 }: {
-  domains: Array<
-    string | { domain?: string; count?: number; event_count?: number; unique_authors?: number }
-  >;
+  domains: Array<string | DomainEntry>;
   ranked?: boolean;
   searchable?: boolean;
 }) {
@@ -273,7 +281,11 @@ export function DomainsList({
       domain: normalizedDomain,
       count: typeof entry === "string" ? undefined : (entry.count ?? entry.event_count),
       href,
-      rank: ranked ? index + 1 : undefined,
+      rank: ranked
+        ? typeof entry === "string"
+          ? index + 1
+          : (entry.ranking?.rank ?? index + 1)
+        : undefined,
       whyNow: typeof entry === "string" ? [] : mapDomainWhyNow(entry),
       supportingSignal,
     });

@@ -61,6 +61,25 @@ test.describe("global product shell", () => {
     await expect(context.getByRole("link", { name: "Back to Notes" })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Discover categories" })).toHaveCount(0);
   });
+
+  test("sticky header does not obscure anchored Discover content", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("/");
+    const target = page.locator("#leading-signal");
+    await expect(target).toBeVisible();
+    await target.evaluate((element) => element.scrollIntoView());
+
+    const positions = await page.evaluate(() => {
+      const header = document.querySelector("header");
+      const target = document.getElementById("leading-signal");
+      return {
+        headerBottom: header?.getBoundingClientRect().bottom ?? 0,
+        targetTop: target?.getBoundingClientRect().top ?? 0,
+      };
+    });
+
+    expect(positions.targetTop).toBeGreaterThanOrEqual(positions.headerBottom);
+  });
 });
 
 test.describe("responsive visual references", () => {
@@ -81,6 +100,32 @@ test.describe("responsive visual references", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
     await expect(page).toHaveScreenshot("discover-mobile.png", {
+      fullPage: true,
+      animations: "disabled",
+    });
+  });
+
+  test("Discover laptop reference", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("/");
+    await expect(page).toHaveScreenshot("discover-laptop.png", {
+      fullPage: true,
+      animations: "disabled",
+    });
+  });
+
+  test("Discover light references", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Toggle color theme" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect(page).toHaveScreenshot("discover-light-desktop.png", {
+      fullPage: true,
+      animations: "disabled",
+    });
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page).toHaveScreenshot("discover-light-mobile.png", {
       fullPage: true,
       animations: "disabled",
     });

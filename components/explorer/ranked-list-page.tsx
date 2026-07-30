@@ -90,8 +90,12 @@ export function RankedListPage({
       <SectionCard title={sectionTitle} description={sectionDescription}>
         {hasItems ? children : <EmptyState title={emptyTitle} message={emptyMessage} />}
         {continuationHref ? (
-          <Link href={continuationHref} className="text-link mt-3 inline-block text-sm">
+          <Link
+            href={continuationHref}
+            className="border-edge/80 text-ink hover:text-accent-ink mt-6 inline-flex min-h-11 items-center gap-2 border-t pt-4 text-sm font-medium"
+          >
             {continuationLabel}
+            <span aria-hidden>→</span>
           </Link>
         ) : null}
         {footer}

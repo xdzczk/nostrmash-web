@@ -6,16 +6,25 @@ async function activeTabContrast(page: Page): Promise<number> {
       'nav[aria-label="Search result categories"] a[aria-current="page"]'
     ) as HTMLElement | null;
     if (!tab) return -1;
-    const styles = getComputedStyle(tab);
     const parse = (value: string) => {
-      const match = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+      const match = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d*\.?\d+))?/i);
       if (!match) return null;
-      return [Number(match[1]), Number(match[2]), Number(match[3])] as const;
+      return [
+        Number(match[1]),
+        Number(match[2]),
+        Number(match[3]),
+        match[4] === undefined ? 1 : Number(match[4]),
+      ] as const;
     };
-    const color = parse(styles.color);
-    const bg = parse(styles.backgroundColor);
+    const color = parse(getComputedStyle(tab).color);
+    let backgroundNode: HTMLElement | null = tab;
+    let bg: ReturnType<typeof parse> = null;
+    while (backgroundNode && (!bg || bg[3] === 0)) {
+      bg = parse(getComputedStyle(backgroundNode).backgroundColor);
+      backgroundNode = backgroundNode.parentElement;
+    }
     if (!color || !bg) return -1;
-    const luminance = ([r, g, b]: readonly [number, number, number]) => {
+    const luminance = ([r, g, b]: readonly [number, number, number, number]) => {
       const channel = (value: number) => {
         const normalized = value / 255;
         return normalized <= 0.03928 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;

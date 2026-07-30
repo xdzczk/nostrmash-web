@@ -74,10 +74,10 @@ export function ChipSkeleton() {
 
 export function PageHeroSkeleton() {
   return (
-    <div className="border-edge/70 space-y-5 border-b pt-8 pb-10 sm:pt-12 sm:pb-12" aria-hidden>
+    <div className="border-edge/80 space-y-4 border-b pt-7 pb-8 sm:pt-10 sm:pb-10" aria-hidden>
       <div className="space-y-3">
         <Skeleton className="h-3 w-24" />
-        <Skeleton className="h-7 w-2/3 sm:h-8" />
+        <Skeleton className="h-8 w-3/4 sm:h-10 sm:w-2/3" />
         <Skeleton className="h-4 w-full max-w-xl" />
       </div>
       <div className="flex flex-wrap gap-2">
@@ -134,33 +134,35 @@ export function StatGridSkeleton({ count = 4 }: { count?: number }) {
 
 export function DiscoverOverviewSkeleton() {
   return (
-    <div className="space-y-10" aria-hidden>
+    <div className="space-y-9" aria-hidden>
       <PageHeroSkeleton />
       <Skeleton className="h-11 w-full rounded-none" />
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1.42fr)_minmax(300px,0.62fr)] lg:gap-14">
-        <div className="border-edge/70 space-y-5 border-l-2 pl-6 sm:pl-8">
-          <Skeleton className="h-10 w-12" />
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-11 w-11 rounded-full" />
-            <Skeleton className="h-4 w-32" />
-          </div>
-          <SkeletonLines widths={["w-full", "w-11/12", "w-4/5", "w-2/3"]} />
-          <Skeleton className="h-4 w-52" />
-        </div>
-        <div className="space-y-6">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="border-edge/70 space-y-3 border-t pt-5">
-              <Skeleton className="h-6 w-10" />
-              <SkeletonLines widths={["w-full", "w-4/5", "w-2/3"]} />
+      <div className="grid gap-14 lg:grid-cols-[minmax(0,1.32fr)_minmax(300px,0.68fr)] xl:gap-20">
+        <div className="space-y-12">
+          <div className="border-accent-soft/20 bg-surface-emphasis space-y-5 rounded-[var(--radius-surface)] border px-5 py-6 sm:px-7 sm:py-8">
+            <Skeleton className="h-12 w-14" />
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-11 w-11 rounded-full" />
+              <Skeleton className="h-4 w-32" />
             </div>
-          ))}
+            <SkeletonLines widths={["w-full", "w-11/12", "w-4/5", "w-2/3"]} />
+            <Skeleton className="h-4 w-52" />
+          </div>
+          <ProfilesListSkeleton count={4} />
         </div>
-      </div>
-      <div className="grid gap-12 lg:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.72fr)]">
-        <ProfilesListSkeleton count={4} />
-        <div className="space-y-4">
-          <Skeleton className="h-6 w-40" />
-          <SkeletonLines widths={["w-full", "w-5/6", "w-3/4", "w-2/3"]} />
+        <div className="space-y-12">
+          <div className="space-y-6">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="border-edge/70 space-y-3 border-t pt-5">
+                <Skeleton className="h-6 w-10" />
+                <SkeletonLines widths={["w-full", "w-4/5", "w-2/3"]} />
+              </div>
+            ))}
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-6 w-40" />
+            <SkeletonLines widths={["w-full", "w-5/6", "w-3/4", "w-2/3"]} />
+          </div>
         </div>
       </div>
     </div>

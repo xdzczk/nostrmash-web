@@ -14,16 +14,19 @@ export type TabItem = {
  */
 export function TabBar({ items, ariaLabel }: { items: TabItem[]; ariaLabel?: string }) {
   return (
-    <nav aria-label={ariaLabel} className="border-edge/70 overflow-x-auto border-b">
-      <ul className="flex min-w-max gap-6">
+    <nav
+      aria-label={ariaLabel}
+      className="border-edge/80 overflow-x-auto border-b [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      <ul className="flex min-w-max gap-7">
         {items.map((tab) => (
           <li key={tab.key}>
             <Link
               href={tab.href}
               aria-current={tab.active ? "page" : undefined}
-              className={`nm-pressable focus-visible:ring-accent-soft/70 relative inline-flex min-h-11 items-center py-2 text-sm focus-visible:ring-2 focus-visible:outline-none ${
+              className={`nm-pressable focus-visible:ring-accent-soft/70 relative inline-flex min-h-11 items-center rounded-sm py-2 text-[13px] font-medium focus-visible:ring-2 focus-visible:outline-none ${
                 tab.active
-                  ? "after:bg-accent-soft bg-surface text-ink after:absolute after:right-0 after:bottom-[-1px] after:left-0 after:h-0.5 after:rounded-full"
+                  ? "after:bg-accent-soft text-ink after:absolute after:right-0 after:bottom-[-1px] after:left-0 after:h-0.5 after:rounded-full"
                   : "text-ink-muted hover:text-ink"
               }`}
             >

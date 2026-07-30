@@ -68,7 +68,7 @@ export function ArticleCard({
     .slice(0, 3);
 
   const isTopRank = typeof rank === "number" && rank <= 3;
-  const rankLabel = typeof rank === "number" ? `#${rank}` : null;
+  const rankLabel = typeof rank === "number" ? String(rank).padStart(2, "0") : null;
   const score =
     typeof article.score === "number" && Number.isFinite(article.score) ? article.score : null;
 
@@ -80,9 +80,9 @@ export function ArticleCard({
     >
       <div className="flex flex-wrap items-center gap-2 text-xs">
         {rankLabel ? (
-          <DiscoveryPill tone={isTopRank ? "entity" : "rank"} className="px-2 py-0.5 text-[10px]">
+          <span className="text-accent-ink mr-1 text-lg leading-none tracking-[-0.05em] tabular-nums">
             {rankLabel}
-          </DiscoveryPill>
+          </span>
         ) : null}
         <DiscoveryPill tone="neutral" className="px-2 py-0.5 text-[10px] tracking-wide uppercase">
           Long-form

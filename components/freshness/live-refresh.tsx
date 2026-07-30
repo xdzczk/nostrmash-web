@@ -47,7 +47,10 @@ export function LiveRefresh({ intervalMs = 75_000 }: { intervalMs?: number }) {
   }
 
   return isPending ? (
-    <div role="status" className="text-ink-muted flex items-center gap-2 text-xs">
+    <div
+      role="status"
+      className="border-edge/80 bg-surface/95 text-ink-muted fixed right-4 bottom-4 z-40 flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs shadow-lg backdrop-blur-lg sm:right-6 sm:bottom-6"
+    >
       <span className="nm-live-dot" aria-hidden />
       Updating changed ranking signals…
     </div>

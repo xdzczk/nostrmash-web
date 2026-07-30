@@ -238,8 +238,8 @@ export function WhyNow({
     tone === "highlight" ? "rounded-xl border border-link/20 bg-accent/[0.07] px-3.5 py-2.5" : "";
   const titleClassName =
     tone === "highlight"
-      ? "text-[10px] font-semibold tracking-[0.16em] text-accent-ink uppercase"
-      : "text-[10px] font-semibold tracking-[0.16em] text-ink-faint uppercase";
+      ? "text-xs font-semibold tracking-[0.12em] text-accent-ink uppercase"
+      : "text-xs font-semibold tracking-[0.12em] text-ink-faint uppercase";
   const reasonClassName =
     tone === "highlight" ? "border-link/30 bg-link/10 text-accent-ink" : "text-ink-dim";
   const supportClassName = tone === "highlight" ? "text-link-hover/80" : "text-ink-faint";
@@ -249,7 +249,7 @@ export function WhyNow({
     <div className={`${containerClassName} ${className}`.trim()}>
       {showLabel ? <p className={titleClassName}>Why now</p> : null}
       <div
-        className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-5 ${showLabel ? "mt-1.5" : ""}`.trim()}
+        className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] leading-5 ${showLabel ? "mt-1.5" : ""}`.trim()}
       >
         {!showLabel && tone !== "highlight" ? (
           <span aria-hidden className="bg-accent-soft/70 inline-block h-1.5 w-1.5 rounded-full" />

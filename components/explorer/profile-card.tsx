@@ -1,7 +1,6 @@
 import {
   cardTierClassName,
   DiscoveryActionLinks,
-  DiscoveryPill,
   DiscoveryStatPills,
 } from "@/components/explorer/card-grammar";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
@@ -56,7 +55,7 @@ export function ProfileCard({
     .filter((entry): entry is (typeof rawMetrics)[number] => Boolean(entry))
     .slice(0, 2);
   const isTopRank = typeof rank === "number" && rank <= 3;
-  const rankLabel = typeof rank === "number" ? `#${rank}` : null;
+  const rankLabel = typeof rank === "number" ? String(rank).padStart(2, "0") : null;
   const identifierKind = identifier.startsWith("npub") ? "npub" : "pubkey";
   const secondaryIdentity = secondaryLabel ?? (identifier !== "unknown" ? identifier : null);
   const profileReasons = mapProfileWhyNow(profile);
@@ -68,6 +67,11 @@ export function ProfileCard({
       }`}
     >
       <div className="flex items-start gap-3">
+        {rankLabel ? (
+          <span className="text-accent-ink w-7 shrink-0 pt-2 text-lg leading-none tracking-[-0.05em] tabular-nums">
+            {rankLabel}
+          </span>
+        ) : null}
         <ProfileAvatar
           profile={profile}
           size={44}
@@ -76,14 +80,6 @@ export function ProfileCard({
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex items-start justify-between gap-2">
             <p className="text-ink truncate text-base font-semibold">{label}</p>
-            {rankLabel ? (
-              <DiscoveryPill
-                tone={isTopRank ? "rank" : "freshness"}
-                className="shrink-0 px-2 py-0.5 text-[10px]"
-              >
-                {rankLabel}
-              </DiscoveryPill>
-            ) : null}
           </div>
           {secondaryIdentity ? (
             <p className="text-ink-faint truncate text-xs" title={secondaryIdentity}>

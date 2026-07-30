@@ -8,7 +8,6 @@ import { Timestamp } from "@/components/explorer/timestamp";
 import {
   cardTierClassName,
   DiscoveryActionLinks,
-  DiscoveryPill,
   DiscoveryStatPills,
 } from "@/components/explorer/card-grammar";
 import { mapNoteWhyNow, WhyNow } from "@/components/explorer/why-now";
@@ -103,7 +102,7 @@ export function NoteCard({
     label: truncateIdentifier(relayHost, "relay", "primary"),
   }));
   const reasonCandidates = mapNoteWhyNow(note);
-  const rankLabel = typeof rank === "number" ? `#${rank}` : null;
+  const rankLabel = typeof rank === "number" ? String(rank).padStart(2, "0") : null;
 
   return (
     <article
@@ -112,6 +111,11 @@ export function NoteCard({
       }`}
     >
       <div className="flex items-start gap-3">
+        {rankLabel ? (
+          <span className="text-accent-ink w-7 shrink-0 pt-2 text-lg leading-none tracking-[-0.05em] tabular-nums">
+            {rankLabel}
+          </span>
+        ) : null}
         {authorAvatarProfile ? (
           <ProfileAvatar
             profile={authorAvatarProfile}
@@ -129,14 +133,6 @@ export function NoteCard({
         )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            {rankLabel ? (
-              <DiscoveryPill
-                tone={isTopRank ? "entity" : "rank"}
-                className="px-2 py-0.5 text-[10px]"
-              >
-                {rankLabel}
-              </DiscoveryPill>
-            ) : null}
             {authorHref ? (
               <Link href={authorHref} className="text-ink-soft hover:text-ink-strong font-medium">
                 {authorLabel}

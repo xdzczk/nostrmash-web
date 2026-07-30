@@ -44,7 +44,7 @@ export function DiscoverShell({
   const modeLinks = DISCOVER_MODE_LINKS[view] ?? [];
 
   return (
-    <div className="space-y-8 sm:space-y-10">
+    <div className="space-y-7 sm:space-y-9">
       <DiscoverTelemetry view={view} mode={mode} window={window} />
       <LiveRefresh />
       <PageHero
@@ -52,10 +52,10 @@ export function DiscoverShell({
         title={title}
         subtitle={subtitle}
         badges={
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+          <div className="nm-meta flex flex-wrap items-center gap-x-3 gap-y-2">
             <WindowSelector path={path} searchParams={searchParams} activeWindow={window} />
             {freshnessLabel ? (
-              <span className="text-ink-muted inline-flex items-center gap-1.5">
+              <span className="text-ink-muted inline-flex items-center gap-2">
                 <span className="nm-live-dot" aria-hidden />
                 {freshnessLabel}
               </span>
@@ -65,7 +65,7 @@ export function DiscoverShell({
         support={heroSupport}
       />
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <DiscoverNav active={view} window={window} />
         {modeLinks.length > 1 ? (
           <nav aria-label={`${view} modes`} className="flex flex-wrap items-center gap-4">
@@ -74,7 +74,7 @@ export function DiscoverShell({
                 key={item.mode}
                 href={`${item.href}?window=${window}`}
                 aria-current={item.mode === mode ? "page" : undefined}
-                className={`text-xs font-medium transition ${
+                className={`nm-meta font-medium transition ${
                   item.mode === mode
                     ? "text-ink underline decoration-[var(--accent-soft)] decoration-2 underline-offset-4"
                     : "text-ink-muted hover:text-ink"
@@ -99,7 +99,7 @@ export function DiscoverShell({
       {children}
 
       <div className="border-edge/70 border-t pt-4">
-        <Link href="/methodology" className="text-ink-muted hover:text-ink text-xs">
+        <Link href="/methodology" className="nm-meta hover:text-ink">
           How Discover rankings work
         </Link>
       </div>

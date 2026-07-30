@@ -21,17 +21,17 @@ export function PageHero({
 }) {
   return (
     <section
-      className={`nm-signal-rule border-edge/70 space-y-5 border-b pt-8 pb-9 sm:pt-12 sm:pb-12 ${
-        emphasize ? "sm:pt-14 sm:pb-14" : ""
+      className={`nm-signal-rule border-edge/80 space-y-4 border-b pt-7 pb-8 sm:pt-10 sm:pb-10 ${
+        emphasize ? "sm:pt-12 sm:pb-11" : ""
       } ${className ?? ""}`}
     >
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {eyebrow ? <p className="nm-kicker">{eyebrow}</p> : null}
         <h1 className={`text-ink-strong ${emphasize ? "nm-display-xl" : "nm-display-lg"}`}>
           {title}
         </h1>
         {subtitle ? (
-          <p className="text-ink-muted max-w-3xl text-base leading-7">{subtitle}</p>
+          <p className="text-ink-muted max-w-[46rem] text-[1.02rem] leading-7">{subtitle}</p>
         ) : null}
       </div>
       {badges ? <div className="flex flex-wrap items-center gap-2">{badges}</div> : null}

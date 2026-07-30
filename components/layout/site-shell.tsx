@@ -23,8 +23,8 @@ export async function SiteShell({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
-      <header className="border-edge/70 bg-background/88 supports-[backdrop-filter]:bg-background/76 sticky top-0 z-50 border-b backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-[90rem] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 sm:px-6 lg:flex-nowrap lg:gap-5 lg:px-8">
+      <header className="border-edge/80 bg-background/94 supports-[backdrop-filter]:bg-background/88 sticky top-0 z-50 border-b backdrop-blur-xl">
+        <div className="mx-auto flex w-full max-w-[82rem] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 sm:px-6 lg:flex-nowrap lg:gap-6 lg:px-8">
           <Link
             href="/"
             aria-label="NostrMash home"
@@ -32,22 +32,18 @@ export async function SiteShell({ children }: { children: ReactNode }) {
           >
             <BrandLogo className="h-7 w-[122px] sm:w-[144px]" priority />
           </Link>
-          <div className="border-edge/50 order-3 w-full border-t pt-1 lg:order-none lg:w-auto lg:border-0 lg:pt-0">
+          <div className="border-edge/60 order-3 w-full border-t pt-1 lg:order-none lg:w-auto lg:border-0 lg:pt-0">
             <SiteNav />
           </div>
-          <div className="ml-auto flex min-w-0 items-center gap-2 lg:w-full lg:max-w-xl">
+          <div className="ml-auto flex min-w-0 items-center gap-2 lg:w-full lg:max-w-[34rem]">
             <GlobalSearch />
             <ThemeToggle />
           </div>
         </div>
-        <div
-          aria-hidden
-          className="via-edge-strong/70 pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent to-transparent"
-        />
       </header>
       <main
         id="main-content"
-        className="mx-auto flex w-full max-w-[90rem] flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12"
+        className="mx-auto flex w-full max-w-[82rem] flex-1 scroll-mt-24 flex-col px-4 py-7 sm:px-6 sm:py-9 lg:px-8 lg:py-11"
       >
         {children}
       </main>

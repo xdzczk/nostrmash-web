@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeImageSrc, sanitizeExternalHref } from "@/components/explorer/utils";
+import {
+  normalizeImageSrc,
+  profileLabel,
+  profileSecondaryLabel,
+  sanitizeExternalHref,
+} from "@/components/explorer/utils";
 
 describe("sanitizeExternalHref", () => {
   it("allows http(s) and relative paths", () => {
@@ -25,5 +30,24 @@ describe("normalizeImageSrc", () => {
 
   it("rejects javascript image sources", () => {
     expect(normalizeImageSrc("javascript:alert(1)")).toBeNull();
+  });
+});
+
+describe("profile identity presentation", () => {
+  it("suppresses malformed display metadata in favor of a stable identifier", () => {
+    const profile = {
+      pubkey: "a".repeat(64),
+      npub: "npub1stableidentifier",
+      display_name: "bad\ufffdname",
+      name: "%7Bencoded%7D",
+      nip05: "bad identity@example.com",
+    };
+
+    expect(profileLabel(profile)).toBe("npub1stableidentifier");
+    expect(profileSecondaryLabel(profile)).not.toContain("bad identity");
+  });
+
+  it("preserves readable unicode names", () => {
+    expect(profileLabel({ pubkey: "b".repeat(64), display_name: "Иван ⚡" })).toBe("Иван ⚡");
   });
 });

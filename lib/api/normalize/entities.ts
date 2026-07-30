@@ -287,6 +287,7 @@ export function normalizeDomainEntry(value: unknown): DomainEntry | null {
   if (!record) return null;
 
   const domain =
+    normalizeDomainLabel(record.canonical_domain) ??
     normalizeDomainLabel(record.domain) ??
     normalizeDomainLabel(record.host) ??
     normalizeDomainLabel(record.hostname) ??
@@ -304,7 +305,21 @@ export function normalizeDomainEntry(value: unknown): DomainEntry | null {
 }
 
 export function normalizeDomainEntries(value: unknown): DomainEntry[] {
-  return asArray(value)
+  const entries = asArray(value)
     .map((entry) => normalizeDomainEntry(entry))
     .filter((entry): entry is DomainEntry => entry !== null);
+
+  // Compatibility only for payloads produced before canonical discovery
+  // domains moved into the backend projection. Counts are never merged here.
+  const selected = new Map<string, DomainEntry>();
+  for (const entry of entries) {
+    const raw = entry.domain ?? "";
+    const withoutWWW = raw.replace(/^www\./, "");
+    const key = withoutWWW === "youtu.be" ? "youtube.com" : withoutWWW;
+    const current = selected.get(key);
+    const currentCount = current?.count ?? current?.event_count ?? 0;
+    const nextCount = entry.count ?? entry.event_count ?? 0;
+    if (!current || nextCount > currentCount) selected.set(key, entry);
+  }
+  return Array.from(selected.values());
 }

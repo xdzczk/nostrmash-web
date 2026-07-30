@@ -11,26 +11,27 @@
 :root {
   color-scheme: dark;
 
-  --background: #090a0c;
-  --foreground: #f4f4f2;
+  --background: #0a0b0e;
+  --foreground: #f7f7f4;
 
-  --surface: #141519;
-  --surface-sunken: #0d0e11;
-  --edge: #25272d;
-  --edge-strong: #3a3d45;
+  --surface: #16171c;
+  --surface-sunken: #101115;
+  --surface-emphasis: #1b1923;
+  --edge: #2d3037;
+  --edge-strong: #484b55;
 
-  --accent: #6447d9;
-  --accent-soft: #9b87f5;
-  --accent-hover: #765ce3;
+  --accent: #7257de;
+  --accent-soft: #aa98ff;
+  --accent-hover: #846ae8;
   --accent-ink: #eeeaff;
-  --accent-strong: #b9aaff;
+  --accent-strong: #c0b3ff;
 
   --ink-strong: #fbfbf8;
-  --ink: #f2f2ef;
-  --ink-soft: #deded9;
-  --ink-dim: #c7c7c1;
-  --ink-muted: #9d9e9c;
-  --ink-faint: #7f817f;
+  --ink: #f4f4f0;
+  --ink-soft: #e3e3de;
+  --ink-dim: #cdcec8;
+  --ink-muted: #adafaa;
+  --ink-faint: #90928e;
 
   --link: #b9aaff;
   --link-hover: #d6ceff;
@@ -56,18 +57,23 @@
 
   --skeleton-base: rgba(63, 63, 70, 0.3);
   --skeleton-shimmer: rgba(244, 244, 245, 0.07);
+
+  --radius-control: 0.625rem;
+  --radius-surface: 1rem;
+  --space-section: clamp(3.25rem, 5vw, 5rem);
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
 
-  --background: #f7f7f4;
+  --background: #f6f5f1;
   --foreground: #171719;
 
-  --surface: #ffffff;
-  --surface-sunken: #f0f0ed;
-  --edge: #e1e1dc;
-  --edge-strong: #ccccc5;
+  --surface: #fffefa;
+  --surface-sunken: #eeede8;
+  --surface-emphasis: #f0ecfa;
+  --edge: #deddd7;
+  --edge-strong: #c6c5be;
 
   --accent: #5b3fc4;
   --accent-soft: #7258d5;
@@ -79,8 +85,8 @@
   --ink: #18181b;
   --ink-soft: #27272a;
   --ink-dim: #3f3f46;
-  --ink-muted: #52525b;
-  --ink-faint: #64646e; /* AA on off-white panels (#f6f6f7), not only pure white */
+  --ink-muted: #4f5058;
+  --ink-faint: #5e6068;
 
   --link: #4338ca; /* indigo-700 — AA even when action rows sit at opacity-80 */
   --link-hover: #3730a3; /* indigo-800 */
@@ -112,6 +118,7 @@
 
   --color-surface: var(--surface);
   --color-surface-sunken: var(--surface-sunken);
+  --color-surface-emphasis: var(--surface-emphasis);
   --color-edge: var(--edge);
   --color-edge-strong: var(--edge-strong);
 
@@ -157,6 +164,10 @@
    correctly override them — an unlayered `a { color: inherit }` was defeating
    every `text-*` class on links (including TabBar active labels). */
 @layer base {
+  html {
+    scroll-padding-top: 5.5rem;
+  }
+
   body {
     background: var(--background);
     color: var(--foreground);
@@ -345,25 +356,42 @@
 }
 .nm-display-lg {
   font-family: var(--font-display);
-  font-size: clamp(1.8rem, 1.35rem + 1.35vw, 2.6rem);
-  line-height: 1.06;
-  letter-spacing: -0.035em;
-  font-weight: 560;
+  font-size: clamp(2rem, 1.45rem + 1.7vw, 3rem);
+  line-height: 1.04;
+  letter-spacing: -0.042em;
+  font-weight: 570;
 }
 .nm-title {
   font-family: var(--font-display);
-  font-size: clamp(1.4rem, 1.2rem + 0.85vw, 1.9rem);
-  line-height: 1.15;
-  letter-spacing: -0.025em;
-  font-weight: 560;
+  font-size: clamp(1.5rem, 1.24rem + 0.8vw, 2rem);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  font-weight: 570;
 }
 
 .nm-kicker {
   color: var(--ink-faint);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 650;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+.nm-body {
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.nm-meta {
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.nm-evidence {
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  line-height: 1.55;
 }
 
 .nm-signal-rule {
@@ -374,7 +402,7 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: min(7rem, 28%);
+  width: min(4rem, 22%);
   height: 2px;
   border-radius: 999px;
   background: var(--accent-soft);

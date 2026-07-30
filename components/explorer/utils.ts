@@ -322,14 +322,29 @@ export function profilePictureUrl(profile: Profile): string | null {
   return normalizeImageSrc(raw);
 }
 
+function readableProfileName(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (
+    normalized.length === 0 ||
+    normalized.length > 80 ||
+    /[\u0000-\u001f\u007f-\u009f\ufffd]/u.test(normalized) ||
+    /%(?:[0-9a-f]{2})/i.test(normalized) ||
+    /^(?:nostr:|https?:\/\/|[\[{])/i.test(normalized) ||
+    /^[0-9a-f]{40,}$/i.test(normalized)
+  ) {
+    return undefined;
+  }
+  return normalized;
+}
+
 export function profileLabel(profile: Profile): string {
-  const displayName = readProfileText(profile, [
-    "display_name",
-    "displayName",
-    "display",
-    "displayname",
-  ]);
-  const name = readProfileText(profile, ["name", "username", "user_name", "handle"]);
+  const displayName = readableProfileName(
+    readProfileText(profile, ["display_name", "displayName", "display", "displayname"])
+  );
+  const name = readableProfileName(
+    readProfileText(profile, ["name", "username", "user_name", "handle"])
+  );
   const npub = readProfileText(profile, ["npub", "npub_hex", "npubHex"]);
   const pubkey = readProfileText(profile, [
     "pubkey",
@@ -341,16 +356,10 @@ export function profileLabel(profile: Profile): string {
     "userPubkey",
   ]);
 
-  const isHexLike = (value: string | undefined): boolean =>
-    typeof value === "string" && /^[0-9a-f]{40,}$/i.test(value);
   const npubFromPubkey = pubkey ? hexToNpub(pubkey) : null;
 
   return (
-    (displayName && !isHexLike(displayName) ? displayName : undefined) ??
-    (name && !isHexLike(name) ? name : undefined) ??
-    npub ??
-    npubFromPubkey ??
-    (pubkey ? truncateMiddle(pubkey) : "Profile")
+    displayName ?? name ?? npub ?? npubFromPubkey ?? (pubkey ? truncateMiddle(pubkey) : "Profile")
   );
 }
 
@@ -374,14 +383,19 @@ export function profileIdentifier(profile: Profile): string {
 }
 
 export function profileSecondaryLabel(profile: Profile): string | null {
-  const displayName = readProfileText(profile, [
-    "display_name",
-    "displayName",
-    "display",
-    "displayname",
-  ]);
-  const name = readProfileText(profile, ["name", "username", "user_name", "handle"]);
-  const nip05 = readProfileText(profile, ["nip05", "nip_05"]) ?? null;
+  const displayName = readableProfileName(
+    readProfileText(profile, ["display_name", "displayName", "display", "displayname"])
+  );
+  const name = readableProfileName(
+    readProfileText(profile, ["name", "username", "user_name", "handle"])
+  );
+  const nip05Candidate = readProfileText(profile, ["nip05", "nip_05"]);
+  const nip05 =
+    nip05Candidate &&
+    nip05Candidate.length <= 128 &&
+    !/\s|[\u0000-\u001f\u007f-\u009f\ufffd]/u.test(nip05Candidate)
+      ? nip05Candidate
+      : null;
   const identifier = profileIdentifier(profile);
 
   if (displayName && name && displayName !== name) {
