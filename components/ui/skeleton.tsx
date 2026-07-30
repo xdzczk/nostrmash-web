@@ -139,7 +139,7 @@ export function DiscoverOverviewSkeleton() {
       <Skeleton className="h-11 w-full rounded-none" />
       <div className="grid gap-14 lg:grid-cols-[minmax(0,1.32fr)_minmax(300px,0.68fr)] xl:gap-20">
         <div className="space-y-12">
-          <div className="border-accent-soft/20 bg-surface-emphasis space-y-5 rounded-[var(--radius-surface)] border px-5 py-6 sm:px-7 sm:py-8">
+          <div className="nm-elevated-surface space-y-5 rounded-[var(--radius-surface)] border px-5 py-6 sm:px-7 sm:py-8">
             <Skeleton className="h-12 w-14" />
             <div className="flex items-center gap-3">
               <Skeleton className="h-11 w-11 rounded-full" />

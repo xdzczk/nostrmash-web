@@ -23,7 +23,7 @@ export async function SiteShell({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
-      <header className="border-edge/80 bg-background/94 supports-[backdrop-filter]:bg-background/88 sticky top-0 z-50 border-b backdrop-blur-xl">
+      <header className="border-edge/80 bg-surface/96 supports-[backdrop-filter]:bg-surface/90 sticky top-0 z-50 border-b backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-[82rem] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 sm:px-6 lg:flex-nowrap lg:gap-6 lg:px-8">
           <Link
             href="/"

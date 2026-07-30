@@ -11,30 +11,33 @@
 :root {
   color-scheme: dark;
 
-  --background: #0a0b0e;
-  --foreground: #f7f7f4;
+  --background: #191918;
+  --foreground: #efede8;
 
-  --surface: #16171c;
-  --surface-sunken: #101115;
-  --surface-emphasis: #1b1923;
-  --edge: #2d3037;
-  --edge-strong: #484b55;
+  --surface-sunken: #151514;
+  --surface: #21211f;
+  --surface-emphasis: #282825;
+  --surface-raised: #282825;
+  --surface-elevated: #30302c;
+  --surface-hover: #353531;
+  --edge: #383733;
+  --edge-strong: #4b4944;
 
-  --accent: #7257de;
-  --accent-soft: #aa98ff;
-  --accent-hover: #846ae8;
-  --accent-ink: #eeeaff;
-  --accent-strong: #c0b3ff;
+  --accent: #625f59;
+  --accent-soft: #a39f97;
+  --accent-hover: #706d66;
+  --accent-ink: #dedbd4;
+  --accent-strong: #c6c2b9;
 
-  --ink-strong: #fbfbf8;
-  --ink: #f4f4f0;
-  --ink-soft: #e3e3de;
-  --ink-dim: #cdcec8;
-  --ink-muted: #adafaa;
-  --ink-faint: #90928e;
+  --ink-strong: #f5f2ec;
+  --ink: #efede8;
+  --ink-soft: #d8d5ce;
+  --ink-dim: #c1bdb5;
+  --ink-muted: #aaa69e;
+  --ink-faint: #8b8780;
 
-  --link: #b9aaff;
-  --link-hover: #d6ceff;
+  --link: #c7c3bb;
+  --link-hover: #e0ddd6;
 
   /* Semantic status — use these instead of raw emerald/red/amber utilities. */
   --success: #34d399; /* emerald-400 */
@@ -55,8 +58,8 @@
   --accent-sky: #38bdf8;
   --accent-sky-ink: #bae6fd;
 
-  --skeleton-base: rgba(63, 63, 70, 0.3);
-  --skeleton-shimmer: rgba(244, 244, 245, 0.07);
+  --skeleton-base: rgba(83, 81, 76, 0.45);
+  --skeleton-shimmer: rgba(241, 237, 228, 0.08);
 
   --radius-control: 0.625rem;
   --radius-surface: 1rem;
@@ -72,6 +75,9 @@
   --surface: #fffefa;
   --surface-sunken: #eeede8;
   --surface-emphasis: #f0ecfa;
+  --surface-raised: #f5f3ed;
+  --surface-elevated: #ffffff;
+  --surface-hover: #eceae4;
   --edge: #deddd7;
   --edge-strong: #c6c5be;
 
@@ -119,6 +125,9 @@
   --color-surface: var(--surface);
   --color-surface-sunken: var(--surface-sunken);
   --color-surface-emphasis: var(--surface-emphasis);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-hover: var(--surface-hover);
   --color-edge: var(--edge);
   --color-edge-strong: var(--edge-strong);
 
@@ -392,6 +401,32 @@
   color: var(--ink-muted);
   font-size: 0.8125rem;
   line-height: 1.55;
+}
+
+.nm-elevated-surface {
+  border-color: var(--edge-strong);
+  background: var(--surface-raised);
+  box-shadow:
+    inset 0 1px color-mix(in srgb, var(--foreground) 7%, transparent),
+    0 14px 36px rgba(0, 0, 0, 0.22);
+}
+
+.nm-network-field {
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-surface);
+  background: var(--surface-sunken);
+  box-shadow: inset 0 1px color-mix(in srgb, var(--foreground) 4%, transparent);
+}
+
+:root[data-theme="light"] .nm-elevated-surface {
+  background: var(--surface-elevated);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.86),
+    0 14px 36px rgba(31, 29, 25, 0.1);
+}
+
+:root[data-theme="light"] .nm-network-field {
+  background: var(--surface-raised);
 }
 
 .nm-signal-rule {

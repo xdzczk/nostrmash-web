@@ -107,7 +107,7 @@ function EditorialNote({
     <article
       className={
         lead
-          ? "border-accent-soft/20 bg-surface-emphasis relative overflow-hidden rounded-[var(--radius-surface)] border px-5 py-6 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-[var(--accent-soft)] sm:px-7 sm:py-8"
+          ? "nm-elevated-surface relative overflow-hidden rounded-[var(--radius-surface)] border px-5 py-6 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-[var(--ink-muted)] sm:px-7 sm:py-8"
           : "border-edge/70 border-t py-6 first:border-t-0"
       }
     >
@@ -115,8 +115,8 @@ function EditorialNote({
         <span
           className={
             lead
-              ? "text-accent-strong text-[3.25rem] leading-none font-medium tracking-[-0.09em]"
-              : "text-accent-ink text-xl font-medium tracking-[-0.05em]"
+              ? "text-ink-soft text-[3.25rem] leading-none font-medium tracking-[-0.09em]"
+              : "text-ink-muted text-xl font-medium tracking-[-0.05em]"
           }
           aria-label={`Rank ${rank}`}
         >
@@ -452,9 +452,7 @@ export function EditorialOverview({
         </div>
       </div>
 
-      <div className="border-edge/70 border-t pt-8">
-        <NetworkPulseStrip title="Network pulse" stats={pulseStats} />
-      </div>
+      <NetworkPulseStrip title="Network pulse" stats={pulseStats} />
     </div>
   );
 }

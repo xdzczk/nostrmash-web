@@ -28,7 +28,7 @@ export function NetworkPulseStrip({ title, stats }: { title: string; stats: Puls
   const seriesCount = visibleStats.filter((stat) => stat.series && stat.series.length >= 2).length;
 
   return (
-    <section className="space-y-3.5">
+    <section className="nm-network-field space-y-3.5 px-5 py-5 sm:px-6 sm:py-6">
       <div className="space-y-1.5">
         <p className="nm-kicker flex items-center gap-2">
           <span className="nm-live-dot" aria-hidden />
