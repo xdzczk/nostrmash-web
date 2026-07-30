@@ -83,6 +83,11 @@ test.describe("global product shell", () => {
 });
 
 test.describe("responsive visual references", () => {
+  test.skip(
+    Boolean(process.env.CI),
+    "Pixel baselines are platform-specific; portable UI checks still run in CI."
+  );
+
   test.beforeEach(async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
   });
