@@ -265,3 +265,14 @@ export function getNotePreviewPresentation(note: EventRecord): NotePreviewPresen
     prefersMediaFirst: resolvedMode === "media_led_preview" || fallback.prefersMediaFirst,
   };
 }
+
+export function getEditorialNoteText(note: EventRecord): string {
+  const preview = getNotePreviewPresentation(note);
+  if (!preview.containsRaw) return preview.contentForCard;
+
+  return preview.contentForCard
+    .replace(new RegExp(`(?:nostr:)?${BECH32_TOKEN_PATTERN.source}`, "gi"), "Nostr reference")
+    .replace(new RegExp(HEX_TOKEN_PATTERN.source, "gi"), "event reference")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}

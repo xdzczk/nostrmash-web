@@ -1,20 +1,20 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { DiscoverShell } from "@/components/discover/discover-shell";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
-import { DiscoverNav, type DiscoverView } from "@/components/explorer/discover-nav";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { AboutThisData } from "@/components/explorer/about-this-data";
-import { PageHero } from "@/components/explorer/page-hero";
-import { WindowSelector } from "@/components/explorer/window-selector";
 import { JsonLd } from "@/components/seo/json-ld";
 import { SectionCard } from "@/components/ui/section-card";
-import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
+import type { DiscoverMode, DiscoverView } from "@/lib/discover/views";
 import { absoluteUrl } from "@/lib/seo/metadata";
-import { formatStatsWindowLabel, type StatsWindow } from "@/lib/search-params/window";
+import type { StatsWindow } from "@/lib/search-params/window";
 import type { NativeApiSemantics } from "@/lib/types/api";
 
 export function RankedListPage({
+  discoverView,
+  discoverMode = "default",
   eyebrow,
   title,
   subtitle,
@@ -36,6 +36,8 @@ export function RankedListPage({
   debugPayload,
   itemListUrls,
 }: {
+  discoverView: DiscoverView;
+  discoverMode?: DiscoverMode;
   eyebrow: string;
   title: string;
   subtitle: string;
@@ -57,16 +59,20 @@ export function RankedListPage({
   debugPayload: unknown;
   itemListUrls?: string[];
 }) {
-  const discoverView: DiscoverView = path.includes("profiles")
-    ? "people"
-    : path.includes("hashtags")
-      ? "topics"
-      : path.includes("domains")
-        ? "links"
-        : "notes";
-
   return (
-    <div className="space-y-8">
+    <DiscoverShell
+      view={discoverView}
+      mode={discoverMode}
+      eyebrow={eyebrow}
+      title={title}
+      subtitle={subtitle}
+      path={path}
+      searchParams={searchParams}
+      window={window}
+      errorMessage={errorMessage}
+      hasContent={hasItems}
+      heroSupport={heroExtraBadges}
+    >
       {itemListUrls && itemListUrls.length > 0 ? (
         <JsonLd
           data={{
@@ -81,30 +87,8 @@ export function RankedListPage({
           }}
         />
       ) : null}
-      <PageHero
-        eyebrow={eyebrow}
-        title={title}
-        subtitle={subtitle}
-        badges={
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <WindowSelector path={path} searchParams={searchParams} activeWindow={window} />
-            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
-              {formatStatsWindowLabel(window)}
-            </span>
-            {heroExtraBadges}
-          </div>
-        }
-      />
-      <DiscoverNav active={discoverView} />
       <SectionCard title={sectionTitle} description={sectionDescription}>
-        {errorMessage && hasItems ? <SoftRefreshNote message={errorMessage} /> : null}
-        {errorMessage && !hasItems ? (
-          <ErrorPanel message={errorMessage} />
-        ) : hasItems ? (
-          children
-        ) : (
-          <EmptyState title={emptyTitle} message={emptyMessage} />
-        )}
+        {hasItems ? children : <EmptyState title={emptyTitle} message={emptyMessage} />}
         {continuationHref ? (
           <Link href={continuationHref} className="text-link mt-3 inline-block text-sm">
             {continuationLabel}
@@ -114,6 +98,6 @@ export function RankedListPage({
       </SectionCard>
       <AboutThisData semantics={semantics} />
       <DebugDisclosure title="Debug payload" data={debugPayload ?? {}} />
-    </div>
+    </DiscoverShell>
   );
 }

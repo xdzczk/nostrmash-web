@@ -5,3 +5,9 @@ export type UiVersion = "v1" | "v2";
  * Unknown values intentionally fall forward to the current experience.
  */
 export const UI_VERSION: UiVersion = process.env.NEXT_PUBLIC_UI_VERSION === "v1" ? "v1" : "v2";
+
+/**
+ * Enriched ranking evidence can be disabled independently from the visual
+ * rollout while older API payloads continue through inferred fallbacks.
+ */
+export const DISCOVERY_RANKING_ENABLED = process.env.NEXT_PUBLIC_DISCOVERY_RANKING !== "0";

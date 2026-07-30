@@ -52,6 +52,7 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
 
   return (
     <RankedListPage
+      discoverView="notes"
       eyebrow="Ranked notes"
       title="Trending notes"
       subtitle="The notes leading the network."

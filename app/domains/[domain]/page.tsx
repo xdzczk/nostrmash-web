@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
 import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
-import { DiscoverNav } from "@/components/explorer/discover-nav";
+import { EntityContextNav } from "@/components/discover/entity-context-nav";
 import { StatCard } from "@/components/explorer/stat-card";
 import { NotesList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
@@ -120,7 +120,7 @@ export default async function DomainPage({ params }: { params: Params }) {
           </div>
         }
       />
-      <DiscoverNav active="links" />
+      <EntityContextNav view="links" />
 
       <LoadErrors errors={errors} />
 

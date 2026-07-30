@@ -64,6 +64,8 @@ export default async function TrendingLongFormPage({
 
   return (
     <RankedListPage
+      discoverView="notes"
+      discoverMode="long-form"
       eyebrow="Ranked long-form"
       title="Trending long-form"
       subtitle="The long-form articles leading the network."

@@ -1,13 +1,12 @@
-import { NotesListSkeleton, PageHeroSkeleton } from "@/components/ui/skeleton";
+import { DiscoverOverviewSkeleton } from "@/components/ui/skeleton";
 
 export default function Loading() {
   return (
-    <div className="space-y-7">
+    <div>
       <span className="sr-only" role="status">
-        Loading explorer data
+        Loading Discover overview
       </span>
-      <PageHeroSkeleton />
-      <NotesListSkeleton count={4} />
+      <DiscoverOverviewSkeleton />
     </div>
   );
 }

@@ -131,3 +131,18 @@ export function captureSlowApiCall(spanName: string, durationMs: number) {
     data: { durationMs },
   });
 }
+
+export function addTelemetryBreadcrumb(
+  category: string,
+  message: string,
+  data?: Record<string, unknown>
+) {
+  const sentry = getSentry();
+  if (!sentry) return;
+  sentry.addBreadcrumb({
+    category,
+    message,
+    level: "info",
+    data,
+  });
+}

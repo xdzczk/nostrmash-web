@@ -1,13 +1,12 @@
-import { NotesListSkeleton, PageHeroSkeleton } from "@/components/ui/skeleton";
+import { DiscoverCategorySkeleton } from "@/components/ui/skeleton";
 
 export default function TrendingLoading() {
   return (
-    <div className="space-y-7">
+    <div>
       <span className="sr-only" role="status">
         Loading trending explorer data
       </span>
-      <PageHeroSkeleton />
-      <NotesListSkeleton count={5} />
+      <DiscoverCategorySkeleton />
     </div>
   );
 }

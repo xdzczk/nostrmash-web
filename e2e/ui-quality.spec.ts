@@ -3,10 +3,12 @@ import { expect, test } from "@playwright/test";
 test.describe("global product shell", () => {
   test("search is available globally by keyboard", async ({ page }) => {
     await page.goto("/trending/notes");
-    await page.keyboard.press("/");
-    await expect(page.locator("#global-search-input")).toBeFocused();
+    const globalSearch = page.locator("#global-search-input");
+    await expect(globalSearch).toBeVisible();
+    await page.keyboard.press("ControlOrMeta+K");
+    await expect(globalSearch).toBeFocused();
 
-    await page.locator("#global-search-input").fill("bitcoin");
+    await globalSearch.fill("bitcoin");
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/search\?q=bitcoin&tab=all/);
   });
@@ -30,6 +32,34 @@ test.describe("global product shell", () => {
     );
     await expect(nav.getByRole("link", { name: "Network" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Search" })).toHaveCount(0);
+  });
+
+  test("Discover category and mode context stay explicit", async ({ page }) => {
+    await page.goto("/trending/long-form?window=7d");
+
+    const categories = page.getByRole("navigation", { name: "Discover categories" });
+    await expect(categories.getByRole("link", { name: "Notes" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+    await expect(categories.getByRole("link", { name: "People" })).toHaveAttribute(
+      "href",
+      "/trending/profiles?window=7d"
+    );
+    await expect(
+      page.getByRole("navigation", { name: "notes modes" }).getByRole("link", {
+        name: "Long-form",
+      })
+    ).toHaveAttribute("aria-current", "page");
+  });
+
+  test("entity pages use contextual return navigation instead of category chrome", async ({
+    page,
+  }) => {
+    await page.goto(`/notes/${"a".repeat(64)}`);
+    const context = page.getByRole("navigation", { name: "Discovery context" });
+    await expect(context.getByRole("link", { name: "Back to Notes" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Discover categories" })).toHaveCount(0);
   });
 });
 

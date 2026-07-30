@@ -34,6 +34,21 @@ const focalNote = {
   kind: 1,
   created_at: 1_700_000_000,
   content: `Hello https://example.com #nostr ${MENTION_NPUB} nostr:${QUOTED_NOTE}`,
+  reply_count: 12,
+  repost_count: 7,
+  reaction_count: 24,
+  ranking: {
+    rank: 1,
+    score: 42.5,
+    confidence: "high",
+    source_breadth: 8,
+    reasons: [
+      {
+        code: "reply_velocity",
+        evidence: [{ metric: "reply_count", value: 12, unit: "replies" }],
+      },
+    ],
+  },
 };
 
 const authorProfile = {
@@ -42,6 +57,19 @@ const authorProfile = {
   display_name: "Mock Author",
   name: "mockauthor",
   about: "Mock author bio",
+  recent_post_count: 8,
+  recent_new_followers: 14,
+  ranking: {
+    rank: 1,
+    score: 31,
+    confidence: "medium",
+    reasons: [
+      {
+        code: "follower_growth",
+        evidence: [{ metric: "recent_new_followers", value: 14, unit: "followers" }],
+      },
+    ],
+  },
 };
 
 const mentionProfile = {
@@ -54,11 +82,31 @@ const mentionProfile = {
 const trendingNotes = [focalNote, quotedEvent];
 const trendingProfiles = [authorProfile, mentionProfile];
 const trendingHashtags = [
-  { hashtag: "nostr", count: 42 },
-  { hashtag: "bitcoin", count: 21 },
+  {
+    hashtag: "nostr",
+    count: 42,
+    unique_authors: 18,
+    ranking: {
+      rank: 1,
+      score: 42,
+      confidence: "medium",
+      reasons: [{ code: "mention_volume", evidence: [{ metric: "event_count", value: 42 }] }],
+    },
+  },
+  { hashtag: "bitcoin", count: 21, unique_authors: 9 },
 ];
 const trendingDomains = [
-  { domain: "example.com", count: 12 },
+  {
+    domain: "example.com",
+    count: 12,
+    unique_authors: 7,
+    ranking: {
+      rank: 1,
+      score: 12,
+      confidence: "low",
+      reasons: [{ code: "link_circulation", evidence: [{ metric: "link_count", value: 12 }] }],
+    },
+  },
   { domain: "nostrmash.com", count: 8 },
 ];
 
@@ -107,12 +155,64 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (path === "/api/v1/discovery/home") {
+    const fixture = url.searchParams.get("fixture");
+    const computedAt =
+      fixture === "stale" ? "2026-07-28T08:00:00.000Z" : "2026-07-30T11:00:00.000Z";
+    const profiles = fixture === "partial" ? [] : trendingProfiles;
     return json(res, 200, {
+      surface: "home",
+      window: url.searchParams.get("window") ?? "24h",
+      computed_at: computedAt,
+      ranking_version: "discovery-v1",
+      meta: {
+        window: url.searchParams.get("window") ?? "24h",
+        computed_at: computedAt,
+        ranking_version: "discovery-v1",
+        confidence: "medium",
+      },
       notes: trendingNotes,
-      profiles: trendingProfiles,
+      profiles,
       hashtags: trendingHashtags,
       domains: trendingDomains,
-      computed_at: "2026-07-28T12:00:00.000Z",
+      sections: {
+        trending_notes: trendingNotes,
+        trending_hashtags: trendingHashtags,
+        trending_domains: trendingDomains,
+        profiles: { trending: profiles, rising: profiles },
+        network_summary: {
+          totals: { events_ingested: 128400, projected_profiles: 4820 },
+          activity: {
+            active_authors: { "24h": 4820, "7d": 12900 },
+            note_volume: { "24h": 128400, "7d": 588000 },
+          },
+          relays: {
+            total: 3,
+            active_24h: 3,
+            active_7d: 3,
+            unique_authors: { "24h": 4820, "7d": 12900 },
+          },
+        },
+      },
+      consistency: "eventual",
+    });
+  }
+
+  if (path === "/api/v1/discovery/conversations/hot") {
+    return json(res, 200, {
+      surface: "hot_conversations",
+      window: url.searchParams.get("window") ?? "24h",
+      computed_at: "2026-07-30T11:00:00.000Z",
+      ranking_version: "discovery-v1",
+      conversations: [
+        {
+          ...focalNote,
+          root_event_id: focalNote.id,
+          participant_count: 8,
+          last_activity_at: 1_700_000_120,
+          activity: { replies_24h: 12, replies_7d: 19 },
+          velocity_score: 42.5,
+        },
+      ],
       consistency: "eventual",
     });
   }

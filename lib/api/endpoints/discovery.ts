@@ -30,9 +30,13 @@ import {
 } from "@/lib/api/endpoints/shared";
 import { eventListResponseSchema, profileListResponseSchema } from "@/lib/api/schemas/core";
 
-export async function getDiscoveryHome(cacheClass: CacheClass = "shortTtl") {
+export async function getDiscoveryHome(
+  cacheClass: CacheClass = "shortTtl",
+  query?: Pick<CursorQuery, "window">
+) {
   const response = await fetchApiJson<DiscoveryHomeResponse>(nativeApiV1Routes.discoveryHome, {
     cacheClass,
+    query: buildCursorQuery(query),
   });
   return normalizeDiscoveryHomeResponse(response);
 }

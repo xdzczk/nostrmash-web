@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
 import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
-import { DiscoverNav } from "@/components/explorer/discover-nav";
+import { EntityContextNav } from "@/components/discover/entity-context-nav";
 import { NotesList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
 import { LoadErrors } from "@/components/ui/status-panels";
@@ -122,7 +122,11 @@ export default async function DomainNotesPage({
           </div>
         }
       />
-      <DiscoverNav active="links" />
+      <EntityContextNav
+        view="links"
+        parentHref={`/domains/${encodeURIComponent(normalizedDomain)}`}
+        parentLabel={`${normalizedDomain} overview`}
+      />
 
       <LoadErrors errors={errors} />
 

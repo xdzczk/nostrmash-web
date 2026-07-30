@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import { CopyValueButton } from "@/components/actions/copy-value-button";
 import { EntityActions } from "@/components/actions/entity-actions";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
-import { DiscoverNav } from "@/components/explorer/discover-nav";
+import { EntityContextNav } from "@/components/discover/entity-context-nav";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
 import { AboutThisData } from "@/components/explorer/about-this-data";
@@ -372,7 +372,7 @@ export default async function ProfilePage({
           </div>
         </Disclosure>
       </section>
-      <DiscoverNav active="people" />
+      <EntityContextNav view="people" />
 
       <JsonLd
         data={{

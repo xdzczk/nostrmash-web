@@ -40,6 +40,7 @@ export default async function TrendingDomainsPage({
 
   return (
     <RankedListPage
+      discoverView="links"
       eyebrow="Ranked domains"
       title="Trending domains"
       subtitle="The domains spreading most widely through active notes."

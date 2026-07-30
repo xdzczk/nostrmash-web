@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
-import { DiscoverNav } from "@/components/explorer/discover-nav";
+import { EntityContextNav } from "@/components/discover/entity-context-nav";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
 import { AboutThisData } from "@/components/explorer/about-this-data";
@@ -170,7 +170,7 @@ export default async function HashtagPage({ params }: { params: Params }) {
           </div>
         }
       />
-      <DiscoverNav active="topics" />
+      <EntityContextNav view="topics" />
 
       <LoadErrors errors={errors} />
 

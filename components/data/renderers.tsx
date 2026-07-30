@@ -1,10 +1,16 @@
+import Link from "next/link";
+
 import { ArticleCard } from "@/components/explorer/article-card";
 import { DomainChip } from "@/components/explorer/domain-chip";
 import { pickPrimaryDomainSupportingSignal } from "@/components/explorer/domain-supporting-signal";
 import { HashtagChip } from "@/components/explorer/hashtag-chip";
 import { NoteCard } from "@/components/explorer/note-card";
-import { mapDomainWhyNow, mapHashtagWhyNow } from "@/components/explorer/why-now";
-import { normalizeDomainLabel, noteInlineAuthorProfile } from "@/components/explorer/utils";
+import { mapDomainWhyNow, mapHashtagWhyNow, WhyNow } from "@/components/explorer/why-now";
+import {
+  formatCompactNumber,
+  normalizeDomainLabel,
+  noteInlineAuthorProfile,
+} from "@/components/explorer/utils";
 import { ProfileCard } from "@/components/explorer/profile-card";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import { LONG_FORM_KIND, type EventRecord, type Profile } from "@/lib/types/api";
@@ -167,6 +173,39 @@ export function HashtagsList({
   const top = ranked ? normalized.slice(0, 3) : [];
   const rest = ranked ? normalized.slice(3) : normalized;
 
+  if (ranked) {
+    return (
+      <ol className="border-edge/70 divide-edge/70 divide-y border-y">
+        {normalized.map((entry, index) => (
+          <li
+            key={`${entry.hashtag}-${index}`}
+            className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-baseline gap-3 py-4"
+          >
+            <span className="text-accent-ink text-lg tracking-[-0.05em] tabular-nums">
+              {String(entry.rank ?? index + 1).padStart(2, "0")}
+            </span>
+            <div className="min-w-0">
+              {entry.href ? (
+                <Link
+                  href={entry.href}
+                  className="text-ink hover:text-accent-ink text-base font-medium"
+                >
+                  #{entry.hashtag}
+                </Link>
+              ) : (
+                <span className="text-ink text-base font-medium">#{entry.hashtag}</span>
+              )}
+              <WhyNow reasons={entry.whyNow} maxReasons={1} showLabel={false} className="mt-1.5" />
+            </div>
+            <span className="text-ink-muted text-xs tabular-nums">
+              {typeof entry.count === "number" ? formatCompactNumber(entry.count) : "—"}
+            </span>
+          </li>
+        ))}
+      </ol>
+    );
+  }
+
   return (
     <div className="space-y-2">
       {top.length > 0 ? (
@@ -214,6 +253,7 @@ export function DomainsList({
 }) {
   const normalized: Array<{
     domain: string;
+    count?: number;
     href?: string;
     rank?: number;
     whyNow: ReturnType<typeof mapDomainWhyNow>;
@@ -231,6 +271,7 @@ export function DomainsList({
       typeof entry === "string" ? null : pickPrimaryDomainSupportingSignal(entry);
     normalized.push({
       domain: normalizedDomain,
+      count: typeof entry === "string" ? undefined : (entry.count ?? entry.event_count),
       href,
       rank: ranked ? index + 1 : undefined,
       whyNow: typeof entry === "string" ? [] : mapDomainWhyNow(entry),
@@ -241,16 +282,31 @@ export function DomainsList({
 
   if (ranked) {
     return (
-      <ol className="divide-edge/75 border-edge/70 bg-surface-sunken/25 divide-y rounded-2xl border">
+      <ol className="border-edge/70 divide-edge/70 divide-y border-y">
         {normalized.map((entry, index) => (
-          <li key={`${entry.domain}-${index}`} className="px-3 py-2.5 sm:px-4">
-            <DomainChip
-              domain={entry.domain}
-              supportingSignal={entry.supportingSignal}
-              href={entry.href}
-              rank={entry.rank}
-              whyNow={entry.whyNow}
-            />
+          <li
+            key={`${entry.domain}-${index}`}
+            className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-baseline gap-3 py-4"
+          >
+            <span className="text-accent-ink text-lg tracking-[-0.05em] tabular-nums">
+              {String(entry.rank ?? index + 1).padStart(2, "0")}
+            </span>
+            <div className="min-w-0">
+              {entry.href ? (
+                <Link
+                  href={entry.href}
+                  className="text-ink hover:text-accent-ink text-base font-medium"
+                >
+                  {entry.domain}
+                </Link>
+              ) : (
+                <span className="text-ink text-base font-medium">{entry.domain}</span>
+              )}
+              <WhyNow reasons={entry.whyNow} maxReasons={1} showLabel={false} className="mt-1.5" />
+            </div>
+            <span className="text-ink-muted text-xs tabular-nums">
+              {typeof entry.count === "number" ? formatCompactNumber(entry.count) : "—"}
+            </span>
           </li>
         ))}
       </ol>

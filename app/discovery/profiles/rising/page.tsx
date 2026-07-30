@@ -39,6 +39,8 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
 
   return (
     <RankedListPage
+      discoverView="people"
+      discoverMode="rising"
       eyebrow="Discovery depth"
       title="Rising profiles"
       subtitle="Profiles gaining traction before they reach the main trending lists."

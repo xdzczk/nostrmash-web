@@ -1,15 +1,12 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
+import { DiscoverShell } from "@/components/discover/discover-shell";
 import { NotesList, ProfilesList } from "@/components/data/renderers";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { AboutThisData } from "@/components/explorer/about-this-data";
-import { PageHero } from "@/components/explorer/page-hero";
-import { DiscoverNav } from "@/components/explorer/discover-nav";
 import { SectionCard } from "@/components/ui/section-card";
-import { ErrorPanel } from "@/components/ui/status-panels";
-import { WindowSelector } from "@/components/explorer/window-selector";
 import { getHotConversations } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
@@ -18,7 +15,8 @@ import {
   readSearchParam,
   toUrlSearchParams,
 } from "@/lib/search-params/pagination";
-import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
+import { readStatsWindow } from "@/lib/search-params/window";
+import { formatUpdatedRelative } from "@/lib/time/freshness";
 import type { Profile } from "@/lib/types/api";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
@@ -71,37 +69,30 @@ export default async function HotConversationsPage({
   }
 
   return (
-    <div className="space-y-8">
-      <PageHero
-        eyebrow="Discovery depth"
-        title="Hot conversations"
-        subtitle="Notes driving active threads, so you can move from signal to conversation context quickly."
-        badges={
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <WindowSelector
-              path="/discovery/conversations/hot"
-              searchParams={currentSearchParams}
-              activeWindow={window}
-            />
-            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
-              {formatStatsWindowLabel(window)}
-            </span>
-          </div>
-        }
-      />
-      <DiscoverNav active="conversations" />
-
+    <DiscoverShell
+      view="conversations"
+      mode="hot"
+      path="/discovery/conversations/hot"
+      searchParams={currentSearchParams}
+      window={window}
+      freshnessLabel={formatUpdatedRelative(
+        (payload as { computed_at?: string | number | null } | null)?.computed_at
+      )}
+      errorMessage={errorMessage}
+      hasContent={notes.length > 0}
+      eyebrow="Discovery depth"
+      title="Hot conversations"
+      subtitle="Notes driving active threads, so you can move from signal to conversation context quickly."
+    >
       <SectionCard title="Conversation feed" description="Ranked by live conversation activity.">
-        {errorMessage ? (
-          <ErrorPanel message={errorMessage} />
-        ) : notes.length > 0 ? (
+        {notes.length > 0 ? (
           <NotesList notes={notes} authorsByPubkey={authorsByPubkey} ranked />
-        ) : (
+        ) : !errorMessage ? (
           <EmptyState
             title="No hot conversations available"
             message="The API did not return conversation entries for this window."
           />
-        )}
+        ) : null}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
           <Link href={continuationHref} className="text-link mt-3 inline-block text-sm">
             Load more conversations
@@ -136,6 +127,6 @@ export default async function HotConversationsPage({
 
       <AboutThisData semantics={semantics} />
       <DebugDisclosure title="Debug payload" data={payload ?? {}} />
-    </div>
+    </DiscoverShell>
   );
 }

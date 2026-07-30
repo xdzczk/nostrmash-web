@@ -52,6 +52,9 @@ export const NATIVE_SEMANTIC_KEYS = [
   "trust_applied",
   "result_scope",
   "next_cursor",
+  "window",
+  "computed_at",
+  "ranking_version",
 ] as const;
 
 export const CURSOR_ALIASES = ["next_cursor", "cursor", "continuation", "next"] as const;
@@ -73,6 +76,9 @@ export function extractNativeApiSemantics(...values: unknown[]): NativeApiSemant
     const record = asRecord(value);
     if (!record) continue;
     const meta = asRecord(record.meta);
+    if (!semantics.meta && meta) {
+      semantics.meta = meta as NativeApiSemantics["meta"];
+    }
     for (const key of NATIVE_SEMANTIC_KEYS) {
       if (semantics[key] !== undefined) continue;
       if (record[key] !== undefined) {

@@ -40,6 +40,7 @@ export default async function TrendingHashtagsPage({
 
   return (
     <RankedListPage
+      discoverView="topics"
       eyebrow="Ranked hashtags"
       title="Trending hashtags"
       subtitle="The topics rising fastest across the network."

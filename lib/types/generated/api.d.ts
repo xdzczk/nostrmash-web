@@ -1562,7 +1562,9 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            "application/json": components["schemas"]["DiscoveryListResponse"];
+          };
         };
         400: components["responses"]["Error"];
       };
@@ -1601,7 +1603,9 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            "application/json": components["schemas"]["DiscoveryListResponse"];
+          };
         };
         400: components["responses"]["Error"];
         501: components["responses"]["Error"];
@@ -1641,7 +1645,9 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            "application/json": components["schemas"]["DiscoveryListResponse"];
+          };
         };
         400: components["responses"]["Error"];
       };
@@ -1669,6 +1675,7 @@ export interface paths {
           notes_limit?: number;
           hashtags_limit?: number;
           profiles_limit?: number;
+          domains_limit?: number;
           hashtag_stat_limit?: number;
         };
         header?: never;
@@ -1677,12 +1684,14 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Homepage discovery bundle with bounded notes, hashtags, network summary, and inline-hydrated profile ranking sections */
+        /** @description Homepage discovery bundle with bounded notes, hashtags, domains, network summary, and inline-hydrated profile ranking sections */
         200: {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            "application/json": components["schemas"]["DiscoveryHomeResponse"];
+          };
         };
         400: components["responses"]["Error"];
         501: components["responses"]["Error"];
@@ -1722,7 +1731,9 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            "application/json": components["schemas"]["DiscoveryListResponse"];
+          };
         };
         400: components["responses"]["Error"];
       };
@@ -1761,7 +1772,9 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            "application/json": components["schemas"]["DiscoveryListResponse"];
+          };
         };
         400: components["responses"]["Error"];
       };
@@ -1840,7 +1853,9 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            "application/json": components["schemas"]["DiscoveryListResponse"];
+          };
         };
         400: components["responses"]["Error"];
       };
@@ -1999,7 +2014,9 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            "application/json": components["schemas"]["DiscoveryListResponse"];
+          };
         };
         400: components["responses"]["Error"];
       };
@@ -2185,6 +2202,44 @@ export interface paths {
           };
           content?: never;
         };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/discovery/stats/series": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Hourly history of rolling 24-hour discovery metrics */
+    get: {
+      parameters: {
+        query: {
+          metric: "note_volume" | "active_authors" | "relay_events";
+          window?: "7d" | "30d";
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Eventual-consistency series with Unix-second points (`{ metric, window, computed_at, points: [{ t, v }], consistency }`) */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        400: components["responses"]["Error"];
       };
     };
     put?: never;
@@ -3997,7 +4052,83 @@ export interface paths {
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: never;
+  schemas: {
+    DiscoveryEvidence: {
+      metric: string;
+      value: number;
+      unit?: string;
+    };
+    DiscoveryReason: {
+      code: string;
+      evidence?: components["schemas"]["DiscoveryEvidence"][];
+    };
+    DiscoveryItemRanking: {
+      rank: number;
+      score: number;
+      previous_rank?: number;
+      rank_delta?: number;
+      reasons?: components["schemas"]["DiscoveryReason"][];
+      source_breadth?: number;
+      /** @enum {string} */
+      confidence?: "low" | "medium" | "high";
+    };
+    DiscoveryListMeta: {
+      /** @enum {string} */
+      window: "24h" | "7d";
+      /** Format: date-time */
+      computed_at?: string;
+      ranking_version: string;
+      /** @enum {string} */
+      confidence: "low" | "medium" | "high";
+    };
+    DiscoveryRankedItem: {
+      ranking?: components["schemas"]["DiscoveryItemRanking"];
+    } & {
+      [key: string]: unknown;
+    };
+    DiscoveryListResponse: {
+      surface?: string;
+      /** @enum {string} */
+      window?: "24h" | "7d";
+      /** Format: date-time */
+      computed_at?: string;
+      ranking_version?: string;
+      meta?: components["schemas"]["DiscoveryListMeta"];
+      notes?: components["schemas"]["DiscoveryRankedItem"][];
+      articles?: components["schemas"]["DiscoveryRankedItem"][];
+      profiles?: components["schemas"]["DiscoveryRankedItem"][];
+      hashtags?: components["schemas"]["DiscoveryRankedItem"][];
+      domains?: components["schemas"]["DiscoveryRankedItem"][];
+      conversations?: components["schemas"]["DiscoveryRankedItem"][];
+    } & {
+      [key: string]: unknown;
+    };
+    DiscoveryHomeResponse: {
+      /** @constant */
+      surface?: "home";
+      /** @enum {string} */
+      window?: "24h" | "7d";
+      /** Format: date-time */
+      computed_at?: string;
+      ranking_version?: string;
+      meta?: components["schemas"]["DiscoveryListMeta"];
+      sections?: {
+        trending_notes?: components["schemas"]["DiscoveryRankedItem"][];
+        trending_hashtags?: components["schemas"]["DiscoveryRankedItem"][];
+        trending_domains?: components["schemas"]["DiscoveryRankedItem"][];
+        profiles?: {
+          trending?: components["schemas"]["DiscoveryRankedItem"][];
+          rising?: components["schemas"]["DiscoveryRankedItem"][];
+        } & {
+          [key: string]: unknown;
+        };
+      } & {
+        [key: string]: unknown;
+      };
+    } & {
+      [key: string]: unknown;
+    };
+  };
   responses: {
     /** @description Structured API error */
     Error: {

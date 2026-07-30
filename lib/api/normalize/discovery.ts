@@ -16,6 +16,7 @@ import {
   normalizeHashtagEntries,
   normalizeProfiles,
 } from "@/lib/api/normalize/entities";
+import { normalizeDiscoveryListMeta } from "@/lib/api/normalize/ranking";
 
 export function normalizeTrendingLongFormResponse(value: unknown): TrendingLongFormResponse {
   const record = asRecord(value) ?? {};
@@ -196,6 +197,10 @@ export function normalizeDiscoveryHomeResponse(
 
   return {
     ...record,
+    meta: normalizeDiscoveryListMeta(record.meta),
+    computed_at: asString(record.computed_at),
+    ranking_version: asString(record.ranking_version),
+    window: asString(record.window),
     notes: normalizeEventRecords(sections?.trending_notes ?? record.trending_notes ?? record.notes),
     profiles: normalizeProfiles(
       sectionProfiles?.trending ?? record.trending_profiles ?? record.profiles

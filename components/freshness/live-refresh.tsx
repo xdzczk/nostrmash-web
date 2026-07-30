@@ -1,16 +1,31 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
+
+function subscribeOnline(callback: () => void) {
+  window.addEventListener("online", callback);
+  window.addEventListener("offline", callback);
+  return () => {
+    window.removeEventListener("online", callback);
+    window.removeEventListener("offline", callback);
+  };
+}
 
 /** Refresh RSC payload while the tab is visible (matches ~60s server TTL). */
 export function LiveRefresh({ intervalMs = 75_000 }: { intervalMs?: number }) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const online = useSyncExternalStore(
+    subscribeOnline,
+    () => navigator.onLine,
+    () => true
+  );
 
   useEffect(() => {
     const tick = () => {
-      if (document.visibilityState === "visible") {
-        router.refresh();
+      if (document.visibilityState === "visible" && navigator.onLine) {
+        startTransition(() => router.refresh());
       }
     };
 
@@ -18,7 +33,23 @@ export function LiveRefresh({ intervalMs = 75_000 }: { intervalMs?: number }) {
     return () => {
       window.clearInterval(timer);
     };
-  }, [intervalMs, router]);
+  }, [intervalMs, router, startTransition]);
 
-  return null;
+  if (!online) {
+    return (
+      <div
+        role="status"
+        className="border-edge/70 bg-surface/55 text-ink-muted rounded-xl border-l-2 border-l-[var(--accent-soft)] px-4 py-3 text-sm"
+      >
+        You&apos;re offline. Showing the last available Discover ranking.
+      </div>
+    );
+  }
+
+  return isPending ? (
+    <div role="status" className="text-ink-muted flex items-center gap-2 text-xs">
+      <span className="nm-live-dot" aria-hidden />
+      Updating changed ranking signals…
+    </div>
+  ) : null;
 }

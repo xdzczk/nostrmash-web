@@ -2,6 +2,35 @@ import type { GeneratedBatchEventsResponse } from "@/lib/types/generated";
 
 export type Consistency = "strong" | "eventual";
 export type TrustMode = "off" | "best_effort" | "required" | string;
+export type DiscoveryConfidence = "low" | "medium" | "high";
+
+export interface DiscoveryReasonEvidence {
+  metric: string;
+  value: number;
+  unit?: string;
+}
+
+export interface DiscoveryRankingReason {
+  code: string;
+  evidence?: DiscoveryReasonEvidence[];
+}
+
+export interface DiscoveryItemRanking {
+  rank: number;
+  score: number;
+  previous_rank?: number;
+  rank_delta?: number;
+  reasons?: DiscoveryRankingReason[];
+  source_breadth?: number;
+  confidence?: DiscoveryConfidence;
+}
+
+export interface DiscoveryListMeta {
+  window?: "24h" | "7d" | string;
+  computed_at?: string;
+  ranking_version?: string;
+  confidence?: DiscoveryConfidence;
+}
 
 export interface NativeApiSemantics {
   consistency?: Consistency | string;
@@ -9,6 +38,10 @@ export interface NativeApiSemantics {
   trust_applied?: boolean;
   result_scope?: string | Record<string, unknown>;
   next_cursor?: string;
+  window?: string;
+  computed_at?: string;
+  ranking_version?: string;
+  meta?: DiscoveryListMeta;
 }
 
 export interface ApiErrorDetails {
@@ -43,6 +76,7 @@ export interface Profile {
   recent_zap_volume_msats?: number;
   recent_active_days?: number;
   recent_activity_at?: number;
+  ranking?: DiscoveryItemRanking;
   [key: string]: unknown;
 }
 
@@ -63,6 +97,7 @@ export interface EventRecord {
   created_at?: number;
   content?: string;
   tags?: string[][];
+  ranking?: DiscoveryItemRanking;
   preview?: {
     mode?: string;
     display_content?: string;
@@ -129,6 +164,7 @@ export interface HashtagEntry {
   count?: number;
   event_count?: number;
   unique_authors?: number;
+  ranking?: DiscoveryItemRanking;
   [key: string]: unknown;
 }
 
@@ -137,6 +173,7 @@ export interface DomainEntry {
   count?: number;
   event_count?: number;
   unique_authors?: number;
+  ranking?: DiscoveryItemRanking;
   [key: string]: unknown;
 }
 
@@ -214,8 +251,23 @@ export interface TrendingDomainsResponse extends NativeApiSemantics {
   [key: string]: unknown;
 }
 
+export interface ConversationHotspot extends EventRecord {
+  root_event_id?: string;
+  participant_count?: number;
+  last_activity_at?: number;
+  replies_24h?: number;
+  replies_7d?: number;
+  velocity_score?: number;
+  activity?: {
+    replies_24h?: number;
+    replies_7d?: number;
+    [key: string]: unknown;
+  };
+}
+
 export interface HotConversationsResponse extends NativeApiSemantics {
-  notes?: EventRecord[];
+  notes?: ConversationHotspot[];
+  conversations?: ConversationHotspot[];
   [key: string]: unknown;
 }
 

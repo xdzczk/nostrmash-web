@@ -19,6 +19,7 @@ import {
 } from "@/lib/api/normalize/helpers";
 import { eventRecordSchema, profileSchema } from "@/lib/api/schemas/core";
 import { parseEntityWithIdentity } from "@/lib/api/schemas/parse";
+import { normalizeDiscoveryRanking } from "@/lib/api/normalize/ranking";
 
 export function normalizeEventRecord(value: unknown): EventRecord | null {
   const record = asRecord(value);
@@ -50,6 +51,7 @@ export function normalizeEventRecord(value: unknown): EventRecord | null {
       asNumber(record.repost_count) ?? asNumber(record.reposts) ?? asNumber(counts?.repost_count),
     zap_count: asNumber(record.zap_count) ?? asNumber(record.zaps) ?? asNumber(counts?.zap_count),
     zap_msats: asNumber(record.zap_msats) ?? asNumber(counts?.zap_msats),
+    ranking: normalizeDiscoveryRanking(record.ranking),
   } satisfies EventRecord;
 
   return parseEntityWithIdentity(eventRecordSchema, normalized, "normalizeEventRecord", {
@@ -201,6 +203,7 @@ export function normalizeProfile(value: unknown): Profile | null {
       asProfileRecord.web,
       asProfileRecord.homepage
     ),
+    ranking: normalizeDiscoveryRanking(asProfileRecord.ranking),
   };
 
   if (!normalized.pubkey) return null;
@@ -243,6 +246,7 @@ export function normalizeHashtagEntry(value: unknown): HashtagEntry | null {
     ...record,
     hashtag: asString(record.hashtag),
     count: asNumber(record.count) ?? asNumber(record.event_count),
+    ranking: normalizeDiscoveryRanking(record.ranking),
   };
 }
 
@@ -295,6 +299,7 @@ export function normalizeDomainEntry(value: unknown): DomainEntry | null {
     count: asNumber(record.count) ?? asNumber(record.event_count),
     event_count: asNumber(record.event_count) ?? asNumber(record.count),
     unique_authors: asNumber(record.unique_authors) ?? asNumber(record.unique_profiles),
+    ranking: normalizeDiscoveryRanking(record.ranking),
   });
 }
 

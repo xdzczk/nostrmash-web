@@ -4,7 +4,6 @@ import { expect, test, type Page } from "@playwright/test";
 const ROUTES = [
   "/",
   "/search?q=bitcoin&tab=all",
-  "/trending",
   "/trending/notes",
   "/discovery/conversations/hot",
   "/relays",

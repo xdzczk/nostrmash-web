@@ -1,4 +1,5 @@
 import { Sparkline, type SeriesPoint } from "@/components/charts/sparkline";
+import { CausalValue } from "@/components/discover/causal-value";
 import { formatCompactNumber, formatMetricLabel, formatValue } from "@/components/explorer/utils";
 
 type PulseStat = {
@@ -33,27 +34,29 @@ export function NetworkPulseStrip({ title, stats }: { title: string; stats: Puls
           {title}
         </p>
         <p className="text-ink-muted max-w-2xl text-sm leading-6">
-          A live read on the broader network before the page settles into its closing discovery
-          cues.
+          Supporting network evidence for the selected ranking window.
         </p>
       </div>
-      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-        {visibleStats.map((stat) => {
+      <div className="border-edge/70 grid border-y sm:grid-cols-2 lg:grid-cols-3">
+        {visibleStats.map((stat, index) => {
           const hasSeries = Boolean(stat.series && stat.series.length >= 2);
           const empty = isEmptyNumeric(stat.value);
+          const displayValue = empty
+            ? "—"
+            : typeof stat.value === "number"
+              ? formatCompactNumber(stat.value)
+              : formatValue(stat.value);
 
           return (
             <article
               key={stat.label}
-              className="border-edge/70 bg-surface/30 relative overflow-hidden rounded-xl border px-3.5 pt-3 pb-2.5"
+              className={`relative overflow-hidden py-4 ${
+                index > 0 ? "sm:border-edge/70 sm:border-l sm:pl-5" : ""
+              }`}
             >
               <p className="text-ink-faint text-[11px]">{formatMetricLabel(stat.label)}</p>
               <p className="text-ink mt-1.5 text-xl font-semibold tracking-tight tabular-nums">
-                {empty
-                  ? "—"
-                  : typeof stat.value === "number"
-                    ? formatCompactNumber(stat.value)
-                    : formatValue(stat.value)}
+                <CausalValue value={displayValue}>{displayValue}</CausalValue>
               </p>
               {hasSeries ? (
                 <div className="text-link mt-2.5">

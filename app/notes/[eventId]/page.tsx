@@ -5,7 +5,7 @@ import { Suspense } from "react";
 
 import { EntityActions } from "@/components/actions/entity-actions";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
-import { DiscoverNav } from "@/components/explorer/discover-nav";
+import { EntityContextNav } from "@/components/discover/entity-context-nav";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
 import { MetadataList } from "@/components/explorer/metadata-list";
@@ -216,7 +216,7 @@ export default async function NotePage({
         type="application/json+oembed"
         href={absoluteUrl(`/api/oembed?url=${encodeURIComponent(noteAbsoluteUrl)}`)}
       />
-      <DiscoverNav active="notes" />
+      <EntityContextNav view="notes" />
       <JsonLd
         data={{
           "@context": "https://schema.org",

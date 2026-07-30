@@ -88,23 +88,10 @@ export async function loadHomePageData(
   let networkStats: Awaited<ReturnType<typeof getNetworkStats>> | null = null;
   let relayStats: Awaited<ReturnType<typeof getRelayStats>> | null = null;
 
-  const needsWindowedTrends = window !== "24h";
-  upstreamCallCount += needsWindowedTrends ? 7 : 3;
+  upstreamCallCount += 3;
 
   const stageOne = await Promise.allSettled([
-    getDiscoveryHome("shortTtl"),
-    needsWindowedTrends
-      ? getTrendingNotes("shortTtl", { window, limit: 20 })
-      : Promise.resolve(null),
-    needsWindowedTrends
-      ? getTrendingProfiles("shortTtl", { window, limit: 20 })
-      : Promise.resolve(null),
-    needsWindowedTrends
-      ? getTrendingHashtags("shortTtl", { window, limit: 20 })
-      : Promise.resolve(null),
-    needsWindowedTrends
-      ? getTrendingDomains("shortTtl", { window, limit: 20 })
-      : Promise.resolve(null),
+    getDiscoveryHome("shortTtl", { window }),
     getNetworkStats("shortTtl"),
     getRelayStats("shortTtl"),
     getStatsSeries("note_volume", window === "7d" ? "7d" : "7d", "shortTtl"),
@@ -114,10 +101,6 @@ export async function loadHomePageData(
 
   const [
     homeResult,
-    notesResult,
-    profilesResult,
-    hashtagsResult,
-    domainsResult,
     networkResult,
     relayResult,
     noteVolumeSeriesResult,
@@ -141,47 +124,8 @@ export async function loadHomePageData(
     );
   }
 
-  if (!homeTimedOut && needsWindowedTrends) {
-    if (notesResult.status === "fulfilled" && notesResult.value) {
-      homeNotes = notesResult.value.notes ?? homeNotes;
-      sectionFailures.notes = false;
-    } else if (notesResult.status === "rejected") {
-      sectionFailures.notes = true;
-      failedMessages.push(
-        toUserFacingErrorMessage(notesResult.reason, "Failed to load windowed trends.")
-      );
-    }
-    if (profilesResult.status === "fulfilled" && profilesResult.value) {
-      homeProfiles = profilesResult.value.profiles ?? homeProfiles;
-      sectionFailures.profiles = false;
-    } else if (profilesResult.status === "rejected") {
-      sectionFailures.profiles = true;
-      failedMessages.push(
-        toUserFacingErrorMessage(profilesResult.reason, "Failed to load windowed trends.")
-      );
-    }
-    if (hashtagsResult.status === "fulfilled" && hashtagsResult.value) {
-      homeHashtags = hashtagsResult.value.hashtags ?? homeHashtags;
-      sectionFailures.hashtags = false;
-    } else if (hashtagsResult.status === "rejected") {
-      sectionFailures.hashtags = true;
-      failedMessages.push(
-        toUserFacingErrorMessage(hashtagsResult.reason, "Failed to load windowed trends.")
-      );
-    }
-    if (domainsResult.status === "fulfilled" && domainsResult.value) {
-      homeDomains = domainsResult.value.domains ?? homeDomains;
-      sectionFailures.domains = false;
-    } else if (domainsResult.status === "rejected") {
-      sectionFailures.domains = true;
-      failedMessages.push(
-        toUserFacingErrorMessage(domainsResult.reason, "Failed to load windowed trends.")
-      );
-    }
-  }
-
-  // 24h empty-home fallbacks: only fetch missing surfaces.
-  if (!homeTimedOut && window === "24h") {
+  // Backward-compatible empty-section fallbacks for older home bundles.
+  if (!homeTimedOut) {
     const fallbackRequests: Array<{
       key: "notes" | "profiles" | "hashtags" | "domains";
       promise: Promise<unknown>;

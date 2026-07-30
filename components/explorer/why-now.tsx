@@ -3,6 +3,7 @@ import {
   extractRelayHostsFromNote,
   formatValue,
 } from "@/components/explorer/utils";
+import { mapServerRankingReasons } from "@/lib/discover/reasons";
 import type { DomainEntry, EventRecord, HashtagEntry, Profile } from "@/lib/types/api";
 
 export type WhyNowReason = {
@@ -50,6 +51,9 @@ function renderSupport(value: unknown): string {
 }
 
 export function mapNoteWhyNow(note: EventRecord): WhyNowReason[] {
+  const serverReasons = mapServerRankingReasons(note.ranking);
+  if (serverReasons.length > 0) return serverReasons;
+
   const metrics = extractPrimitiveStats(note, [
     "id",
     "pubkey",
@@ -94,6 +98,9 @@ export function mapNoteWhyNow(note: EventRecord): WhyNowReason[] {
 }
 
 export function mapProfileWhyNow(profile: Profile): WhyNowReason[] {
+  const serverReasons = mapServerRankingReasons(profile.ranking);
+  if (serverReasons.length > 0) return serverReasons;
+
   const metrics = extractPrimitiveStats(profile, []);
   const postCount =
     findNumericMetric(metrics, /recent_post_count|post_count|note_count|recent_post/i) ?? null;
@@ -139,6 +146,9 @@ export function mapProfileWhyNow(profile: Profile): WhyNowReason[] {
 }
 
 export function mapHashtagWhyNow(entry: HashtagEntry): WhyNowReason[] {
+  const serverReasons = mapServerRankingReasons(entry.ranking);
+  if (serverReasons.length > 0) return serverReasons;
+
   const mentionCount = typeof entry.count === "number" && entry.count > 0 ? entry.count : null;
   const noteCount =
     typeof entry.event_count === "number" && entry.event_count > 0 ? entry.event_count : null;
@@ -171,6 +181,9 @@ export function mapHashtagWhyNow(entry: HashtagEntry): WhyNowReason[] {
 }
 
 export function mapDomainWhyNow(entry: DomainEntry): WhyNowReason[] {
+  const serverReasons = mapServerRankingReasons(entry.ranking);
+  if (serverReasons.length > 0) return serverReasons;
+
   const appearanceCount = typeof entry.count === "number" && entry.count > 0 ? entry.count : null;
   const linkedActivity =
     typeof entry.event_count === "number" && entry.event_count > 0 ? entry.event_count : null;

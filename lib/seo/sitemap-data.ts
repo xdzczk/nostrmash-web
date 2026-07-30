@@ -10,7 +10,6 @@ import type { MetadataRoute } from "next";
 const STATIC_PATHS = [
   "/",
   "/search",
-  "/trending",
   "/trending/notes",
   "/trending/profiles",
   "/trending/hashtags",

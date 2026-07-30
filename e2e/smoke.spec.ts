@@ -12,8 +12,9 @@ test.describe("explorer smoke", () => {
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
   });
 
-  test("trending hub renders", async ({ page }) => {
-    await page.goto("/trending");
+  test("legacy trending overview redirects with its window", async ({ page }) => {
+    await page.goto("/trending?window=7d");
+    await expect(page).toHaveURL(/\/\?window=7d$/);
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
   });
 
