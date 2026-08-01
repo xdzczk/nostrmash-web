@@ -149,7 +149,7 @@ function EditorialNote({
             {authorLink ? (
               <Link
                 href={authorLink}
-                className="text-ink hover:text-ink-strong truncate text-sm font-medium"
+                className="text-ink block truncate text-sm font-medium hover:underline"
               >
                 {authorLabel}
               </Link>

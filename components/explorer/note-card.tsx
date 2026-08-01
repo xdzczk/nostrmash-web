@@ -141,7 +141,10 @@ export function NoteCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {authorHref ? (
-              <Link href={authorHref} className="text-ink-soft hover:text-ink-strong font-medium">
+              <Link
+                href={authorHref}
+                className="text-ink-soft hover:text-ink-strong font-medium hover:underline"
+              >
                 {authorLabel}
               </Link>
             ) : (

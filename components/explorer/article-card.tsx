@@ -145,7 +145,10 @@ export function ArticleCard({
           />
         ) : null}
         {authorHref ? (
-          <Link href={authorHref} className="text-ink-soft hover:text-ink-strong font-medium">
+          <Link
+            href={authorHref}
+            className="text-ink-soft hover:text-ink-strong font-medium hover:underline"
+          >
             {authorLabel}
           </Link>
         ) : (

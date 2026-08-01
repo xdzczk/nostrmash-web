@@ -86,7 +86,7 @@ export function ProfileCard({
             {href ? (
               <Link
                 href={href}
-                className="text-ink hover:text-ink-strong truncate text-base font-semibold"
+                className="text-ink hover:text-ink-strong truncate text-base font-semibold hover:underline"
               >
                 {label}
               </Link>
