@@ -315,16 +315,31 @@ function hashString(value: string): number {
   return hash >>> 0;
 }
 
+function escapeSvgText(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
 export function profileFallbackAvatarDataUrl(profile: Profile): string {
   const seed = profileIdentifier(profile);
-  const label = profileInitial(profile);
+  const label = escapeSvgText(profileInitial(profile));
   const hash = hashString(seed);
   const hueA = hash % 360;
   const hueB = (hash >>> 8) % 360;
   const gradient = `hsl(${hueA} 78% 42%)`;
   const gradientEnd = `hsl(${hueB} 72% 28%)`;
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='88' height='88' viewBox='0 0 88 88'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0%' stop-color='${gradient}'/><stop offset='100%' stop-color='${gradientEnd}'/></linearGradient></defs><rect width='88' height='88' rx='44' fill='url(#g)'/><text x='50%' y='54%' text-anchor='middle' dominant-baseline='middle' font-family='Inter, system-ui, sans-serif' font-size='34' font-weight='700' fill='rgba(255,255,255,0.94)'>${label}</text></svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  try {
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  } catch {
+    // Defensive: never let avatar generation throw into a route error boundary.
+    const safeSvg = svg.replace(label, "?");
+    return `data:image/svg+xml;utf8,${encodeURIComponent(safeSvg)}`;
+  }
 }
 
 export function profilePictureUrl(profile: Profile): string | null {
@@ -432,7 +447,17 @@ export function profileSecondaryLabel(profile: Profile): string | null {
 
 export function profileInitial(profile: Profile): string {
   const label = profileLabel(profile).trim();
-  return label.slice(0, 1).toUpperCase() || "?";
+  // Code-point aware: String#slice(0, 1) can split a surrogate pair and make
+  // encodeURIComponent throw URIError when building the fallback avatar data URL.
+  const first = [...label][0];
+  if (!first || /[\uD800-\uDFFF]/.test(first)) return "?";
+  try {
+    const upper = first.toLocaleUpperCase();
+    encodeURIComponent(upper);
+    return upper;
+  } catch {
+    return "?";
+  }
 }
 
 export function noteAuthorIdentifier(note: EventRecord): string {

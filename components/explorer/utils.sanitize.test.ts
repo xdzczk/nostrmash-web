@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   isNextImageCompatibleSrc,
   normalizeImageSrc,
+  profileFallbackAvatarDataUrl,
+  profileInitial,
   profileLabel,
   profilePictureUrl,
   profileSecondaryLabel,
@@ -56,6 +58,28 @@ describe("profilePictureUrl", () => {
         picture: "http://thebitcoinblockclock.com/assets/img/bg-masthead.jpg",
       })
     ).toBeNull();
+  });
+});
+
+describe("profileFallbackAvatarDataUrl", () => {
+  it("keeps emoji-leading display names encodeable for next/image data URLs", () => {
+    const profile = {
+      pubkey: "c".repeat(64),
+      display_name: "⚡Satoshi",
+    };
+    expect(profileInitial(profile)).toBe("⚡");
+    expect(() => profileFallbackAvatarDataUrl(profile)).not.toThrow();
+    expect(profileFallbackAvatarDataUrl(profile).startsWith("data:image/svg+xml")).toBe(true);
+  });
+
+  it("does not throw on lone surrogate initials", () => {
+    const highSurrogate = "\uD83D";
+    const profile = {
+      pubkey: "d".repeat(64),
+      display_name: `${highSurrogate}broken`,
+    };
+    expect(profileInitial(profile)).toBe("?");
+    expect(() => profileFallbackAvatarDataUrl(profile)).not.toThrow();
   });
 });
 
