@@ -412,44 +412,38 @@ export function EditorialOverview({
 
   return (
     <div className="space-y-[var(--space-section)]">
-      <div className="grid items-start gap-[var(--space-section)] lg:grid-cols-[minmax(0,1.32fr)_minmax(300px,0.68fr)] lg:gap-14 xl:gap-20">
-        <div className="contents lg:block lg:space-y-[var(--space-section)]">
-          <div className="order-1">
-            <LeadSection
-              lead={lead}
-              authorsByPubkey={authorsByPubkey}
-              sectionFailed={sectionFailures.notes}
-              window={window}
-              headingId="leading-signal"
-            />
-          </div>
-          <div className="order-3">
-            <ProfileRanking
-              profiles={profiles}
-              degraded={sectionFailures.profiles}
-              window={window}
-              headingId="profiles-in-motion"
-            />
-          </div>
-        </div>
-        <div className="contents lg:block lg:space-y-[var(--space-section)]">
-          <div className="order-2">
-            <SupportingNotes
-              notes={followups}
-              authorsByPubkey={authorsByPubkey}
-              window={window}
-              headingId="supporting-notes"
-            />
-          </div>
-          <div className="order-4">
-            <IdeasIndex
-              hashtags={visibleHashtags}
-              domains={visibleDomains}
-              window={window}
-              headingId="ideas-gaining-ground"
-            />
-          </div>
-        </div>
+      <section
+        aria-label="Leading notes"
+        className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.42fr)_minmax(300px,0.62fr)] lg:gap-14 xl:gap-20"
+      >
+        <LeadSection
+          lead={lead}
+          authorsByPubkey={authorsByPubkey}
+          sectionFailed={sectionFailures.notes}
+          window={window}
+          headingId="leading-signal"
+        />
+        <SupportingNotes
+          notes={followups}
+          authorsByPubkey={authorsByPubkey}
+          window={window}
+          headingId="supporting-notes"
+        />
+      </section>
+
+      <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.72fr)] lg:gap-16 xl:gap-20">
+        <ProfileRanking
+          profiles={profiles}
+          degraded={sectionFailures.profiles}
+          window={window}
+          headingId="profiles-in-motion"
+        />
+        <IdeasIndex
+          hashtags={visibleHashtags}
+          domains={visibleDomains}
+          window={window}
+          headingId="ideas-gaining-ground"
+        />
       </div>
 
       <NetworkPulseStrip title="Network pulse" stats={pulseStats} />
