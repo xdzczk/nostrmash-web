@@ -34,4 +34,11 @@ describe("NoteCard", () => {
       true
     );
   });
+
+  it("links avatar and account name to the author profile page", () => {
+    render(<NoteCard note={NOTE} author={AUTHOR} />);
+    const profilePath = `/profiles/${NOTE.pubkey}`;
+    expect(screen.getByRole("link", { name: "Alice" })).toHaveAttribute("href", profilePath);
+    expect(screen.getByRole("link", { name: "View Alice" })).toHaveAttribute("href", profilePath);
+  });
 });

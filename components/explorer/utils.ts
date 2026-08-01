@@ -420,6 +420,24 @@ export function profileIdentifier(profile: Profile): string {
   return "unknown";
 }
 
+/** App route for a profile identity, or undefined when no usable identifier exists. */
+export function profileHref(
+  profile?: Profile | null,
+  pubkeyFallback?: string | null
+): string | undefined {
+  if (profile) {
+    const identifier = profileIdentifier(profile);
+    if (identifier !== "unknown") {
+      return `/profiles/${encodeURIComponent(identifier)}`;
+    }
+  }
+  const fallback = typeof pubkeyFallback === "string" ? pubkeyFallback.trim() : "";
+  if (fallback.length > 0) {
+    return `/profiles/${encodeURIComponent(fallback)}`;
+  }
+  return undefined;
+}
+
 export function profileSecondaryLabel(profile: Profile): string | null {
   const displayName = readableProfileName(
     readProfileText(profile, ["display_name", "displayName", "display", "displayname"])

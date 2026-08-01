@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 
 import {
@@ -15,6 +16,8 @@ type ProfileAvatarProps = {
   size: number;
   className?: string;
   alt?: string;
+  /** When set, the avatar becomes a link to the profile page. */
+  href?: string;
 };
 
 /**
@@ -23,14 +26,14 @@ type ProfileAvatarProps = {
  * skip the optimizer and fall back to a local gradient when the remote fails
  * or is incompatible with next/image remotePatterns (e.g. cleartext http hosts).
  */
-export function ProfileAvatar({ profile, size, className = "", alt }: ProfileAvatarProps) {
+export function ProfileAvatar({ profile, size, className = "", alt, href }: ProfileAvatarProps) {
   const fallbackSrc = profileFallbackAvatarDataUrl(profile);
   const remoteSrc = profilePictureUrl(profile);
   const [brokenRemote, setBrokenRemote] = useState<string | null>(null);
   const src = remoteSrc && brokenRemote !== remoteSrc ? remoteSrc : fallbackSrc;
   const label = alt ?? profileLabel(profile);
 
-  return (
+  const image = (
     <Image
       src={src}
       alt={label}
@@ -44,5 +47,17 @@ export function ProfileAvatar({ profile, size, className = "", alt }: ProfileAva
         }
       }}
     />
+  );
+
+  if (!href) return image;
+
+  return (
+    <Link
+      href={href}
+      className="nm-pressable focus-visible:ring-accent-soft/70 inline-flex shrink-0 rounded-full focus-visible:ring-2 focus-visible:outline-none"
+      aria-label={label ? `View ${label}` : "View profile"}
+    >
+      {image}
+    </Link>
   );
 }

@@ -4,6 +4,7 @@ import {
   isNextImageCompatibleSrc,
   normalizeImageSrc,
   profileFallbackAvatarDataUrl,
+  profileHref,
   profileInitial,
   profileLabel,
   profilePictureUrl,
@@ -99,5 +100,12 @@ describe("profile identity presentation", () => {
 
   it("preserves readable unicode names", () => {
     expect(profileLabel({ pubkey: "b".repeat(64), display_name: "Иван ⚡" })).toBe("Иван ⚡");
+  });
+
+  it("builds profile routes from profile identity or pubkey fallback", () => {
+    const pubkey = "e".repeat(64);
+    expect(profileHref({ pubkey, npub: "npub1abc" })).toBe(`/profiles/${pubkey}`);
+    expect(profileHref(null, pubkey)).toBe(`/profiles/${pubkey}`);
+    expect(profileHref(undefined, "  ")).toBeUndefined();
   });
 });

@@ -16,7 +16,7 @@ import {
   normalizeImageSrc,
   noteAuthorIdentifier,
   noteInlineAuthorProfile,
-  profileIdentifier,
+  profileHref,
   profileLabel,
   profileSecondaryLabel,
   truncateIdentifier,
@@ -54,10 +54,15 @@ export function ArticleCard({
   const authorSecondaryLabel = resolvedAuthor
     ? profileSecondaryLabel(resolvedAuthor)
     : noteAuthorIdentifier(article);
-  const authorHref =
-    resolvedAuthor && profileIdentifier(resolvedAuthor) !== "unknown"
-      ? `/profiles/${encodeURIComponent(profileIdentifier(resolvedAuthor))}`
-      : undefined;
+  const authorHref = profileHref(
+    resolvedAuthor,
+    typeof article.pubkey === "string" ? article.pubkey : undefined
+  );
+  const authorAvatarProfile =
+    resolvedAuthor ??
+    (typeof article.pubkey === "string" && article.pubkey.length > 0
+      ? { pubkey: article.pubkey }
+      : null);
 
   const metrics = extractPrimitiveStats(article, [
     "id",
@@ -130,11 +135,12 @@ export function ArticleCard({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-        {resolvedAuthor ? (
+        {authorAvatarProfile ? (
           <ProfileAvatar
-            profile={resolvedAuthor}
+            profile={authorAvatarProfile}
             size={24}
             alt={authorLabel}
+            href={authorHref}
             className="border-edge-strong h-6 w-6 rounded-full border object-cover"
           />
         ) : null}
@@ -145,7 +151,15 @@ export function ArticleCard({
         ) : (
           <span className="text-ink-soft font-medium">{authorLabel}</span>
         )}
-        {authorSecondaryLabel ? (
+        {authorSecondaryLabel && authorHref ? (
+          <Link
+            href={authorHref}
+            className="text-ink-faint hover:text-ink-muted"
+            title={authorSecondaryLabel}
+          >
+            {truncateIdentifier(authorSecondaryLabel, "npub", "secondary")}
+          </Link>
+        ) : authorSecondaryLabel ? (
           <span className="text-ink-faint" title={authorSecondaryLabel}>
             {truncateIdentifier(authorSecondaryLabel, "npub", "secondary")}
           </span>

@@ -14,7 +14,7 @@ import {
   normalizeDomainLabel,
   noteAuthorIdentifier,
   noteInlineAuthorProfile,
-  profileIdentifier,
+  profileHref,
   profileLabel,
   profileSecondaryLabel,
   truncateIdentifier,
@@ -102,6 +102,11 @@ function EditorialNote({
   const author = noteAuthor(note, authorsByPubkey);
   const id = noteId(note);
   const editorialText = getEditorialNoteText(note);
+  const authorLabel = authorName(note, author);
+  const authorLink = profileHref(author, typeof note.pubkey === "string" ? note.pubkey : undefined);
+  const authorAvatarProfile =
+    author ??
+    (typeof note.pubkey === "string" && note.pubkey.length > 0 ? { pubkey: note.pubkey } : null);
 
   return (
     <article
@@ -131,15 +136,26 @@ function EditorialNote({
 
       <div className={lead ? "mt-5" : "mt-3"}>
         <div className="flex items-center gap-3">
-          {author ? (
+          {authorAvatarProfile ? (
             <ProfileAvatar
-              profile={author}
+              profile={authorAvatarProfile}
               size={lead ? 44 : 36}
+              alt={authorLabel}
+              href={authorLink}
               className={`${lead ? "h-11 w-11" : "h-9 w-9"} border-edge rounded-full border object-cover`}
             />
           ) : null}
           <div className="min-w-0">
-            <p className="text-ink truncate text-sm font-medium">{authorName(note, author)}</p>
+            {authorLink ? (
+              <Link
+                href={authorLink}
+                className="text-ink hover:text-ink-strong truncate text-sm font-medium"
+              >
+                {authorLabel}
+              </Link>
+            ) : (
+              <p className="text-ink truncate text-sm font-medium">{authorLabel}</p>
+            )}
             <Timestamp unixSeconds={note.created_at} className="nm-meta" />
           </div>
         </div>
@@ -194,9 +210,7 @@ function ProfileRanking({
       {profiles.length > 0 ? (
         <ol className="border-edge/70 mt-6 divide-y divide-[var(--edge)] border-y">
           {profiles.slice(0, 4).map((profile, index) => {
-            const identifier = profileIdentifier(profile);
-            const href =
-              identifier !== "unknown" ? `/profiles/${encodeURIComponent(identifier)}` : undefined;
+            const href = profileHref(profile);
             const secondary = profileSecondaryLabel(profile);
             return (
               <li
@@ -209,6 +223,7 @@ function ProfileRanking({
                 <ProfileAvatar
                   profile={profile}
                   size={44}
+                  href={href}
                   className="border-edge h-11 w-11 rounded-full border object-cover"
                 />
                 <div className="min-w-0">
@@ -219,7 +234,11 @@ function ProfileRanking({
                   ) : (
                     <p className="text-ink truncate font-medium">{profileLabel(profile)}</p>
                   )}
-                  {secondary ? (
+                  {secondary && href ? (
+                    <Link href={href} className="nm-meta hover:text-ink mt-0.5 block truncate">
+                      {truncateIdentifier(secondary, "npub", "secondary")}
+                    </Link>
+                  ) : secondary ? (
                     <p className="nm-meta mt-0.5 truncate">
                       {truncateIdentifier(secondary, "npub", "secondary")}
                     </p>

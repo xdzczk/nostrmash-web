@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import {
   cardTierClassName,
   DiscoveryActionLinks,
@@ -7,6 +9,7 @@ import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { mapProfileWhyNow, WhyNow } from "@/components/explorer/why-now";
 import {
   extractPrimitiveStats,
+  profileHref,
   profileIdentifier,
   profileLabel,
   profileSecondaryLabel,
@@ -28,7 +31,7 @@ export function ProfileCard({
   const label = profileLabel(profile);
   const secondaryLabel = profileSecondaryLabel(profile);
   const identifier = profileIdentifier(profile);
-  const href = identifier !== "unknown" ? `/profiles/${encodeURIComponent(identifier)}` : undefined;
+  const href = profileHref(profile);
   const rawMetrics = extractPrimitiveStats(summary ?? profile, [
     "pubkey",
     "npub",
@@ -75,13 +78,31 @@ export function ProfileCard({
         <ProfileAvatar
           profile={profile}
           size={44}
+          href={href}
           className="border-edge-strong h-10 w-10 rounded-full border object-cover sm:h-11 sm:w-11"
         />
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex items-start justify-between gap-2">
-            <p className="text-ink truncate text-base font-semibold">{label}</p>
+            {href ? (
+              <Link
+                href={href}
+                className="text-ink hover:text-ink-strong truncate text-base font-semibold"
+              >
+                {label}
+              </Link>
+            ) : (
+              <p className="text-ink truncate text-base font-semibold">{label}</p>
+            )}
           </div>
-          {secondaryIdentity ? (
+          {secondaryIdentity && href ? (
+            <Link
+              href={href}
+              className="text-ink-faint hover:text-ink-muted truncate text-xs"
+              title={secondaryIdentity}
+            >
+              {truncateIdentifier(secondaryIdentity, identifierKind, "secondary")}
+            </Link>
+          ) : secondaryIdentity ? (
             <p className="text-ink-faint truncate text-xs" title={secondaryIdentity}>
               {truncateIdentifier(secondaryIdentity, identifierKind, "secondary")}
             </p>

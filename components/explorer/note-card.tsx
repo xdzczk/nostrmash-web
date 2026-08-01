@@ -16,7 +16,7 @@ import {
   normalizeDomainLabel,
   noteInlineAuthorProfile,
   noteAuthorIdentifier,
-  profileIdentifier,
+  profileHref,
   profileLabel,
   profileSecondaryLabel,
   extractDomainsFromNote,
@@ -62,12 +62,10 @@ export function NoteCard({
   const authorAvatarProfile =
     resolvedAuthor ??
     (typeof note.pubkey === "string" && note.pubkey.length > 0 ? { pubkey: note.pubkey } : null);
-  const authorHref =
-    resolvedAuthor && profileIdentifier(resolvedAuthor) !== "unknown"
-      ? `/profiles/${encodeURIComponent(profileIdentifier(resolvedAuthor))}`
-      : typeof note.pubkey === "string" && note.pubkey.length > 0
-        ? `/profiles/${encodeURIComponent(note.pubkey)}`
-        : undefined;
+  const authorHref = profileHref(
+    resolvedAuthor,
+    typeof note.pubkey === "string" ? note.pubkey : undefined
+  );
   const content =
     typeof note.content === "string" && note.content.length > 0 ? note.content : "(no content)";
   const preview = getNotePreviewPresentation(note);
@@ -121,8 +119,17 @@ export function NoteCard({
             profile={authorAvatarProfile}
             size={44}
             alt={authorLabel}
+            href={authorHref}
             className="border-edge-strong h-10 w-10 rounded-full border object-cover sm:h-11 sm:w-11"
           />
+        ) : authorHref ? (
+          <Link
+            href={authorHref}
+            aria-label={`View ${authorLabel}`}
+            className="bg-surface-sunken/70 text-ink-faint hover:text-ink flex h-10 w-10 items-center justify-center rounded-full text-xs sm:h-11 sm:w-11"
+          >
+            {authorLabel.slice(0, 1).toUpperCase() || "?"}
+          </Link>
         ) : (
           <div
             aria-hidden
@@ -140,7 +147,15 @@ export function NoteCard({
             ) : (
               <span className="text-ink-soft font-medium">{authorLabel}</span>
             )}
-            {authorSecondaryLabel ? (
+            {authorSecondaryLabel && authorHref ? (
+              <Link
+                href={authorHref}
+                className="text-ink-faint hover:text-ink-muted"
+                title={authorSecondaryLabel}
+              >
+                {truncateIdentifier(authorSecondaryLabel, "npub", "secondary")}
+              </Link>
+            ) : authorSecondaryLabel ? (
               <span className="text-ink-faint" title={authorSecondaryLabel}>
                 {truncateIdentifier(authorSecondaryLabel, "npub", "secondary")}
               </span>

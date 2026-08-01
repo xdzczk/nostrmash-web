@@ -21,6 +21,7 @@ import {
   buildMetadataEntries,
   extractPrimitiveStats,
   isRecord,
+  profileHref,
   profileLabel,
   truncateMiddle,
 } from "@/components/explorer/utils";
@@ -253,17 +254,51 @@ export default async function NotePage({
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {resolvedAuthor ? (
-              <span className="border-edge-strong bg-surface/50 text-ink-soft inline-flex items-center gap-2 rounded-full border px-2 py-1">
-                <ProfileAvatar
-                  profile={resolvedAuthor}
-                  size={18}
-                  alt=""
-                  className="h-[18px] w-[18px] rounded-full object-cover"
-                />
-                {profileLabel(resolvedAuthor)}
-              </span>
+              (() => {
+                const authorLink = profileHref(
+                  resolvedAuthor,
+                  typeof resolvedAuthor.pubkey === "string"
+                    ? resolvedAuthor.pubkey
+                    : typeof focal?.pubkey === "string"
+                      ? focal.pubkey
+                      : undefined
+                );
+                const authorName = profileLabel(resolvedAuthor);
+                if (!authorLink) {
+                  return (
+                    <span className="border-edge-strong bg-surface/50 text-ink-soft inline-flex items-center gap-2 rounded-full border px-2 py-1">
+                      <ProfileAvatar
+                        profile={resolvedAuthor}
+                        size={18}
+                        alt=""
+                        className="h-[18px] w-[18px] rounded-full object-cover"
+                      />
+                      {authorName}
+                    </span>
+                  );
+                }
+                return (
+                  <Link
+                    href={authorLink}
+                    className="border-edge-strong bg-surface/50 text-ink-soft hover:text-ink inline-flex items-center gap-2 rounded-full border px-2 py-1"
+                  >
+                    <ProfileAvatar
+                      profile={resolvedAuthor}
+                      size={18}
+                      alt=""
+                      className="h-[18px] w-[18px] rounded-full object-cover"
+                    />
+                    {authorName}
+                  </Link>
+                );
+              })()
             ) : focal?.pubkey ? (
-              <IdBadge id={focal.pubkey} label="author" />
+              <Link
+                href={`/profiles/${encodeURIComponent(focal.pubkey)}`}
+                className="hover:opacity-90"
+              >
+                <IdBadge id={focal.pubkey} label="author" />
+              </Link>
             ) : null}
             <Timestamp unixSeconds={focal?.created_at} />
           </div>
