@@ -12,6 +12,8 @@ import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
   extractPrimitiveStats,
+  isNextImageCompatibleSrc,
+  normalizeImageSrc,
   noteAuthorIdentifier,
   noteInlineAuthorProfile,
   profileIdentifier,
@@ -35,6 +37,7 @@ export function ArticleCard({
   discoverySignals?: boolean;
 }) {
   const presentation = getArticlePresentation(article);
+  const imageSrc = normalizeImageSrc(presentation.image);
   const resolvedAuthor = author ?? noteInlineAuthorProfile(article);
   const resolvedArticleId =
     (typeof article.id === "string" && article.id.length > 0
@@ -96,9 +99,9 @@ export function ArticleCard({
       </div>
 
       <div className="mt-2.5 flex items-start gap-3">
-        {presentation.image ? (
+        {imageSrc && isNextImageCompatibleSrc(imageSrc) ? (
           <Image
-            src={presentation.image}
+            src={imageSrc}
             alt={presentation.title}
             width={96}
             height={96}

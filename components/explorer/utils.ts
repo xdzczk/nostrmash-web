@@ -263,6 +263,27 @@ export function normalizeImageSrc(value: string | undefined): string | null {
 }
 
 /**
+ * Matches next.config images.remotePatterns: https anywhere, http only on localhost.
+ * Passing other http hosts into next/image throws and replaces the route with error.tsx.
+ */
+export function isNextImageCompatibleSrc(src: string): boolean {
+  if (/^data:image\//i.test(src) || /^blob:/i.test(src)) return true;
+  try {
+    const parsed = new URL(src);
+    if (parsed.protocol === "https:") return true;
+    if (
+      parsed.protocol === "http:" &&
+      (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1")
+    ) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Allow only http(s) absolute URLs (or same-origin relative paths starting with `/`).
  * Rejects javascript:, data:, and other dangerous schemes used in UGC link fields.
  */
@@ -319,7 +340,9 @@ export function profilePictureUrl(profile: Profile): string | null {
     "profile_image",
     "profile_picture",
   ]);
-  return normalizeImageSrc(raw);
+  const normalized = normalizeImageSrc(raw);
+  if (!normalized || !isNextImageCompatibleSrc(normalized)) return null;
+  return normalized;
 }
 
 function readableProfileName(value: string | undefined): string | undefined {

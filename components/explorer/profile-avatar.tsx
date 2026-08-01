@@ -20,7 +20,8 @@ type ProfileAvatarProps = {
 /**
  * Avatar for Nostr profiles. UGC picture hosts are unreliable, and Cloudflare
  * Images remotely transforms only a narrow set of widths (others 403), so we
- * skip the optimizer and fall back to a local gradient when the remote fails.
+ * skip the optimizer and fall back to a local gradient when the remote fails
+ * or is incompatible with next/image remotePatterns (e.g. cleartext http hosts).
  */
 export function ProfileAvatar({ profile, size, className = "", alt }: ProfileAvatarProps) {
   const fallbackSrc = profileFallbackAvatarDataUrl(profile);

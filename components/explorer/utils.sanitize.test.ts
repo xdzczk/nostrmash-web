@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isNextImageCompatibleSrc,
   normalizeImageSrc,
   profileLabel,
+  profilePictureUrl,
   profileSecondaryLabel,
   sanitizeExternalHref,
 } from "@/components/explorer/utils";
@@ -30,6 +32,30 @@ describe("normalizeImageSrc", () => {
 
   it("rejects javascript image sources", () => {
     expect(normalizeImageSrc("javascript:alert(1)")).toBeNull();
+  });
+});
+
+describe("isNextImageCompatibleSrc", () => {
+  it("allows https and local http", () => {
+    expect(isNextImageCompatibleSrc("https://cdn.example/a.png")).toBe(true);
+    expect(isNextImageCompatibleSrc("http://localhost:3000/a.png")).toBe(true);
+    expect(isNextImageCompatibleSrc("http://127.0.0.1/a.png")).toBe(true);
+    expect(isNextImageCompatibleSrc("data:image/png;base64,abc")).toBe(true);
+  });
+
+  it("rejects cleartext remote http hosts that would crash next/image", () => {
+    expect(isNextImageCompatibleSrc("http://thebitcoinblockclock.com/a.jpg")).toBe(false);
+  });
+});
+
+describe("profilePictureUrl", () => {
+  it("falls back to null for http profile pictures outside localhost", () => {
+    expect(
+      profilePictureUrl({
+        pubkey: "a".repeat(64),
+        picture: "http://thebitcoinblockclock.com/assets/img/bg-masthead.jpg",
+      })
+    ).toBeNull();
   });
 });
 
