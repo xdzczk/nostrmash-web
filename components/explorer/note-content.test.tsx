@@ -72,4 +72,17 @@ describe("NoteContent", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     expect(screen.getByText("javascript:alert(1)")).toBeInTheDocument();
   });
+
+  it("hides media file urls from rendered note text", () => {
+    const tokens = tokenizeNoteContent(
+      `Hello https://cdn.example/photo.jpg and https://example.com/page`
+    );
+    render(<NoteContent tokens={tokens} />);
+
+    expect(screen.queryByText(/photo\.jpg/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "https://example.com/page" })).toHaveAttribute(
+      "href",
+      "https://example.com/page"
+    );
+  });
 });

@@ -19,6 +19,7 @@ import {
   profileSecondaryLabel,
   truncateIdentifier,
 } from "@/components/explorer/utils";
+import { NoteMedia } from "@/components/explorer/note-media";
 import { getEditorialNoteText } from "@/components/explorer/note-preview";
 import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
 import type { StatsWindow } from "@/lib/search-params/window";
@@ -160,15 +161,20 @@ function EditorialNote({
           </div>
         </div>
 
-        <p
-          className={
-            lead
-              ? "text-ink-strong mt-5 line-clamp-8 max-w-[44rem] text-[clamp(1.35rem,1rem+1.15vw,2rem)] leading-[1.38] tracking-[-0.028em] [overflow-wrap:anywhere] whitespace-pre-wrap"
-              : "text-ink-dim mt-4 line-clamp-4 text-[15px] leading-6 [overflow-wrap:anywhere] whitespace-pre-wrap"
-          }
-        >
-          {editorialText}
-        </p>
+        {editorialText ? (
+          <p
+            className={
+              lead
+                ? "text-ink-strong mt-5 line-clamp-8 max-w-[44rem] text-[clamp(1.35rem,1rem+1.15vw,2rem)] leading-[1.38] tracking-[-0.028em] [overflow-wrap:anywhere] whitespace-pre-wrap"
+                : "text-ink-dim mt-4 line-clamp-4 text-[15px] leading-6 [overflow-wrap:anywhere] whitespace-pre-wrap"
+            }
+          >
+            {editorialText}
+          </p>
+        ) : null}
+        {typeof note.content === "string" && note.content.length > 0 ? (
+          <NoteMedia content={note.content} />
+        ) : null}
         <EvidenceLine reasons={mapNoteWhyNow(note)} ranking={note.ranking} />
         {lead && id ? (
           <Link

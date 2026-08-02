@@ -1,6 +1,7 @@
 import type { EventRecord } from "@/lib/types/api";
 
 import { formatUrlForDisplay } from "@/components/explorer/utils";
+import { isNoteMediaUrl, stripNoteMediaUrls } from "@/lib/notes/media";
 
 export type NotePreviewMode =
   | "standard_text_preview"
@@ -21,8 +22,6 @@ export interface NotePreviewPresentation {
 }
 
 const URL_PATTERN = /https?:\/\/\S+/g;
-const MEDIA_EXTENSION_PATTERN =
-  /\.(jpg|jpeg|png|gif|webp|avif|svg|mp4|webm|mov|m4v|m3u8)(\?[^\s]*)?$/i;
 const BECH32_TOKEN_PATTERN =
   /\b(?:note|nevent|nprofile|npub|nsec|naddr|nrelay)1[023456789acdefghjklmnpqrstuvwxyz]{20,}\b/i;
 const HEX_TOKEN_PATTERN = /\b[a-f0-9]{48,}\b/i;
@@ -77,7 +76,9 @@ function extractDomains(urls: string[]): string[] {
 }
 
 function normalizeLinksForDisplay(value: string): string {
-  return value.replace(URL_PATTERN, (match) => formatUrlForDisplay(match, "secondary"));
+  return stripNoteMediaUrls(value).replace(URL_PATTERN, (match) =>
+    formatUrlForDisplay(match, "secondary")
+  );
 }
 
 function clampText(value: string, maxLength: number): string {
@@ -94,7 +95,7 @@ function firstNonEmptyLine(value: string): string | undefined {
 }
 
 function hasMediaUrls(urls: string[]): boolean {
-  return urls.some((url) => MEDIA_EXTENSION_PATTERN.test(url));
+  return urls.some((url) => isNoteMediaUrl(url));
 }
 
 function isUrlHeavy(content: string, urls: string[]): boolean {
@@ -213,7 +214,7 @@ function classifyFallback(content: string): NotePreviewPresentation {
     containsRaw: false,
     firstLine,
     domains,
-    contentForCard: content,
+    contentForCard: stripNoteMediaUrls(content),
     rawContent: content,
     prefersMediaFirst: false,
   };
@@ -268,11 +269,13 @@ export function getNotePreviewPresentation(note: EventRecord): NotePreviewPresen
 
 export function getEditorialNoteText(note: EventRecord): string {
   const preview = getNotePreviewPresentation(note);
-  if (!preview.containsRaw) return preview.contentForCard;
+  const text = preview.containsRaw
+    ? preview.contentForCard
+        .replace(new RegExp(`(?:nostr:)?${BECH32_TOKEN_PATTERN.source}`, "gi"), "Nostr reference")
+        .replace(new RegExp(HEX_TOKEN_PATTERN.source, "gi"), "event reference")
+        .replace(/\s{2,}/g, " ")
+        .trim()
+    : preview.contentForCard;
 
-  return preview.contentForCard
-    .replace(new RegExp(`(?:nostr:)?${BECH32_TOKEN_PATTERN.source}`, "gi"), "Nostr reference")
-    .replace(new RegExp(HEX_TOKEN_PATTERN.source, "gi"), "event reference")
-    .replace(/\s{2,}/g, " ")
-    .trim();
+  return stripNoteMediaUrls(text);
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { sanitizeExternalHref } from "@/components/explorer/utils";
+import { isNoteMediaUrl, stripNoteMediaUrls } from "@/lib/notes/media";
 import { hexToNpub } from "@/lib/nostr/nip19";
 import type { NoteToken } from "@/lib/notes/tokenize";
 import type { EventRecord, Profile } from "@/lib/types/api";
@@ -31,11 +32,15 @@ function QuoteCard({ event, author }: { event: EventRecord; author?: Profile }) 
     (typeof author?.display_name === "string" && author.display_name) ||
     (typeof author?.name === "string" && author.name) ||
     (typeof event.pubkey === "string" ? event.pubkey.slice(0, 12) : "Note");
-  const snippet =
+  const cleaned =
     typeof event.content === "string" && event.content.length > 0
-      ? event.content.length > 180
-        ? `${event.content.slice(0, 177)}…`
-        : event.content
+      ? stripNoteMediaUrls(event.content)
+      : "";
+  const snippet =
+    cleaned.length > 0
+      ? cleaned.length > 180
+        ? `${cleaned.slice(0, 177)}…`
+        : cleaned
       : "(no content)";
 
   const body = (
@@ -77,6 +82,8 @@ export function NoteContent({
           case "text":
             return <span key={key}>{token.value}</span>;
           case "url": {
+            // Media URLs are rendered by NoteMedia; never show them as text links.
+            if (isNoteMediaUrl(token.href)) return null;
             const href = sanitizeExternalHref(token.href);
             if (!href) return <span key={key}>{token.value}</span>;
             return (

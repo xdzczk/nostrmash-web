@@ -2,50 +2,22 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useState } from "react";
-
 type MediaKind = "image" | "video" | "audio";
 
-export function NoteMediaReveal({
-  url,
-  kind,
-  displayUrl,
-}: {
-  url: string;
-  kind: MediaKind;
-  displayUrl: string;
-}) {
-  const [revealed, setRevealed] = useState(false);
-
-  if (!revealed) {
-    return (
-      <div className="border-edge bg-surface-sunken/45 rounded-[var(--radius-control)] border px-4 py-4">
-        <p className="text-ink text-sm font-medium">External {kind} hidden</p>
-        <p className="text-ink-muted mt-1 text-xs leading-5">
-          Media can expose your IP address to {displayUrl}. Reveal it only if you trust the source.
-        </p>
-        <button
-          type="button"
-          onClick={() => setRevealed(true)}
-          className="text-ink hover:text-accent-ink focus-visible:ring-accent-soft/60 mt-3 inline-flex min-h-11 items-center rounded-sm text-sm font-medium underline decoration-[var(--accent-soft)] underline-offset-4 focus-visible:ring-2 focus-visible:outline-none"
-        >
-          Reveal {kind}
-        </button>
-      </div>
-    );
-  }
-
+export function NoteMediaReveal({ url, kind }: { url: string; kind: MediaKind }) {
   return (
     <div className="border-edge bg-surface-sunken/60 overflow-hidden rounded-[var(--radius-control)] border">
       {kind === "image" ? (
-        <img
-          src={url}
-          alt="Image attached to note"
-          loading="lazy"
-          decoding="async"
-          referrerPolicy="no-referrer"
-          className="max-h-[28rem] w-full object-cover"
-        />
+        <a href={url} target="_blank" rel="noreferrer noopener" referrerPolicy="no-referrer">
+          <img
+            src={url}
+            alt="Image attached to note"
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            className="max-h-[28rem] w-full object-cover"
+          />
+        </a>
       ) : null}
       {kind === "video" ? (
         <video
@@ -61,25 +33,6 @@ export function NoteMediaReveal({
           <audio src={url} controls preload="metadata" className="w-full" />
         </div>
       ) : null}
-      <div className="border-edge text-ink-muted flex items-center justify-between gap-3 border-t px-3 py-2 text-xs">
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer noopener"
-          title={url}
-          referrerPolicy="no-referrer"
-          className="hover:text-ink-soft focus-visible:ring-accent-soft/60 truncate rounded-sm focus-visible:ring-2 focus-visible:outline-none"
-        >
-          {displayUrl}
-        </a>
-        <button
-          type="button"
-          onClick={() => setRevealed(false)}
-          className="hover:text-ink focus-visible:ring-accent-soft/60 min-h-11 shrink-0 rounded-sm px-1 focus-visible:ring-2 focus-visible:outline-none"
-        >
-          Hide
-        </button>
-      </div>
     </div>
   );
 }
