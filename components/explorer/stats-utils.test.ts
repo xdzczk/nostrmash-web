@@ -79,6 +79,35 @@ describe("extractRelayHealthRows", () => {
     expect(rows[2]?.healthy).toBeUndefined();
     expect(posture).toEqual({ total: 3, healthy: 1, unhealthy: 1, unknown: 1 });
   });
+
+  it("maps NostrMash checkpoint statuses to unhealthy and preserves last_error", () => {
+    const payload = {
+      relays: [
+        { relay_url: "wss://relay.primal.net", status: "healthy" },
+        {
+          relay_url: "wss://relay.damus.io",
+          status: "errored",
+          last_error: "dial websocket: websocket: bad handshake",
+        },
+        { relay_url: "wss://nos.lol", status: "disconnected" },
+        { relay_url: "wss://relay.example", status: "backing_off" },
+        { relay_url: "wss://connecting.example", status: "connecting" },
+      ],
+    };
+
+    const rows = extractRelayHealthRows(payload, 10);
+    const posture = relayHealthPosture(rows);
+
+    expect(rows.find((row) => row.host === "relay.damus.io")).toMatchObject({
+      healthy: false,
+      status: "errored",
+      lastError: "dial websocket: websocket: bad handshake",
+    });
+    expect(rows.find((row) => row.host === "nos.lol")?.healthy).toBe(false);
+    expect(rows.find((row) => row.host === "relay.example")?.healthy).toBe(false);
+    expect(rows.find((row) => row.host === "connecting.example")?.healthy).toBeUndefined();
+    expect(posture).toEqual({ total: 5, healthy: 1, unhealthy: 3, unknown: 1 });
+  });
 });
 
 describe("flattenPrimitiveStats", () => {

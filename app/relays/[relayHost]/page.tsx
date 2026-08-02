@@ -7,7 +7,6 @@ import {
   extractRelayHealthRows,
   normalizeRelayHost,
   rankRelayActivity,
-  relayHealthPosture,
 } from "@/components/explorer/stats-utils";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
@@ -79,7 +78,6 @@ export default async function RelayPage({ params }: { params: Params }) {
 
   const healthRows = extractRelayHealthRows(healthPayload, 250);
   const relayHealth = healthRows.find((entry) => entry.host === normalizedRelayHost) ?? null;
-  const healthPosture = relayHealthPosture(healthRows);
   const semantics = extractNativeApiSemantics(payload, healthPayload);
   const classification = classifyStats(payload);
   const aggregatePrimitives = classification.primitives.map((entry) => ({
@@ -139,36 +137,38 @@ export default async function RelayPage({ params }: { params: Params }) {
       {relayActivity || relayHealth ? (
         <SectionCard
           title="Activity and health status"
-          description="Where this relay sits in current activity and health reporting."
+          description="Live ingest health for this relay, plus its share of the recent 7-day activity window."
         >
           <MetadataList
             items={[
               {
-                label: "activity_rank",
+                label: "activity_rank_7d",
                 value: relayActivity?.rank ?? "n/a",
               },
               {
-                label: "activity_share_percent",
+                label: "activity_share_percent_7d",
                 value: activityShare ? `${activityShare}%` : "n/a",
               },
               {
                 label: "healthy",
-                value: relayHealth?.healthy ?? "n/a",
+                value:
+                  relayHealth?.healthy === true
+                    ? "true"
+                    : relayHealth?.healthy === false
+                      ? "false"
+                      : "n/a",
               },
               {
                 label: "status",
                 value: relayHealth?.status ?? "n/a",
               },
               {
-                label: "latency_ms",
-                value: relayHealth?.latencyMs ?? "n/a",
+                label: "last_error",
+                value: relayHealth?.lastError ?? "n/a",
               },
               {
-                label: "health_coverage",
-                value:
-                  healthPosture.total > 0
-                    ? `${healthPosture.healthy} healthy / ${healthPosture.unhealthy} unhealthy / ${healthPosture.unknown} unknown`
-                    : "n/a",
+                label: "latency_ms",
+                value: relayHealth?.latencyMs ?? "n/a",
               },
             ]}
             columns={2}
@@ -177,8 +177,8 @@ export default async function RelayPage({ params }: { params: Params }) {
       ) : null}
 
       <SectionCard
-        title="Availability and network context"
-        description="Structured relay stats row extracted for this host."
+        title="7-day activity metrics"
+        description="Historical event volume attributed to this host in the recent activity window, not live availability."
       >
         {relayEntry ? (
           <MetadataList

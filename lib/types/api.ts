@@ -482,6 +482,7 @@ export interface RelayHealthResponse extends NativeApiSemantics {
     healthy?: boolean;
     latency_ms?: number;
     uptime?: number | string;
+    last_error?: string;
     last_seen_at?: string | number;
     [key: string]: unknown;
   }>;

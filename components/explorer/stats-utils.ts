@@ -178,8 +178,21 @@ function parseRelayHealthyFlag(entry: Record<string, unknown>): boolean | undefi
   if (typeof entry.status !== "string") return undefined;
 
   const normalized = entry.status.trim().toLowerCase();
+  // Keep in sync with relayHealthyFromObservation in lib/api/normalize/relays.ts.
   if (["healthy", "ok", "up", "online", "active"].includes(normalized)) return true;
-  if (["unhealthy", "down", "offline", "degraded", "error", "failed"].includes(normalized)) {
+  if (
+    [
+      "unhealthy",
+      "down",
+      "offline",
+      "degraded",
+      "error",
+      "errored",
+      "failed",
+      "disconnected",
+      "backing_off",
+    ].includes(normalized)
+  ) {
     return false;
   }
   return undefined;
@@ -211,6 +224,7 @@ export interface RelayHealthSummary {
   healthy?: boolean;
   latencyMs?: number;
   uptime?: number | string;
+  lastError?: string;
   lastSeenAt?: string | number;
   details: Record<string, unknown>;
 }
@@ -248,6 +262,7 @@ export function extractRelayHealthRows(payload: unknown, limit = 50): RelayHealt
           | number
           | string
           | undefined,
+        lastError: typeof entry.last_error === "string" ? entry.last_error : undefined,
         lastSeenAt:
           typeof entry.last_seen_at === "string" || typeof entry.last_seen_at === "number"
             ? entry.last_seen_at

@@ -114,6 +114,7 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
                 <MetadataList
                   items={[
                     { label: "status", value: row.status ?? "n/a" },
+                    { label: "last_error", value: row.lastError ?? "n/a" },
                     { label: "latency_ms", value: row.latencyMs ?? "n/a" },
                     { label: "uptime", value: row.uptime ?? "n/a" },
                     { label: "last_seen_at", value: row.lastSeenAt ?? "n/a" },

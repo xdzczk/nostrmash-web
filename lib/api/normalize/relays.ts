@@ -44,8 +44,21 @@ export function relayHealthyFromObservation(entry: Record<string, unknown>): boo
   if (typeof healthy === "boolean") return healthy;
   const status = asString(entry.status)?.trim().toLowerCase();
   if (!status) return undefined;
+  // Keep in sync with parseRelayHealthyFlag in components/explorer/stats-utils.ts.
   if (["healthy", "ok", "up", "online", "active"].includes(status)) return true;
-  if (["unhealthy", "down", "offline", "degraded", "error", "failed"].includes(status)) {
+  if (
+    [
+      "unhealthy",
+      "down",
+      "offline",
+      "degraded",
+      "error",
+      "errored",
+      "failed",
+      "disconnected",
+      "backing_off",
+    ].includes(status)
+  ) {
     return false;
   }
   return undefined;
@@ -68,6 +81,7 @@ export function normalizeRelayHealthResponse(value: unknown): RelayHealthRespons
         healthy: relayHealthyFromObservation(entry),
         latency_ms: asNumber(entry.latency_ms),
         uptime: asNumber(entry.uptime) ?? asString(entry.uptime),
+        last_error: asString(entry.last_error),
         last_seen_at:
           asString(entry.last_seen_at) ??
           asNumber(entry.last_seen_at) ??

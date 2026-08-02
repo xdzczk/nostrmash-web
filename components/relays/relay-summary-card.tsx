@@ -16,6 +16,7 @@ export function RelaySummaryCard({
     "host",
     "status",
     "healthy",
+    "last_error",
     "availability",
     "uptime",
     "latency_ms",
