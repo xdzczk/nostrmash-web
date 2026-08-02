@@ -259,16 +259,18 @@ export async function loadHomePageData(
     relayLeaders = extractRelayRows(relayStats, 1);
   }
 
+  // Prefer discovery/home computed_at: that tracks the live homepage
+  // snapshots (refreshed every few minutes). Do NOT prefer stats/series
+  // computed_at — that comes from hourly stats_snapshot_history rows
+  // (ON CONFLICT DO NOTHING within the hour), so it can look ~50m stale
+  // even when the homepage itself is fresh.
   const computedAt =
-    (noteVolumeSeriesResult.status === "fulfilled" &&
-      typeof noteVolumeSeriesResult.value.computed_at === "string" &&
-      noteVolumeSeriesResult.value.computed_at) ||
-    (isRecord(networkStats) &&
-      typeof (networkStats as Record<string, unknown>).computed_at === "string" &&
-      ((networkStats as Record<string, unknown>).computed_at as string)) ||
     (isRecord(payload) &&
       typeof (payload as Record<string, unknown>).computed_at === "string" &&
       ((payload as Record<string, unknown>).computed_at as string)) ||
+    (isRecord(networkStats) &&
+      typeof (networkStats as Record<string, unknown>).computed_at === "string" &&
+      ((networkStats as Record<string, unknown>).computed_at as string)) ||
     null;
 
   traceHomeFanOut(upstreamCallCount, {

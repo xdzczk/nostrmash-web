@@ -41,12 +41,14 @@ describe("loadHomePageData", () => {
       hashtags: [{ hashtag: "bitcoin" }],
       domains: [{ domain: "example.com" }],
       stats: { events_ingested: 10 },
+      computed_at: "2026-08-02T08:53:16.323406Z",
     } as never);
     vi.mocked(getNetworkStats).mockResolvedValue({ events_ingested: 12 } as never);
     vi.mocked(getRelayStats).mockResolvedValue({ relays: [] } as never);
     vi.mocked(getStatsSeries).mockResolvedValue({
       points: [],
-      computed_at: "2026-07-28T00:00:00Z",
+      // Hourly chart history — must not win over discovery/home freshness.
+      computed_at: "2026-08-02T08:04:20.688461Z",
     } as never);
 
     const data = await loadHomePageData({});
@@ -54,6 +56,7 @@ describe("loadHomePageData", () => {
     expect(data.homeNotes).toHaveLength(1);
     expect(data.hydratedHomeProfiles[0]?.display_name).toBe("Ada");
     expect(data.homeHashtags[0]?.hashtag).toBe("bitcoin");
+    expect(data.computedAt).toBe("2026-08-02T08:53:16.323406Z");
     expect(data.sectionFailures).toEqual({
       notes: false,
       profiles: false,
@@ -63,6 +66,31 @@ describe("loadHomePageData", () => {
     expect(getTrendingNotes).not.toHaveBeenCalled();
     expect(getDiscoveryHome).toHaveBeenCalledOnce();
     expect(getNetworkStats).toHaveBeenCalledOnce();
+  });
+
+  it("falls back to network stats computed_at when discovery/home omits it", async () => {
+    vi.mocked(getDiscoveryHome).mockResolvedValue({
+      notes: [],
+      profiles: [],
+      hashtags: [],
+      domains: [],
+    } as never);
+    vi.mocked(getTrendingNotes).mockResolvedValue({ notes: [] } as never);
+    vi.mocked(getTrendingProfiles).mockResolvedValue({ profiles: [] } as never);
+    vi.mocked(getTrendingHashtags).mockResolvedValue({ hashtags: [] } as never);
+    vi.mocked(getTrendingDomains).mockResolvedValue({ domains: [] } as never);
+    vi.mocked(getNetworkStats).mockResolvedValue({
+      computed_at: "2026-08-02T08:50:00Z",
+    } as never);
+    vi.mocked(getRelayStats).mockResolvedValue({} as never);
+    vi.mocked(getStatsSeries).mockResolvedValue({
+      points: [],
+      computed_at: "2026-08-02T08:04:00Z",
+    } as never);
+
+    const data = await loadHomePageData({});
+
+    expect(data.computedAt).toBe("2026-08-02T08:50:00Z");
   });
 
   it("fetches windowed trends in parallel for non-24h windows", async () => {
