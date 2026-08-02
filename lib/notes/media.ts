@@ -73,13 +73,40 @@ export function extractNoteMediaAttachments(text: string, limit = 4): NoteMediaA
     .slice(0, limit);
 }
 
-/** Remove media file URLs from note copy so they are never shown as text. */
-export function stripNoteMediaUrls(text: string): string {
-  return text
-    .replace(/https?:\/\/\S+/g, (match) => {
-      const normalized = normalizeCandidateUrl(match);
-      return isNoteMediaUrl(normalized) ? "" : match;
-    })
+function mediaHostFromUrl(value: string): string | null {
+  try {
+    const host = new URL(value).hostname.toLowerCase().replace(/^www\./, "");
+    return host.length > 0 ? host : null;
+  } catch {
+    return null;
+  }
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Remove media file URLs (and compact `[host]` placeholders produced by API
+ * previews) from note copy so they are never shown as text.
+ */
+export function stripNoteMediaUrls(text: string, rawContent: string = text): string {
+  const mediaHosts = new Set(
+    extractNoteMediaAttachments(rawContent)
+      .map((attachment) => mediaHostFromUrl(attachment.url))
+      .filter((host): host is string => Boolean(host))
+  );
+
+  let result = text.replace(/https?:\/\/\S+/g, (match) => {
+    const normalized = normalizeCandidateUrl(match);
+    return isNoteMediaUrl(normalized) ? "" : match;
+  });
+
+  for (const host of mediaHosts) {
+    result = result.replace(new RegExp(`\\[${escapeRegExp(host)}\\]`, "gi"), "");
+  }
+
+  return result
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .replace(/[ \t]{2,}/g, " ")

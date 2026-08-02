@@ -19,6 +19,7 @@ import {
   profileSecondaryLabel,
   truncateIdentifier,
 } from "@/components/explorer/utils";
+import { NoteLinkPreviews } from "@/components/explorer/note-link-previews";
 import { NoteMedia } from "@/components/explorer/note-media";
 import { getEditorialNoteText } from "@/components/explorer/note-preview";
 import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
@@ -173,7 +174,10 @@ function EditorialNote({
           </p>
         ) : null}
         {typeof note.content === "string" && note.content.length > 0 ? (
-          <NoteMedia content={note.content} />
+          <>
+            <NoteMedia content={note.content} />
+            <NoteLinkPreviews content={note.content} limit={1} />
+          </>
         ) : null}
         <EvidenceLine reasons={mapNoteWhyNow(note)} ranking={note.ranking} />
         {lead && id ? (

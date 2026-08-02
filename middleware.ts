@@ -18,6 +18,8 @@ function buildCsp(nonce: string, isEmbed: boolean): string {
     "media-src 'self' https:",
     "font-src 'self' data:",
     "connect-src 'self' https: http://localhost:* http://127.0.0.1:*",
+    // Privacy-enhanced YouTube embeds only — no X/Twitter frame hosts.
+    "frame-src 'self' https://www.youtube-nocookie.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

@@ -24,4 +24,9 @@ describe("note media helpers", () => {
     expect(isNoteMediaUrl("https://cdn.example/pic.webp")).toBe(true);
     expect(stripNoteMediaUrls(content)).toBe("Hello and https://example.com/docs");
   });
+
+  it("strips compact media host placeholders using the raw note content", () => {
+    const raw = "GM https://blossom.primal.net/abc123.jpg";
+    expect(stripNoteMediaUrls("GM ☕️ [blossom.primal.net]", raw)).toBe("GM ☕️");
+  });
 });

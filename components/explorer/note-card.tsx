@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { NoteContent, type NoteContentResolution } from "@/components/explorer/note-content";
+import { NoteLinkPreviews } from "@/components/explorer/note-link-previews";
 import { NoteMedia } from "@/components/explorer/note-media";
 import { getNotePreviewPresentation } from "@/components/explorer/note-preview";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
@@ -24,6 +25,7 @@ import {
   extractRelayHostsFromNote,
   truncateIdentifier,
 } from "@/components/explorer/utils";
+import { extractNoteLinkUrls } from "@/lib/notes/links";
 import { tokenizeNoteContent } from "@/lib/notes/tokenize";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
@@ -70,6 +72,9 @@ export function NoteCard({
     typeof note.content === "string" && note.content.length > 0 ? note.content : "(no content)";
   const preview = getNotePreviewPresentation(note);
   const presentationContent = preview.contentForCard || content;
+  const linkPreviewLimit = showFullContent ? 2 : 1;
+  const linkPreviewUrls =
+    typeof note.content === "string" ? extractNoteLinkUrls(note.content, linkPreviewLimit) : [];
   const prefersCompactClamp = preview.isCompact || preview.mode === "long_identifier_heavy_preview";
   const clampClassName = showFullContent
     ? "whitespace-pre-wrap"
@@ -172,16 +177,23 @@ export function NoteCard({
       </div>
 
       {preview.prefersMediaFirst && typeof note.content === "string" && note.content.length > 0 ? (
-        <NoteMedia content={note.content} />
+        <>
+          <NoteMedia content={note.content} />
+          <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
+        </>
       ) : null}
       <NoteContent
         tokens={tokenizeNoteContent(presentationContent)}
         className={`mt-2.5 ${clampClassName}`}
         showQuotes={showFullContent}
         resolution={contentResolution}
+        hideLinkPreviewUrls={linkPreviewUrls}
       />
       {!preview.prefersMediaFirst && typeof note.content === "string" && note.content.length > 0 ? (
-        <NoteMedia content={note.content} />
+        <>
+          <NoteMedia content={note.content} />
+          <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
+        </>
       ) : null}
 
       {noteDomains.length > 0 ? (

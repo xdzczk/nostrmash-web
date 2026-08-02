@@ -26,6 +26,8 @@ test.describe("edge hardening", () => {
     const csp = response.headers()["content-security-policy"] ?? "";
     expect(csp).toMatch(/script-src[^;]*'nonce-/);
     expect(csp).not.toMatch(/script-src[^;]*'unsafe-inline'/);
+    expect(csp).toMatch(/frame-src[^;]*https:\/\/www\.youtube-nocookie\.com/);
+    expect(csp).not.toMatch(/platform\.twitter\.com/);
     expect(csp).toMatch(/frame-ancestors 'none'/);
   });
 

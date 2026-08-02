@@ -66,12 +66,16 @@ export function NoteContent({
   className = "",
   showQuotes = true,
   resolution,
+  hideLinkPreviewUrls = [],
 }: {
   tokens: NoteToken[];
   className?: string;
   showQuotes?: boolean;
   resolution?: NoteContentResolution;
+  /** URLs rendered as preview cards; omit from inline link text. */
+  hideLinkPreviewUrls?: string[];
 }) {
+  const hiddenLinks = new Set(hideLinkPreviewUrls);
   return (
     <div
       className={`text-ink text-sm leading-5 [overflow-wrap:anywhere] sm:leading-6 ${className}`}
@@ -82,8 +86,8 @@ export function NoteContent({
           case "text":
             return <span key={key}>{token.value}</span>;
           case "url": {
-            // Media URLs are rendered by NoteMedia; never show them as text links.
-            if (isNoteMediaUrl(token.href)) return null;
+            // Media and card-preview URLs are rendered elsewhere.
+            if (isNoteMediaUrl(token.href) || hiddenLinks.has(token.href)) return null;
             const href = sanitizeExternalHref(token.href);
             if (!href) return <span key={key}>{token.value}</span>;
             return (

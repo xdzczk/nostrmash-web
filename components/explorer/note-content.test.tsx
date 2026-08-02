@@ -85,4 +85,14 @@ describe("NoteContent", () => {
       "https://example.com/page"
     );
   });
+
+  it("hides urls that are rendered as link preview cards", () => {
+    const tokens = tokenizeNoteContent(`Hello https://example.com/page and https://other.example`);
+    render(<NoteContent tokens={tokens} hideLinkPreviewUrls={["https://example.com/page"]} />);
+
+    expect(
+      screen.queryByRole("link", { name: "https://example.com/page" })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "https://other.example" })).toBeInTheDocument();
+  });
 });

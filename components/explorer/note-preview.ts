@@ -1,6 +1,7 @@
 import type { EventRecord } from "@/lib/types/api";
 
 import { formatUrlForDisplay } from "@/components/explorer/utils";
+import { stripNoteLinkPreviewUrls } from "@/lib/notes/links";
 import { isNoteMediaUrl, stripNoteMediaUrls } from "@/lib/notes/media";
 
 export type NotePreviewMode =
@@ -75,8 +76,12 @@ function extractDomains(urls: string[]): string[] {
   return Array.from(new Set(domains));
 }
 
-function normalizeLinksForDisplay(value: string): string {
-  return stripNoteMediaUrls(value).replace(URL_PATTERN, (match) =>
+function stripEmbeddedUrls(value: string, rawContent: string, linkLimit = 2): string {
+  return stripNoteLinkPreviewUrls(stripNoteMediaUrls(value, rawContent), rawContent, linkLimit);
+}
+
+function normalizeLinksForDisplay(value: string, rawContent: string = value): string {
+  return stripEmbeddedUrls(value, rawContent).replace(URL_PATTERN, (match) =>
     formatUrlForDisplay(match, "secondary")
   );
 }
@@ -154,7 +159,7 @@ function classifyFallback(content: string): NotePreviewPresentation {
   const configLike = isConfigLike(content, urls);
   const identifierHeavy = isIdentifierHeavy(content);
   const urlHeavy = isUrlHeavy(content, urls);
-  const normalized = normalizeLinksForDisplay(content.replace(/\n{3,}/g, "\n\n")).trim();
+  const normalized = normalizeLinksForDisplay(content.replace(/\n{3,}/g, "\n\n"), content).trim();
 
   if (configLike) {
     return {
@@ -214,7 +219,7 @@ function classifyFallback(content: string): NotePreviewPresentation {
     containsRaw: false,
     firstLine,
     domains,
-    contentForCard: stripNoteMediaUrls(content),
+    contentForCard: stripEmbeddedUrls(content, content),
     rawContent: content,
     prefersMediaFirst: false,
   };
@@ -250,7 +255,7 @@ export function getNotePreviewPresentation(note: EventRecord): NotePreviewPresen
     displayContent !== undefined && !isSyntheticPreviewSummary(displayContent);
   const normalizedDisplay = useDisplayContent
     ? clampText(
-        normalizeLinksForDisplay(displayContent),
+        normalizeLinksForDisplay(displayContent, content),
         resolvedMode === "standard_text_preview" ? 500 : 280
       )
     : fallback.contentForCard;
@@ -277,5 +282,5 @@ export function getEditorialNoteText(note: EventRecord): string {
         .trim()
     : preview.contentForCard;
 
-  return stripNoteMediaUrls(text);
+  return stripEmbeddedUrls(text, preview.rawContent, 1);
 }
