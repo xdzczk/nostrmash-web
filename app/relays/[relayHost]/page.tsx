@@ -167,8 +167,20 @@ export default async function RelayPage({ params }: { params: Params }) {
                 value: relayHealth?.lastError ?? "n/a",
               },
               {
-                label: "latency_ms",
-                value: relayHealth?.latencyMs ?? "n/a",
+                label: "mode",
+                value: relayHealth?.mode ?? "n/a",
+              },
+              {
+                label: "filter_group",
+                value: relayHealth?.filterGroup ?? "n/a",
+              },
+              {
+                label: "latest_checkpoint_at",
+                value: relayHealth?.latestCheckpointAt ?? relayHealth?.lastSeenAt ?? "n/a",
+              },
+              {
+                label: "eose_seen_at",
+                value: relayHealth?.eoseSeenAt ?? "n/a",
               },
             ]}
             columns={2}

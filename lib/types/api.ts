@@ -480,9 +480,11 @@ export interface RelayHealthResponse extends NativeApiSemantics {
     relay_url?: string;
     status?: string;
     healthy?: boolean;
-    latency_ms?: number;
-    uptime?: number | string;
+    mode?: string;
+    filter_group?: string;
     last_error?: string;
+    latest_checkpoint_at?: string | number;
+    eose_seen_at?: string | number;
     last_seen_at?: string | number;
     [key: string]: unknown;
   }>;

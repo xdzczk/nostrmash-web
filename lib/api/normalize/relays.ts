@@ -29,6 +29,8 @@ export function normalizeRelayObservation(
     asNumber(record.seen_at) ??
     asString(record.last_seen_at) ??
     asNumber(record.last_seen_at) ??
+    asString(record.latest_checkpoint_at) ??
+    asNumber(record.latest_checkpoint_at) ??
     asString(record.first_seen_at) ??
     asNumber(record.first_seen_at);
 
@@ -74,21 +76,28 @@ export function normalizeRelayHealthResponse(value: unknown): RelayHealthRespons
       (entry): entry is { relay_url?: string; seen_at?: string | number; [key: string]: unknown } =>
         entry !== null
     )
-    .map((entry) =>
-      compactDefined({
+    .map((entry) => {
+      const latestCheckpointAt =
+        asString(entry.latest_checkpoint_at) ?? asNumber(entry.latest_checkpoint_at);
+      const lastSeenAt =
+        asString(entry.last_seen_at) ??
+        asNumber(entry.last_seen_at) ??
+        asString(entry.seen_at) ??
+        asNumber(entry.seen_at) ??
+        latestCheckpointAt;
+
+      return compactDefined({
         ...entry,
         status: asString(entry.status),
         healthy: relayHealthyFromObservation(entry),
-        latency_ms: asNumber(entry.latency_ms),
-        uptime: asNumber(entry.uptime) ?? asString(entry.uptime),
+        mode: asString(entry.mode),
+        filter_group: asString(entry.filter_group),
         last_error: asString(entry.last_error),
-        last_seen_at:
-          asString(entry.last_seen_at) ??
-          asNumber(entry.last_seen_at) ??
-          asString(entry.seen_at) ??
-          asNumber(entry.seen_at),
-      })
-    );
+        latest_checkpoint_at: latestCheckpointAt,
+        eose_seen_at: asString(entry.eose_seen_at) ?? asNumber(entry.eose_seen_at),
+        last_seen_at: lastSeenAt,
+      });
+    });
 
   return {
     ...record,

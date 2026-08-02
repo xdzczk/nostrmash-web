@@ -108,6 +108,32 @@ describe("extractRelayHealthRows", () => {
     expect(rows.find((row) => row.host === "connecting.example")?.healthy).toBeUndefined();
     expect(posture).toEqual({ total: 5, healthy: 1, unhealthy: 3, unknown: 1 });
   });
+
+  it("maps latest_checkpoint_at and ingest fields from the health API", () => {
+    const payload = {
+      relays: [
+        {
+          relay_url: "wss://relay.one",
+          mode: "live",
+          filter_group: "social_core",
+          status: "healthy",
+          latest_checkpoint_at: "2026-04-04T12:00:00Z",
+          eose_seen_at: "2026-04-04T11:59:00Z",
+        },
+      ],
+    };
+
+    expect(extractRelayHealthRows(payload, 10)[0]).toMatchObject({
+      host: "relay.one",
+      status: "healthy",
+      healthy: true,
+      mode: "live",
+      filterGroup: "social_core",
+      latestCheckpointAt: "2026-04-04T12:00:00Z",
+      eoseSeenAt: "2026-04-04T11:59:00Z",
+      lastSeenAt: "2026-04-04T12:00:00Z",
+    });
+  });
 });
 
 describe("flattenPrimitiveStats", () => {

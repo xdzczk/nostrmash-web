@@ -59,7 +59,7 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
       <PageHero
         eyebrow="Relay health"
         title="Relay health"
-        subtitle="Current relay health, shown directly from the health feed."
+        subtitle="Persisted ingest checkpoint health for connected relays. Probe latency lives under Probe health."
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
@@ -71,6 +71,12 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
             <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
               unknown: {posture.unknown.toLocaleString()}
             </span>
+            <Link
+              href="/relays/probe-health"
+              className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-2 py-1"
+            >
+              Open probe health
+            </Link>
             <Link
               href="/relays"
               className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-2 py-1"
@@ -84,12 +90,15 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
 
       {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
 
-      <SectionCard title="Health observations" description="Health observations for active relays.">
+      <SectionCard
+        title="Health observations"
+        description="Ingest checkpoint status for active relays. Latency and fail-rate come from Probe health."
+      >
         {rows.length > 0 ? (
           <ul className="space-y-2">
             {rows.slice(0, 120).map((row) => (
               <li
-                key={row.host}
+                key={`${row.host}:${row.mode ?? ""}:${row.filterGroup ?? ""}`}
                 id={`relay-${encodeURIComponent(row.host)}`}
                 className="hover:bg-surface/40 rounded-lg p-3 transition-colors"
               >
@@ -115,9 +124,13 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
                   items={[
                     { label: "status", value: row.status ?? "n/a" },
                     { label: "last_error", value: row.lastError ?? "n/a" },
-                    { label: "latency_ms", value: row.latencyMs ?? "n/a" },
-                    { label: "uptime", value: row.uptime ?? "n/a" },
-                    { label: "last_seen_at", value: row.lastSeenAt ?? "n/a" },
+                    { label: "mode", value: row.mode ?? "n/a" },
+                    { label: "filter_group", value: row.filterGroup ?? "n/a" },
+                    {
+                      label: "latest_checkpoint_at",
+                      value: row.latestCheckpointAt ?? row.lastSeenAt ?? "n/a",
+                    },
+                    { label: "eose_seen_at", value: row.eoseSeenAt ?? "n/a" },
                   ]}
                   columns={2}
                 />
@@ -125,7 +138,7 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
             ))}
           </ul>
         ) : (
-          <EmptyState message="Relay health observations will appear here once probes have been collected." />
+          <EmptyState message="Relay health observations will appear here once ingest checkpoints have been collected." />
         )}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
           <Link href={continuationHref} className="text-link mt-3 inline-block text-sm">

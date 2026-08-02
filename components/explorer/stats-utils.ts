@@ -222,11 +222,18 @@ export interface RelayHealthSummary {
   host: string;
   status?: string;
   healthy?: boolean;
-  latencyMs?: number;
-  uptime?: number | string;
+  mode?: string;
+  filterGroup?: string;
   lastError?: string;
+  latestCheckpointAt?: string | number;
+  eoseSeenAt?: string | number;
   lastSeenAt?: string | number;
   details: Record<string, unknown>;
+}
+
+function asTimestamp(value: unknown): string | number | undefined {
+  if (typeof value === "string" || typeof value === "number") return value;
+  return undefined;
 }
 
 export function extractRelayHealthRows(payload: unknown, limit = 50): RelayHealthSummary[] {
@@ -251,24 +258,20 @@ export function extractRelayHealthRows(payload: unknown, limit = 50): RelayHealt
       if (!relay) continue;
       const host = normalizeRelayHost(relay);
       if (!host) continue;
+      const latestCheckpointAt = asTimestamp(entry.latest_checkpoint_at);
+      const lastSeenAt =
+        asTimestamp(entry.last_seen_at) ?? asTimestamp(entry.seen_at) ?? latestCheckpointAt;
       rows.push({
         relay,
         host,
         status: typeof entry.status === "string" ? entry.status : undefined,
         healthy: parseRelayHealthyFlag(entry),
-        latencyMs: toNumeric(entry.latency_ms) ?? undefined,
-        uptime: (toNumeric(entry.uptime) ??
-          (typeof entry.uptime === "string" ? entry.uptime : undefined)) as
-          | number
-          | string
-          | undefined,
+        mode: typeof entry.mode === "string" ? entry.mode : undefined,
+        filterGroup: typeof entry.filter_group === "string" ? entry.filter_group : undefined,
         lastError: typeof entry.last_error === "string" ? entry.last_error : undefined,
-        lastSeenAt:
-          typeof entry.last_seen_at === "string" || typeof entry.last_seen_at === "number"
-            ? entry.last_seen_at
-            : typeof entry.seen_at === "string" || typeof entry.seen_at === "number"
-              ? entry.seen_at
-              : undefined,
+        latestCheckpointAt,
+        eoseSeenAt: asTimestamp(entry.eose_seen_at),
+        lastSeenAt,
         details: entry,
       });
     }
