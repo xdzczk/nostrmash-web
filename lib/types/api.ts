@@ -258,6 +258,11 @@ export interface ConversationHotspot extends EventRecord {
   replies_24h?: number;
   replies_7d?: number;
   velocity_score?: number;
+  reply_count?: number;
+  repost_count?: number;
+  reaction_count?: number;
+  zap_count?: number;
+  zap_msats?: number;
   activity?: {
     replies_24h?: number;
     replies_7d?: number;

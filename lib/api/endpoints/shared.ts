@@ -249,11 +249,19 @@ export function normalizeHotConversationNotes(
         entry.last_event ??
         entry;
       if (isRecord(candidate)) {
+        // Prefer nested note identity, but keep conversation-level engagement
+        // (reply_count from thread_summaries; repost/reaction/zap from
+        // note_discovery_stats) when the nested payload omits those fields.
         return normalizeEventRecord({
           ...candidate,
           id: candidate.id ?? entry.root_event_id ?? entry.event_id ?? entry.id,
           event_id: candidate.event_id ?? entry.root_event_id ?? entry.event_id,
           pubkey: candidate.pubkey ?? entry.pubkey ?? entry.author_pubkey,
+          reply_count: candidate.reply_count ?? entry.reply_count,
+          repost_count: candidate.repost_count ?? entry.repost_count,
+          reaction_count: candidate.reaction_count ?? entry.reaction_count,
+          zap_count: candidate.zap_count ?? entry.zap_count,
+          zap_msats: candidate.zap_msats ?? entry.zap_msats,
         });
       }
       return normalizeEventRecord(candidate);

@@ -1219,7 +1219,22 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            "application/json": {
+              consistency?: string;
+              relays?: {
+                relay_url?: string;
+                mode?: string;
+                filter_group?: string;
+                status?: string;
+                last_error?: string | null;
+                /** Format: date-time */
+                latest_checkpoint_at?: string;
+                /** Format: date-time */
+                eose_seen_at?: string | null;
+              }[];
+            };
+          };
         };
       };
     };
@@ -1640,7 +1655,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Active conversation hotspots ranked by velocity score and recency */
+        /** @description Active conversation hotspots ranked by velocity score and recency. Each conversation includes thread reply totals (`reply_count`, `activity.replies_24h` / `replies_7d`) from `thread_summaries` plus root-note engagement (`repost_count`, `reaction_count`, `zap_count`, `zap_msats`) from `note_discovery_stats`. */
         200: {
           headers: {
             [name: string]: unknown;
