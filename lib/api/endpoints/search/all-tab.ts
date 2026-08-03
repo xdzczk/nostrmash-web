@@ -1,13 +1,11 @@
-import type { SearchResponse } from "@/lib/types/api";
+import type { EventRecord, SearchResponse } from "@/lib/types/api";
 import {
   extractNativeApiSemantics,
-  normalizeEventRecord,
   normalizeEventRecords,
   normalizeHashtagEntries,
   normalizeProfiles,
 } from "@/lib/api/normalize";
 import type { CacheClass } from "@/lib/caching/policies";
-import { getEvent } from "@/lib/api/endpoints/notes";
 import { getProfile } from "@/lib/api/endpoints/profiles";
 import {
   buildSearchSectionTotals,
@@ -17,6 +15,10 @@ import {
   toSearchCursor,
   type SearchQuery,
 } from "@/lib/api/endpoints/shared";
+import {
+  lookupNoteWithEngagement,
+  withSearchEngagementCounts,
+} from "@/lib/api/endpoints/search/engagement";
 import {
   fetchSearch,
   fetchSearchNotes,
@@ -86,12 +88,13 @@ async function searchAllTabLegacy(
       ? getProfile(normalizedProfileQueryText, cacheClass)
       : Promise.resolve(null),
     looksLikeEventIdentifier(normalizedQueryText)
-      ? getEvent(normalizedQueryText, cacheClass)
+      ? lookupNoteWithEngagement(normalizedQueryText, cacheClass)
       : Promise.resolve(null),
   ]);
 
   return mergeAllTabResults({
     query,
+    cacheClass,
     searchResult,
     notesResult,
     profilesResult,
@@ -103,17 +106,19 @@ async function searchAllTabLegacy(
 
 type Settled<T> = PromiseSettledResult<T>;
 
-function mergeAllTabResults(args: {
+async function mergeAllTabResults(args: {
   query: SearchQuery;
+  cacheClass: CacheClass;
   searchResult: Settled<Awaited<ReturnType<typeof fetchSearch>>>;
   notesResult?: Settled<Awaited<ReturnType<typeof fetchSearchNotes>>>;
   profilesResult?: Settled<Awaited<ReturnType<typeof fetchSearchProfiles>>>;
   suggestResult?: Settled<Awaited<ReturnType<typeof fetchSearchSuggest>>>;
   directProfileResult: Settled<Awaited<ReturnType<typeof getProfile>> | null>;
-  directNoteResult: Settled<Awaited<ReturnType<typeof getEvent>> | null>;
-}): SearchResponse {
+  directNoteResult: Settled<EventRecord | null>;
+}): Promise<SearchResponse> {
   const {
     query,
+    cacheClass,
     searchResult,
     notesResult,
     profilesResult,
@@ -130,20 +135,18 @@ function mergeAllTabResults(args: {
     notesResult?.status === "fulfilled" ? normalizeEventRecords(notesResult.value.notes) : [];
   const directNoteMatch =
     directNoteResult.status === "fulfilled" && directNoteResult.value
-      ? (() => {
-          const normalized = normalizeEventRecord(
-            directNoteResult.value.event ?? directNoteResult.value
-          );
-          return normalized ? [normalized] : [];
-        })()
+      ? [directNoteResult.value]
       : [];
-  const notes = Array.from(
-    new Map(
-      [
-        ...(notesFromNotesSurface.length > 0 ? notesFromNotesSurface : notesFromSearch),
-        ...directNoteMatch,
-      ].map((note) => [note.id, note])
-    ).values()
+  const notes = await withSearchEngagementCounts(
+    Array.from(
+      new Map(
+        [
+          ...(notesFromNotesSurface.length > 0 ? notesFromNotesSurface : notesFromSearch),
+          ...directNoteMatch,
+        ].map((note) => [note.id, note])
+      ).values()
+    ),
+    cacheClass
   );
 
   const profilesFromSearch =
@@ -317,13 +320,14 @@ export async function searchAllTab(
       ? getProfile(normalizedProfileQueryText, cacheClass)
       : Promise.resolve(null),
     looksLikeEventIdentifier(normalizedQueryText)
-      ? getEvent(normalizedQueryText, cacheClass)
+      ? lookupNoteWithEngagement(normalizedQueryText, cacheClass)
       : Promise.resolve(null),
   ]);
 
   if (bundleResult.status === "fulfilled" && hasSuggestBundle(bundleResult.value)) {
     return mergeAllTabResults({
       query,
+      cacheClass,
       searchResult: bundleResult,
       directProfileResult,
       directNoteResult,

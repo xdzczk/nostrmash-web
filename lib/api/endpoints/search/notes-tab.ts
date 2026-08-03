@@ -1,17 +1,16 @@
 import type { SearchResponse } from "@/lib/types/api";
-import {
-  extractNativeApiSemantics,
-  normalizeEventRecord,
-  normalizeEventRecords,
-} from "@/lib/api/normalize";
+import { extractNativeApiSemantics, normalizeEventRecords } from "@/lib/api/normalize";
 import type { CacheClass } from "@/lib/caching/policies";
-import { getEvent } from "@/lib/api/endpoints/notes";
 import {
   buildSearchSectionTotals,
   looksLikeEventIdentifier,
   toSearchCursor,
   type SearchQuery,
 } from "@/lib/api/endpoints/shared";
+import {
+  lookupNoteWithEngagement,
+  withSearchEngagementCounts,
+} from "@/lib/api/endpoints/search/engagement";
 import { fetchSearchNotes } from "@/lib/api/endpoints/search/fetchers";
 
 export async function searchNotesTab(
@@ -26,7 +25,10 @@ export async function searchNotesTab(
   } satisfies Pick<SearchQuery, "q" | "limit" | "offset">;
 
   const notesResponse = await fetchSearchNotes(searchQuery, cacheClass);
-  const notes = normalizeEventRecords(notesResponse.notes);
+  const notes = await withSearchEngagementCounts(
+    normalizeEventRecords(notesResponse.notes),
+    cacheClass
+  );
   const currentOffset =
     typeof notesResponse.offset === "number" ? notesResponse.offset : (query.offset ?? 0);
   const nextOffset =
@@ -36,13 +38,8 @@ export async function searchNotesTab(
 
   let directNoteMatch = [] as NonNullable<SearchResponse["notes"]>;
   if (notes.length === 0 && looksLikeEventIdentifier(normalizedQueryText)) {
-    try {
-      const eventResponse = await getEvent(normalizedQueryText, cacheClass);
-      const directEvent = normalizeEventRecord(eventResponse.event ?? eventResponse);
-      directNoteMatch = directEvent ? [directEvent] : [];
-    } catch {
-      directNoteMatch = [];
-    }
+    const directEvent = await lookupNoteWithEngagement(normalizedQueryText, cacheClass);
+    directNoteMatch = directEvent ? [directEvent] : [];
   }
 
   const mergedNotes = Array.from(
