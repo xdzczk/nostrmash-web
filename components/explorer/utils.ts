@@ -44,14 +44,91 @@ const LABEL_ALIASES: Record<string, string> = {
   recent_activity_at: "Recent activity",
   likes: "Likes",
   replies: "Replies",
+  reply_count: "Replies",
   boosts: "Boosts",
+  reposts: "Reposts",
+  repost_count: "Reposts",
+  reactions: "Reactions",
+  reaction_count: "Reactions",
   zaps: "Zaps",
+  zap_count: "Zaps",
   followers_count: "Followers",
   following_count: "Following",
   relay_mentions: "Relay mentions",
   mention_count: "Mentions",
   mentions_count: "Mentions",
 };
+
+export const ENGAGEMENT_STAT_KEYS = [
+  "reply_count",
+  "repost_count",
+  "reaction_count",
+  "zap_count",
+] as const;
+
+export type EngagementStatKey = (typeof ENGAGEMENT_STAT_KEYS)[number];
+
+export type EngagementStat = {
+  label: EngagementStatKey;
+  value: number;
+};
+
+const ENGAGEMENT_ALIASES: Record<EngagementStatKey, readonly string[]> = {
+  reply_count: ["reply_count", "replies"],
+  repost_count: ["repost_count", "reposts", "boosts"],
+  reaction_count: ["reaction_count", "reactions", "likes"],
+  zap_count: ["zap_count", "zaps"],
+};
+
+function readFiniteNonNegativeNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, value);
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value.replace(/[,_\s]/g, ""));
+    return Number.isFinite(parsed) ? Math.max(0, parsed) : null;
+  }
+  return null;
+}
+
+function readEngagementValue(source: unknown, keys: readonly string[]): number | null {
+  if (!isRecord(source)) return null;
+  for (const key of keys) {
+    const direct = readFiniteNonNegativeNumber(source[key]);
+    if (direct !== null) return direct;
+  }
+  for (const nestedKey of ["counts", "summary"] as const) {
+    const nested = isRecord(source[nestedKey]) ? source[nestedKey] : null;
+    if (!nested) continue;
+    for (const key of keys) {
+      const value = readFiniteNonNegativeNumber(nested[key]);
+      if (value !== null) return value;
+    }
+  }
+  return null;
+}
+
+/** Always returns replies/reposts/reactions/zaps, defaulting missing values to 0. */
+export function extractEngagementStats(...sources: unknown[]): EngagementStat[] {
+  return ENGAGEMENT_STAT_KEYS.map((key) => {
+    let value: number | null = null;
+    for (const source of sources) {
+      value = readEngagementValue(source, ENGAGEMENT_ALIASES[key]);
+      if (value !== null) break;
+    }
+    return { label: key, value: value ?? 0 };
+  });
+}
+
+export function applyEngagementStats<T extends Record<string, unknown>>(
+  note: T,
+  ...extraSources: unknown[]
+): T & Record<EngagementStatKey, number> {
+  const stats = extractEngagementStats(note, ...extraSources);
+  const values = Object.fromEntries(stats.map((stat) => [stat.label, stat.value])) as Record<
+    EngagementStatKey,
+    number
+  >;
+  return { ...note, ...values };
+}
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

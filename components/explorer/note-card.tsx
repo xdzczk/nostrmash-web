@@ -13,7 +13,7 @@ import {
 } from "@/components/explorer/card-grammar";
 import { mapNoteWhyNow, WhyNow } from "@/components/explorer/why-now";
 import {
-  extractPrimitiveStats,
+  extractEngagementStats,
   normalizeDomainLabel,
   noteInlineAuthorProfile,
   noteAuthorIdentifier,
@@ -81,19 +81,7 @@ export function NoteCard({
     : prefersCompactClamp
       ? "line-clamp-2"
       : "line-clamp-4";
-  const rawMetrics = extractPrimitiveStats(note, [
-    "id",
-    "pubkey",
-    "kind",
-    "created_at",
-    "content",
-    "tags",
-  ]).filter((entry) => /(reply|repost|boost|zap|like|reaction)/i.test(entry.label));
-  const noteMetricPriority = [/repl(y|ies)/i, /(repost|boost)/i, /zap/i, /(like|reaction)/i];
-  const metrics = noteMetricPriority
-    .map((matcher) => rawMetrics.find((entry) => matcher.test(entry.label)))
-    .filter((entry): entry is (typeof rawMetrics)[number] => Boolean(entry))
-    .slice(0, 2);
+  const metrics = extractEngagementStats(note);
   const isTopRank = typeof rank === "number" && rank <= 3;
   const noteDomains = extractDomainsFromNote(note, 2).map((domain) => ({
     raw: domain,

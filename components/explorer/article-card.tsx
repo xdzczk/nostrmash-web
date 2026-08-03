@@ -11,7 +11,7 @@ import { getArticlePresentation } from "@/components/explorer/article-meta";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
-  extractPrimitiveStats,
+  extractEngagementStats,
   isNextImageCompatibleSrc,
   normalizeImageSrc,
   noteAuthorIdentifier,
@@ -64,16 +64,7 @@ export function ArticleCard({
       ? { pubkey: article.pubkey }
       : null);
 
-  const metrics = extractPrimitiveStats(article, [
-    "id",
-    "pubkey",
-    "kind",
-    "created_at",
-    "content",
-    "tags",
-  ])
-    .filter((entry) => /(reply|repost|boost|zap|like|reaction)/i.test(entry.label))
-    .slice(0, 3);
+  const metrics = extractEngagementStats(article);
 
   const isTopRank = typeof rank === "number" && rank <= 3;
   const rankLabel = typeof rank === "number" ? String(rank).padStart(2, "0") : null;

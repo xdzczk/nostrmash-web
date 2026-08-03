@@ -9,6 +9,10 @@ const NOTE = {
   content: "Hello #nostr from Alice",
   kind: 1,
   created_at: 1_700_000_000,
+  reply_count: 4,
+  repost_count: 2,
+  reaction_count: 8,
+  zap_count: 1,
 };
 
 const AUTHOR = {
@@ -40,5 +44,33 @@ describe("NoteCard", () => {
     const profilePath = `/profiles/${NOTE.pubkey}`;
     expect(screen.getByRole("link", { name: "Alice" })).toHaveAttribute("href", profilePath);
     expect(screen.getByRole("link", { name: "View Alice" })).toHaveAttribute("href", profilePath);
+  });
+
+  it("always renders complete engagement stats", () => {
+    render(<NoteCard note={NOTE} author={AUTHOR} />);
+    expect(screen.getByText("Replies")).toBeInTheDocument();
+    expect(screen.getByText("4")).toBeInTheDocument();
+    expect(screen.getByText("Reposts")).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getByText("Reactions")).toBeInTheDocument();
+    expect(screen.getByText("8")).toBeInTheDocument();
+    expect(screen.getByText("Zaps")).toBeInTheDocument();
+    expect(screen.getByText("1")).toBeInTheDocument();
+  });
+
+  it("renders zeroed engagement stats when counts are missing", () => {
+    const {
+      reply_count: _r,
+      repost_count: _p,
+      reaction_count: _a,
+      zap_count: _z,
+      ...bareNote
+    } = NOTE;
+    render(<NoteCard note={bareNote} author={AUTHOR} />);
+    expect(screen.getByText("Replies")).toBeInTheDocument();
+    expect(screen.getByText("Reposts")).toBeInTheDocument();
+    expect(screen.getByText("Reactions")).toBeInTheDocument();
+    expect(screen.getByText("Zaps")).toBeInTheDocument();
+    expect(screen.getAllByText("0")).toHaveLength(4);
   });
 });

@@ -18,7 +18,9 @@ import { StatCard } from "@/components/explorer/stat-card";
 import { normalizeRelayHost } from "@/components/explorer/stats-utils";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
+  applyEngagementStats,
   buildMetadataEntries,
+  extractEngagementStats,
   extractPrimitiveStats,
   isRecord,
   profileHref,
@@ -125,13 +127,17 @@ export default async function NotePage({
     ? noteSummary.counts
     : isRecord(eventCountsPayload?.counts)
       ? eventCountsPayload.counts
-      : {};
-  const summaryCountStats = extractPrimitiveStats(
+      : isRecord(eventCountsPayload)
+        ? eventCountsPayload
+        : {};
+  const countStats = extractEngagementStats(
+    countsRecord,
     isRecord(noteSummary?.summary) ? noteSummary.summary : {},
-    []
-  ).filter((entry) => /(count|reply|reaction|repost|zap|quote|like)/i.test(entry.label));
-  const directCountStats = extractPrimitiveStats(countsRecord, []).slice(0, 6);
-  const countStats = directCountStats.length > 0 ? directCountStats : summaryCountStats.slice(0, 6);
+    focal
+  );
+  const focalWithEngagement = focal
+    ? applyEngagementStats(focal, countsRecord, noteSummary?.summary)
+    : null;
   const provenanceDetails = buildMetadataEntries(
     {
       consistency: semantics.consistency,
@@ -314,13 +320,13 @@ export default async function NotePage({
       ) : null}
 
       <SectionCard title="Note" description="The reading surface for this event.">
-        {focal ? (
+        {focalWithEngagement ? (
           <div className="space-y-4">
             <NoteCard
-              note={focal}
+              note={focalWithEngagement}
               author={
-                typeof focal.pubkey === "string"
-                  ? authorsByPubkey[focal.pubkey.toLowerCase()]
+                typeof focalWithEngagement.pubkey === "string"
+                  ? authorsByPubkey[focalWithEngagement.pubkey.toLowerCase()]
                   : undefined
               }
               showFullContent
@@ -354,10 +360,10 @@ export default async function NotePage({
         </SectionCard>
       ) : null}
 
-      {countStats.length > 0 ? (
+      {focal ? (
         <section className="space-y-3">
           <p className="text-ink-dim text-sm font-medium">Engagement</p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {countStats.map((stat) => (
               <StatCard key={stat.label} label={stat.label} value={stat.value} />
             ))}

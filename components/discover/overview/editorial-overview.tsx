@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { DiscoveryStatPills } from "@/components/explorer/card-grammar";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
@@ -10,6 +11,7 @@ import {
   type WhyNowReason,
 } from "@/components/explorer/why-now";
 import {
+  extractEngagementStats,
   formatCompactNumber,
   normalizeDomainLabel,
   noteAuthorIdentifier,
@@ -180,6 +182,7 @@ function EditorialNote({
           </>
         ) : null}
         <EvidenceLine reasons={mapNoteWhyNow(note)} ranking={note.ranking} />
+        <DiscoveryStatPills stats={extractEngagementStats(note)} className="mt-2.5" />
         {lead && id ? (
           <Link
             href={`/notes/${encodeURIComponent(id)}`}
