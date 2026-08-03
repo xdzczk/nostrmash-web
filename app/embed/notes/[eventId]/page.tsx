@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { NoteCard } from "@/components/explorer/note-card";
+import { applyEngagementStats, isRecord } from "@/components/explorer/utils";
 import { getNoteSummaryCached } from "@/lib/notes/load-note-page-data";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import { isValidEventIdParam, resolveEventIdParam } from "@/lib/routing/params";
@@ -19,7 +20,14 @@ export default async function EmbedNotePage({ params }: { params: Params }) {
   let author: Profile | undefined;
   try {
     const summary = await getNoteSummaryCached(resolvedId);
-    note = summary.note ?? null;
+    const baseNote = summary.note ?? null;
+    note = baseNote
+      ? applyEngagementStats(
+          baseNote,
+          isRecord(summary.counts) ? summary.counts : {},
+          isRecord(summary.summary) ? summary.summary : {}
+        )
+      : null;
     author = (summary.author?.profile as Profile | undefined) ?? undefined;
   } catch {
     notFound();
