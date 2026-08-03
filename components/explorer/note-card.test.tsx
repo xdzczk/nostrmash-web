@@ -13,6 +13,7 @@ const NOTE = {
   repost_count: 2,
   reaction_count: 8,
   zap_count: 1,
+  zap_msats: 21_000,
 };
 
 const AUTHOR = {
@@ -56,6 +57,7 @@ describe("NoteCard", () => {
     expect(screen.getByText("8")).toBeInTheDocument();
     expect(screen.getByText("Zaps")).toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument();
+    expect(screen.getByText("(21 sats)")).toBeInTheDocument();
   });
 
   it("renders zeroed engagement stats when counts are missing", () => {
@@ -64,6 +66,7 @@ describe("NoteCard", () => {
       repost_count: _p,
       reaction_count: _a,
       zap_count: _z,
+      zap_msats: _m,
       ...bareNote
     } = NOTE;
     render(<NoteCard note={bareNote} author={AUTHOR} />);
@@ -72,5 +75,6 @@ describe("NoteCard", () => {
     expect(screen.getByText("Reactions")).toBeInTheDocument();
     expect(screen.getByText("Zaps")).toBeInTheDocument();
     expect(screen.getAllByText("0")).toHaveLength(4);
+    expect(screen.queryByText(/sats/)).not.toBeInTheDocument();
   });
 });

@@ -43,7 +43,7 @@ export function DiscoveryStatPills({
   className = "",
   compact = false,
 }: {
-  stats: Array<{ label: string; value: unknown }>;
+  stats: Array<{ label: string; value: unknown; detail?: string }>;
   className?: string;
   compact?: boolean;
 }) {
@@ -63,6 +63,7 @@ export function DiscoveryStatPills({
           <span className="text-ink-soft font-medium">
             {truncateMiddle(formatValue(metric.value), compact ? 14 : 18)}
           </span>
+          {metric.detail ? <span className="text-ink-muted">({metric.detail})</span> : null}
         </span>
       ))}
     </div>

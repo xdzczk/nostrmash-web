@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { applyEngagementStats, extractEngagementStats } from "@/components/explorer/utils";
+import {
+  applyEngagementStats,
+  extractEngagementStats,
+  formatSatsFromMsats,
+} from "@/components/explorer/utils";
+
+describe("formatSatsFromMsats", () => {
+  it("formats whole and fractional sats from msats", () => {
+    expect(formatSatsFromMsats(21_000)).toBe("21 sats");
+    expect(formatSatsFromMsats(1_500)).toBe("1.5 sats");
+    expect(formatSatsFromMsats(250)).toBe("250 msats");
+    expect(formatSatsFromMsats(0)).toBeNull();
+  });
+});
 
 describe("extractEngagementStats", () => {
   it("always returns all four engagement metrics", () => {
@@ -40,13 +53,27 @@ describe("extractEngagementStats", () => {
       { label: "zap_count", value: 2 },
     ]);
   });
+
+  it("includes sats detail next to zap counts when zap_msats is present", () => {
+    expect(
+      extractEngagementStats({
+        zap_count: 3,
+        zap_msats: 42_000,
+      })
+    ).toEqual([
+      { label: "reply_count", value: 0 },
+      { label: "repost_count", value: 0 },
+      { label: "reaction_count", value: 0 },
+      { label: "zap_count", value: 3, detail: "42 sats" },
+    ]);
+  });
 });
 
 describe("applyEngagementStats", () => {
   it("merges complete stats onto a note record", () => {
     const note = applyEngagementStats(
       { id: "abc", content: "hello" },
-      { counts: { reply_count: 2, reaction_count: 1 } }
+      { counts: { reply_count: 2, reaction_count: 1, zap_msats: 5000 } }
     );
     expect(note).toMatchObject({
       id: "abc",
@@ -55,6 +82,7 @@ describe("applyEngagementStats", () => {
       repost_count: 0,
       reaction_count: 1,
       zap_count: 0,
+      zap_msats: 5000,
     });
   });
 });

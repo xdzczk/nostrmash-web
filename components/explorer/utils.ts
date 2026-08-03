@@ -71,6 +71,7 @@ export type EngagementStatKey = (typeof ENGAGEMENT_STAT_KEYS)[number];
 export type EngagementStat = {
   label: EngagementStatKey;
   value: number;
+  detail?: string;
 };
 
 const ENGAGEMENT_ALIASES: Record<EngagementStatKey, readonly string[]> = {
@@ -79,6 +80,8 @@ const ENGAGEMENT_ALIASES: Record<EngagementStatKey, readonly string[]> = {
   reaction_count: ["reaction_count", "reactions", "likes"],
   zap_count: ["zap_count", "zaps"],
 };
+
+const ZAP_MSATS_ALIASES = ["zap_msats", "msats", "amount_msats"] as const;
 
 function readFiniteNonNegativeNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, value);
@@ -106,28 +109,53 @@ function readEngagementValue(source: unknown, keys: readonly string[]): number |
   return null;
 }
 
+export function formatSatsFromMsats(msats: number): string | null {
+  if (!Number.isFinite(msats) || msats <= 0) return null;
+  if (msats >= 1000) {
+    const sats = msats / 1000;
+    return Number.isInteger(sats)
+      ? `${sats.toLocaleString()} sats`
+      : `${sats.toLocaleString(undefined, { maximumFractionDigits: 1 })} sats`;
+  }
+  return `${msats.toLocaleString()} msats`;
+}
+
+export function extractZapMsats(...sources: unknown[]): number {
+  for (const source of sources) {
+    const value = readEngagementValue(source, ZAP_MSATS_ALIASES);
+    if (value !== null) return value;
+  }
+  return 0;
+}
+
 /** Always returns replies/reposts/reactions/zaps, defaulting missing values to 0. */
 export function extractEngagementStats(...sources: unknown[]): EngagementStat[] {
+  const zapMsats = extractZapMsats(...sources);
+  const zapDetail = formatSatsFromMsats(zapMsats) ?? undefined;
   return ENGAGEMENT_STAT_KEYS.map((key) => {
     let value: number | null = null;
     for (const source of sources) {
       value = readEngagementValue(source, ENGAGEMENT_ALIASES[key]);
       if (value !== null) break;
     }
-    return { label: key, value: value ?? 0 };
+    return {
+      label: key,
+      value: value ?? 0,
+      ...(key === "zap_count" && zapDetail ? { detail: zapDetail } : {}),
+    };
   });
 }
 
 export function applyEngagementStats<T extends Record<string, unknown>>(
   note: T,
   ...extraSources: unknown[]
-): T & Record<EngagementStatKey, number> {
+): T & Record<EngagementStatKey, number> & { zap_msats: number } {
   const stats = extractEngagementStats(note, ...extraSources);
   const values = Object.fromEntries(stats.map((stat) => [stat.label, stat.value])) as Record<
     EngagementStatKey,
     number
   >;
-  return { ...note, ...values };
+  return { ...note, ...values, zap_msats: extractZapMsats(note, ...extraSources) };
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {

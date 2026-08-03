@@ -365,7 +365,12 @@ export default async function NotePage({
           <p className="text-ink-dim text-sm font-medium">Engagement</p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {countStats.map((stat) => (
-              <StatCard key={stat.label} label={stat.label} value={stat.value} />
+              <StatCard
+                key={stat.label}
+                label={stat.label}
+                value={stat.value}
+                description={stat.detail}
+              />
             ))}
           </div>
         </section>
