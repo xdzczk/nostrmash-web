@@ -96,9 +96,32 @@ async function writeR2(key: string, entry: LkgEntry): Promise<void> {
   }
 }
 
+/**
+ * LKG only needs to be "fresh enough" to serve as an outage fallback, not
+ * updated on every single request. Without this throttle, every cacheable
+ * API call durably writes to R2 (a billed Class A op) regardless of how
+ * recently the same key was already written — which is what drove this
+ * bucket's R2 write volume far higher than actual traffic warranted.
+ */
+const R2_WRITE_THROTTLE_MS = 5 * 60 * 1000;
+
+async function isAlreadyFreshInR2(key: string, now: number): Promise<boolean> {
+  const remote = await readR2(key);
+  return Boolean(remote && now - remote.storedAt < R2_WRITE_THROTTLE_MS);
+}
+
 export async function storeLastKnownGood(key: string, payload: unknown): Promise<void> {
-  const entry: LkgEntry = { payload, storedAt: Date.now() };
+  const now = Date.now();
+  const entry: LkgEntry = { payload, storedAt: now };
+  const cached = memoryStore.get(key);
   memoryStore.set(key, entry);
+
+  if (cached && now - cached.storedAt < R2_WRITE_THROTTLE_MS) {
+    return;
+  }
+  if (!cached && (await isAlreadyFreshInR2(key, now))) {
+    return;
+  }
   await writeR2(key, entry);
 }
 
