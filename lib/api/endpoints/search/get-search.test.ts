@@ -5,7 +5,7 @@ vi.mock("@/lib/api/http", () => ({
 }));
 
 vi.mock("@/lib/api/endpoints/notes", () => ({
-  getEvent: vi.fn(),
+  getNoteSummary: vi.fn(),
 }));
 
 vi.mock("@/lib/api/endpoints/profiles", () => ({
@@ -13,12 +13,12 @@ vi.mock("@/lib/api/endpoints/profiles", () => ({
 }));
 
 import { fetchApiJson } from "@/lib/api/http";
-import { getEvent } from "@/lib/api/endpoints/notes";
+import { getNoteSummary } from "@/lib/api/endpoints/notes";
 import { getProfile } from "@/lib/api/endpoints/profiles";
 import { getSearch } from "@/lib/api/endpoints/search";
 
 const mockedFetch = vi.mocked(fetchApiJson);
-const mockedGetEvent = vi.mocked(getEvent);
+const mockedGetNoteSummary = vi.mocked(getNoteSummary);
 const mockedGetProfile = vi.mocked(getProfile);
 
 const noteId = "a".repeat(64);
@@ -35,14 +35,16 @@ describe("getSearch", () => {
       offset: 0,
       total: 0,
     });
-    mockedGetEvent.mockResolvedValueOnce({
-      event: {
+    mockedGetNoteSummary.mockResolvedValueOnce({
+      note: {
         id: noteId,
         pubkey,
         kind: 1,
         created_at: 1_700_000_000,
         content: "direct hit",
       },
+      counts: {},
+      summary: {},
     });
 
     const result = await getSearch({ q: noteId, tab: "notes", limit: 20, offset: 0 });
@@ -50,7 +52,7 @@ describe("getSearch", () => {
     expect(result.notes).toHaveLength(1);
     expect(result.notes?.[0]?.id).toBe(noteId);
     expect(result.profiles).toEqual([]);
-    expect(mockedGetEvent).toHaveBeenCalledWith(noteId, "shortTtl");
+    expect(mockedGetNoteSummary).toHaveBeenCalledWith(noteId, "shortTtl");
   });
 
   it("returns profiles-tab results and falls back to direct profile lookup", async () => {

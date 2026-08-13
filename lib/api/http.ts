@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api/errors";
 import {
   buildLkgKey,
   isLkgCacheClass,
+  isLkgEligiblePath,
   markStaleDataServed,
   readLastKnownGood,
   storeLastKnownGood,
@@ -197,7 +198,8 @@ export async function fetchApiJson<T>(
   );
 
   const outboundRequestId = createOutboundRequestId();
-  const lkgKey = isLkgCacheClass(cacheClass) ? buildLkgKey(path, query) : null;
+  const lkgKey =
+    isLkgCacheClass(cacheClass) && isLkgEligiblePath(path) ? buildLkgKey(path, query) : null;
 
   async function tryServeLastKnownGood(error: unknown): Promise<T> {
     if (!lkgKey) throw error;
