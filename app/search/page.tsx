@@ -52,7 +52,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
 
   if (canQuery) {
     try {
-      payload = await getSearch(query, "shortTtl");
+      // Free-text search queries are an unbounded key space (unlike the
+      // bounded trending/discovery endpoints below), so durably caching them
+      // in R2 for 60s buys almost no hit rate while still paying a write on
+      // nearly every request — that's what was driving crawler-scale R2
+      // write costs. Fetch live instead.
+      payload = await getSearch(query, "requestTime");
       suggestedProfiles = payload.profile_suggestions ?? [];
       hydratedProfiles = payload.profiles ?? [];
       hydratedSuggestedProfiles = suggestedProfiles;

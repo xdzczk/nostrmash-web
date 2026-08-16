@@ -13,6 +13,11 @@ export default function robots(): MetadataRoute.Robots {
         // Letting crawlers walk them turned every crawl into a wave of cached
         // API calls that dominated our R2 write-operation bill. Keep the
         // bounded, static surface allowed; block the rest until launch.
+        //
+        // `/search?` is disallowed (but bare `/search` stays allowed) for
+        // the same reason: the query string is free text, so search-result
+        // URLs are just as unbounded as a per-entity id. AI search crawlers
+        // (e.g. Claude-SearchBot) were walking distinct queries at volume.
         allow: ["/", "/relays/health", "/relays/popular", "/relays/probe-health"],
         disallow: [
           "/api/",
@@ -24,6 +29,7 @@ export default function robots(): MetadataRoute.Robots {
           "/relays/",
           "/feeds/hashtags/",
           "/feeds/profiles/",
+          "/search?",
         ],
       },
     ],

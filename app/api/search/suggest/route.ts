@@ -48,7 +48,11 @@ export async function GET(request: NextRequest) {
 
   try {
     const body = await fetchApiJson(nativeApiV1Routes.searchSuggest, {
-      cacheClass: "shortTtl",
+      // Typed-in autocomplete text is effectively unbounded, so durable R2
+      // caching here buys almost no hit rate while paying a write per
+      // keystroke; the response's own Cache-Control below already covers
+      // short-lived client/edge reuse.
+      cacheClass: "requestTime",
       timeoutMs: 5_000,
       query: { q, limit },
       schema: searchSuggestResponseSchema,
