@@ -178,4 +178,6 @@ jobs:
           node-version: 22
 
       - name: Validate production SEO/security surface
+        env:
+          PROD_VALIDATE_TOKEN: ${{ secrets.PROD_VALIDATE_TOKEN }}
         run: node scripts/prod-validate.mjs https://nostrmash.com

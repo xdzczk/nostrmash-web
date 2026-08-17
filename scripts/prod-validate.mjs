@@ -2,6 +2,11 @@
 /**
  * Post-deploy smoke checks against the live site.
  * Usage: node scripts/prod-validate.mjs [baseUrl]
+ *
+ * GitHub-hosted runners sit in datacenter IP space, so Cloudflare Bot Fight
+ * Mode often 403s a subset of these requests. We send a dedicated UA, retry
+ * 403/429 with backoff, and optionally attach `x-nostrmash-validate` when
+ * PROD_VALIDATE_TOKEN is set (pair that with a WAF skip rule if flakes persist).
  */
 const baseUrl = (
   process.argv[2] ||
@@ -9,7 +14,43 @@ const baseUrl = (
   "https://nostrmash.com"
 ).replace(/\/$/, "");
 
+const VALIDATE_TOKEN = process.env.PROD_VALIDATE_TOKEN ?? "";
+const MAX_ATTEMPTS = 5;
+const RETRYABLE = new Set([403, 429, 502, 503, 504]);
+
 const failures = [];
+
+function requestHeaders() {
+  const headers = {
+    Accept: "*/*",
+    "User-Agent": "Mozilla/5.0 (compatible; NostrMash-ProdValidate/1.0; +https://nostrmash.com)",
+  };
+  if (VALIDATE_TOKEN) {
+    headers["x-nostrmash-validate"] = VALIDATE_TOKEN;
+  }
+  return headers;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url, init = {}) {
+  let lastError;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    const response = await fetch(url, {
+      ...init,
+      headers: { ...requestHeaders(), ...(init.headers ?? {}) },
+      redirect: "follow",
+    });
+    if (response.ok || !RETRYABLE.has(response.status) || attempt === MAX_ATTEMPTS) {
+      return response;
+    }
+    lastError = response.status;
+    await sleep(400 * 2 ** (attempt - 1));
+  }
+  throw new Error(`HTTP ${lastError}`);
+}
 
 async function check(name, fn) {
   try {
@@ -23,10 +64,7 @@ async function check(name, fn) {
 }
 
 async function fetchText(path, expectedType) {
-  const response = await fetch(`${baseUrl}${path}`, {
-    headers: { Accept: "*/*" },
-    redirect: "follow",
-  });
+  const response = await fetchWithRetry(`${baseUrl}${path}`);
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
   }
@@ -57,7 +95,7 @@ await check("trending notes RSS", async () => {
 
 await check("oEmbed", async () => {
   const noteUrl = `${baseUrl}/notes/${"a".repeat(64)}`;
-  const response = await fetch(`${baseUrl}/api/oembed?url=${encodeURIComponent(noteUrl)}`);
+  const response = await fetchWithRetry(`${baseUrl}/api/oembed?url=${encodeURIComponent(noteUrl)}`);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const json = await response.json();
   if (json.type !== "rich") throw new Error(`unexpected type ${json.type}`);
@@ -76,7 +114,7 @@ await check("home OG + JSON-LD", async () => {
 });
 
 await check("default opengraph-image", async () => {
-  const response = await fetch(`${baseUrl}/opengraph-image`);
+  const response = await fetchWithRetry(`${baseUrl}/opengraph-image`);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("image/")) {
@@ -85,7 +123,7 @@ await check("default opengraph-image", async () => {
 });
 
 await check("CSP nonce on home", async () => {
-  const response = await fetch(`${baseUrl}/`);
+  const response = await fetchWithRetry(`${baseUrl}/`);
   const csp = response.headers.get("content-security-policy") ?? "";
   if (!/script-src[^;]*'nonce-/.test(csp)) throw new Error("missing script nonce");
   if (/script-src[^;]*'unsafe-inline'/.test(csp)) {
@@ -95,6 +133,13 @@ await check("CSP nonce on home", async () => {
 
 if (failures.length > 0) {
   console.error(`\n${failures.length} prod-validate check(s) failed against ${baseUrl}`);
+  if (failures.some((failure) => failure.includes("HTTP 403"))) {
+    console.error(
+      "HTTP 403 from GitHub-hosted runners is usually Cloudflare Bot Fight Mode. " +
+        "Set repo secret PROD_VALIDATE_TOKEN and add a WAF skip for header " +
+        "x-nostrmash-validate if retries are not enough."
+    );
+  }
   process.exit(1);
 }
 
