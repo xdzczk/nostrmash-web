@@ -76,6 +76,7 @@ export interface Profile {
   recent_zap_volume_msats?: number;
   recent_active_days?: number;
   recent_activity_at?: number;
+  follower_count?: number;
   ranking?: DiscoveryItemRanking;
   [key: string]: unknown;
 }
@@ -180,6 +181,8 @@ export interface DomainEntry {
 export interface DiscoveryHomeResponse extends NativeApiSemantics {
   notes?: EventRecord[];
   profiles?: Profile[];
+  /** Small/fast-growing profiles from sections.profiles.rising ("Up and coming"). */
+  rising_profiles?: Profile[];
   hashtags?: HashtagEntry[];
   domains?: DomainEntry[];
   stats?: Record<string, unknown>;

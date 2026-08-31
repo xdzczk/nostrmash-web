@@ -31,7 +31,7 @@ export const DISCOVER_MODE_LINKS: Partial<
   ],
   people: [
     { mode: "default", label: "Trending", href: "/trending/profiles" },
-    { mode: "rising", label: "Rising", href: "/discovery/profiles/rising" },
+    { mode: "rising", label: "Up and coming", href: "/discovery/profiles/rising" },
   ],
 };
 

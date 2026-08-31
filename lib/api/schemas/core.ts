@@ -28,6 +28,7 @@ export const profileSchema = z
     recent_zap_volume_msats: z.number().optional(),
     recent_active_days: z.number().optional(),
     recent_activity_at: z.number().optional(),
+    follower_count: z.number().optional(),
   })
   .passthrough();
 

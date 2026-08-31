@@ -68,6 +68,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
           <EditorialOverview
             notes={home.homeNotes}
             profiles={home.hydratedHomeProfiles}
+            risingProfiles={home.hydratedHomeRisingProfiles}
             hashtags={home.homeHashtags}
             domains={home.homeDomains}
             authorsByPubkey={home.noteAuthorsByPubkey}

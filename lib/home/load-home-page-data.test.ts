@@ -4,6 +4,7 @@ vi.mock("@/lib/api/endpoints", () => ({
   getDiscoveryHome: vi.fn(),
   getNetworkStats: vi.fn(),
   getRelayStats: vi.fn(),
+  getRisingProfiles: vi.fn(),
   getStatsSeries: vi.fn(),
   normalizeSeriesPoints: vi.fn(() => []),
   getTrendingDomains: vi.fn(),
@@ -20,6 +21,7 @@ import {
   getDiscoveryHome,
   getNetworkStats,
   getRelayStats,
+  getRisingProfiles,
   getStatsSeries,
   getTrendingDomains,
   getTrendingHashtags,
@@ -45,6 +47,7 @@ describe("loadHomePageData", () => {
     } as never);
     vi.mocked(getNetworkStats).mockResolvedValue({ events_ingested: 12 } as never);
     vi.mocked(getRelayStats).mockResolvedValue({ relays: [] } as never);
+    vi.mocked(getRisingProfiles).mockResolvedValue({ profiles: [] } as never);
     vi.mocked(getStatsSeries).mockResolvedValue({
       points: [],
       // Hourly chart history — must not win over discovery/home freshness.
@@ -60,6 +63,7 @@ describe("loadHomePageData", () => {
     expect(data.sectionFailures).toEqual({
       notes: false,
       profiles: false,
+      risingProfiles: false,
       hashtags: false,
       domains: false,
     });
@@ -77,6 +81,7 @@ describe("loadHomePageData", () => {
     } as never);
     vi.mocked(getTrendingNotes).mockResolvedValue({ notes: [] } as never);
     vi.mocked(getTrendingProfiles).mockResolvedValue({ profiles: [] } as never);
+    vi.mocked(getRisingProfiles).mockResolvedValue({ profiles: [] } as never);
     vi.mocked(getTrendingHashtags).mockResolvedValue({ hashtags: [] } as never);
     vi.mocked(getTrendingDomains).mockResolvedValue({ domains: [] } as never);
     vi.mocked(getNetworkStats).mockResolvedValue({
@@ -104,6 +109,7 @@ describe("loadHomePageData", () => {
       notes: [{ id: "c".repeat(64), content: "trend" }],
     } as never);
     vi.mocked(getTrendingProfiles).mockResolvedValue({ profiles: [] } as never);
+    vi.mocked(getRisingProfiles).mockResolvedValue({ profiles: [] } as never);
     vi.mocked(getTrendingHashtags).mockResolvedValue({ hashtags: [] } as never);
     vi.mocked(getTrendingDomains).mockResolvedValue({ domains: [] } as never);
     vi.mocked(getNetworkStats).mockResolvedValue({} as never);
@@ -125,6 +131,7 @@ describe("loadHomePageData", () => {
     vi.mocked(getStatsSeries).mockRejectedValue(new Error("API 503: down"));
     vi.mocked(getTrendingNotes).mockRejectedValue(new Error("API 503: down"));
     vi.mocked(getTrendingProfiles).mockRejectedValue(new Error("API 503: down"));
+    vi.mocked(getRisingProfiles).mockRejectedValue(new Error("API 503: down"));
     vi.mocked(getTrendingHashtags).mockRejectedValue(new Error("API 503: down"));
     vi.mocked(getTrendingDomains).mockRejectedValue(new Error("API 503: down"));
 
@@ -135,6 +142,7 @@ describe("loadHomePageData", () => {
     expect(data.sectionFailures).toEqual({
       notes: true,
       profiles: true,
+      risingProfiles: true,
       hashtags: true,
       domains: true,
     });

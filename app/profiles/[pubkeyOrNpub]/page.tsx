@@ -205,7 +205,7 @@ export default async function ProfilePage({
             label: "Related profiles",
             href: `${profileRoute}#related-profiles`,
           },
-          { id: "rising_profiles", label: "Rising profiles", href: "/discovery/profiles/rising" },
+          { id: "rising_profiles", label: "Up and coming", href: "/discovery/profiles/rising" },
         ];
 
   const heroNpubOrPubkey =

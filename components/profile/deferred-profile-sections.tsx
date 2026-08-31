@@ -232,11 +232,11 @@ export async function DeferredProfileDiscovery({
           </div>
 
           <div className="space-y-2">
-            <p className="text-ink-muted text-xs font-medium">Rising profiles</p>
+            <p className="text-ink-muted text-xs font-medium">Up and coming</p>
             {data.risingProfiles.length > 0 ? (
               <ProfilesList profiles={data.risingProfiles.slice(0, 8)} />
             ) : (
-              <EmptyState message="No rising profiles are available right now." />
+              <EmptyState message="No up-and-coming profiles are available right now." />
             )}
           </div>
         </div>

@@ -4,7 +4,7 @@ export default function RisingProfilesLoading() {
   return (
     <div>
       <span className="sr-only" role="status">
-        Loading rising profiles
+        Loading up-and-coming profiles
       </span>
       <DiscoverCategorySkeleton />
     </div>

@@ -114,7 +114,7 @@ export default async function HotConversationsPage({
             href="/discovery/profiles/rising"
             className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
           >
-            Open rising profiles
+            Open up and coming
           </Link>
           <Link
             href="/trending/notes"

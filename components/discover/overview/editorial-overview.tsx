@@ -201,22 +201,35 @@ function ProfileRanking({
   degraded,
   window,
   headingId = "profiles-in-motion",
+  kicker = "People",
+  title = "Profiles in motion",
+  fullRankingHref,
+  emptyMessage = "No clear profile movement.",
+  degradedMessage = "Profile movement is temporarily unavailable.",
 }: {
   profiles: Profile[];
   degraded?: boolean;
   window: StatsWindow;
   headingId?: string;
+  kicker?: string;
+  title?: string;
+  fullRankingHref?: string;
+  emptyMessage?: string;
+  degradedMessage?: string;
 }) {
   return (
     <section aria-labelledby={headingId}>
       <div className="flex items-end justify-between gap-4">
         <div>
-          <p className="nm-kicker">People</p>
+          <p className="nm-kicker">{kicker}</p>
           <h2 id={headingId} className="nm-title text-ink mt-2">
-            Profiles in motion
+            {title}
           </h2>
         </div>
-        <Link href={`/trending/profiles?window=${window}`} className="nm-meta hover:text-ink">
+        <Link
+          href={fullRankingHref ?? `/trending/profiles?window=${window}`}
+          className="nm-meta hover:text-ink"
+        >
           Full ranking
         </Link>
       </div>
@@ -264,7 +277,7 @@ function ProfileRanking({
         </ol>
       ) : (
         <div className="border-edge/70 text-ink-muted mt-6 border-y py-8 text-sm">
-          {degraded ? "Profile movement is temporarily unavailable." : "No clear profile movement."}
+          {degraded ? degradedMessage : emptyMessage}
         </div>
       )}
     </section>
@@ -422,6 +435,7 @@ function SupportingNotes({
 export function EditorialOverview({
   notes,
   profiles,
+  risingProfiles,
   hashtags,
   domains,
   authorsByPubkey,
@@ -431,11 +445,18 @@ export function EditorialOverview({
 }: {
   notes: EventRecord[];
   profiles: Profile[];
+  risingProfiles: Profile[];
   hashtags: HashtagEntry[];
   domains: DomainEntry[];
   authorsByPubkey: Record<string, Profile>;
   pulseStats: PulseStat[];
-  sectionFailures: { notes: boolean; profiles: boolean; hashtags: boolean; domains: boolean };
+  sectionFailures: {
+    notes: boolean;
+    profiles: boolean;
+    risingProfiles: boolean;
+    hashtags: boolean;
+    domains: boolean;
+  };
   window: StatsWindow;
 }) {
   const [lead, ...followups] = notes.slice(0, 4);
@@ -475,6 +496,19 @@ export function EditorialOverview({
           domains={visibleDomains}
           window={window}
           headingId="ideas-gaining-ground"
+        />
+      </div>
+
+      <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.72fr)] lg:gap-16 xl:gap-20">
+        <ProfileRanking
+          profiles={risingProfiles}
+          degraded={sectionFailures.risingProfiles}
+          window={window}
+          headingId="up-and-coming"
+          title="Up and coming"
+          fullRankingHref={`/discovery/profiles/rising?window=${window}`}
+          emptyMessage="No small accounts gaining ground yet."
+          degradedMessage="Up-and-coming profiles are temporarily unavailable."
         />
       </div>
 

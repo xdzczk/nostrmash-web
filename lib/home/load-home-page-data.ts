@@ -2,6 +2,7 @@ import {
   getDiscoveryHome,
   getNetworkStats,
   getRelayStats,
+  getRisingProfiles,
   getStatsSeries,
   getTrendingDomains,
   getTrendingHashtags,
@@ -39,6 +40,7 @@ function hasRichIdentity(profile: Profile | undefined): boolean {
 export type HomeSectionFailures = {
   notes: boolean;
   profiles: boolean;
+  risingProfiles: boolean;
   hashtags: boolean;
   domains: boolean;
 };
@@ -50,6 +52,7 @@ export type HomePageData = {
   homeTimedOut: boolean;
   homeNotes: EventRecord[];
   hydratedHomeProfiles: Profile[];
+  hydratedHomeRisingProfiles: Profile[];
   homeHashtags: HashtagEntry[];
   homeDomains: DomainEntry[];
   noteAuthorsByPubkey: Record<string, Profile>;
@@ -76,6 +79,7 @@ export async function loadHomePageData(
   const sectionFailures: HomeSectionFailures = {
     notes: false,
     profiles: false,
+    risingProfiles: false,
     hashtags: false,
     domains: false,
   };
@@ -83,6 +87,7 @@ export async function loadHomePageData(
   let payload: Awaited<ReturnType<typeof getDiscoveryHome>> | null = null;
   let homeNotes: EventRecord[] = [];
   let homeProfiles: Profile[] = [];
+  let homeRisingProfiles: Profile[] = [];
   let homeHashtags: HashtagEntry[] = [];
   let homeDomains: DomainEntry[] = [];
   let networkStats: Awaited<ReturnType<typeof getNetworkStats>> | null = null;
@@ -111,12 +116,14 @@ export async function loadHomePageData(
     payload = homeResult.value;
     homeNotes = payload.notes ?? [];
     homeProfiles = payload.profiles ?? [];
+    homeRisingProfiles = payload.rising_profiles ?? [];
     homeHashtags = payload.hashtags ?? [];
     homeDomains = payload.domains ?? [];
   } else {
     homeTimedOut = isApiTimeoutError(homeResult.reason);
     sectionFailures.notes = true;
     sectionFailures.profiles = true;
+    sectionFailures.risingProfiles = true;
     sectionFailures.hashtags = true;
     sectionFailures.domains = true;
     failedMessages.push(
@@ -127,7 +134,7 @@ export async function loadHomePageData(
   // Backward-compatible empty-section fallbacks for older home bundles.
   if (!homeTimedOut) {
     const fallbackRequests: Array<{
-      key: "notes" | "profiles" | "hashtags" | "domains";
+      key: "notes" | "profiles" | "risingProfiles" | "hashtags" | "domains";
       promise: Promise<unknown>;
     }> = [];
     if (homeNotes.length === 0) {
@@ -140,6 +147,12 @@ export async function loadHomePageData(
       fallbackRequests.push({
         key: "profiles",
         promise: getTrendingProfiles("shortTtl", { window }),
+      });
+    }
+    if (homeRisingProfiles.length === 0) {
+      fallbackRequests.push({
+        key: "risingProfiles",
+        promise: getRisingProfiles("shortTtl", { window }),
       });
     }
     if (homeHashtags.length === 0) {
@@ -174,6 +187,8 @@ export async function loadHomePageData(
         if (entry.key === "notes") homeNotes = (value.notes as EventRecord[] | undefined) ?? [];
         if (entry.key === "profiles")
           homeProfiles = (value.profiles as Profile[] | undefined) ?? [];
+        if (entry.key === "risingProfiles")
+          homeRisingProfiles = (value.profiles as Profile[] | undefined) ?? [];
         if (entry.key === "hashtags")
           homeHashtags = (value.hashtags as HashtagEntry[] | undefined) ?? [];
         if (entry.key === "domains")
@@ -199,6 +214,7 @@ export async function loadHomePageData(
 
   let noteAuthorsByPubkey: Record<string, Profile> = {};
   let hydratedHomeProfiles = homeProfiles;
+  let hydratedHomeRisingProfiles = homeRisingProfiles;
   const notePreviewPubkeys = homeNotes
     .slice(0, 5)
     .map((note) => note.pubkey)
@@ -208,22 +224,34 @@ export async function loadHomePageData(
     .filter((profile) => !hasRichIdentity(profile))
     .map((profile) => profile.pubkey)
     .filter((pubkey): pubkey is string => typeof pubkey === "string" && pubkey.length > 0);
+  const risingProfilePreviewPubkeys = homeRisingProfiles
+    .slice(0, 5)
+    .filter((profile) => !hasRichIdentity(profile))
+    .map((profile) => profile.pubkey)
+    .filter((pubkey): pubkey is string => typeof pubkey === "string" && pubkey.length > 0);
   const pubkeysToHydrate = Array.from(
-    new Set([...notePreviewPubkeys, ...profilePreviewPubkeys].map((pubkey) => pubkey.toLowerCase()))
+    new Set(
+      [...notePreviewPubkeys, ...profilePreviewPubkeys, ...risingProfilePreviewPubkeys].map(
+        (pubkey) => pubkey.toLowerCase()
+      )
+    )
   );
 
   if (pubkeysToHydrate.length > 0) {
     upstreamCallCount += 1;
     try {
       noteAuthorsByPubkey = await fetchProfilesByPubkey(pubkeysToHydrate, "shortTtl");
-      hydratedHomeProfiles = homeProfiles.map((profile) => {
+      const hydrateProfile = (profile: Profile) => {
         const key = typeof profile.pubkey === "string" ? profile.pubkey.toLowerCase() : "";
         const hydrated = key ? noteAuthorsByPubkey[key] : undefined;
         return { ...profile, ...(hydrated ?? {}) };
-      });
+      };
+      hydratedHomeProfiles = homeProfiles.map(hydrateProfile);
+      hydratedHomeRisingProfiles = homeRisingProfiles.map(hydrateProfile);
     } catch {
       noteAuthorsByPubkey = {};
       hydratedHomeProfiles = homeProfiles;
+      hydratedHomeRisingProfiles = homeRisingProfiles;
     }
   }
 
@@ -287,6 +315,7 @@ export async function loadHomePageData(
     homeTimedOut,
     homeNotes,
     hydratedHomeProfiles,
+    hydratedHomeRisingProfiles,
     homeHashtags,
     homeDomains,
     noteAuthorsByPubkey,

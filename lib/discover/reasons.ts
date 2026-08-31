@@ -17,6 +17,8 @@ const REASON_LABELS: Record<string, string> = {
   follower_growth: "follower growth",
   publishing_momentum: "publishing momentum",
   engagement_received: "engagement received",
+  engagement_quality: "engagement per post",
+  relative_engagement_growth: "engagement vs. audience size",
   mention_volume: "topic lift",
   author_breadth: "breadth of authors",
   link_circulation: "link circulation",

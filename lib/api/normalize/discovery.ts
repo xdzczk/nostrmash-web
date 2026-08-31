@@ -205,6 +205,7 @@ export function normalizeDiscoveryHomeResponse(
     profiles: normalizeProfiles(
       sectionProfiles?.trending ?? record.trending_profiles ?? record.profiles
     ),
+    rising_profiles: normalizeProfiles(sectionProfiles?.rising ?? record.rising_profiles),
     hashtags: normalizeHashtagEntries(
       sections?.trending_hashtags ?? record.trending_hashtags ?? record.hashtags
     ),
