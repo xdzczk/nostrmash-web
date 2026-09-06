@@ -71,13 +71,15 @@ export function NoteCard({
   const content =
     typeof note.content === "string" && note.content.length > 0 ? note.content : "(no content)";
   const preview = getNotePreviewPresentation(note);
-  const presentationContent = preview.contentForCard || content;
+  const presentationContent = showFullContent ? content : preview.contentForCard || content;
   const linkPreviewLimit = showFullContent ? 2 : 1;
   const linkPreviewUrls =
-    typeof note.content === "string" ? extractNoteLinkUrls(note.content, linkPreviewLimit) : [];
+    !showFullContent && typeof note.content === "string"
+      ? extractNoteLinkUrls(note.content, linkPreviewLimit)
+      : [];
   const prefersCompactClamp = preview.isCompact || preview.mode === "long_identifier_heavy_preview";
   const clampClassName = showFullContent
-    ? "whitespace-pre-wrap"
+    ? "overflow-visible whitespace-pre-wrap [display:block] [line-clamp:unset] [-webkit-line-clamp:unset]"
     : prefersCompactClamp
       ? "line-clamp-2"
       : "line-clamp-4";

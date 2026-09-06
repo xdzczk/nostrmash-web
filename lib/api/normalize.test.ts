@@ -182,6 +182,7 @@ describe("profile display helpers", () => {
     const profile = { pubkey } as Profile;
     const label = profileLabel(profile);
     expect(label.startsWith("npub1")).toBe(true);
+    expect(label.includes("…")).toBe(true);
   });
 });
 

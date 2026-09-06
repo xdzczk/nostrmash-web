@@ -1,9 +1,17 @@
 import Link from "next/link";
 
-import { sanitizeExternalHref } from "@/components/explorer/utils";
+import {
+  formatMentionLabel,
+  formatNaddrLabel,
+  formatUrlForDisplay,
+  lookupProfileByPubkey,
+  sanitizeExternalHref,
+  truncateIdentifier,
+} from "@/components/explorer/utils";
 import { isNoteMediaUrl, stripNoteMediaUrls } from "@/lib/notes/media";
 import { hexToNpub } from "@/lib/nostr/nip19";
-import type { NoteToken } from "@/lib/notes/tokenize";
+import { tokenizeNoteContent, type NoteToken } from "@/lib/notes/tokenize";
+import { buildProfileActivityTabHref } from "@/lib/profile/activity-tabs";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
 export type NoteContentResolution = {
@@ -11,18 +19,24 @@ export type NoteContentResolution = {
   eventsById?: Record<string, EventRecord | undefined>;
 };
 
-function mentionLabel(pubkey: string, profiles?: NoteContentResolution["profilesByPubkey"]) {
-  const profile = profiles?.[pubkey];
-  const display =
-    (typeof profile?.display_name === "string" && profile.display_name) ||
-    (typeof profile?.name === "string" && profile.name) ||
-    null;
-  if (display) return `@${display}`;
-  const npub = hexToNpub(pubkey);
-  return npub ? `@${npub.slice(0, 12)}…` : `@${pubkey.slice(0, 8)}…`;
+function naddrHref(pubkey: string): string {
+  const npub = hexToNpub(pubkey) ?? pubkey;
+  return buildProfileActivityTabHref(
+    `/profiles/${encodeURIComponent(npub)}`,
+    new URLSearchParams(),
+    "long_form"
+  );
 }
 
-function QuoteCard({ event, author }: { event: EventRecord; author?: Profile }) {
+function QuoteCard({
+  event,
+  author,
+  resolution,
+}: {
+  event: EventRecord;
+  author?: Profile;
+  resolution?: NoteContentResolution;
+}) {
   const id =
     (typeof event.id === "string" && event.id) ||
     (typeof event.event_id === "string" && event.event_id) ||
@@ -36,28 +50,31 @@ function QuoteCard({ event, author }: { event: EventRecord; author?: Profile }) 
     typeof event.content === "string" && event.content.length > 0
       ? stripNoteMediaUrls(event.content)
       : "";
-  const snippet =
-    cleaned.length > 0
-      ? cleaned.length > 180
-        ? `${cleaned.slice(0, 177)}…`
-        : cleaned
-      : "(no content)";
 
-  const body = (
+  const header = <div className="text-ink-soft text-xs font-medium">{label}</div>;
+
+  return (
     <div className="border-edge/80 bg-surface-sunken/40 mt-1.5 rounded-lg border px-3 py-2">
-      <div className="text-ink-soft text-xs font-medium">{label}</div>
-      <p className="text-ink-dim mt-1 line-clamp-3 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap">
-        {snippet}
-      </p>
+      {href ? (
+        <Link href={href} className="hover:text-ink-strong block transition">
+          {header}
+        </Link>
+      ) : (
+        header
+      )}
+      {cleaned.length > 0 ? (
+        <NoteContent
+          tokens={tokenizeNoteContent(cleaned)}
+          className="text-ink-dim mt-1 line-clamp-3 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap"
+          showQuotes={false}
+          resolution={resolution}
+        />
+      ) : (
+        <p className="text-ink-dim mt-1 line-clamp-3 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap">
+          (no content)
+        </p>
+      )}
     </div>
-  );
-
-  return href ? (
-    <Link href={href} className="hover:border-accent/40 block transition">
-      {body}
-    </Link>
-  ) : (
-    body
   );
 }
 
@@ -67,6 +84,7 @@ export function NoteContent({
   showQuotes = true,
   resolution,
   hideLinkPreviewUrls = [],
+  as: Tag = "div",
 }: {
   tokens: NoteToken[];
   className?: string;
@@ -74,10 +92,11 @@ export function NoteContent({
   resolution?: NoteContentResolution;
   /** URLs rendered as preview cards; omit from inline link text. */
   hideLinkPreviewUrls?: string[];
+  as?: "div" | "span";
 }) {
   const hiddenLinks = new Set(hideLinkPreviewUrls);
   return (
-    <div
+    <Tag
       className={`text-ink text-sm leading-5 [overflow-wrap:anywhere] sm:leading-6 ${className}`}
     >
       {tokens.map((token, index) => {
@@ -94,11 +113,12 @@ export function NoteContent({
               <a
                 key={key}
                 href={href}
+                title={href}
                 target="_blank"
                 rel="noopener noreferrer nofollow"
                 className="text-link hover:text-link-hover underline-offset-2 hover:underline"
               >
-                {token.value}
+                {formatUrlForDisplay(token.href, "secondary")}
               </a>
             );
           }
@@ -121,7 +141,7 @@ export function NoteContent({
                 className="text-link hover:text-link-hover font-medium"
                 title={npub}
               >
-                {mentionLabel(token.pubkey, resolution?.profilesByPubkey)}
+                {formatMentionLabel(token.pubkey, resolution?.profilesByPubkey)}
               </Link>
             );
           }
@@ -129,34 +149,42 @@ export function NoteContent({
             const quoted =
               resolution?.eventsById?.[token.id] ??
               resolution?.eventsById?.[token.id.toLowerCase()];
-            const author =
-              quoted?.pubkey && resolution?.profilesByPubkey
-                ? (resolution.profilesByPubkey[quoted.pubkey.toLowerCase()] ??
-                  resolution.profilesByPubkey[quoted.pubkey])
-                : undefined;
+            const author = quoted?.pubkey
+              ? lookupProfileByPubkey(quoted.pubkey, resolution?.profilesByPubkey)
+              : undefined;
+            const eventLabel = truncateIdentifier(
+              token.value.replace(/^nostr:/i, ""),
+              "note",
+              "primary"
+            );
             return (
               <span key={key} className="inline">
                 <Link
                   href={`/notes/${encodeURIComponent(token.id)}`}
                   className="text-link hover:text-link-hover font-mono text-xs"
+                  title={token.value}
                 >
-                  {token.value.length > 24 ? `${token.value.slice(0, 20)}…` : token.value}
+                  {eventLabel}
                 </Link>
-                {showQuotes && quoted ? <QuoteCard event={quoted} author={author} /> : null}
+                {showQuotes && quoted ? (
+                  <QuoteCard event={quoted} author={author} resolution={resolution} />
+                ) : null}
               </span>
             );
           }
-          case "address":
+          case "address": {
+            const addressLabel = formatNaddrLabel(token, resolution?.profilesByPubkey);
             return (
               <Link
                 key={key}
-                href={`/profiles/${encodeURIComponent(hexToNpub(token.pubkey) ?? token.pubkey)}`}
-                className="text-link hover:text-link-hover font-mono text-xs"
+                href={naddrHref(token.pubkey)}
+                className="text-link hover:text-link-hover font-medium"
                 title={`kind:${token.kind} ${token.identifier}`}
               >
-                {token.value.length > 24 ? `${token.value.slice(0, 20)}…` : token.value}
+                {addressLabel}
               </Link>
             );
+          }
           case "redacted":
             return (
               <span
@@ -171,6 +199,32 @@ export function NoteContent({
             return null;
         }
       })}
-    </div>
+    </Tag>
+  );
+}
+
+/** Tokenize and render free-form UGC (bios, summaries) without quote cards. */
+export function RichInlineText({
+  text,
+  className = "",
+  resolution,
+  hideLinkPreviewUrls,
+  as,
+}: {
+  text: string;
+  className?: string;
+  resolution?: NoteContentResolution;
+  hideLinkPreviewUrls?: string[];
+  as?: "div" | "span";
+}) {
+  return (
+    <NoteContent
+      tokens={tokenizeNoteContent(text)}
+      className={className}
+      showQuotes={false}
+      resolution={resolution}
+      hideLinkPreviewUrls={hideLinkPreviewUrls}
+      as={as}
+    />
   );
 }

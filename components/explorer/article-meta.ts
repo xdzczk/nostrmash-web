@@ -1,13 +1,20 @@
-import type { EventRecord } from "@/lib/types/api";
+import { LONG_FORM_KIND, type EventRecord } from "@/lib/types/api";
 
 export interface ArticlePresentation {
   title: string;
   summary?: string;
+  /** Author-supplied dek (not derived from the body). */
+  dek?: string;
+  body: string;
   image?: string;
   language?: string;
   publishedAt?: number;
   hashtags: string[];
   readingMinutes?: number;
+}
+
+export function isLongFormEvent(note: EventRecord | null | undefined): boolean {
+  return typeof note?.kind === "number" && note.kind === LONG_FORM_KIND;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -39,7 +46,7 @@ function tagValue(note: EventRecord, name: string): string | undefined {
   return undefined;
 }
 
-function extractHashtags(note: EventRecord, limit = 4): string[] {
+function extractHashtags(note: EventRecord, limit?: number): string[] {
   if (!Array.isArray(note.tags)) return [];
   const hashtags: string[] = [];
   for (const tag of note.tags) {
@@ -48,7 +55,8 @@ function extractHashtags(note: EventRecord, limit = 4): string[] {
     const normalized = asString(tag[1])?.replace(/^#/, "").toLowerCase();
     if (normalized && normalized.length > 0) hashtags.push(normalized);
   }
-  return Array.from(new Set(hashtags)).slice(0, limit);
+  const unique = Array.from(new Set(hashtags));
+  return typeof limit === "number" ? unique.slice(0, limit) : unique;
 }
 
 function stripMarkdown(value: string): string {
@@ -73,7 +81,11 @@ function estimateReadingMinutes(content: string): number | undefined {
   return Math.max(1, Math.round(words / 220));
 }
 
-export function getArticlePresentation(note: EventRecord): ArticlePresentation {
+export function getArticlePresentation(
+  note: EventRecord,
+  options?: { summaryMaxLength?: number; hashtagLimit?: number }
+): ArticlePresentation {
+  const summaryMaxLength = options?.summaryMaxLength ?? 280;
   const record = note as Record<string, unknown>;
   const author = asRecord(record.author);
   const content = typeof note.content === "string" ? note.content : "";
@@ -85,26 +97,25 @@ export function getArticlePresentation(note: EventRecord): ArticlePresentation {
     (strippedContent.length > 0 ? strippedContent.slice(0, 90) : undefined) ??
     "Untitled article";
 
-  const summaryRaw =
-    asString(record.summary) ??
-    asString(record.description) ??
-    tagValue(note, "summary") ??
-    (strippedContent.length > 0 ? strippedContent : undefined);
-  const summary =
-    summaryRaw && summaryRaw.length > 0
-      ? summaryRaw.length > 280
-        ? `${summaryRaw.slice(0, 279).trimEnd()}…`
-        : summaryRaw
-      : undefined;
+  const explicitSummary =
+    asString(record.summary) ?? asString(record.description) ?? tagValue(note, "summary");
+  const summaryRaw = explicitSummary ?? (strippedContent.length > 0 ? strippedContent : undefined);
+  const clampSummary = (value: string) =>
+    value.length > summaryMaxLength ? `${value.slice(0, summaryMaxLength - 1).trimEnd()}…` : value;
+  const summary = summaryRaw && summaryRaw.length > 0 ? clampSummary(summaryRaw) : undefined;
+  const dek =
+    explicitSummary && explicitSummary.length > 0 ? clampSummary(explicitSummary) : undefined;
 
   return {
     title,
     summary,
+    dek,
+    body: content,
     image: asString(record.image) ?? tagValue(note, "image"),
     language: asString(record.language) ?? tagValue(note, "language") ?? asString(author?.language),
     publishedAt:
       asNumber(record.published_at) ?? asNumber(tagValue(note, "published_at")) ?? note.created_at,
-    hashtags: extractHashtags(note),
+    hashtags: extractHashtags(note, options?.hashtagLimit ?? 4),
     readingMinutes: estimateReadingMinutes(content),
   };
 }

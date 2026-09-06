@@ -12,18 +12,14 @@ import {
   noteInlineAuthorProfile,
 } from "@/components/explorer/utils";
 import { ProfileCard } from "@/components/explorer/profile-card";
+import { isLongFormEvent } from "@/components/explorer/article-meta";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import {
-  LONG_FORM_KIND,
   type DomainEntry,
   type EventRecord,
   type HashtagEntry,
   type Profile,
 } from "@/lib/types/api";
-
-function isLongFormEvent(note: EventRecord): boolean {
-  return typeof note.kind === "number" && note.kind === LONG_FORM_KIND;
-}
 
 function getAuthorByPubkey(
   authorsByPubkey: Record<string, Profile> | undefined,
@@ -71,6 +67,7 @@ export async function NotesList({
               author={getAuthorByPubkey(authorsByPubkey, note)}
               rank={ranked ? (note.ranking?.rank ?? index + 1) : undefined}
               discoverySignals={discoverySignals}
+              contentResolution={contentResolution}
             />
           ) : (
             <NoteCard
@@ -88,7 +85,7 @@ export async function NotesList({
   );
 }
 
-export function ArticlesList({
+export async function ArticlesList({
   articles,
   authorsByPubkey,
   ranked = false,
@@ -99,6 +96,17 @@ export function ArticlesList({
   ranked?: boolean;
   discoverySignals?: boolean;
 }) {
+  const contents = articles
+    .map((article) => (typeof article.content === "string" ? article.content : ""))
+    .filter((content) => content.length > 0);
+  const contentResolution = await resolveContentReferences(contents).catch(() => undefined);
+  if (contentResolution && authorsByPubkey) {
+    contentResolution.profilesByPubkey = {
+      ...contentResolution.profilesByPubkey,
+      ...authorsByPubkey,
+    };
+  }
+
   return (
     <ul className="min-w-0">
       {articles.map((article, index) => (
@@ -108,6 +116,7 @@ export function ArticlesList({
             author={getAuthorByPubkey(authorsByPubkey, article)}
             rank={ranked ? (article.ranking?.rank ?? index + 1) : undefined}
             discoverySignals={discoverySignals}
+            contentResolution={contentResolution}
           />
         </li>
       ))}

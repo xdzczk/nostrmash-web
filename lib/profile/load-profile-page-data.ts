@@ -40,6 +40,7 @@ import {
   readSearchParam,
   toUrlSearchParams,
 } from "@/lib/search-params/pagination";
+import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import type { Profile } from "@/lib/types/api";
 
 export const getProfileSummaryCached = cache(async (pubkeyOrNpub: string) =>
@@ -140,6 +141,9 @@ export async function loadProfileFocalData(pubkeyOrNpub: string) {
 
   const profile = mergeProfile(summaryProfile, profileEnrichment);
   const semantics = extractNativeApiSemantics(summary, profileEnrichment);
+  const about = typeof profile?.about === "string" ? profile.about : "";
+  const contentResolution =
+    about.length > 0 ? await resolveContentReferences([about]).catch(() => undefined) : undefined;
 
   return {
     summary,
@@ -148,6 +152,7 @@ export async function loadProfileFocalData(pubkeyOrNpub: string) {
     lookupKey,
     profileEnrichment,
     semantics,
+    contentResolution,
     errorMessage: summarizeLoadErrors(errors) ?? "",
     profileRoute,
   };

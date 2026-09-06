@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { NoteCard } from "@/components/explorer/note-card";
+import { EventReadingSurface } from "@/components/explorer/event-reading-surface";
 import { applyEngagementStats, isRecord } from "@/components/explorer/utils";
 import { getNoteSummaryCached } from "@/lib/notes/load-note-page-data";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
@@ -40,7 +40,7 @@ export default async function EmbedNotePage({ params }: { params: Params }) {
 
   return (
     <main className="bg-background text-foreground min-h-screen p-3">
-      <NoteCard note={note} author={author} showFullContent contentResolution={contentResolution} />
+      <EventReadingSurface event={note} author={author} contentResolution={contentResolution} />
       <p className="text-ink-faint mt-3 text-center text-xs">
         <Link
           href={absoluteUrl(`/notes/${encodeURIComponent(resolvedId)}`)}

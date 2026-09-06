@@ -1,4 +1,5 @@
 import { decodeNip19, type Nip19Decoded } from "@/lib/nostr/nip19";
+import { HASHTAG_PATTERN, trimUrlTrailingPunctuation, URL_PATTERN } from "@/lib/notes/text";
 
 export type NoteToken =
   | { type: "text"; value: string }
@@ -16,22 +17,10 @@ export type NoteToken =
     }
   | { type: "redacted"; value: string; reason: "nsec" };
 
-const URL_PATTERN = /https?:\/\/[^\s<>"'`]+/gi;
-const HASHTAG_PATTERN = /(?<![\w/])#([a-zA-Z0-9_]{1,64})\b/g;
 const BECH32_PATTERN =
   /(?:nostr:)?(npub|nsec|note|nprofile|nevent|naddr)1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{6,}/gi;
 
 type Match = { start: number; end: number; token: NoteToken };
-
-function trimUrlTrailingPunctuation(raw: string): { href: string; trailing: string } {
-  let href = raw;
-  let trailing = "";
-  while (/[.,;:!?)\]}'"]$/.test(href)) {
-    trailing = href.slice(-1) + trailing;
-    href = href.slice(0, -1);
-  }
-  return { href, trailing };
-}
 
 function entityToToken(raw: string, decoded: Nip19Decoded): NoteToken | null {
   switch (decoded.type) {
@@ -71,35 +60,41 @@ function entityToToken(raw: string, decoded: Nip19Decoded): NoteToken | null {
   }
 }
 
+function isMentionEntity(decoded: Nip19Decoded): boolean {
+  return decoded.type === "npub" || decoded.type === "nprofile";
+}
+
 function collectMatches(content: string): Match[] {
   const matches: Match[] = [];
 
-  for (const match of content.matchAll(URL_PATTERN)) {
+  for (const match of content.matchAll(new RegExp(URL_PATTERN.source, URL_PATTERN.flags))) {
     const start = match.index ?? 0;
-    const { href, trailing } = trimUrlTrailingPunctuation(match[0]);
+    const { href } = trimUrlTrailingPunctuation(match[0]);
     if (!href) continue;
     matches.push({
       start,
       end: start + href.length,
       token: { type: "url", value: href, href },
     });
-    void trailing;
   }
 
-  for (const match of content.matchAll(BECH32_PATTERN)) {
+  for (const match of content.matchAll(new RegExp(BECH32_PATTERN.source, BECH32_PATTERN.flags))) {
     const raw = match[0];
-    const start = match.index ?? 0;
+    let start = match.index ?? 0;
     const end = start + raw.length;
-    // Skip if already covered by a URL match (e.g. inside a path — rare).
-    if (matches.some((existing) => start < existing.end && end > existing.start)) continue;
     const decoded = decodeNip19(raw);
     if (!decoded) continue;
     const token = entityToToken(raw, decoded);
     if (!token) continue;
+    // Consume a leading @ so `@npub1…` does not render as `@@Alice`.
+    if (start > 0 && content[start - 1] === "@" && isMentionEntity(decoded)) {
+      start -= 1;
+    }
+    if (matches.some((existing) => start < existing.end && end > existing.start)) continue;
     matches.push({ start, end, token });
   }
 
-  for (const match of content.matchAll(HASHTAG_PATTERN)) {
+  for (const match of content.matchAll(new RegExp(HASHTAG_PATTERN.source, HASHTAG_PATTERN.flags))) {
     const start = match.index ?? 0;
     const end = start + match[0].length;
     if (matches.some((existing) => start < existing.end && end > existing.start)) continue;

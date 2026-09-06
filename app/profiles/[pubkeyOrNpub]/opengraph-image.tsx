@@ -24,7 +24,10 @@ export default async function ProfileOpenGraphImage({ params }: { params: Params
         (typeof profile?.display_name === "string" && profile.display_name) ||
         (typeof profile?.name === "string" && profile.name) ||
         name;
-      about = (typeof profile?.about === "string" && profile.about.slice(0, 160)) || about;
+      if (typeof profile?.about === "string" && profile.about.trim().length > 0) {
+        const trimmed = profile.about.trim();
+        about = trimmed.length > 160 ? `${trimmed.slice(0, 159).trimEnd()}…` : trimmed;
+      }
     } catch {
       // defaults
     }

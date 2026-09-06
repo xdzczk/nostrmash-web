@@ -7,6 +7,7 @@ import {
 } from "@/components/explorer/card-grammar";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { mapProfileWhyNow, WhyNow } from "@/components/explorer/why-now";
+import { RichInlineText } from "@/components/explorer/note-content";
 import {
   extractPrimitiveStats,
   profileHref,
@@ -86,12 +87,15 @@ export function ProfileCard({
             {href ? (
               <Link
                 href={href}
+                title={identifier !== "unknown" ? identifier : label}
                 className="text-ink hover:text-ink-strong truncate text-base font-semibold hover:underline"
               >
                 {label}
               </Link>
             ) : (
-              <p className="text-ink truncate text-base font-semibold">{label}</p>
+              <p className="text-ink truncate text-base font-semibold" title={label}>
+                {label}
+              </p>
             )}
           </div>
           {secondaryIdentity && href ? (
@@ -108,7 +112,10 @@ export function ProfileCard({
             </p>
           ) : null}
           {typeof profile.about === "string" && profile.about.length > 0 ? (
-            <p className="text-ink-dim line-clamp-2 text-sm">{profile.about}</p>
+            <RichInlineText
+              text={profile.about}
+              className="text-ink-dim line-clamp-2 text-sm [overflow-wrap:anywhere]"
+            />
           ) : null}
         </div>
       </div>

@@ -1,22 +1,5 @@
 import { isNoteMediaUrl } from "@/lib/notes/media";
-
-function normalizeCandidateUrl(value: string): string {
-  return value.replace(/[),.;!?]+$/g, "");
-}
-
-function extractUrls(text: string): string[] {
-  const matches = text.match(/https?:\/\/\S+/g) ?? [];
-  const deduped = new Set<string>();
-
-  for (const match of matches) {
-    const normalized = normalizeCandidateUrl(match);
-    if (normalized.length > 0) {
-      deduped.add(normalized);
-    }
-  }
-
-  return Array.from(deduped);
-}
+import { extractUrls } from "@/lib/notes/text";
 
 function isHttpsUrl(value: string): boolean {
   try {
@@ -63,7 +46,7 @@ export function stripNoteLinkPreviewUrls(
   );
 
   let result = text.replace(/https?:\/\/\S+/g, (match) => {
-    const normalized = normalizeCandidateUrl(match);
+    const normalized = extractUrls(match)[0] ?? match.replace(/[),.;!?]+$/g, "");
     return linkUrls.has(normalized) ? "" : match;
   });
 

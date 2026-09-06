@@ -1,3 +1,5 @@
+import { extractUrls } from "@/lib/notes/text";
+
 export type NoteMediaKind = "image" | "video" | "audio";
 
 export interface NoteMediaAttachment {
@@ -8,24 +10,6 @@ export interface NoteMediaAttachment {
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".svg"]);
 const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mov", ".m4v", ".m3u8"]);
 const AUDIO_EXTENSIONS = new Set([".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"]);
-
-function normalizeCandidateUrl(value: string): string {
-  return value.replace(/[),.;!?]+$/g, "");
-}
-
-function extractUrls(text: string): string[] {
-  const matches = text.match(/https?:\/\/\S+/g) ?? [];
-  const deduped = new Set<string>();
-
-  for (const match of matches) {
-    const normalized = normalizeCandidateUrl(match);
-    if (normalized.length > 0) {
-      deduped.add(normalized);
-    }
-  }
-
-  return Array.from(deduped);
-}
 
 function isHttpsUrl(value: string): boolean {
   try {
@@ -98,7 +82,7 @@ export function stripNoteMediaUrls(text: string, rawContent: string = text): str
   );
 
   let result = text.replace(/https?:\/\/\S+/g, (match) => {
-    const normalized = normalizeCandidateUrl(match);
+    const normalized = extractUrls(match)[0] ?? match.replace(/[),.;!?]+$/g, "");
     return isNoteMediaUrl(normalized) ? "" : match;
   });
 

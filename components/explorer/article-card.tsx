@@ -10,6 +10,7 @@ import {
 import { getArticlePresentation } from "@/components/explorer/article-meta";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
+import { RichInlineText, type NoteContentResolution } from "@/components/explorer/note-content";
 import {
   extractEngagementStats,
   isNextImageCompatibleSrc,
@@ -29,12 +30,14 @@ export function ArticleCard({
   href,
   rank,
   discoverySignals = false,
+  contentResolution,
 }: {
   article: EventRecord;
   author?: Profile;
   href?: string;
   rank?: number;
   discoverySignals?: boolean;
+  contentResolution?: NoteContentResolution;
 }) {
   const presentation = getArticlePresentation(article);
   const imageSrc = normalizeImageSrc(presentation.image);
@@ -118,9 +121,11 @@ export function ArticleCard({
             </h3>
           )}
           {presentation.summary ? (
-            <p className="text-ink-dim mt-1.5 line-clamp-3 text-sm leading-5 [overflow-wrap:anywhere] sm:leading-6">
-              {presentation.summary}
-            </p>
+            <RichInlineText
+              text={presentation.summary}
+              className="text-ink-dim mt-1.5 line-clamp-3 text-sm leading-5 [overflow-wrap:anywhere] sm:leading-6"
+              resolution={contentResolution}
+            />
           ) : null}
         </div>
       </div>

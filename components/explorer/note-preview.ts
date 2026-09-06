@@ -1,8 +1,16 @@
 import type { EventRecord } from "@/lib/types/api";
 
-import { formatUrlForDisplay } from "@/components/explorer/utils";
+import {
+  formatMentionLabel,
+  formatNaddrLabel,
+  formatUrlForDisplay,
+  truncateIdentifier,
+} from "@/components/explorer/utils";
+import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { stripNoteLinkPreviewUrls } from "@/lib/notes/links";
 import { isNoteMediaUrl, stripNoteMediaUrls } from "@/lib/notes/media";
+import { extractUrls } from "@/lib/notes/text";
+import { tokenizeNoteContent } from "@/lib/notes/tokenize";
 
 export type NotePreviewMode =
   | "standard_text_preview"
@@ -22,7 +30,7 @@ export interface NotePreviewPresentation {
   prefersMediaFirst: boolean;
 }
 
-const URL_PATTERN = /https?:\/\/\S+/g;
+const URL_PATTERN = /https?:\/\/[^\s<>"'`]+/gi;
 const BECH32_TOKEN_PATTERN =
   /\b(?:note|nevent|nprofile|npub|nsec|naddr|nrelay)1[023456789acdefghjklmnpqrstuvwxyz]{20,}\b/i;
 const HEX_TOKEN_PATTERN = /\b[a-f0-9]{48,}\b/i;
@@ -51,15 +59,6 @@ function asStringArray(value: unknown): string[] {
 function extractNotePreviewPayload(note: EventRecord): Record<string, unknown> | null {
   const raw = asRecord((note as Record<string, unknown>).preview);
   return raw;
-}
-
-function extractUrls(value: string): string[] {
-  const matches = value.match(URL_PATTERN) ?? [];
-  return Array.from(
-    new Set(
-      matches.map((match) => match.replace(/[),.;!?]+$/g, "")).filter((match) => match.length > 0)
-    )
-  );
 }
 
 function extractDomains(urls: string[]): string[] {
@@ -272,15 +271,47 @@ export function getNotePreviewPresentation(note: EventRecord): NotePreviewPresen
   };
 }
 
-export function getEditorialNoteText(note: EventRecord): string {
-  const preview = getNotePreviewPresentation(note);
-  const text = preview.containsRaw
-    ? preview.contentForCard
-        .replace(new RegExp(`(?:nostr:)?${BECH32_TOKEN_PATTERN.source}`, "gi"), "Nostr reference")
-        .replace(new RegExp(HEX_TOKEN_PATTERN.source, "gi"), "event reference")
-        .replace(/\s{2,}/g, " ")
-        .trim()
-    : preview.contentForCard;
+function resolveEditorialTokens(text: string, resolution?: NoteContentResolution): string {
+  return tokenizeNoteContent(text)
+    .map((token) => {
+      switch (token.type) {
+        case "text":
+          return token.value;
+        case "url":
+          return formatUrlForDisplay(token.href, "secondary");
+        case "hashtag":
+          return `#${token.tag}`;
+        case "mention":
+          return formatMentionLabel(token.pubkey, resolution?.profilesByPubkey);
+        case "event":
+          return truncateIdentifier(token.value.replace(/^nostr:/i, ""), "note", "primary");
+        case "address":
+          return formatNaddrLabel(token, resolution?.profilesByPubkey);
+        case "redacted":
+          return "[redacted nsec]";
+        default:
+          return "";
+      }
+    })
+    .join("");
+}
 
-  return stripEmbeddedUrls(text, preview.rawContent, 1);
+export function getEditorialNoteText(
+  note: EventRecord,
+  resolution?: NoteContentResolution
+): string {
+  const preview = getNotePreviewPresentation(note);
+  const stripped = stripEmbeddedUrls(preview.contentForCard, preview.rawContent, 1);
+  const resolved = resolveEditorialTokens(stripped, resolution);
+  if (!preview.containsRaw) return resolved;
+
+  return resolved
+    .replace(new RegExp(`(?:nostr:)?${BECH32_TOKEN_PATTERN.source}`, "gi"), (match) =>
+      truncateIdentifier(match.replace(/^nostr:/i, ""), "note", "primary")
+    )
+    .replace(new RegExp(HEX_TOKEN_PATTERN.source, "gi"), (match) =>
+      truncateIdentifier(match, "event", "primary")
+    )
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }

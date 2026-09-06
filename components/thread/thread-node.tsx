@@ -1,4 +1,5 @@
-import { NoteCard } from "@/components/explorer/note-card";
+import { EventReadingSurface } from "@/components/explorer/event-reading-surface";
+import type { NoteContentResolution } from "@/components/explorer/note-content";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
 const ROLE_LABEL: Record<"ancestor" | "focal" | "reply", string> = {
@@ -11,10 +12,12 @@ export function ThreadNode({
   note,
   author,
   role,
+  contentResolution,
 }: {
   note: EventRecord;
   author?: Profile;
   role: "ancestor" | "focal" | "reply";
+  contentResolution?: NoteContentResolution;
 }) {
   return (
     <article
@@ -22,7 +25,7 @@ export function ThreadNode({
       className={role === "focal" ? "border-accent-soft border-l-2 pl-3" : ""}
     >
       <p className="text-ink-faint mb-2 text-xs">{role}</p>
-      <NoteCard note={note} author={author} showFullContent={role === "focal"} />
+      <EventReadingSurface event={note} author={author} contentResolution={contentResolution} />
     </article>
   );
 }

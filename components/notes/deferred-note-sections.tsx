@@ -92,6 +92,7 @@ export async function DeferredNoteThread({
           continuationHref={repliesContinuationHref}
           continuationLabel="Continue replies"
           authorsByPubkey={data.authorsByPubkey}
+          contentResolution={data.contentResolution}
         />
       </SectionCard>
     </div>

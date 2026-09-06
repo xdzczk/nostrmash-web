@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { EmptyState } from "@/components/explorer/empty-state";
+import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { ThreadNode } from "@/components/thread/thread-node";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
@@ -22,6 +23,7 @@ export function ThreadView({
   continuationHref,
   continuationLabel = "Load next replies",
   authorsByPubkey,
+  contentResolution,
 }: {
   ancestors: EventRecord[];
   focal?: EventRecord;
@@ -31,6 +33,7 @@ export function ThreadView({
   continuationHref?: string;
   continuationLabel?: string;
   authorsByPubkey?: Record<string, Profile>;
+  contentResolution?: NoteContentResolution;
 }) {
   if (!focal && ancestors.length === 0 && replies.length === 0) {
     return <EmptyState message="No replies or ancestors have been indexed for this note yet." />;
@@ -57,6 +60,7 @@ export function ThreadView({
                 note={ancestor}
                 author={getAuthorByPubkey(authorsByPubkey, ancestor.pubkey)}
                 role="ancestor"
+                contentResolution={contentResolution}
               />
             ))}
           </div>
@@ -69,6 +73,7 @@ export function ThreadView({
             note={focal}
             author={getAuthorByPubkey(authorsByPubkey, focal.pubkey)}
             role="focal"
+            contentResolution={contentResolution}
           />
         </section>
       ) : null}
@@ -83,6 +88,7 @@ export function ThreadView({
                 note={reply}
                 author={getAuthorByPubkey(authorsByPubkey, reply.pubkey)}
                 role="reply"
+                contentResolution={contentResolution}
               />
             ))}
           </div>

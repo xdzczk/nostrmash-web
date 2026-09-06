@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { encodeNevent, hexToNote, hexToNpub, hexToNsec } from "@/lib/nostr/nip19";
+import { encodeNaddr, encodeNevent, hexToNote, hexToNpub, hexToNsec } from "@/lib/nostr/nip19";
+import { extractHashtagsFromNote } from "@/components/explorer/utils";
 import { collectTokenReferences, tokenizeNoteContent } from "@/lib/notes/tokenize";
 
 const PUBKEY = "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d";
@@ -32,6 +33,36 @@ describe("tokenizeNoteContent", () => {
     expect(tokens.map((t) => t.type)).toEqual(["text", "event", "text", "event"]);
     expect(tokens[1]).toMatchObject({ type: "event", id: EVENT_ID });
     expect(tokens[3]).toMatchObject({ type: "event", id: EVENT_ID, author: PUBKEY, kind: 1 });
+  });
+
+  it("consumes a leading @ before npub mentions", () => {
+    const npub = hexToNpub(PUBKEY)!;
+    const tokens = tokenizeNoteContent(`hi @${npub} there`);
+    expect(tokens).toEqual([
+      { type: "text", value: "hi " },
+      { type: "mention", value: npub, pubkey: PUBKEY },
+      { type: "text", value: " there" },
+    ]);
+  });
+
+  it("tokenizes naddr refs", () => {
+    const naddr = encodeNaddr({ identifier: "hello", pubkey: PUBKEY, kind: 30023 })!;
+    const tokens = tokenizeNoteContent(`see ${naddr}`);
+    expect(tokens.map((token) => token.type)).toEqual(["text", "address"]);
+    expect(tokens[1]).toMatchObject({
+      type: "address",
+      identifier: "hello",
+      pubkey: PUBKEY,
+      kind: 30023,
+    });
+  });
+
+  it("keeps inline and footer hashtag extraction in sync", () => {
+    const content = "hello #Nostr and foo#ignored plus #tag_one";
+    const inline = tokenizeNoteContent(content)
+      .filter((token) => token.type === "hashtag")
+      .map((token) => (token.type === "hashtag" ? token.tag : ""));
+    expect(extractHashtagsFromNote({ id: EVENT_ID, content })).toEqual(inline);
   });
 
   it("redacts nsec secrets", () => {

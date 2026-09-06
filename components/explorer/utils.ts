@@ -1,4 +1,5 @@
 import type { EventRecord, Profile } from "@/lib/types/api";
+import { extractHashtagsFromText, extractUrls } from "@/lib/notes/text";
 import { hexToNpub } from "../../lib/nostr/npub";
 
 const LABEL_ALIASES: Record<string, string> = {
@@ -190,11 +191,14 @@ export function formatMetricLabel(value: string): string {
     .join(" ");
 }
 
+const ELLIPSIS = "…";
+
 export function truncateMiddle(value: string, maxLength = 36): string {
   if (value.length <= maxLength) return value;
-  const head = Math.max(10, Math.floor((maxLength - 3) / 2));
-  const tail = Math.max(8, maxLength - head - 3);
-  return `${value.slice(0, head)}...${value.slice(-tail)}`;
+  const room = Math.max(0, maxLength - ELLIPSIS.length);
+  const head = Math.max(10, Math.floor(room / 2));
+  const tail = Math.max(8, room - head);
+  return `${value.slice(0, head)}${ELLIPSIS}${value.slice(-tail)}`;
 }
 
 export type IdentifierKind =
@@ -246,12 +250,11 @@ function truncateByPolicy(value: string, maxLength: number): string {
   if (value.length <= maxLength) return value;
   const trimmed = value.trim();
   if (trimmed.length <= maxLength) return trimmed;
-  const ellipsis = "...";
-  const room = Math.max(0, maxLength - ellipsis.length);
-  if (room <= 0) return ellipsis;
+  const room = Math.max(0, maxLength - ELLIPSIS.length);
+  if (room <= 0) return ELLIPSIS;
   const head = Math.max(4, Math.ceil(room * 0.58));
   const tail = Math.max(4, room - head);
-  return `${trimmed.slice(0, head)}${ellipsis}${trimmed.slice(-tail)}`;
+  return `${trimmed.slice(0, head)}${ELLIPSIS}${trimmed.slice(-tail)}`;
 }
 
 export function truncateIdentifier(
@@ -465,7 +468,7 @@ export function profilePictureUrl(profile: Profile): string | null {
   return normalized;
 }
 
-function readableProfileName(value: string | undefined): string | undefined {
+export function readableProfileName(value: string | undefined): string | undefined {
   if (!value) return undefined;
   const normalized = value.replace(/\s+/g, " ").trim();
   if (
@@ -500,10 +503,62 @@ export function profileLabel(profile: Profile): string {
   ]);
 
   const npubFromPubkey = pubkey ? hexToNpub(pubkey) : null;
+  const fallbackNpub = npub ?? npubFromPubkey;
 
   return (
-    displayName ?? name ?? npub ?? npubFromPubkey ?? (pubkey ? truncateMiddle(pubkey) : "Profile")
+    displayName ??
+    name ??
+    (fallbackNpub ? truncateIdentifier(fallbackNpub, "npub", "primary") : undefined) ??
+    (pubkey ? truncateIdentifier(pubkey, "pubkey", "primary") : undefined) ??
+    "Profile"
   );
+}
+
+export function lookupProfileByPubkey(
+  pubkey: string,
+  profiles?: Record<string, Profile | undefined>
+): Profile | undefined {
+  if (!profiles || !pubkey) return undefined;
+  const direct = profiles[pubkey] ?? profiles[pubkey.toLowerCase()];
+  if (direct) return direct;
+  const needle = pubkey.toLowerCase();
+  for (const [key, profile] of Object.entries(profiles)) {
+    if (key.toLowerCase() === needle) return profile;
+  }
+  return undefined;
+}
+
+/** `@name` when a readable profile name exists; otherwise a truncated npub. */
+export function formatMentionLabel(
+  pubkey: string,
+  profiles?: Record<string, Profile | undefined>
+): string {
+  const profile = lookupProfileByPubkey(pubkey, profiles);
+  const display = readableProfileName(
+    (typeof profile?.display_name === "string" && profile.display_name) ||
+      (typeof profile?.name === "string" && profile.name) ||
+      undefined
+  );
+  if (display) return `@${display}`;
+  const npub = hexToNpub(pubkey);
+  return npub
+    ? `@${truncateIdentifier(npub, "npub", "primary")}`
+    : `@${truncateIdentifier(pubkey, "pubkey", "primary")}`;
+}
+
+export function formatNaddrLabel(
+  token: { value: string; pubkey: string },
+  profiles?: Record<string, Profile | undefined>
+): string {
+  const profile = lookupProfileByPubkey(token.pubkey, profiles);
+  const display = readableProfileName(
+    (typeof profile?.display_name === "string" && profile.display_name) ||
+      (typeof profile?.name === "string" && profile.name) ||
+      undefined
+  );
+  if (display) return `@${display}'s article`;
+  const raw = token.value.replace(/^nostr:/i, "");
+  return truncateIdentifier(raw, "note", "primary");
 }
 
 export function profileIdentifier(profile: Profile): string {
@@ -637,8 +692,7 @@ export function normalizeDomainForRoute(value: unknown): string | null {
 }
 
 function extractUrlDomainsFromText(content: string): string[] {
-  const urls = content.match(/https?:\/\/\S+/g) ?? [];
-  const domains = urls
+  const domains = extractUrls(content)
     .map((url) => normalizeDomainForRoute(url))
     .filter((domain): domain is string => typeof domain === "string");
   return Array.from(new Set(domains));
@@ -682,14 +736,7 @@ function extractHashtagTagValues(note: EventRecord): string[] {
 
 function extractHashtagTextValues(note: EventRecord): string[] {
   if (typeof note.content !== "string" || note.content.length === 0) return [];
-  const matches = note.content.match(/(^|\s)#([a-z0-9_]+)/gi) ?? [];
-  const hashtags = matches
-    .map((entry) => {
-      const normalized = entry.trim().replace(/^#/, "").toLowerCase();
-      return normalized.replace(/[^a-z0-9_]/g, "");
-    })
-    .filter((value) => value.length > 0);
-  return Array.from(new Set(hashtags));
+  return extractHashtagsFromText(note.content);
 }
 
 export function extractHashtagsFromNote(note: EventRecord, limit = 4): string[] {

@@ -58,8 +58,14 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                     className="border-edge-strong h-7 w-7 shrink-0 rounded-full border object-cover"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{label}</p>
-                    {secondary && <p className="text-ink-faint truncate text-xs">{secondary}</p>}
+                    <p className="truncate text-sm font-medium" title={label}>
+                      {label}
+                    </p>
+                    {secondary && (
+                      <p className="text-ink-faint truncate text-xs" title={secondary}>
+                        {secondary}
+                      </p>
+                    )}
                   </div>
                 </button>
               );

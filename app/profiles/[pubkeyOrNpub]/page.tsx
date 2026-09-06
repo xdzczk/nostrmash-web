@@ -11,11 +11,13 @@ import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
 import { AboutThisData } from "@/components/explorer/about-this-data";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
+import { RichInlineText } from "@/components/explorer/note-content";
 import {
   isRecord,
   normalizeImageSrc,
   profileLabel,
   sanitizeExternalHref,
+  truncateIdentifier,
   truncateMiddle,
 } from "@/components/explorer/utils";
 import {
@@ -105,7 +107,7 @@ function fallbackIdentityDetails(
   const push = (key: string, label: string, raw: unknown, max = 56) => {
     if (typeof raw !== "string" || raw.trim().length === 0) return;
     const value = raw.trim();
-    const display = value.length > max ? `${value.slice(0, max - 3)}...` : value;
+    const display = value.length > max ? `${value.slice(0, max - 1).trimEnd()}…` : value;
     rows.push({
       key,
       label,
@@ -175,6 +177,7 @@ export default async function ProfilePage({
   const resolvedSearchParams = await searchParams;
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   const {
+    contentResolution,
     errorMessage,
     lookupKey,
     profile,
@@ -252,16 +255,32 @@ export default async function ProfilePage({
     (typeof hero?.display_name === "string" ? hero.display_name : undefined) ??
     profile?.display_name ??
     profile?.name ??
-    (profile?.pubkey ? truncateMiddle(profile.pubkey, 24) : "Profile");
-  const heroHandle =
+    (profile?.pubkey
+      ? (() => {
+          const npub = hexToNpub(profile.pubkey);
+          return npub
+            ? truncateIdentifier(npub, "npub", "primary")
+            : truncateIdentifier(profile.pubkey, "pubkey", "primary");
+        })()
+      : "Profile");
+  const heroHandleRaw =
     (typeof hero?.handle === "string" ? hero.handle : undefined) ??
     profile?.nip05 ??
     profile?.name ??
     undefined;
-  const heroBio =
+  const heroHandle =
+    heroHandleRaw && (heroHandleRaw.startsWith("npub1") || /^[0-9a-f]{40,}$/i.test(heroHandleRaw))
+      ? truncateIdentifier(
+          heroHandleRaw,
+          heroHandleRaw.startsWith("npub1") ? "npub" : "pubkey",
+          "secondary"
+        )
+      : heroHandleRaw;
+  const rawHeroBio =
     (typeof hero?.bio === "string" ? hero.bio : undefined) ??
-    (typeof profile?.about === "string" ? profile.about : undefined) ??
-    "Explore public identity, activity, and discovery context for this profile.";
+    (typeof profile?.about === "string" ? profile.about : undefined);
+  const heroBio =
+    rawHeroBio ?? "Explore public identity, activity, and discovery context for this profile.";
   const heroAvatar = normalizeImageSrc(typeof hero?.avatar === "string" ? hero.avatar : undefined);
   const avatarProfile: Profile = {
     ...(profile ?? { pubkey: lookupKey }),
@@ -289,11 +308,25 @@ export default async function ProfilePage({
               className="border-edge h-20 w-20 rounded-full border object-cover sm:h-28 sm:w-28"
             />
             <div className="min-w-0 flex-1 space-y-3">
-              <h1 className="nm-display-lg text-ink-strong truncate">{heroDisplayName}</h1>
+              <h1 className="nm-display-lg text-ink-strong truncate" title={heroDisplayName}>
+                {heroDisplayName}
+              </h1>
               {heroHandle ? (
-                <p className="text-ink-muted truncate text-base">{heroHandle}</p>
+                <p className="text-ink-muted truncate text-base" title={heroHandleRaw}>
+                  {heroHandle}
+                </p>
               ) : null}
-              <p className="text-ink-dim max-w-3xl text-base leading-7">{heroBio}</p>
+              {rawHeroBio ? (
+                <RichInlineText
+                  text={rawHeroBio}
+                  className="text-ink-dim max-w-3xl text-base leading-7 [overflow-wrap:anywhere]"
+                  resolution={contentResolution}
+                />
+              ) : (
+                <p className="text-ink-dim max-w-3xl text-base leading-7 [overflow-wrap:anywhere]">
+                  {heroBio}
+                </p>
+              )}
             </div>
           </div>
 

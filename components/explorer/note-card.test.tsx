@@ -47,6 +47,33 @@ describe("NoteCard", () => {
     expect(screen.getByRole("link", { name: "View Alice" })).toHaveAttribute("href", profilePath);
   });
 
+  it("renders full identifier-heavy content on the detail surface", () => {
+    const npub = "npub1" + "q".repeat(58);
+    const longNote = {
+      ...NOTE,
+      content: `start ${npub} ${npub} ${"hex".repeat(40)} end-of-note`,
+    };
+    render(<NoteCard note={longNote} author={AUTHOR} showFullContent />);
+    expect(screen.getByText(/end-of-note/)).toBeInTheDocument();
+  });
+
+  it("renders the complete body and inline urls when showFullContent is set", () => {
+    const longNote = {
+      ...NOTE,
+      content: [
+        "Line one of a long note",
+        "Line two of a long note",
+        "Line three of a long note",
+        "Line four of a long note",
+        "Line five with https://example.com/full-article",
+      ].join("\n"),
+    };
+    const { container } = render(<NoteCard note={longNote} author={AUTHOR} showFullContent />);
+    expect(screen.getByText(/Line five with/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /example\.com\/full-article/ })).toBeInTheDocument();
+    expect(container.querySelector(".line-clamp-2, .line-clamp-4")).toBeNull();
+  });
+
   it("always renders complete engagement stats", () => {
     render(<NoteCard note={NOTE} author={AUTHOR} />);
     expect(screen.getByText("Replies")).toBeInTheDocument();

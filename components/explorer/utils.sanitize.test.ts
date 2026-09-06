@@ -10,6 +10,7 @@ import {
   profilePictureUrl,
   profileSecondaryLabel,
   sanitizeExternalHref,
+  truncateIdentifier,
 } from "@/components/explorer/utils";
 
 describe("sanitizeExternalHref", () => {
@@ -94,12 +95,22 @@ describe("profile identity presentation", () => {
       nip05: "bad identity@example.com",
     };
 
-    expect(profileLabel(profile)).toBe("npub1stableidentifier");
+    expect(profileLabel(profile)).toBe(
+      truncateIdentifier("npub1stableidentifier", "npub", "primary")
+    );
     expect(profileSecondaryLabel(profile)).not.toContain("bad identity");
   });
 
   it("preserves readable unicode names", () => {
     expect(profileLabel({ pubkey: "b".repeat(64), display_name: "Иван ⚡" })).toBe("Иван ⚡");
+  });
+
+  it("truncates npub fallbacks when no username is available", () => {
+    const pubkey = "2d9873b25bf2dda6141684d44d5eb76af59f167788a58e363ab1671fefee87f2";
+    const label = profileLabel({ pubkey });
+    expect(label.startsWith("npub1")).toBe(true);
+    expect(label.includes("…")).toBe(true);
+    expect(label.length).toBeLessThan(40);
   });
 
   it("builds profile routes from profile identity or pubkey fallback", () => {

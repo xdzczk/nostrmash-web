@@ -9,7 +9,8 @@ import { EntityContextNav } from "@/components/discover/entity-context-nav";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
 import { MetadataList } from "@/components/explorer/metadata-list";
-import { NoteCard } from "@/components/explorer/note-card";
+import { getArticlePresentation, isLongFormEvent } from "@/components/explorer/article-meta";
+import { EventReadingSurface } from "@/components/explorer/event-reading-surface";
 import { PageHero } from "@/components/explorer/page-hero";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { ProfileCard } from "@/components/explorer/profile-card";
@@ -60,19 +61,31 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const resolvedId = resolveEventIdParam(eventId) ?? eventId;
   try {
     const payload = await getNoteSummaryCached(resolvedId);
-    const content = payload.note?.content;
+    const note = payload.note;
+    const content = note?.content;
     const authorFromSummary = payload.author?.profile;
     const authorLabel = authorFromSummary ? profileLabel(authorFromSummary) : null;
+    const article = note && isLongFormEvent(note) ? getArticlePresentation(note) : null;
     const contentPreview =
       typeof content === "string" && content.trim().length > 0
         ? truncateMiddle(content.trim(), 140)
         : null;
-    const title = authorLabel ? `Note by ${authorLabel}` : contentPreview ? contentPreview : "Note";
+    const title = article
+      ? article.title
+      : authorLabel
+        ? `Note by ${authorLabel}`
+        : contentPreview
+          ? contentPreview
+          : "Note";
+    const description = article
+      ? (article.summary ??
+        `Read this long-form article${authorLabel ? ` by ${authorLabel}` : ""}.`)
+      : contentPreview
+        ? `View the note, thread, and related activity: ${contentPreview}`
+        : "View the note, thread, and related activity.";
     return buildEntityMetadata({
       title,
-      description: contentPreview
-        ? `View the note, thread, and related activity: ${contentPreview}`
-        : "View the note, thread, and related activity.",
+      description,
       path: `/notes/${encodeURIComponent(resolvedId)}`,
       imagePath: `/notes/${encodeURIComponent(resolvedId)}/opengraph-image`,
       type: "article",
@@ -115,6 +128,8 @@ export default async function NotePage({
     semantics,
     summaryProvenance,
   } = await loadNoteFocalData(eventId);
+  const articlePresentation =
+    focal && isLongFormEvent(focal) ? getArticlePresentation(focal) : null;
 
   const noteDetails = focal
     ? buildMetadataEntries(focal as Record<string, unknown>, ["id", "pubkey", "created_at", "kind"])
@@ -227,9 +242,11 @@ export default async function NotePage({
       <JsonLd
         data={{
           "@context": "https://schema.org",
-          "@type": "SocialMediaPosting",
-          headline: noteContent.slice(0, 110) || `Note ${eventId.slice(0, 12)}`,
-          articleBody: noteContent.slice(0, 500) || undefined,
+          "@type": articlePresentation ? "Article" : "SocialMediaPosting",
+          headline:
+            articlePresentation?.title ??
+            (noteContent.slice(0, 110) || `Note ${eventId.slice(0, 12)}`),
+          articleBody: noteContent || undefined,
           url: noteAbsoluteUrl,
           datePublished:
             typeof focal?.created_at === "number"
@@ -255,8 +272,19 @@ export default async function NotePage({
         }}
       />
       <PageHero
-        title="Note"
-        subtitle="Author, content, and conversation — with provenance available when you need it."
+        title={articlePresentation ? "Article" : "Note"}
+        subtitle={
+          articlePresentation
+            ? [
+                articlePresentation.readingMinutes
+                  ? `${articlePresentation.readingMinutes} min read`
+                  : null,
+                "Full long-form on Nostr — with author, topics, and provenance.",
+              ]
+                .filter(Boolean)
+                .join(" · ")
+            : "Author, content, and conversation — with provenance available when you need it."
+        }
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {resolvedAuthor ? (
@@ -319,17 +347,23 @@ export default async function NotePage({
         )
       ) : null}
 
-      <SectionCard title="Note" description="The reading surface for this event.">
+      <SectionCard
+        title={articlePresentation ? "Article" : "Note"}
+        description={
+          articlePresentation
+            ? "The full long-form reading surface for this event."
+            : "The reading surface for this event."
+        }
+      >
         {focalWithEngagement ? (
           <div className="space-y-4">
-            <NoteCard
-              note={focalWithEngagement}
+            <EventReadingSurface
+              event={focalWithEngagement}
               author={
                 typeof focalWithEngagement.pubkey === "string"
                   ? authorsByPubkey[focalWithEngagement.pubkey.toLowerCase()]
                   : undefined
               }
-              showFullContent
               contentResolution={contentResolution}
             />
             <Disclosure

@@ -23,7 +23,9 @@ import {
 } from "@/components/explorer/utils";
 import { NoteLinkPreviews } from "@/components/explorer/note-link-previews";
 import { NoteMedia } from "@/components/explorer/note-media";
+import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { getEditorialNoteText } from "@/components/explorer/note-preview";
+import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
 import type { StatsWindow } from "@/lib/search-params/window";
 import type {
@@ -97,15 +99,17 @@ function EditorialNote({
   rank,
   authorsByPubkey,
   lead = false,
+  contentResolution,
 }: {
   note: EventRecord;
   rank: number;
   authorsByPubkey: Record<string, Profile>;
   lead?: boolean;
+  contentResolution?: NoteContentResolution;
 }) {
   const author = noteAuthor(note, authorsByPubkey);
   const id = noteId(note);
-  const editorialText = getEditorialNoteText(note);
+  const editorialText = getEditorialNoteText(note, contentResolution);
   const authorLabel = authorName(note, author);
   const authorLink = profileHref(author, typeof note.pubkey === "string" ? note.pubkey : undefined);
   const authorAvatarProfile =
@@ -368,12 +372,14 @@ function LeadSection({
   sectionFailed,
   window,
   headingId,
+  contentResolution,
 }: {
   lead?: EventRecord;
   authorsByPubkey: Record<string, Profile>;
   sectionFailed: boolean;
   window: StatsWindow;
   headingId: string;
+  contentResolution?: NoteContentResolution;
 }) {
   return (
     <section aria-labelledby={headingId}>
@@ -387,7 +393,13 @@ function LeadSection({
         <span className="nm-meta">{window === "24h" ? "Today" : "This week"}</span>
       </div>
       {lead ? (
-        <EditorialNote note={lead} rank={1} authorsByPubkey={authorsByPubkey} lead />
+        <EditorialNote
+          note={lead}
+          rank={1}
+          authorsByPubkey={authorsByPubkey}
+          lead
+          contentResolution={contentResolution}
+        />
       ) : (
         <div className="border-edge/70 text-ink-muted border-y py-12 text-sm">
           {sectionFailed
@@ -404,11 +416,13 @@ function SupportingNotes({
   authorsByPubkey,
   window,
   headingId,
+  contentResolution,
 }: {
   notes: EventRecord[];
   authorsByPubkey: Record<string, Profile>;
   window: StatsWindow;
   headingId: string;
+  contentResolution?: NoteContentResolution;
 }) {
   return (
     <section aria-labelledby={headingId}>
@@ -426,13 +440,14 @@ function SupportingNotes({
           note={note}
           rank={index + 2}
           authorsByPubkey={authorsByPubkey}
+          contentResolution={contentResolution}
         />
       ))}
     </section>
   );
 }
 
-export function EditorialOverview({
+export async function EditorialOverview({
   notes,
   profiles,
   risingProfiles,
@@ -462,6 +477,17 @@ export function EditorialOverview({
   const [lead, ...followups] = notes.slice(0, 4);
   const visibleHashtags = sectionFailures.hashtags ? [] : hashtags;
   const visibleDomains = sectionFailures.domains ? [] : domains;
+  const contents = notes
+    .slice(0, 4)
+    .map((note) => (typeof note.content === "string" ? note.content : ""))
+    .filter((content) => content.length > 0);
+  const contentResolution = await resolveContentReferences(contents).catch(() => undefined);
+  if (contentResolution) {
+    contentResolution.profilesByPubkey = {
+      ...contentResolution.profilesByPubkey,
+      ...authorsByPubkey,
+    };
+  }
 
   return (
     <div className="space-y-[var(--space-section)]">
@@ -475,12 +501,14 @@ export function EditorialOverview({
           sectionFailed={sectionFailures.notes}
           window={window}
           headingId="leading-signal"
+          contentResolution={contentResolution}
         />
         <SupportingNotes
           notes={followups}
           authorsByPubkey={authorsByPubkey}
           window={window}
           headingId="supporting-notes"
+          contentResolution={contentResolution}
         />
       </section>
 
