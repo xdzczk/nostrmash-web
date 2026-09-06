@@ -123,6 +123,7 @@ export function ArticleCard({
           {presentation.summary ? (
             <RichInlineText
               text={presentation.summary}
+              tags={article.tags}
               className="text-ink-dim mt-1.5 line-clamp-3 text-sm leading-5 [overflow-wrap:anywhere] sm:leading-6"
               resolution={contentResolution}
             />

@@ -151,6 +151,26 @@ describe("NoteContent", () => {
     );
   });
 
+  it("links a resolved @handle and leaves unknown handles as text", () => {
+    const tokens = tokenizeNoteContent("Hi @Zapstore and @nobody");
+    render(
+      <NoteContent
+        tokens={tokens}
+        resolution={{
+          profilesByPubkey: {
+            [PUBKEY]: { pubkey: PUBKEY, display_name: "Zapstore" },
+          },
+        }}
+      />
+    );
+    expect(screen.getByRole("link", { name: "@Zapstore" })).toHaveAttribute(
+      "href",
+      `/profiles/${encodeURIComponent(NPUB)}`
+    );
+    expect(screen.queryByRole("link", { name: "@nobody" })).not.toBeInTheDocument();
+    expect(screen.getByText("@nobody")).toBeInTheDocument();
+  });
+
   it("does not nest the quote body inside the quote header link", () => {
     const tokens = tokenizeNoteContent(`see ${NOTE}`);
     render(

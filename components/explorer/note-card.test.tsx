@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { NoteCard } from "@/components/explorer/note-card";
+import { encodeNprofile, hexToNpub } from "@/lib/nostr/nip19";
 
 const NOTE = {
   id: "b3e392b11f5d4f28321cedd09303a748acfd0487aea5a7450b3481c60b6e4f87",
@@ -72,6 +73,55 @@ describe("NoteCard", () => {
     expect(screen.getByText(/Line five with/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /example\.com\/full-article/ })).toBeInTheDocument();
     expect(container.querySelector(".line-clamp-2, .line-clamp-4")).toBeNull();
+  });
+
+  it("resolves a long nprofile mention on list cards without clamping the bech32 first", () => {
+    const nprofile = encodeNprofile({
+      pubkey: NOTE.pubkey,
+      relays: [
+        "wss://relay.damus.io",
+        "wss://nos.lol",
+        "wss://relay.primal.net",
+        "wss://relay.snort.social",
+      ],
+    })!;
+    expect(nprofile.length).toBeGreaterThanOrEqual(128);
+    render(
+      <NoteCard
+        note={{ ...NOTE, content: `Cool to see nostr:${nprofile}` }}
+        author={AUTHOR}
+        contentResolution={{
+          profilesByPubkey: {
+            [NOTE.pubkey]: { pubkey: NOTE.pubkey, display_name: "Zapstore" },
+          },
+        }}
+      />
+    );
+    expect(screen.getByRole("link", { name: "@Zapstore" })).toHaveAttribute(
+      "href",
+      `/profiles/${encodeURIComponent(hexToNpub(NOTE.pubkey)!)}`
+    );
+    expect(screen.queryByText(/nprofile1/)).not.toBeInTheDocument();
+  });
+
+  it("resolves NIP-08 and bare @handles against hydrated profiles", () => {
+    render(
+      <NoteCard
+        note={{
+          ...NOTE,
+          content: "The next version of @Zapstore will be insane. Thanks #[0].",
+          tags: [["p", NOTE.pubkey]],
+        }}
+        author={AUTHOR}
+        contentResolution={{
+          profilesByPubkey: {
+            [NOTE.pubkey]: { pubkey: NOTE.pubkey, display_name: "Zapstore" },
+          },
+        }}
+      />
+    );
+    expect(screen.getAllByRole("link", { name: "@Zapstore" })).toHaveLength(2);
+    expect(screen.queryByText(/#\[0\]/)).not.toBeInTheDocument();
   });
 
   it("always renders complete engagement stats", () => {

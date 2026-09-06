@@ -4,6 +4,7 @@ import {
   isNextImageCompatibleSrc,
   normalizeImageSrc,
   profileFallbackAvatarDataUrl,
+  lookupProfileByHandle,
   profileHref,
   profileInitial,
   profileLabel,
@@ -111,6 +112,25 @@ describe("profile identity presentation", () => {
     expect(label.startsWith("npub1")).toBe(true);
     expect(label.includes("…")).toBe(true);
     expect(label.length).toBeLessThan(40);
+  });
+
+  it("matches a unique @handle against display name or nip05", () => {
+    const pubkey = "c".repeat(64);
+    const profiles = {
+      [pubkey]: { pubkey, display_name: "Zapstore", nip05: "max@towardsliberty.com" },
+    };
+    expect(lookupProfileByHandle("Zapstore", profiles)?.pubkey).toBe(pubkey);
+    expect(lookupProfileByHandle("max", profiles)?.pubkey).toBe(pubkey);
+    expect(lookupProfileByHandle("max@towardsliberty.com", profiles)?.pubkey).toBe(pubkey);
+    expect(lookupProfileByHandle("nobody", profiles)).toBeUndefined();
+  });
+
+  it("does not match an ambiguous handle", () => {
+    const profiles = {
+      ["a".repeat(64)]: { pubkey: "a".repeat(64), name: "Max" },
+      ["b".repeat(64)]: { pubkey: "b".repeat(64), display_name: "Max" },
+    };
+    expect(lookupProfileByHandle("Max", profiles)).toBeUndefined();
   });
 
   it("builds profile routes from profile identity or pubkey fallback", () => {

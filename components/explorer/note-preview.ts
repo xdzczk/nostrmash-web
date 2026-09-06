@@ -4,13 +4,14 @@ import {
   formatMentionLabel,
   formatNaddrLabel,
   formatUrlForDisplay,
+  lookupProfileByHandle,
   truncateIdentifier,
 } from "@/components/explorer/utils";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { stripNoteLinkPreviewUrls } from "@/lib/notes/links";
 import { isNoteMediaUrl, stripNoteMediaUrls } from "@/lib/notes/media";
 import { extractUrls } from "@/lib/notes/text";
-import { tokenizeNoteContent } from "@/lib/notes/tokenize";
+import { tokenizeNoteContent, type TokenizeOptions } from "@/lib/notes/tokenize";
 
 export type NotePreviewMode =
   | "standard_text_preview"
@@ -271,8 +272,12 @@ export function getNotePreviewPresentation(note: EventRecord): NotePreviewPresen
   };
 }
 
-function resolveEditorialTokens(text: string, resolution?: NoteContentResolution): string {
-  return tokenizeNoteContent(text)
+function resolveEditorialTokens(
+  text: string,
+  resolution?: NoteContentResolution,
+  options?: TokenizeOptions
+): string {
+  return tokenizeNoteContent(text, options)
     .map((token) => {
       switch (token.type) {
         case "text":
@@ -283,6 +288,12 @@ function resolveEditorialTokens(text: string, resolution?: NoteContentResolution
           return `#${token.tag}`;
         case "mention":
           return formatMentionLabel(token.pubkey, resolution?.profilesByPubkey);
+        case "handle": {
+          const profile = lookupProfileByHandle(token.handle, resolution?.profilesByPubkey);
+          return profile?.pubkey
+            ? formatMentionLabel(profile.pubkey, resolution?.profilesByPubkey)
+            : token.value;
+        }
         case "event":
           return truncateIdentifier(token.value.replace(/^nostr:/i, ""), "note", "primary");
         case "address":
@@ -300,9 +311,10 @@ export function getEditorialNoteText(
   note: EventRecord,
   resolution?: NoteContentResolution
 ): string {
+  const content = typeof note.content === "string" ? note.content : "";
   const preview = getNotePreviewPresentation(note);
-  const stripped = stripEmbeddedUrls(preview.contentForCard, preview.rawContent, 1);
-  const resolved = resolveEditorialTokens(stripped, resolution);
+  const stripped = stripEmbeddedUrls(content || preview.contentForCard, preview.rawContent, 1);
+  const resolved = resolveEditorialTokens(stripped, resolution, { tags: note.tags });
   if (!preview.containsRaw) return resolved;
 
   return resolved

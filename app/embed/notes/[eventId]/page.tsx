@@ -34,9 +34,7 @@ export default async function EmbedNotePage({ params }: { params: Params }) {
   }
   if (!note) notFound();
 
-  const contentResolution = await resolveContentReferences(
-    typeof note.content === "string" ? [note.content] : []
-  ).catch(() => undefined);
+  const contentResolution = await resolveContentReferences([note]).catch(() => undefined);
 
   return (
     <main className="bg-background text-foreground min-h-screen p-3">

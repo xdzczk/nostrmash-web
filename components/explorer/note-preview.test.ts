@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { hexToNote, hexToNpub } from "@/lib/nostr/nip19";
+import { encodeNprofile, hexToNote, hexToNpub } from "@/lib/nostr/nip19";
 
 import { getEditorialNoteText } from "./note-preview";
 
@@ -38,6 +38,32 @@ describe("getEditorialNoteText", () => {
     expect(text).not.toMatch(/npub1x{20,}/);
     expect(text).not.toMatch(/note1y{20,}/);
     expect(text).not.toContain("Nostr reference");
+  });
+
+  it("resolves a long nprofile instead of clamping the raw bech32", () => {
+    const nprofile = encodeNprofile({
+      pubkey: PUBKEY,
+      relays: [
+        "wss://relay.damus.io",
+        "wss://nos.lol",
+        "wss://relay.primal.net",
+        "wss://relay.snort.social",
+      ],
+    })!;
+    const text = getEditorialNoteText(
+      {
+        id: "a".repeat(64),
+        content: `Cool to see nostr:${nprofile}`,
+      },
+      {
+        profilesByPubkey: {
+          [PUBKEY]: { pubkey: PUBKEY, display_name: "Zapstore" },
+        },
+      }
+    );
+
+    expect(text).toBe("Cool to see @Zapstore");
+    expect(text).not.toMatch(/nprofile1/);
   });
 
   it("removes media file urls from editorial copy", () => {

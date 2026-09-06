@@ -4,6 +4,7 @@ import {
   formatMentionLabel,
   formatNaddrLabel,
   formatUrlForDisplay,
+  lookupProfileByHandle,
   lookupProfileByPubkey,
   sanitizeExternalHref,
   truncateIdentifier,
@@ -64,7 +65,7 @@ function QuoteCard({
       )}
       {cleaned.length > 0 ? (
         <NoteContent
-          tokens={tokenizeNoteContent(cleaned)}
+          tokens={tokenizeNoteContent(cleaned, { tags: event.tags })}
           className="text-ink-dim mt-1 line-clamp-3 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap"
           showQuotes={false}
           resolution={resolution}
@@ -145,6 +146,24 @@ export function NoteContent({
               </Link>
             );
           }
+          case "handle": {
+            const profile = lookupProfileByHandle(token.handle, resolution?.profilesByPubkey);
+            const pubkey = typeof profile?.pubkey === "string" ? profile.pubkey : "";
+            if (!pubkey) {
+              return <span key={key}>{token.value}</span>;
+            }
+            const npub = hexToNpub(pubkey) ?? pubkey;
+            return (
+              <Link
+                key={key}
+                href={`/profiles/${encodeURIComponent(npub)}`}
+                className="text-link hover:text-link-hover font-medium"
+                title={npub}
+              >
+                {formatMentionLabel(pubkey, resolution?.profilesByPubkey)}
+              </Link>
+            );
+          }
           case "event": {
             const quoted =
               resolution?.eventsById?.[token.id] ??
@@ -206,12 +225,14 @@ export function NoteContent({
 /** Tokenize and render free-form UGC (bios, summaries) without quote cards. */
 export function RichInlineText({
   text,
+  tags,
   className = "",
   resolution,
   hideLinkPreviewUrls,
   as,
 }: {
   text: string;
+  tags?: unknown;
   className?: string;
   resolution?: NoteContentResolution;
   hideLinkPreviewUrls?: string[];
@@ -219,7 +240,7 @@ export function RichInlineText({
 }) {
   return (
     <NoteContent
-      tokens={tokenizeNoteContent(text)}
+      tokens={tokenizeNoteContent(text, { tags })}
       className={className}
       showQuotes={false}
       resolution={resolution}

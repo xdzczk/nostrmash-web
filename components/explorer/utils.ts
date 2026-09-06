@@ -528,6 +528,50 @@ export function lookupProfileByPubkey(
   return undefined;
 }
 
+function profileHandleCandidates(profile: Profile): string[] {
+  const values = [
+    readProfileText(profile, ["display_name", "displayName", "display", "displayname"]),
+    readProfileText(profile, ["name", "username", "user_name", "handle"]),
+    readProfileText(profile, ["nip05", "nip_05"]),
+  ];
+  const handles: string[] = [];
+  for (const value of values) {
+    const readable = readableProfileName(value);
+    if (!readable) continue;
+    handles.push(readable);
+    const at = readable.indexOf("@");
+    if (at > 0) handles.push(readable.slice(0, at));
+  }
+  return handles;
+}
+
+/** Best-effort `@handle` match against already-hydrated profiles. Ambiguous names do not match. */
+export function lookupProfileByHandle(
+  handle: string,
+  profiles?: Record<string, Profile | undefined>
+): Profile | undefined {
+  if (!profiles || !handle) return undefined;
+  const needle = handle.replace(/^@/, "").trim().toLowerCase();
+  if (!needle) return undefined;
+
+  const matches: Profile[] = [];
+  const seen = new Set<string>();
+  for (const profile of Object.values(profiles)) {
+    if (!profile) continue;
+    const key =
+      typeof profile.pubkey === "string" && profile.pubkey.length > 0
+        ? profile.pubkey.toLowerCase()
+        : "";
+    if (key) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
+    const candidates = profileHandleCandidates(profile).map((candidate) => candidate.toLowerCase());
+    if (candidates.includes(needle)) matches.push(profile);
+  }
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
 /** `@name` when a readable profile name exists; otherwise a truncated npub. */
 export function formatMentionLabel(
   pubkey: string,

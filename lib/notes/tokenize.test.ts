@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { encodeNaddr, encodeNevent, hexToNote, hexToNpub, hexToNsec } from "@/lib/nostr/nip19";
+import {
+  encodeNaddr,
+  encodeNevent,
+  encodeNprofile,
+  hexToNote,
+  hexToNpub,
+  hexToNsec,
+} from "@/lib/nostr/nip19";
 import { extractHashtagsFromNote } from "@/components/explorer/utils";
 import { collectTokenReferences, tokenizeNoteContent } from "@/lib/notes/tokenize";
 
@@ -71,6 +78,61 @@ describe("tokenizeNoteContent", () => {
     expect(tokens).toEqual([
       { type: "text", value: "secret " },
       { type: "redacted", value: nsec, reason: "nsec" },
+    ]);
+  });
+
+  it("decodes a long nostr:nprofile mention without cutting the bech32", () => {
+    const nprofile = encodeNprofile({
+      pubkey: PUBKEY,
+      relays: [
+        "wss://relay.damus.io",
+        "wss://nos.lol",
+        "wss://relay.primal.net",
+        "wss://relay.snort.social",
+      ],
+    })!;
+    expect(nprofile.length).toBeGreaterThanOrEqual(128);
+    const tokens = tokenizeNoteContent(`Cool to see nostr:${nprofile}`);
+    expect(tokens).toEqual([
+      { type: "text", value: "Cool to see " },
+      {
+        type: "mention",
+        value: `nostr:${nprofile}`,
+        pubkey: PUBKEY,
+        relays: [
+          "wss://relay.damus.io",
+          "wss://nos.lol",
+          "wss://relay.primal.net",
+          "wss://relay.snort.social",
+        ],
+      },
+    ]);
+  });
+
+  it("resolves NIP-08 #[n] pointers from event tags", () => {
+    const tokens = tokenizeNoteContent("Thanks #[0] for the note #[1] and article #[2]", {
+      tags: [
+        ["p", PUBKEY],
+        ["e", EVENT_ID],
+        ["a", `30023:${PUBKEY}:hello`],
+      ],
+    });
+    expect(tokens).toEqual([
+      { type: "text", value: "Thanks " },
+      { type: "mention", value: "#[0]", pubkey: PUBKEY },
+      { type: "text", value: " for the note " },
+      { type: "event", value: "#[1]", id: EVENT_ID },
+      { type: "text", value: " and article " },
+      { type: "address", value: "#[2]", identifier: "hello", pubkey: PUBKEY, kind: 30023 },
+    ]);
+  });
+
+  it("tokenizes bare @handles and leaves emails alone", () => {
+    const tokens = tokenizeNoteContent("Hi @Zapstore and write bob@example.com later");
+    expect(tokens).toEqual([
+      { type: "text", value: "Hi " },
+      { type: "handle", value: "@Zapstore", handle: "Zapstore" },
+      { type: "text", value: " and write bob@example.com later" },
     ]);
   });
 });

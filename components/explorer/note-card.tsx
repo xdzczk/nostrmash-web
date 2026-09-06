@@ -68,10 +68,9 @@ export function NoteCard({
     resolvedAuthor,
     typeof note.pubkey === "string" ? note.pubkey : undefined
   );
-  const content =
-    typeof note.content === "string" && note.content.length > 0 ? note.content : "(no content)";
+  const rawContent = typeof note.content === "string" ? note.content : "";
+  const content = rawContent.length > 0 ? rawContent : "(no content)";
   const preview = getNotePreviewPresentation(note);
-  const presentationContent = showFullContent ? content : preview.contentForCard || content;
   const linkPreviewLimit = showFullContent ? 2 : 1;
   const linkPreviewUrls =
     !showFullContent && typeof note.content === "string"
@@ -173,7 +172,7 @@ export function NoteCard({
         </>
       ) : null}
       <NoteContent
-        tokens={tokenizeNoteContent(presentationContent)}
+        tokens={tokenizeNoteContent(content, { tags: note.tags })}
         className={`mt-2.5 ${clampClassName}`}
         showQuotes={showFullContent}
         resolution={contentResolution}

@@ -117,9 +117,10 @@ export async function loadNoteFocalData(eventId: string) {
     authorsByPubkey[authorProfileFromSummary.pubkey.toLowerCase()] = authorProfileFromSummary;
   }
 
-  const contentResolution = await resolveContentReferences(
-    typeof focal?.content === "string" && focal.content.length > 0 ? [focal.content] : []
-  ).catch(() => ({ profilesByPubkey: {}, eventsById: {} }));
+  const contentResolution = await resolveContentReferences(focal ? [focal] : []).catch(() => ({
+    profilesByPubkey: {},
+    eventsById: {},
+  }));
   contentResolution.profilesByPubkey = {
     ...contentResolution.profilesByPubkey,
     ...authorsByPubkey,
@@ -216,9 +217,9 @@ export async function loadNoteThreadData(
   }
 
   const contentResolution = await resolveContentReferences(
-    [...ancestors, ...replies]
-      .map((note) => note.content)
-      .filter((value): value is string => typeof value === "string" && value.length > 0)
+    [...ancestors, ...replies, threadPayload?.root].filter((note): note is EventRecord =>
+      Boolean(note)
+    )
   ).catch(() => ({ profilesByPubkey: {}, eventsById: {} }));
   contentResolution.profilesByPubkey = {
     ...contentResolution.profilesByPubkey,

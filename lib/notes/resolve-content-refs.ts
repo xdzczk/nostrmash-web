@@ -1,15 +1,51 @@
 import { getEventsBatch } from "@/lib/api/endpoints/notes";
 import { getProfilesBatch } from "@/lib/api/endpoints/profiles";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
-import { collectTokenReferences, tokenizeNoteContent, type NoteToken } from "@/lib/notes/tokenize";
+import {
+  collectHandleSupportReferences,
+  collectTokenReferences,
+  tokenizeNoteContent,
+} from "@/lib/notes/tokenize";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
+export type ContentRefInput = string | { content?: unknown; tags?: unknown };
+
+function asContentInput(input: ContentRefInput): { content: string; tags?: unknown } {
+  if (typeof input === "string") return { content: input };
+  return {
+    content: typeof input.content === "string" ? input.content : "",
+    tags: input.tags,
+  };
+}
+
+export function collectContentReferences(inputs: ContentRefInput[]): {
+  pubkeys: string[];
+  eventIds: string[];
+} {
+  const pubkeys = new Set<string>();
+  const eventIds = new Set<string>();
+
+  for (const input of inputs) {
+    const { content, tags } = asContentInput(input);
+    const tokens = tokenizeNoteContent(content, { tags });
+    const refs = collectTokenReferences(tokens);
+    refs.pubkeys.forEach((pubkey) => pubkeys.add(pubkey));
+    refs.eventIds.forEach((eventId) => eventIds.add(eventId));
+    if (tokens.some((token) => token.type === "handle")) {
+      const extras = collectHandleSupportReferences(tags);
+      extras.pubkeys.forEach((pubkey) => pubkeys.add(pubkey));
+      extras.eventIds.forEach((eventId) => eventIds.add(eventId));
+    }
+  }
+
+  return { pubkeys: [...pubkeys], eventIds: [...eventIds] };
+}
+
 export async function resolveContentReferences(
-  contents: string[],
+  inputs: ContentRefInput[],
   options?: { maxPubkeys?: number; maxEvents?: number }
 ): Promise<NoteContentResolution> {
-  const tokens: NoteToken[] = contents.flatMap((content) => tokenizeNoteContent(content));
-  const refs = collectTokenReferences(tokens);
+  const refs = collectContentReferences(inputs);
   const maxPubkeys = options?.maxPubkeys ?? 40;
   const maxEvents = options?.maxEvents ?? 20;
 

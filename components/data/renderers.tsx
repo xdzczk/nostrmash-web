@@ -46,10 +46,7 @@ export async function NotesList({
   showFullContent?: boolean;
   discoverySignals?: boolean;
 }) {
-  const contents = notes
-    .map((note) => (typeof note.content === "string" ? note.content : ""))
-    .filter((content) => content.length > 0);
-  const contentResolution = await resolveContentReferences(contents).catch(() => undefined);
+  const contentResolution = await resolveContentReferences(notes).catch(() => undefined);
   if (contentResolution && authorsByPubkey) {
     contentResolution.profilesByPubkey = {
       ...contentResolution.profilesByPubkey,
@@ -96,10 +93,7 @@ export async function ArticlesList({
   ranked?: boolean;
   discoverySignals?: boolean;
 }) {
-  const contents = articles
-    .map((article) => (typeof article.content === "string" ? article.content : ""))
-    .filter((content) => content.length > 0);
-  const contentResolution = await resolveContentReferences(contents).catch(() => undefined);
+  const contentResolution = await resolveContentReferences(articles).catch(() => undefined);
   if (contentResolution && authorsByPubkey) {
     contentResolution.profilesByPubkey = {
       ...contentResolution.profilesByPubkey,

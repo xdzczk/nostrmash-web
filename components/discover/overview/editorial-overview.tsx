@@ -477,11 +477,9 @@ export async function EditorialOverview({
   const [lead, ...followups] = notes.slice(0, 4);
   const visibleHashtags = sectionFailures.hashtags ? [] : hashtags;
   const visibleDomains = sectionFailures.domains ? [] : domains;
-  const contents = notes
-    .slice(0, 4)
-    .map((note) => (typeof note.content === "string" ? note.content : ""))
-    .filter((content) => content.length > 0);
-  const contentResolution = await resolveContentReferences(contents).catch(() => undefined);
+  const contentResolution = await resolveContentReferences(notes.slice(0, 4)).catch(
+    () => undefined
+  );
   if (contentResolution) {
     contentResolution.profilesByPubkey = {
       ...contentResolution.profilesByPubkey,
