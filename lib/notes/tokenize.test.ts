@@ -20,6 +20,24 @@ describe("tokenizeNoteContent", () => {
     expect(tokenizeNoteContent("hello world")).toEqual([{ type: "text", value: "hello world" }]);
   });
 
+  it("tokenizes schemeless hosts as https links", () => {
+    const tokens = tokenizeNoteContent(
+      "Try YakBak.app, notes.md, bob@example.com, and @foundation.xyz"
+    );
+    expect(tokens.filter((token) => token.type === "url")).toEqual([
+      { type: "url", value: "YakBak.app", href: "https://yakbak.app/" },
+    ]);
+    expect(
+      tokens.some((token) => token.type === "handle" && token.handle === "foundation.xyz")
+    ).toBe(true);
+    expect(tokens.some((token) => token.type === "text" && token.value.includes("notes.md"))).toBe(
+      true
+    );
+    expect(
+      tokens.some((token) => token.type === "text" && token.value.includes("bob@example.com"))
+    ).toBe(true);
+  });
+
   it("tokenizes urls, hashtags, and mentions", () => {
     const npub = hexToNpub(PUBKEY)!;
     const tokens = tokenizeNoteContent(`Check https://example.com/path. and #Nostr hi ${npub}`);

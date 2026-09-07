@@ -27,6 +27,15 @@ describe("NoteContent", () => {
     );
   });
 
+  it("linkifies schemeless hosts as https urls", () => {
+    const tokens = tokenizeNoteContent("Try YakBak.app today");
+    render(<NoteContent tokens={tokens} />);
+    expect(screen.getByRole("link", { name: "yakbak.app" })).toHaveAttribute(
+      "href",
+      "https://yakbak.app/"
+    );
+  });
+
   it("renders resolved mention display name and quote card", () => {
     const tokens = tokenizeNoteContent(`see ${NOTE}`);
     render(

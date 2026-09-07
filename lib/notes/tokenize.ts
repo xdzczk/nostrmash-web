@@ -1,5 +1,11 @@
 import { decodeNip19, type Nip19Decoded } from "@/lib/nostr/nip19";
-import { HASHTAG_PATTERN, trimUrlTrailingPunctuation, URL_PATTERN } from "@/lib/notes/text";
+import {
+  BARE_HOST_PATTERN,
+  HASHTAG_PATTERN,
+  toAbsoluteHttpUrl,
+  trimUrlTrailingPunctuation,
+  URL_PATTERN,
+} from "@/lib/notes/text";
 
 export type NoteToken =
   | { type: "text"; value: string }
@@ -132,6 +138,23 @@ function collectMatches(content: string, tags: string[][]): Match[] {
       start,
       end: start + href.length,
       token: { type: "url", value: href, href },
+    });
+  }
+
+  for (const match of content.matchAll(
+    new RegExp(BARE_HOST_PATTERN.source, BARE_HOST_PATTERN.flags)
+  )) {
+    const start = match.index ?? 0;
+    const { href: rawHost } = trimUrlTrailingPunctuation(match[0]);
+    if (!rawHost) continue;
+    const href = toAbsoluteHttpUrl(rawHost);
+    if (!href) continue;
+    const end = start + rawHost.length;
+    if (overlaps(matches, start, end)) continue;
+    matches.push({
+      start,
+      end,
+      token: { type: "url", value: rawHost, href },
     });
   }
 

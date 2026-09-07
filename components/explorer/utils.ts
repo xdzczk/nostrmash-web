@@ -1,5 +1,5 @@
 import type { EventRecord, Profile } from "@/lib/types/api";
-import { extractHashtagsFromText, extractUrls } from "@/lib/notes/text";
+import { extractHashtagsFromText, extractLinkableUrls } from "@/lib/notes/text";
 import { hexToNpub } from "../../lib/nostr/npub";
 
 const LABEL_ALIASES: Record<string, string> = {
@@ -752,7 +752,7 @@ export function normalizeDomainForRoute(value: unknown): string | null {
 }
 
 function extractUrlDomainsFromText(content: string): string[] {
-  const domains = extractUrls(content)
+  const domains = extractLinkableUrls(content)
     .map((url) => normalizeDomainForRoute(url))
     .filter((domain): domain is string => typeof domain === "string");
   return Array.from(new Set(domains));
