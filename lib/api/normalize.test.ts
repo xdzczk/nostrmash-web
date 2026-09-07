@@ -148,20 +148,27 @@ describe("normalizeEventRecord", () => {
 });
 
 describe("isHiddenNoteKind", () => {
-  it("hides NIP-02 contact lists", () => {
+  it("hides contact lists, mute lists, and other empty-body list kinds", () => {
     expect(isHiddenNoteKind({ kind: 3 })).toBe(true);
+    expect(isHiddenNoteKind({ kind: 10000 })).toBe(true);
+    expect(isHiddenNoteKind({ kind: 10002 })).toBe(true);
+    expect(isHiddenNoteKind({ kind: 30000 })).toBe(true);
+    expect(isHiddenNoteKind({ kind: 30001 })).toBe(true);
     expect(isHiddenNoteKind({ kind: 1 })).toBe(false);
+    expect(isHiddenNoteKind({ kind: 30023 })).toBe(false);
     expect(isHiddenNoteKind(null)).toBe(false);
   });
 });
 
 describe("normalizeEventRecords", () => {
-  it("drops kind 3 contact lists from note lists", () => {
+  it("drops empty-body list kinds from note lists", () => {
     const noteId = "ab".repeat(32);
     const contactId = "cd".repeat(32);
+    const muteId = "ef".repeat(32);
     const notes = normalizeEventRecords([
       { id: noteId, kind: 1, content: "hello" },
       { id: contactId, kind: 3, content: "" },
+      { id: muteId, kind: 10000, content: "" },
     ]);
     expect(notes.map((note) => note.id)).toEqual([noteId]);
   });
@@ -221,6 +228,7 @@ describe("filterAuthoredNotes", () => {
       { id: "repost-1", kind: 6, content: "" },
       { id: "meta-1", kind: 0, content: "{}" },
       { id: "contacts-1", kind: 3, content: "" },
+      { id: "mutes-1", kind: 10000, content: "" },
     ]);
 
     expect(filtered.map((event) => event.id)).toEqual(["note-1"]);

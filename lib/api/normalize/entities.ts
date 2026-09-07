@@ -61,8 +61,16 @@ export function normalizeEventRecord(value: unknown): EventRecord | null {
   }) as EventRecord | null;
 }
 
-/** Kinds that must not appear as notes in lists, search, or detail pages. */
-export const HIDDEN_NOTE_KINDS = new Set([3]);
+/**
+ * List / metadata kinds that store their payload in tags (or empty content)
+ * and must not appear as notes in lists, search, or detail pages.
+ * NIP-02 contacts, NIP-51 lists/sets, NIP-65 relays, NIP-17 DM relays,
+ * NIP-78 app data, Blossom/server lists.
+ */
+export const HIDDEN_NOTE_KINDS = new Set([
+  3, 5, 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10009, 10012, 10015, 10030, 10050,
+  10063, 10096, 30000, 30001, 30002, 30003, 30004, 30005, 30007, 30015, 30030, 30078,
+]);
 
 export function isHiddenNoteKind(event: { kind?: number } | null | undefined): boolean {
   return typeof event?.kind === "number" && HIDDEN_NOTE_KINDS.has(event.kind);
@@ -120,7 +128,7 @@ export function normalizeArticleRecords(value: unknown): ArticleRecord[] {
     .filter((entry): entry is ArticleRecord => entry !== null && entry.id.length > 0);
 }
 
-export const AUTHORED_NOTE_EXCLUDED_KINDS = new Set([0, 3, 6, 7, 9734, 9735]);
+export const AUTHORED_NOTE_EXCLUDED_KINDS = new Set([0, 6, 7, 9734, 9735, ...HIDDEN_NOTE_KINDS]);
 
 export function eventTagMarker(tag: unknown): string {
   if (!Array.isArray(tag) || tag.length < 4) return "";
