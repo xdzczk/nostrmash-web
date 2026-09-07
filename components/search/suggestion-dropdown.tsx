@@ -3,7 +3,11 @@
 import { forwardRef } from "react";
 
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
-import { profileLabel, profileSecondaryLabel } from "@/components/explorer/utils";
+import {
+  profileLabel,
+  profileSecondaryLabel,
+  truncateProfileLabel,
+} from "@/components/explorer/utils";
 import type { HashtagEntry, Profile } from "@/lib/types/api";
 
 interface SuggestionDropdownProps {
@@ -59,7 +63,7 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium" title={label}>
-                      {label}
+                      {truncateProfileLabel(label)}
                     </p>
                     {secondary && (
                       <p className="text-ink-faint truncate text-xs" title={secondary}>

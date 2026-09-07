@@ -41,6 +41,15 @@ describe("NoteCard", () => {
     );
   });
 
+  it("truncates extremely long author display names", () => {
+    const longName = ":petthex_javasparrow:しゆいろ:petthex_javasparrow:(本物)";
+    render(<NoteCard note={NOTE} author={{ ...AUTHOR, display_name: longName }} />);
+    const nameLink = screen.getByTitle(longName);
+    expect(nameLink).toHaveAttribute("href", `/profiles/${NOTE.pubkey}`);
+    expect(nameLink.textContent).toMatch(/…$/);
+    expect(nameLink.textContent?.length).toBeLessThan(longName.length);
+  });
+
   it("links avatar and account name to the author profile page", () => {
     render(<NoteCard note={NOTE} author={AUTHOR} />);
     const profilePath = `/profiles/${NOTE.pubkey}`;

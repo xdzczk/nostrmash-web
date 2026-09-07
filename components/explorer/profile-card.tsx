@@ -15,6 +15,7 @@ import {
   profileLabel,
   profileSecondaryLabel,
   truncateIdentifier,
+  truncateProfileLabel,
 } from "@/components/explorer/utils";
 import type { Profile } from "@/lib/types/api";
 
@@ -83,18 +84,18 @@ export function ProfileCard({
           className="border-edge-strong h-10 w-10 rounded-full border object-cover sm:h-11 sm:w-11"
         />
         <div className="min-w-0 flex-1 space-y-1.5">
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 items-start justify-between gap-2">
             {href ? (
               <Link
                 href={href}
-                title={identifier !== "unknown" ? identifier : label}
-                className="text-ink hover:text-ink-strong truncate text-base font-semibold hover:underline"
+                title={label}
+                className="text-ink hover:text-ink-strong block min-w-0 flex-1 truncate text-base font-semibold hover:underline"
               >
-                {label}
+                {truncateProfileLabel(label)}
               </Link>
             ) : (
-              <p className="text-ink truncate text-base font-semibold" title={label}>
-                {label}
+              <p className="text-ink min-w-0 flex-1 truncate text-base font-semibold" title={label}>
+                {truncateProfileLabel(label)}
               </p>
             )}
           </div>

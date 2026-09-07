@@ -266,6 +266,22 @@ export function truncateIdentifier(
   return truncateByPolicy(value, limit);
 }
 
+/** Compact list/card cap for display names. Longer names keep the start and ellipsis. */
+export const PROFILE_LABEL_COMPACT_LIMIT = 36;
+
+/** End-truncate a profile display name using code points so emoji stays intact. */
+export function truncateProfileLabel(
+  value: string,
+  maxLength = PROFILE_LABEL_COMPACT_LIMIT
+): string {
+  const trimmed = value.trim();
+  if (!trimmed) return value;
+  const units = [...trimmed];
+  if (units.length <= maxLength) return trimmed;
+  const room = Math.max(1, maxLength - ELLIPSIS.length);
+  return `${units.slice(0, room).join("")}${ELLIPSIS}`;
+}
+
 export function normalizeDomainLabel(value: string): string {
   const normalized = normalizeDomainForRoute(value);
   return (

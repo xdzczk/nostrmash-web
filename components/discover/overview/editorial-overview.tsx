@@ -20,6 +20,7 @@ import {
   profileLabel,
   profileSecondaryLabel,
   truncateIdentifier,
+  truncateProfileLabel,
 } from "@/components/explorer/utils";
 import { NoteLinkPreviews } from "@/components/explorer/note-link-previews";
 import { NoteMedia } from "@/components/explorer/note-media";
@@ -157,12 +158,15 @@ function EditorialNote({
             {authorLink ? (
               <Link
                 href={authorLink}
-                className="text-ink block truncate text-sm font-medium hover:underline"
+                title={authorLabel}
+                className="text-ink block min-w-0 truncate text-sm font-medium hover:underline"
               >
-                {authorLabel}
+                {truncateProfileLabel(authorLabel)}
               </Link>
             ) : (
-              <p className="text-ink truncate text-sm font-medium">{authorLabel}</p>
+              <p className="text-ink truncate text-sm font-medium" title={authorLabel}>
+                {truncateProfileLabel(authorLabel)}
+              </p>
             )}
             <Timestamp unixSeconds={note.created_at} className="nm-meta" />
           </div>
@@ -241,6 +245,7 @@ function ProfileRanking({
         <ol className="border-edge/70 mt-6 divide-y divide-[var(--edge)] border-y">
           {profiles.slice(0, 4).map((profile, index) => {
             const href = profileHref(profile);
+            const label = profileLabel(profile);
             const secondary = profileSecondaryLabel(profile);
             return (
               <li
@@ -258,11 +263,17 @@ function ProfileRanking({
                 />
                 <div className="min-w-0">
                   {href ? (
-                    <Link href={href} className="text-ink truncate font-medium hover:underline">
-                      {profileLabel(profile)}
+                    <Link
+                      href={href}
+                      title={label}
+                      className="text-ink block min-w-0 truncate font-medium hover:underline"
+                    >
+                      {truncateProfileLabel(label)}
                     </Link>
                   ) : (
-                    <p className="text-ink truncate font-medium">{profileLabel(profile)}</p>
+                    <p className="text-ink truncate font-medium" title={label}>
+                      {truncateProfileLabel(label)}
+                    </p>
                   )}
                   {secondary && href ? (
                     <Link href={href} className="nm-meta hover:text-ink mt-0.5 block truncate">

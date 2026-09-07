@@ -80,7 +80,8 @@ function normalizeHeroActions(value: unknown): HeroAction[] {
         href,
       } satisfies HeroAction;
     })
-    .filter((entry): entry is HeroAction => Boolean(entry));
+    .filter((entry): entry is HeroAction => Boolean(entry))
+    .filter((entry) => entry.id !== "rising_profiles" && entry.label !== "Up and coming");
 }
 
 function toCounterRows(
@@ -208,7 +209,6 @@ export default async function ProfilePage({
             label: "Related profiles",
             href: `${profileRoute}#related-profiles`,
           },
-          { id: "rising_profiles", label: "Up and coming", href: "/discovery/profiles/rising" },
         ];
 
   const heroNpubOrPubkey =

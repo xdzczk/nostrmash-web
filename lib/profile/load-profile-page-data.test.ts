@@ -21,7 +21,6 @@ vi.mock("@/lib/api/endpoints", () => ({
   getUserMuteList: vi.fn(),
   getUserMutedBy: vi.fn(),
   getRelatedProfiles: vi.fn(),
-  getRisingProfiles: vi.fn(),
 }));
 
 vi.mock("@/lib/api/profile-hydration", () => ({
@@ -38,7 +37,6 @@ import {
   getProfile,
   getProfileSummary,
   getRelatedProfiles,
-  getRisingProfiles,
   getUserBookmarks,
   getUserHighlights,
   getUserLongForm,
@@ -60,7 +58,6 @@ const mocked = {
   getUserMuteList: vi.mocked(getUserMuteList),
   getUserMutedBy: vi.mocked(getUserMutedBy),
   getRelatedProfiles: vi.mocked(getRelatedProfiles),
-  getRisingProfiles: vi.mocked(getRisingProfiles),
 };
 
 describe("loadProfilePageData", () => {
@@ -76,7 +73,6 @@ describe("loadProfilePageData", () => {
     mocked.getUserMuteList.mockResolvedValue({ profiles: [] });
     mocked.getUserMutedBy.mockResolvedValue({ profiles: [] });
     mocked.getRelatedProfiles.mockResolvedValue({ related_profiles: [] });
-    mocked.getRisingProfiles.mockResolvedValue({ profiles: [] });
   });
 
   it("loads summary notes on the default activity tab without enrichment when identity exists", async () => {
@@ -90,7 +86,6 @@ describe("loadProfilePageData", () => {
       },
       related_discovery: {
         related_profiles: [{ pubkey: "f".repeat(64), display_name: "Related" }],
-        rising_profiles: [{ pubkey: "0".repeat(64), display_name: "Rising" }],
       },
       recent_note_previews: [
         {
@@ -109,7 +104,6 @@ describe("loadProfilePageData", () => {
     expect(data.profile?.display_name).toBe("Ada");
     expect(data.notes).toHaveLength(1);
     expect(data.relatedProfiles).toHaveLength(1);
-    expect(data.risingProfiles).toHaveLength(1);
     expect(mocked.getProfile).not.toHaveBeenCalled();
     expect(mocked.getAuthorEvents).toHaveBeenCalled();
   });

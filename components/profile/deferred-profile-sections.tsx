@@ -208,37 +208,26 @@ export async function DeferredProfileDiscovery({
     <div id="related-profiles">
       <SectionCard
         title="Related discovery"
-        description="Connected profiles and rising discovery surfaces related to this profile."
+        description="Connected profiles related to this profile."
       >
-        <div className="space-y-5">
-          <div className="space-y-2">
-            <p className="text-ink-muted text-xs font-medium">Related profiles</p>
-            {data.relatedProfiles.length > 0 ? (
-              <>
-                <ProfilesList profiles={data.relatedProfiles.slice(0, 8)} />
-                {typeof data.relatedProfilesNextCursor === "string" &&
-                data.relatedProfilesNextCursor.length > 0 ? (
-                  <Link
-                    href={data.relatedProfilesContinuationHref}
-                    className="text-link inline-block text-sm"
-                  >
-                    Continue related profiles
-                  </Link>
-                ) : null}
-              </>
-            ) : (
-              <EmptyState message="No related profiles were returned for this profile yet." />
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-ink-muted text-xs font-medium">Up and coming</p>
-            {data.risingProfiles.length > 0 ? (
-              <ProfilesList profiles={data.risingProfiles.slice(0, 8)} />
-            ) : (
-              <EmptyState message="No up-and-coming profiles are available right now." />
-            )}
-          </div>
+        <div className="space-y-2">
+          <p className="text-ink-muted text-xs font-medium">Related profiles</p>
+          {data.relatedProfiles.length > 0 ? (
+            <>
+              <ProfilesList profiles={data.relatedProfiles.slice(0, 8)} />
+              {typeof data.relatedProfilesNextCursor === "string" &&
+              data.relatedProfilesNextCursor.length > 0 ? (
+                <Link
+                  href={data.relatedProfilesContinuationHref}
+                  className="text-link inline-block text-sm"
+                >
+                  Continue related profiles
+                </Link>
+              ) : null}
+            </>
+          ) : (
+            <EmptyState message="No related profiles were returned for this profile yet." />
+          )}
         </div>
       </SectionCard>
 
@@ -246,10 +235,6 @@ export async function DeferredProfileDiscovery({
         <DebugDisclosure
           title="Debug payload: related profiles fallback"
           data={data.relatedProfilesFallbackPayload ?? {}}
-        />
-        <DebugDisclosure
-          title="Debug payload: rising profiles fallback"
-          data={data.risingProfilesPayload ?? {}}
         />
       </div>
     </div>

@@ -12,6 +12,7 @@ import {
   profileSecondaryLabel,
   sanitizeExternalHref,
   truncateIdentifier,
+  truncateProfileLabel,
 } from "@/components/explorer/utils";
 
 describe("sanitizeExternalHref", () => {
@@ -104,6 +105,16 @@ describe("profile identity presentation", () => {
 
   it("preserves readable unicode names", () => {
     expect(profileLabel({ pubkey: "b".repeat(64), display_name: "Иван ⚡" })).toBe("Иван ⚡");
+  });
+
+  it("end-truncates extremely long display names without splitting emoji", () => {
+    const longName = ":petthex_javasparrow:しゆいろ:petthex_javasparrow:(本物)";
+    const truncated = truncateProfileLabel(longName);
+    expect(truncated.endsWith("…")).toBe(true);
+    expect([...truncated].length).toBeLessThanOrEqual(36);
+    expect(truncated.startsWith(":petthex_javasparrow:")).toBe(true);
+    expect(truncateProfileLabel("D C Fitzgerald")).toBe("D C Fitzgerald");
+    expect(truncateProfileLabel("Zapstore ⚡ extra extra extra extra extra extra")).toContain("⚡");
   });
 
   it("truncates npub fallbacks when no username is available", () => {

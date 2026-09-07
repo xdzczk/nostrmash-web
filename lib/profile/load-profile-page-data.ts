@@ -9,7 +9,6 @@ import {
   getProfile,
   getProfileSummary,
   getRelatedProfiles,
-  getRisingProfiles,
   getUserBookmarks,
   getUserHighlights,
   getUserLongForm,
@@ -466,20 +465,16 @@ export async function loadProfileDiscoveryData(
     ? summaryRecord.related_discovery
     : null;
   const summaryRelatedProfiles = normalizeProfiles(summaryRelatedDiscovery?.related_profiles);
-  const summaryRisingProfiles = normalizeProfiles(summaryRelatedDiscovery?.rising_profiles);
 
   const shouldLoadRelatedProfilesFallback =
     typeof relatedProfilesCursor === "string" || summaryRelatedProfiles.length === 0;
-  const shouldLoadRisingProfilesFallback = summaryRisingProfiles.length === 0;
 
   let relatedProfilesFallbackPayload: Awaited<ReturnType<typeof getRelatedProfiles>> | null = null;
-  let risingProfilesPayload: Awaited<ReturnType<typeof getRisingProfiles>> | null = null;
 
-  const [relatedFallbackResult, risingProfilesResult] = await Promise.allSettled([
+  const [relatedFallbackResult] = await Promise.allSettled([
     shouldLoadRelatedProfilesFallback
       ? getRelatedProfiles(lookupKey, "shortTtl", { cursor: relatedProfilesCursor })
       : Promise.resolve(null),
-    shouldLoadRisingProfilesFallback ? getRisingProfiles("shortTtl") : Promise.resolve(null),
   ]);
 
   if (relatedFallbackResult.status === "fulfilled") {
@@ -489,22 +484,11 @@ export async function loadProfileDiscoveryData(
       toUserFacingErrorMessage(relatedFallbackResult.reason, "Failed to load related profiles.")
     );
   }
-  if (risingProfilesResult.status === "fulfilled") {
-    risingProfilesPayload = risingProfilesResult.value;
-  } else if (shouldLoadRisingProfilesFallback && !isNotFoundReason(risingProfilesResult.reason)) {
-    errors.push(
-      toUserFacingErrorMessage(risingProfilesResult.reason, "Failed to load rising profiles.")
-    );
-  }
 
   const relatedProfiles =
     summaryRelatedProfiles.length > 0
       ? summaryRelatedProfiles
       : (relatedProfilesFallbackPayload?.related_profiles ?? []);
-  const risingProfiles =
-    summaryRisingProfiles.length > 0
-      ? summaryRisingProfiles
-      : (risingProfilesPayload?.profiles ?? []);
   const relatedProfilesNextCursor = extractNativeApiSemantics(
     relatedProfilesFallbackPayload
   ).next_cursor;
@@ -521,8 +505,6 @@ export async function loadProfileDiscoveryData(
     relatedProfilesContinuationHref,
     relatedProfilesFallbackPayload,
     relatedProfilesNextCursor,
-    risingProfiles,
-    risingProfilesPayload,
   };
 }
 

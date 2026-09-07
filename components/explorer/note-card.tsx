@@ -24,6 +24,7 @@ import {
   extractHashtagsFromNote,
   extractRelayHostsFromNote,
   truncateIdentifier,
+  truncateProfileLabel,
 } from "@/components/explorer/utils";
 import { extractNoteLinkUrls } from "@/lib/notes/links";
 import { tokenizeNoteContent } from "@/lib/notes/tokenize";
@@ -137,12 +138,18 @@ export function NoteCard({
             {authorHref ? (
               <Link
                 href={authorHref}
-                className="text-ink-soft hover:text-ink-strong font-medium hover:underline"
+                title={authorLabel}
+                className="text-ink-soft hover:text-ink-strong inline-block max-w-[min(100%,16rem)] truncate font-medium hover:underline"
               >
-                {authorLabel}
+                {truncateProfileLabel(authorLabel)}
               </Link>
             ) : (
-              <span className="text-ink-soft font-medium">{authorLabel}</span>
+              <span
+                className="text-ink-soft inline-block max-w-[min(100%,16rem)] truncate font-medium"
+                title={authorLabel}
+              >
+                {truncateProfileLabel(authorLabel)}
+              </span>
             )}
             {authorSecondaryLabel && authorHref ? (
               <Link
