@@ -59,4 +59,14 @@ describe("lookupNoteWithEngagement", () => {
     expect(note?.reply_count).toBe(9);
     expect(note?.reaction_count).toBe(5);
   });
+
+  it("does not return kind 3 contact lists as notes", async () => {
+    const id = "d".repeat(64);
+    mocked.getNoteSummary.mockResolvedValue({
+      note: { id, kind: 3, content: "" },
+      counts: {},
+      summary: {},
+    });
+    await expect(lookupNoteWithEngagement(id, "shortTtl")).resolves.toBeNull();
+  });
 });

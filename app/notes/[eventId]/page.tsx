@@ -38,6 +38,7 @@ import { Disclosure } from "@/components/ui/disclosure";
 import { SectionCard } from "@/components/ui/section-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
+import { isHiddenNoteKind } from "@/lib/api/normalize";
 import { encodeNevent, hexToNote } from "@/lib/nostr/nip19";
 import { getNoteSummaryCached, loadNoteFocalData } from "@/lib/notes/load-note-page-data";
 import { isValidEventIdParam, resolveEventIdParam } from "@/lib/routing/params";
@@ -62,6 +63,12 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   try {
     const payload = await getNoteSummaryCached(resolvedId);
     const note = payload.note;
+    if (isHiddenNoteKind(note)) {
+      return {
+        title: "Note not found",
+        description: "This event is not shown as a note.",
+      };
+    }
     const content = note?.content;
     const authorFromSummary = payload.author?.profile;
     const authorLabel = authorFromSummary ? profileLabel(authorFromSummary) : null;
@@ -128,6 +135,9 @@ export default async function NotePage({
     semantics,
     summaryProvenance,
   } = await loadNoteFocalData(eventId);
+  if (isHiddenNoteKind(focal)) {
+    notFound();
+  }
   const articlePresentation =
     focal && isLongFormEvent(focal) ? getArticlePresentation(focal) : null;
 

@@ -1,5 +1,6 @@
 import { applyEngagementStats } from "@/components/explorer/utils";
 import { getEventCounts, getNoteSummary } from "@/lib/api/endpoints/notes";
+import { isHiddenNoteKind } from "@/lib/api/normalize";
 import type { CacheClass } from "@/lib/caching/policies";
 import type { EventRecord } from "@/lib/types/api";
 
@@ -43,7 +44,7 @@ export async function lookupNoteWithEngagement(
   try {
     const summary = await getNoteSummary(eventId, cacheClass);
     const base = summary.note ?? summary.event;
-    if (!base) return null;
+    if (!base || isHiddenNoteKind(base)) return null;
     return applyEngagementStats(base, summary.counts ?? {}, summary.summary ?? {});
   } catch {
     return null;

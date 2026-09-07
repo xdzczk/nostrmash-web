@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { filterAuthoredNotes, normalizeEventRecord, normalizeProfile } from "./normalize";
+import {
+  filterAuthoredNotes,
+  isHiddenNoteKind,
+  normalizeEventRecord,
+  normalizeEventRecords,
+  normalizeProfile,
+} from "./normalize";
 import { profileLabel, profilePictureUrl } from "../../components/explorer/utils";
 import type { Profile } from "../types/api";
 import { hexToNpub, npubToHex } from "../nostr/npub";
@@ -141,6 +147,26 @@ describe("normalizeEventRecord", () => {
   });
 });
 
+describe("isHiddenNoteKind", () => {
+  it("hides NIP-02 contact lists", () => {
+    expect(isHiddenNoteKind({ kind: 3 })).toBe(true);
+    expect(isHiddenNoteKind({ kind: 1 })).toBe(false);
+    expect(isHiddenNoteKind(null)).toBe(false);
+  });
+});
+
+describe("normalizeEventRecords", () => {
+  it("drops kind 3 contact lists from note lists", () => {
+    const noteId = "ab".repeat(32);
+    const contactId = "cd".repeat(32);
+    const notes = normalizeEventRecords([
+      { id: noteId, kind: 1, content: "hello" },
+      { id: contactId, kind: 3, content: "" },
+    ]);
+    expect(notes.map((note) => note.id)).toEqual([noteId]);
+  });
+});
+
 describe("profile display helpers", () => {
   it("resolves alias display names and normalizes schemeless picture urls", () => {
     const profile = {
@@ -187,13 +213,14 @@ describe("profile display helpers", () => {
 });
 
 describe("filterAuthoredNotes", () => {
-  it("removes reactions, zaps, reposts, and metadata from authored note feeds", () => {
+  it("removes reactions, zaps, reposts, metadata, and contact lists from authored note feeds", () => {
     const filtered = filterAuthoredNotes([
       { id: "note-1", kind: 1, content: "hello" },
       { id: "reaction-1", kind: 7, content: "+" },
       { id: "zap-1", kind: 9735, content: "" },
       { id: "repost-1", kind: 6, content: "" },
       { id: "meta-1", kind: 0, content: "{}" },
+      { id: "contacts-1", kind: 3, content: "" },
     ]);
 
     expect(filtered.map((event) => event.id)).toEqual(["note-1"]);

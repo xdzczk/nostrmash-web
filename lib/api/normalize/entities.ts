@@ -61,10 +61,17 @@ export function normalizeEventRecord(value: unknown): EventRecord | null {
   }) as EventRecord | null;
 }
 
+/** Kinds that must not appear as notes in lists, search, or detail pages. */
+export const HIDDEN_NOTE_KINDS = new Set([3]);
+
+export function isHiddenNoteKind(event: { kind?: number } | null | undefined): boolean {
+  return typeof event?.kind === "number" && HIDDEN_NOTE_KINDS.has(event.kind);
+}
+
 export function normalizeEventRecords(value: unknown): EventRecord[] {
   return asArray(value)
     .map((entry) => normalizeEventRecord(entry))
-    .filter((entry): entry is EventRecord => entry !== null);
+    .filter((entry): entry is EventRecord => entry !== null && !isHiddenNoteKind(entry));
 }
 
 export function extractArticleTagValue(
@@ -113,7 +120,7 @@ export function normalizeArticleRecords(value: unknown): ArticleRecord[] {
     .filter((entry): entry is ArticleRecord => entry !== null && entry.id.length > 0);
 }
 
-export const AUTHORED_NOTE_EXCLUDED_KINDS = new Set([0, 6, 7, 9734, 9735]);
+export const AUTHORED_NOTE_EXCLUDED_KINDS = new Set([0, 3, 6, 7, 9734, 9735]);
 
 export function eventTagMarker(tag: unknown): string {
   if (!Array.isArray(tag) || tag.length < 4) return "";
