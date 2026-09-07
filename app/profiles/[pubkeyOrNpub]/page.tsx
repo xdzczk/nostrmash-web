@@ -305,6 +305,7 @@ export default async function ProfilePage({
               profile={avatarProfile}
               size={112}
               alt={profile ? profileLabel(profile) : heroDisplayName}
+              enlarge
               className="border-edge h-20 w-20 rounded-full border object-cover sm:h-28 sm:w-28"
             />
             <div className="min-w-0 flex-1 space-y-3">

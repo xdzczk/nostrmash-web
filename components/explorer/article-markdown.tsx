@@ -3,6 +3,7 @@ import Markdown from "react-markdown";
 
 import { RichInlineText, type NoteContentResolution } from "@/components/explorer/note-content";
 import { isNextImageCompatibleSrc, normalizeImageSrc } from "@/components/explorer/utils";
+import { EnlargeableImage } from "@/components/ui/image-lightbox";
 import { markdownHref } from "@/lib/notes/markdown-href";
 
 function linkifyInline(children: ReactNode, resolution?: NoteContentResolution): ReactNode {
@@ -93,16 +94,23 @@ export function ArticleMarkdown({
         img: ({ src, alt }) => {
           const imageSrc = typeof src === "string" ? normalizeImageSrc(src) : null;
           if (!imageSrc || !isNextImageCompatibleSrc(imageSrc)) return null;
+          const imageAlt = typeof alt === "string" ? alt : "";
           return (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <EnlargeableImage
               src={imageSrc}
-              alt={typeof alt === "string" ? alt : ""}
-              loading="lazy"
-              decoding="async"
-              referrerPolicy="no-referrer"
-              className="border-edge/80 my-6 max-h-[36rem] w-full rounded-lg border object-cover"
-            />
+              alt={imageAlt}
+              className="my-6 block w-full cursor-zoom-in"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={imageSrc}
+                alt={imageAlt}
+                loading="lazy"
+                decoding="async"
+                referrerPolicy="no-referrer"
+                className="border-edge/80 max-h-[36rem] w-full rounded-lg border object-cover"
+              />
+            </EnlargeableImage>
           );
         },
         pre: ({ children }) => (

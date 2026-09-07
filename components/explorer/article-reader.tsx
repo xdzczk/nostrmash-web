@@ -7,6 +7,7 @@ import { DiscoveryPill, DiscoveryStatPills } from "@/components/explorer/card-gr
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
+import { EnlargeableImage } from "@/components/ui/image-lightbox";
 import {
   extractEngagementStats,
   isNextImageCompatibleSrc,
@@ -110,14 +111,20 @@ export function ArticleReader({
       </div>
 
       {imageSrc && isNextImageCompatibleSrc(imageSrc) ? (
-        <Image
+        <EnlargeableImage
           src={imageSrc}
           alt={presentation.title}
-          width={1200}
-          height={630}
-          unoptimized
-          className="border-edge/80 mt-6 max-h-[28rem] w-full rounded-xl border object-cover"
-        />
+          className="mt-6 block w-full cursor-zoom-in"
+        >
+          <Image
+            src={imageSrc}
+            alt={presentation.title}
+            width={1200}
+            height={630}
+            unoptimized
+            className="border-edge/80 max-h-[28rem] w-full rounded-xl border object-cover"
+          />
+        </EnlargeableImage>
       ) : null}
 
       {presentation.hashtags.length > 0 ? (

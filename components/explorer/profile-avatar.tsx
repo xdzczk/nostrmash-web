@@ -9,6 +9,7 @@ import {
   profileLabel,
   profilePictureUrl,
 } from "@/components/explorer/utils";
+import { EnlargeableImage } from "@/components/ui/image-lightbox";
 import type { Profile } from "@/lib/types/api";
 
 type ProfileAvatarProps = {
@@ -18,6 +19,8 @@ type ProfileAvatarProps = {
   alt?: string;
   /** When set, the avatar becomes a link to the profile page. */
   href?: string;
+  /** Enlarge the remote photo in a lightbox. Ignored when `href` is set or the picture is a fallback. */
+  enlarge?: boolean;
 };
 
 /**
@@ -26,12 +29,20 @@ type ProfileAvatarProps = {
  * skip the optimizer and fall back to a local gradient when the remote fails
  * or is incompatible with next/image remotePatterns (e.g. cleartext http hosts).
  */
-export function ProfileAvatar({ profile, size, className = "", alt, href }: ProfileAvatarProps) {
+export function ProfileAvatar({
+  profile,
+  size,
+  className = "",
+  alt,
+  href,
+  enlarge,
+}: ProfileAvatarProps) {
   const fallbackSrc = profileFallbackAvatarDataUrl(profile);
   const remoteSrc = profilePictureUrl(profile);
   const [brokenRemote, setBrokenRemote] = useState<string | null>(null);
   const src = remoteSrc && brokenRemote !== remoteSrc ? remoteSrc : fallbackSrc;
   const label = alt ?? profileLabel(profile);
+  const canEnlarge = Boolean(enlarge && !href && remoteSrc && brokenRemote !== remoteSrc);
 
   const image = (
     <Image
@@ -49,15 +60,30 @@ export function ProfileAvatar({ profile, size, className = "", alt, href }: Prof
     />
   );
 
-  if (!href) return image;
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="nm-pressable focus-visible:ring-accent-soft/70 inline-flex shrink-0 rounded-full focus-visible:ring-2 focus-visible:outline-none"
+        aria-label={label ? `View ${label}` : "View profile"}
+      >
+        {image}
+      </Link>
+    );
+  }
 
-  return (
-    <Link
-      href={href}
-      className="nm-pressable focus-visible:ring-accent-soft/70 inline-flex shrink-0 rounded-full focus-visible:ring-2 focus-visible:outline-none"
-      aria-label={label ? `View ${label}` : "View profile"}
-    >
-      {image}
-    </Link>
-  );
+  if (canEnlarge && remoteSrc) {
+    return (
+      <EnlargeableImage
+        src={remoteSrc}
+        alt={label}
+        label={label ? `Enlarge photo of ${label}` : "Enlarge photo"}
+        className="nm-pressable focus-visible:ring-accent-soft/70 inline-flex shrink-0 cursor-zoom-in rounded-full focus-visible:ring-2 focus-visible:outline-none"
+      >
+        {image}
+      </EnlargeableImage>
+    );
+  }
+
+  return image;
 }

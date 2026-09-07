@@ -4,6 +4,8 @@
 
 import { useEffect, useRef } from "react";
 
+import { EnlargeableImage } from "@/components/ui/image-lightbox";
+
 type MediaKind = "image" | "video" | "audio";
 
 /** Media fragment that encourages browsers to paint an early frame. */
@@ -59,7 +61,11 @@ export function NoteMediaReveal({ url, kind }: { url: string; kind: MediaKind })
   return (
     <div className="border-edge bg-surface-sunken/60 overflow-hidden rounded-[var(--radius-control)] border">
       {kind === "image" ? (
-        <a href={url} target="_blank" rel="noreferrer noopener" referrerPolicy="no-referrer">
+        <EnlargeableImage
+          src={url}
+          alt="Image attached to note"
+          className="block w-full cursor-zoom-in"
+        >
           <img
             src={url}
             alt="Image attached to note"
@@ -68,7 +74,7 @@ export function NoteMediaReveal({ url, kind }: { url: string; kind: MediaKind })
             referrerPolicy="no-referrer"
             className="max-h-[28rem] w-full object-cover"
           />
-        </a>
+        </EnlargeableImage>
       ) : null}
       {kind === "video" ? <NoteVideo url={url} /> : null}
       {kind === "audio" ? (
