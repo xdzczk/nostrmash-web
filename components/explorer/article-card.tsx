@@ -2,6 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 
 import {
+  CardHitTarget,
+  cardHitTargetClassName,
   cardTierClassName,
   DiscoveryActionLinks,
   DiscoveryPill,
@@ -79,7 +81,7 @@ export function ArticleCard({
     <article
       className={`group ${cardTierClassName("standard")} ${
         isTopRank ? "border-accent-soft/40" : "border-edge/70"
-      }`}
+      } ${articleHref ? cardHitTargetClassName : ""}`}
     >
       <div className="flex flex-wrap items-center gap-2 text-xs">
         {rankLabel ? (
@@ -221,6 +223,9 @@ export function ArticleCard({
             ]}
           />
         </div>
+      ) : null}
+      {articleHref ? (
+        <CardHitTarget href={articleHref} label={`Read article by ${authorLabel}`} />
       ) : null}
     </article>
   );

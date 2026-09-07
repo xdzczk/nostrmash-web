@@ -7,6 +7,8 @@ import { getNotePreviewPresentation } from "@/components/explorer/note-preview";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
+  CardHitTarget,
+  cardHitTargetClassName,
   cardTierClassName,
   DiscoveryActionLinks,
   DiscoveryStatPills,
@@ -58,6 +60,7 @@ export function NoteCard({
           : undefined) ?? undefined;
   const noteHref =
     href ?? (resolvedNoteId ? `/notes/${encodeURIComponent(resolvedNoteId)}` : undefined);
+  const cardHref = noteHref && !showFullContent ? noteHref : undefined;
   const authorLabel = resolvedAuthor ? profileLabel(resolvedAuthor) : noteAuthorIdentifier(note);
   const authorSecondaryLabel = resolvedAuthor
     ? profileSecondaryLabel(resolvedAuthor)
@@ -101,7 +104,7 @@ export function NoteCard({
     <article
       className={`group ${cardTierClassName("standard")} ${
         isTopRank ? "border-accent-soft/40" : "border-edge/70"
-      }`}
+      } ${cardHref ? cardHitTargetClassName : ""}`}
     >
       <div className="flex items-start gap-3">
         {rankLabel ? (
@@ -274,6 +277,7 @@ export function NoteCard({
           />
         </div>
       ) : null}
+      {cardHref ? <CardHitTarget href={cardHref} label={`Open note by ${authorLabel}`} /> : null}
     </article>
   );
 }

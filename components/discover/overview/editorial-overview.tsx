@@ -1,6 +1,10 @@
 import Link from "next/link";
 
-import { DiscoveryStatPills } from "@/components/explorer/card-grammar";
+import {
+  CardHitTarget,
+  cardHitTargetClassName,
+  DiscoveryStatPills,
+} from "@/components/explorer/card-grammar";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
@@ -116,14 +120,15 @@ function EditorialNote({
   const authorAvatarProfile =
     author ??
     (typeof note.pubkey === "string" && note.pubkey.length > 0 ? { pubkey: note.pubkey } : null);
+  const noteHref = id ? `/notes/${encodeURIComponent(id)}` : undefined;
 
   return (
     <article
-      className={
+      className={`${
         lead
           ? "nm-elevated-surface relative overflow-hidden rounded-[var(--radius-surface)] border px-5 py-6 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-[var(--ink-muted)] sm:px-7 sm:py-8"
           : "border-edge/70 border-t py-6 first:border-t-0"
-      }
+      } ${noteHref ? cardHitTargetClassName : ""}`}
     >
       <div className="flex items-center justify-between gap-4">
         <span
@@ -136,8 +141,8 @@ function EditorialNote({
         >
           {String(rank).padStart(2, "0")}
         </span>
-        {!lead && id ? (
-          <Link href={`/notes/${encodeURIComponent(id)}`} className="nm-meta hover:text-ink">
+        {!lead && noteHref ? (
+          <Link href={noteHref} className="nm-meta hover:text-ink">
             Open note
           </Link>
         ) : null}
@@ -191,15 +196,16 @@ function EditorialNote({
         ) : null}
         <EvidenceLine reasons={mapNoteWhyNow(note)} ranking={note.ranking} />
         <DiscoveryStatPills stats={extractEngagementStats(note)} className="mt-2.5" />
-        {lead && id ? (
+        {lead && noteHref ? (
           <Link
-            href={`/notes/${encodeURIComponent(id)}`}
+            href={noteHref}
             className="text-ink hover:text-accent-ink mt-5 inline-flex min-h-11 items-center text-sm font-medium underline decoration-[var(--accent-soft)] underline-offset-4"
           >
             Read the leading note
           </Link>
         ) : null}
       </div>
+      {noteHref ? <CardHitTarget href={noteHref} label={`Open note by ${authorLabel}`} /> : null}
     </article>
   );
 }

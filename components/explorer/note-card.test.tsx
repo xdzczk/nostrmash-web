@@ -41,6 +41,23 @@ describe("NoteCard", () => {
     );
   });
 
+  it("opens the note page from the card body on list cards", () => {
+    render(<NoteCard note={NOTE} author={AUTHOR} />);
+    expect(screen.getByRole("link", { name: "Open note by Alice" })).toHaveAttribute(
+      "href",
+      `/notes/${NOTE.id}`
+    );
+  });
+
+  it("does not overlay a card link on the full reading surface", () => {
+    render(<NoteCard note={NOTE} author={AUTHOR} showFullContent />);
+    expect(screen.queryByRole("link", { name: "Open note by Alice" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open note" })).toHaveAttribute(
+      "href",
+      `/notes/${NOTE.id}`
+    );
+  });
+
   it("truncates extremely long author display names", () => {
     const longName = ":petthex_javasparrow:しゆいろ:petthex_javasparrow:(本物)";
     render(<NoteCard note={NOTE} author={{ ...AUTHOR, display_name: longName }} />);
