@@ -497,7 +497,6 @@ export default async function NotePage({
         <DeferredNoteThread
           eventId={eventId}
           searchParams={resolvedSearchParams}
-          focal={focal}
           rootEventId={rootEventId}
           parentEventId={parentEventId}
         />

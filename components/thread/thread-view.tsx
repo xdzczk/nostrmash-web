@@ -16,7 +16,6 @@ function getAuthorByPubkey(
 
 export function ThreadView({
   ancestors,
-  focal,
   replies,
   missingAncestorIds = [],
   nextCursor,
@@ -26,7 +25,6 @@ export function ThreadView({
   contentResolution,
 }: {
   ancestors: EventRecord[];
-  focal?: EventRecord;
   replies: EventRecord[];
   missingAncestorIds?: string[];
   nextCursor?: string;
@@ -35,7 +33,7 @@ export function ThreadView({
   authorsByPubkey?: Record<string, Profile>;
   contentResolution?: NoteContentResolution;
 }) {
-  if (!focal && ancestors.length === 0 && replies.length === 0) {
+  if (ancestors.length === 0 && replies.length === 0) {
     return <EmptyState message="No replies or ancestors have been indexed for this note yet." />;
   }
 
@@ -64,17 +62,6 @@ export function ThreadView({
               />
             ))}
           </div>
-        </section>
-      ) : null}
-
-      {focal ? (
-        <section>
-          <ThreadNode
-            note={focal}
-            author={getAuthorByPubkey(authorsByPubkey, focal.pubkey)}
-            role="focal"
-            contentResolution={contentResolution}
-          />
         </section>
       ) : null}
 

@@ -12,7 +12,6 @@ import {
   loadNoteThreadData,
 } from "@/lib/notes/load-note-page-data";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
-import type { EventRecord } from "@/lib/types/api";
 
 function toThreadRoute(eventId: string): string {
   return `/search?q=${encodeURIComponent(eventId)}&tab=notes`;
@@ -21,13 +20,11 @@ function toThreadRoute(eventId: string): string {
 export async function DeferredNoteThread({
   eventId,
   searchParams,
-  focal,
   rootEventId: rootFromFocal,
   parentEventId,
 }: {
   eventId: string;
   searchParams: Record<string, string | string[] | undefined>;
-  focal: EventRecord | null | undefined;
   rootEventId?: string;
   parentEventId?: string;
 }) {
@@ -85,7 +82,6 @@ export async function DeferredNoteThread({
         </div>
         <ThreadView
           ancestors={data.ancestors}
-          focal={focal ?? undefined}
           replies={data.replies}
           missingAncestorIds={data.missingAncestorIds}
           nextCursor={data.repliesNextCursor}
