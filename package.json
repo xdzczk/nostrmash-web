@@ -29,12 +29,12 @@
     "generate:api-types": "openapi-typescript ../nostrmash/docs/openapi.yaml -o lib/types/generated/api.d.ts"
   },
   "dependencies": {
-    "@sentry/nextjs": "^10.68.0",
-    "next": "16.2.3",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
+    "@sentry/nextjs": "^10.73.0",
+    "next": "16.3.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "react-markdown": "^10.1.0",
-    "zod": "^4.4.3"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
