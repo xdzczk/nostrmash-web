@@ -54,15 +54,18 @@ export function isLkgCacheClass(cacheClass: CacheClass): boolean {
 }
 
 /**
- * Durable LKG storage is only worth its R2 write cost for the small, bounded
- * set of pages every visitor shares (home, trending, stats, discovery,
- * relay listings). Per-entity endpoints (notes/profiles/hashtags/domains by
- * id, search, suggest) have an effectively unbounded key space — crawlers
- * alone can drive millions of distinct keys — and a fallback for a page
- * nobody will request twice has no value anyway. Keep this list in sync
- * with the non-parameterized routes in `lib/api/endpoints/shared.ts`.
+ * The small, bounded set of API paths every visitor shares (home, trending,
+ * stats, discovery, relay listings). Durable caching — both Next's fetch
+ * cache and the LKG fallback — writes to R2 (a billed Class A op per entry),
+ * which is only worth paying for keys that get re-read. Per-entity endpoints
+ * (notes/profiles/hashtags/domains by id, search, suggest) have an
+ * effectively unbounded key space — scraper botnets with spoofed browser UAs
+ * walk millions of distinct ids per day, ignoring robots.txt — so a durable
+ * cache entry for them is a write that will never be read back. Keep this
+ * list in sync with the non-parameterized routes in
+ * `lib/api/endpoints/shared.ts`.
  */
-const LKG_ELIGIBLE_PATHS = new Set<string>([
+const BOUNDED_CACHE_PATHS = new Set<string>([
   "/api/v1/discovery/home",
   "/api/v1/discovery/notes/trending",
   "/api/v1/discovery/long-form/trending",
@@ -80,8 +83,8 @@ const LKG_ELIGIBLE_PATHS = new Set<string>([
   "/api/v1/relays/probe-health",
 ]);
 
-export function isLkgEligiblePath(path: string): boolean {
-  return LKG_ELIGIBLE_PATHS.has(path);
+export function isBoundedCachePath(path: string): boolean {
+  return BOUNDED_CACHE_PATHS.has(path);
 }
 
 export function buildLkgKey(path: string, query: URLSearchParams): string {

@@ -4,7 +4,7 @@ import { ApiError } from "@/lib/api/errors";
 import {
   buildLkgKey,
   isLkgCacheClass,
-  isLkgEligiblePath,
+  isBoundedCachePath,
   markStaleDataServed,
   readLastKnownGood,
   storeLastKnownGood,
@@ -183,7 +183,20 @@ export async function fetchApiJson<T>(
     }
   }
 
-  const cacheClass = options?.cacheClass ?? "requestTime";
+  const requestedCacheClass = options?.cacheClass ?? "requestTime";
+  // Central guard: durable caching (Next's fetch cache + LKG) persists to R2,
+  // a billed Class A write per entry. Only the bounded, shared endpoints in
+  // BOUNDED_CACHE_PATHS can ever amortize that write with later reads.
+  // Per-entity paths (notes/profiles/hashtags/domains by id, search) are an
+  // unbounded key space that scraper botnets — spoofed browser UAs across
+  // thousands of residential IPs, immune to robots.txt — walk at millions of
+  // unique keys per day, so caching them durably is a write-only bill.
+  // Enforcing this here (rather than at ~50 call sites) means new endpoints
+  // are safe by default.
+  const cacheClass: CacheClass =
+    requestedCacheClass !== "requestTime" && !isBoundedCachePath(path)
+      ? "requestTime"
+      : requestedCacheClass;
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS[cacheClass];
   const timeoutSignal =
     typeof AbortSignal.timeout === "function"
@@ -198,8 +211,9 @@ export async function fetchApiJson<T>(
   );
 
   const outboundRequestId = createOutboundRequestId();
-  const lkgKey =
-    isLkgCacheClass(cacheClass) && isLkgEligiblePath(path) ? buildLkgKey(path, query) : null;
+  // The bounded-path guard above already downgraded unbounded paths to
+  // "requestTime", so a cacheable class here implies an LKG-worthy path.
+  const lkgKey = isLkgCacheClass(cacheClass) ? buildLkgKey(path, query) : null;
 
   async function tryServeLastKnownGood(error: unknown): Promise<T> {
     if (!lkgKey) throw error;
