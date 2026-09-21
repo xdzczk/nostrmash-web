@@ -162,7 +162,7 @@ export default async function HashtagPage({ params }: { params: Params }) {
               Open full note list
             </Link>
             <Link
-              href={`/search?q=${encodeURIComponent(`#${normalizedHashtag}`)}&tab=all`}
+              href={`/search?q=${encodeURIComponent(`#${normalizedHashtag}`)}&tab=notes`}
               className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-3 py-1 text-xs"
             >
               Search this hashtag

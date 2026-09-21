@@ -65,6 +65,15 @@ export function SearchForm({
       setOpen(false);
       clearSuggest();
       onNavigate?.();
+      // Hashtag queries go straight to the browsable hashtag notes list
+      // (with Show more / Continue) instead of a text-search results page.
+      if (trimmed.startsWith("#")) {
+        const normalized = trimmed.slice(1).trim().toLowerCase();
+        if (isValidHashtag(normalized)) {
+          router.push(`/hashtags/${encodeURIComponent(normalized)}/notes`);
+          return;
+        }
+      }
       router.push(`/search?q=${encodeURIComponent(trimmed)}&tab=all`);
     },
     [router, clearSuggest, onNavigate]
@@ -92,7 +101,7 @@ export function SearchForm({
       setOpen(false);
       clearSuggest();
       onNavigate?.();
-      router.push(`/hashtags/${encodeURIComponent(normalized.toLowerCase())}`);
+      router.push(`/hashtags/${encodeURIComponent(normalized.toLowerCase())}/notes`);
     },
     [router, clearSuggest, navigateToSearch, onNavigate]
   );

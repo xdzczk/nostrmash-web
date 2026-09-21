@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
@@ -18,6 +19,7 @@ import {
   fetchProfilesByPubkey,
   hydrateProfiles,
 } from "@/lib/api/profile-hydration";
+import { isValidHashtag } from "@/lib/hashtags";
 import { nextShowMoreLimit } from "@/lib/search-params/pagination";
 import { parseSearchQuery } from "@/lib/search-params/search";
 import type { Profile } from "@/lib/types/api";
@@ -42,6 +44,18 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   const query = parseSearchQuery(await searchParams);
   const activeTab = query.tab ?? "all";
   const canQuery = query.q.length > 0;
+
+  // A fresh hashtag search lands on the browsable hashtag notes list (with
+  // Show more / Continue) instead of text-search results. Scoped to the
+  // default tab so the hashtag pages' explicit "Search this hashtag" links
+  // (tab=notes/profiles) still reach full-text search without looping back.
+  if (canQuery && activeTab === "all" && query.q.startsWith("#")) {
+    const hashtagQuery = query.q.slice(1).trim().toLowerCase();
+    if (isValidHashtag(hashtagQuery)) {
+      redirect(`/hashtags/${encodeURIComponent(hashtagQuery)}/notes`);
+    }
+  }
+
   let errorMessage = "";
   let payload: Awaited<ReturnType<typeof getSearch>> | null = null;
   let noteAuthorsByPubkey: Record<string, Profile> = {};
@@ -320,7 +334,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               )}
               <div className="mt-3 flex flex-wrap gap-4">
                 {showMoreNotesHref ? (
-                  <Link href={showMoreNotesHref} className="text-link inline-block text-sm">
+                  <Link
+                    href={showMoreNotesHref}
+                    scroll={false}
+                    className="text-link inline-block text-sm"
+                  >
                     Show more notes
                   </Link>
                 ) : null}
@@ -354,7 +372,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               )}
               <div className="mt-3 flex flex-wrap gap-4">
                 {showMoreProfilesHref ? (
-                  <Link href={showMoreProfilesHref} className="text-link inline-block text-sm">
+                  <Link
+                    href={showMoreProfilesHref}
+                    scroll={false}
+                    className="text-link inline-block text-sm"
+                  >
                     Show more profiles
                   </Link>
                 ) : null}

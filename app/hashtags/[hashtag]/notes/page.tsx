@@ -191,6 +191,7 @@ export default async function HashtagNotesPage({
                   {showMoreNotesHref ? (
                     <Link
                       href={showMoreNotesHref}
+                      scroll={false}
                       className="border-accent/40 text-link-hover hover:text-accent-ink inline-block rounded-full border px-3 py-1 text-xs"
                     >
                       Show more on this page
