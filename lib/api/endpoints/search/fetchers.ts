@@ -26,7 +26,7 @@ const searchResponseSchema = eventListResponseSchema
   .passthrough();
 
 export async function fetchSearchNotes(
-  query: Pick<SearchQuery, "q" | "limit" | "offset">,
+  query: Pick<SearchQuery, "q" | "limit" | "offset" | "cursor">,
   cacheClass: CacheClass
 ) {
   return fetchApiJson<SearchNotesApiResponse>(nativeApiV1Routes.searchNotes, {
@@ -37,7 +37,7 @@ export async function fetchSearchNotes(
 }
 
 export async function fetchSearchProfiles(
-  query: Pick<SearchQuery, "q" | "limit" | "offset">,
+  query: Pick<SearchQuery, "q" | "limit" | "offset" | "cursor">,
   cacheClass: CacheClass
 ) {
   return fetchApiJson<SearchProfilesApiResponse>(nativeApiV1Routes.searchProfiles, {

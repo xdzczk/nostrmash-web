@@ -194,7 +194,7 @@ export interface paths {
         };
       };
       responses: {
-        /** @description Found and missing events */
+        /** @description Found and missing events. Found event payloads include eventual engagement counters (`reply_count`, `repost_count`, `reaction_count`, `zap_count`, `zap_msats`, and nested `counts`) for note-card rendering. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -312,7 +312,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Reply page */
+        /** @description Reply page with eventual engagement counters attached for note-card rendering. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -350,7 +350,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Ancestor chain with missing IDs */
+        /** @description Ancestor chain with missing IDs. Present ancestor payloads include eventual engagement counters for note-card rendering. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -696,6 +696,8 @@ export interface paths {
           limit?: number;
           /** @description Optional kind filter (e.g. 9735 for sent zap receipts in author feed) */
           kind?: number;
+          /** @description Opaque keyset continuation token from a prior response's `next_cursor`. Omit for the first page. */
+          cursor?: string;
         };
         header?: never;
         path: {
@@ -705,7 +707,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Event list */
+        /** @description Event list with eventual engagement counters attached (`reply_count`, `repost_count`, `reaction_count`, `zap_count`, `zap_msats`, and nested `counts`) for note-card rendering. Includes `next_cursor` when another page exists. When the local projection is thin, the first page may be augmented on demand from fallback relays (results are persisted asynchronously). */
         200: {
           headers: {
             [name: string]: unknown;
@@ -743,7 +745,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Reply list */
+        /** @description Reply list with eventual engagement counters attached (`reply_count`, `repost_count`, `reaction_count`, `zap_count`, `zap_msats`, and nested `counts`) for note-card rendering. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -1448,6 +1450,8 @@ export interface paths {
           window?: "24h" | "7d";
           limit?: number;
           offset?: number;
+          /** @description Opaque continuation token from a prior response's `next_cursor`. Mutually exclusive with `offset`; bound to the original `q`, `sort`, `window`, and `lang`. */
+          cursor?: string;
         };
         header?: never;
         path?: never;
@@ -1455,7 +1459,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Notes search results with trust metadata (`trust_mode`, `trust_applied`, `result_scope`) */
+        /** @description Notes search results with trust metadata (`trust_mode`, `trust_applied`, `result_scope`) and eventual engagement counters on each note payload for note-card rendering. Includes `next_cursor` when another page may exist. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -1488,6 +1492,8 @@ export interface paths {
           sort?: "relevant";
           limit?: number;
           offset?: number;
+          /** @description Opaque continuation token from a prior response's `next_cursor`. Mutually exclusive with `offset`; bound to the original `q` and `sort`. */
+          cursor?: string;
         };
         header?: never;
         path?: never;
@@ -1495,7 +1501,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Profiles search results with trust metadata (`trust_mode`, `trust_applied`, `result_scope`) */
+        /** @description Profiles search results with trust metadata (`trust_mode`, `trust_applied`, `result_scope`). Includes `next_cursor` when another page may exist. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -1727,7 +1733,10 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Trending profiles from projection-backed discovery stats */
+    /**
+     * Profiles ranked by engagement earned per post ("Profiles in motion")
+     * @description Ranks profiles by how much engagement their posts earn (engagement received per post), not by raw posting volume or audience size — intended to back a "Profiles in motion" UI surface. Profiles with no (optionally trust-weighted) engagement in the window are ineligible, so posting volume or consistency alone cannot occupy a slot. Leading reason code is `engagement_quality` (engagement-per-post ratio), followed by `publishing_momentum` (omitted for a single post, which isn't a meaningful momentum signal on its own) and `engagement_received`. Reason evidence cites the same scored engagement the ranking used. Does not use `follower_growth`; see `/discovery/profiles/rising` for that.
+     */
     get: {
       parameters: {
         query?: {
@@ -1741,7 +1750,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Ranked trending profiles with inline identity fields (`npub`, `name`, `display_name`, `picture`, `about`, `nip05`, `lud16`, `website`) and profile discovery metrics (`recent_post_count`, `recent_reply_count`, `recent_engagement_received`, `recent_new_followers`, `recent_zap_volume_msats`, `recent_active_days`, `recent_activity_at`) plus trust metadata (`trust_mode`, `trust_applied`, `result_scope`) */
+        /** @description Ranked trending profiles with inline identity fields (`npub`, `name`, `display_name`, `picture`, `about`, `nip05`, `lud16`, `website`) and profile discovery metrics (`recent_post_count`, `recent_reply_count`, `recent_engagement_received`, `recent_new_followers`, `recent_zap_volume_msats`, `recent_active_days`, `recent_activity_at`, `follower_count`) plus trust metadata (`trust_mode`, `trust_applied`, `result_scope`) */
         200: {
           headers: {
             [name: string]: unknown;
@@ -1768,7 +1777,10 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Rising profiles from projection-backed discovery stats */
+    /**
+     * Small accounts gaining momentum fast ("Up and coming")
+     * @description Ranks small/lower-follower profiles that are either gaining followers quickly or earning engagement that's large relative to their own (small) audience, even without new followers yet — intended to back an "Up and coming" UI surface. Audience size is penalized continuously (no hard follower-count cutoff), with a steeper hinge above ~500 followers so the list stays mostly sub-500 without excluding larger accounts that have enormous growth. New-follower counts of 2 or fewer are treated as noise (common for any brand-new account) and both omitted from the `follower_growth` reason and discounted in the underlying score, so accounts with substantial absolute growth (e.g. +60 followers on a 400-follower account) reliably outrank barely-started ones (e.g. +5 followers on a 5-follower account) rather than the reverse. Engagement has a matching noise floor: a single (weighted) interaction contributes nothing, and the engagement-momentum term is shrunk for small samples and discounted when concentrated in a single day of activity, so a lone boosted note (the bridged-bot pattern) cannot carry an account into the list -- while sustained, multi-account engagement on a tiny account still can. Eligibility requires above-noise follower growth or engagement of the account's own; a trending score alone does not qualify. Meaningful follower growth can rank even when the profile has no trending engagement. Reason evidence cites the same scored (optionally trust-weighted) engagement and new-follower values the ranking used. Reason codes in priority order: `follower_growth`, `relative_engagement_growth` (engagement-per-follower ratio, omitted for a single interaction), `engagement_received`, `publishing_momentum`.
+     */
     get: {
       parameters: {
         query?: {
@@ -1782,7 +1794,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Ranked rising profiles with inline identity fields (`npub`, `name`, `display_name`, `picture`, `about`, `nip05`, `lud16`, `website`) and profile discovery metrics (`recent_post_count`, `recent_reply_count`, `recent_engagement_received`, `recent_new_followers`, `recent_zap_volume_msats`, `recent_active_days`, `recent_activity_at`) plus trust metadata (`trust_mode`, `trust_applied`, `result_scope`) */
+        /** @description Ranked rising profiles with inline identity fields (`npub`, `name`, `display_name`, `picture`, `about`, `nip05`, `lud16`, `website`) and profile discovery metrics (`recent_post_count`, `recent_reply_count`, `recent_engagement_received`, `recent_new_followers`, `recent_zap_volume_msats`, `recent_active_days`, `recent_activity_at`, `follower_count`) plus trust metadata (`trust_mode`, `trust_applied`, `result_scope`) */
         200: {
           headers: {
             [name: string]: unknown;
@@ -2392,7 +2404,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Highlight events */
+        /** @description Highlight events with eventual engagement counters attached for note-card rendering. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -2430,7 +2442,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Long-form events */
+        /** @description Long-form events with eventual engagement counters attached for article-card rendering. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -4047,6 +4059,48 @@ export interface paths {
       requestBody?: never;
       responses: {
         /** @description Ranked trust score rows */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        400: components["responses"]["Error"];
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/v1/trust/interaction-rank-comparison": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Compare follow-only vs follow+interaction trust rankings
+     * @description Operator-facing report for evaluating TRUST_ENABLE_INTERACTION_GRAPH before enabling it for score publication. Expensive on large graphs.
+     */
+    get: {
+      parameters: {
+        query?: {
+          top_n?: number;
+          /** @description When true, rebuild trust_interaction_edge_weights before comparing. */
+          refresh?: boolean;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Rank correlation and top-N overlap report */
         200: {
           headers: {
             [name: string]: unknown;

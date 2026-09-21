@@ -22,7 +22,8 @@ export async function searchNotesTab(
     q: normalizedQueryText,
     limit: query.limit,
     offset: query.offset,
-  } satisfies Pick<SearchQuery, "q" | "limit" | "offset">;
+    cursor: query.cursor,
+  } satisfies Pick<SearchQuery, "q" | "limit" | "offset" | "cursor">;
 
   const notesResponse = await fetchSearchNotes(searchQuery, cacheClass);
   const notes = await withSearchEngagementCounts(

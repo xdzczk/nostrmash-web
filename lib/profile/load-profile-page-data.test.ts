@@ -105,7 +105,12 @@ describe("loadProfilePageData", () => {
     expect(data.notes).toHaveLength(1);
     expect(data.relatedProfiles).toHaveLength(1);
     expect(mocked.getProfile).not.toHaveBeenCalled();
-    expect(mocked.getAuthorEvents).toHaveBeenCalled();
+    // kind=1 keeps reposts/reactions/long-form from consuming the notes budget.
+    expect(mocked.getAuthorEvents).toHaveBeenCalledWith(
+      expect.any(String),
+      "shortTtl",
+      expect.objectContaining({ kind: 1 })
+    );
   });
 
   it("captures summary failures as a user-facing error message", async () => {

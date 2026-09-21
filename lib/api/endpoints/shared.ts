@@ -8,6 +8,8 @@ export interface SearchQuery {
   tab?: "all" | "notes" | "profiles";
   limit?: number;
   offset?: number;
+  /** Opaque continuation token from a prior response's next_cursor. */
+  cursor?: string;
   /** Opt-in search bundle extras, e.g. "suggest". */
   include?: string;
 }
@@ -79,6 +81,8 @@ export interface CursorQuery {
   limit?: number;
   offset?: number;
   window?: string;
+  /** Optional Nostr kind filter (e.g. 1 for short text notes). */
+  kind?: number;
 }
 
 export interface OffsetQuery {
@@ -169,12 +173,15 @@ export function toSearchCursor(value: unknown): string | undefined {
 }
 
 export function buildSearchQuery(
-  query: Pick<SearchQuery, "q" | "limit" | "offset">
+  query: Pick<SearchQuery, "q" | "limit" | "offset" | "cursor">
 ): Record<string, string | number | undefined> {
+  // cursor and offset are mutually exclusive on the backend; the cursor
+  // already encodes the continuation position.
   return {
     q: query.q,
     limit: query.limit,
-    offset: query.offset,
+    offset: query.cursor ? undefined : query.offset,
+    cursor: query.cursor,
   };
 }
 
@@ -281,5 +288,6 @@ export function buildCursorQuery(
     limit: query.limit,
     offset: query.offset,
     window: query.window,
+    kind: query.kind,
   };
 }

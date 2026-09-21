@@ -5,12 +5,15 @@ export function parseSearchQuery(raw: Record<string, string | string[] | undefin
   const tab = toSingle(raw.tab);
   const limit = parsePositiveInt(toSingle(raw.limit));
   const offset = parseNonNegativeInt(toSingle(raw.offset));
+  const cursor = toSingle(raw.cursor)?.trim();
 
   return {
     q,
     tab: tab === "notes" || tab === "profiles" || tab === "all" ? tab : "all",
     limit: clamp(limit ?? 20, 1, 100),
-    offset: clamp(offset ?? 0, 0, 5000),
+    // cursor and offset are mutually exclusive; the cursor wins.
+    offset: cursor ? 0 : clamp(offset ?? 0, 0, 5000),
+    cursor: cursor && cursor.length > 0 ? cursor : undefined,
   };
 }
 

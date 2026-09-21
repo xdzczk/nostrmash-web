@@ -55,6 +55,53 @@ describe("getSearch", () => {
     expect(mockedGetNoteSummary).toHaveBeenCalledWith(noteId, "shortTtl");
   });
 
+  it("passes the cursor to the notes search request and surfaces next_cursor", async () => {
+    mockedFetch.mockResolvedValueOnce({
+      notes: [
+        { id: noteId, pubkey, kind: 1, created_at: 1_700_000_000, content: "cursor page hit" },
+      ],
+      offset: 20,
+      next_cursor: "cursor_page_3",
+      total: 41,
+    });
+
+    const result = await getSearch({ q: "nostr", tab: "notes", limit: 1, cursor: "cursor_page_2" });
+
+    const [, options] = mockedFetch.mock.calls[0]!;
+    expect(options?.query).toMatchObject({
+      q: "nostr",
+      cursor: "cursor_page_2",
+      offset: undefined,
+    });
+    expect(result.next_cursor).toBe("cursor_page_3");
+    expect(result.surface_cursors?.notes).toBe("cursor_page_3");
+  });
+
+  it("passes the cursor to the profiles search request and surfaces next_cursor", async () => {
+    mockedFetch.mockResolvedValueOnce({
+      profiles: [{ pubkey, display_name: "Ada" }],
+      offset: 20,
+      next_cursor: "profile_cursor_2",
+      total: 30,
+    });
+
+    const result = await getSearch({
+      q: "ada",
+      tab: "profiles",
+      limit: 1,
+      cursor: "profile_cursor_1",
+    });
+
+    const [, options] = mockedFetch.mock.calls[0]!;
+    expect(options?.query).toMatchObject({
+      q: "ada",
+      cursor: "profile_cursor_1",
+      offset: undefined,
+    });
+    expect(result.next_cursor).toBe("profile_cursor_2");
+    expect(result.surface_cursors?.profiles).toBe("profile_cursor_2");
+  });
+
   it("returns profiles-tab results and falls back to direct profile lookup", async () => {
     mockedFetch.mockResolvedValueOnce({
       profiles: [],

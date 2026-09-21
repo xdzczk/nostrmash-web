@@ -20,7 +20,8 @@ export async function searchProfilesTab(
     q: normalizedProfileQueryText,
     limit: query.limit,
     offset: query.offset,
-  } satisfies Pick<SearchQuery, "q" | "limit" | "offset">;
+    cursor: query.cursor,
+  } satisfies Pick<SearchQuery, "q" | "limit" | "offset" | "cursor">;
 
   const profilesResponse = await fetchSearchProfiles(profileSearchQuery, cacheClass);
   const profiles = normalizeProfiles(profilesResponse.profiles);

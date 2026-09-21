@@ -196,7 +196,9 @@ export async function loadProfileActivityData(
     muteListResult,
     mutedByResult,
   ] = await Promise.allSettled([
-    getAuthorEvents(lookupKey, "shortTtl", { cursor: params.notesCursor }),
+    // kind=1 keeps reposts/reactions/long-form from consuming the notes-tab
+    // budget; filterAuthoredNotes below still removes kind-1 replies.
+    getAuthorEvents(lookupKey, "shortTtl", { cursor: params.notesCursor, kind: 1 }),
     params.shouldLoadReplies
       ? getAuthorReplies(lookupKey, "shortTtl", { cursor: params.repliesCursor })
       : Promise.resolve(null),

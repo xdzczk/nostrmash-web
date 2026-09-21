@@ -136,23 +136,32 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
     hashtags: activeTab === "all",
     relays: activeTab === "all",
   };
-  const searchHref = (overrides: Partial<{ tab: SearchTab; offset: number | undefined }>) => {
+  const searchHref = (
+    overrides: Partial<{ tab: SearchTab; offset: number | undefined; cursor: string | undefined }>
+  ) => {
     const params = new URLSearchParams();
     params.set("q", query.q);
     params.set("tab", overrides.tab ?? activeTab);
     if (typeof query.limit === "number") {
       params.set("limit", String(query.limit));
     }
-    const offsetValue = overrides.offset;
-    if (typeof offsetValue === "number" && offsetValue > 0) {
-      params.set("offset", String(offsetValue));
+    // cursor and offset are mutually exclusive; the cursor wins.
+    if (typeof overrides.cursor === "string" && overrides.cursor.length > 0) {
+      params.set("cursor", overrides.cursor);
+    } else if (typeof overrides.offset === "number" && overrides.offset > 0) {
+      params.set("offset", String(overrides.offset));
     }
     return `/search?${params.toString()}`;
   };
+  const surfaceCursors = payload?.surface_cursors ?? {};
   const notesNextOffset =
     surfaceOffsets.notes ?? (activeTab === "notes" ? payload?.next_offset : undefined);
   const profilesNextOffset =
     surfaceOffsets.profiles ?? (activeTab === "profiles" ? payload?.next_offset : undefined);
+  const notesNextCursor =
+    surfaceCursors.notes ?? (activeTab === "notes" ? payload?.next_cursor : undefined);
+  const profilesNextCursor =
+    surfaceCursors.profiles ?? (activeTab === "profiles" ? payload?.next_cursor : undefined);
   const notesFailed = typeof surfaceErrors.notes === "string" && surfaceErrors.notes.length > 0;
   const profilesFailed =
     typeof surfaceErrors.profiles === "string" && surfaceErrors.profiles.length > 0;
@@ -280,9 +289,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               ) : (
                 <EmptyState message={`No note hits for "${query.q}".`} />
               )}
-              {typeof notesNextOffset === "number" ? (
+              {typeof notesNextCursor === "string" || typeof notesNextOffset === "number" ? (
                 <Link
-                  href={searchHref({ tab: "notes", offset: notesNextOffset })}
+                  href={searchHref({
+                    tab: "notes",
+                    cursor: notesNextCursor,
+                    offset: notesNextOffset,
+                  })}
                   className="text-link mt-3 inline-block text-sm"
                 >
                   Continue notes search
@@ -303,9 +316,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               ) : (
                 <EmptyState message={`No profile hits for "${query.q}".`} />
               )}
-              {typeof profilesNextOffset === "number" ? (
+              {typeof profilesNextCursor === "string" || typeof profilesNextOffset === "number" ? (
                 <Link
-                  href={searchHref({ tab: "profiles", offset: profilesNextOffset })}
+                  href={searchHref({
+                    tab: "profiles",
+                    cursor: profilesNextCursor,
+                    offset: profilesNextOffset,
+                  })}
                   className="text-link mt-3 inline-block text-sm"
                 >
                   Continue profiles search
