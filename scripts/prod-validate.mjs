@@ -103,6 +103,20 @@ await check("sitemap.xml", async () => {
   if (!text.includes("<urlset")) throw new Error("missing urlset");
 });
 
+await check("backend API reachable from datacenter clients", async () => {
+  // The worker builds feeds by calling api.nostrmash.com from Cloudflare
+  // datacenter IPs; feed readers and integrators hit it from server IPs too.
+  // A bot-management challenge here breaks both, so probe it directly.
+  const response = await fetchWithRetry(
+    "https://api.nostrmash.com/api/v1/discovery/notes/trending?window=24h&limit=1"
+  );
+  if (!response.ok) throw new Error(await describeFailure(response));
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    throw new Error(`expected JSON, got ${contentType}`);
+  }
+});
+
 await check("trending notes RSS", async () => {
   const { text, contentType } = await fetchText("/feeds/trending-notes.xml");
   if (!/rss|xml/i.test(contentType)) throw new Error(`unexpected type ${contentType}`);
