@@ -28,6 +28,9 @@ import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 type Params = Promise<{ hashtag: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
+/** Windows the hashtag notes API accepts. */
+const HASHTAG_NOTES_WINDOWS = new Set(["24h", "7d", "30d", "all"]);
+
 function normalizeHashtagParam(value: string): string {
   return decodeURIComponent(value).trim().replace(/^#/, "").toLowerCase();
 }
@@ -60,6 +63,11 @@ export default async function HashtagNotesPage({
   const rawLimit = Number.parseInt(readSearchParam(resolvedSearchParams, "limit") ?? "", 10);
   const notesLimit =
     Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, MAX_LIST_LIMIT) : 20;
+  // The API defaults to a 24h window, which starves quieter hashtags (and
+  // hides history on popular ones). This page is the "see everything"
+  // surface, so default to all-time; ?window= still narrows it.
+  const rawWindow = readSearchParam(resolvedSearchParams, "window");
+  const notesWindow = rawWindow && HASHTAG_NOTES_WINDOWS.has(rawWindow) ? rawWindow : "all";
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   const errors: string[] = [];
   let hashtagNotesPayload: Awaited<ReturnType<typeof getHashtagNotes>> | null = null;
@@ -92,7 +100,11 @@ export default async function HashtagNotesPage({
   }
 
   const [notesResult, relatedResult] = await Promise.allSettled([
-    getHashtagNotes(normalizedHashtag, "shortTtl", { cursor: notesCursor, limit: notesLimit }),
+    getHashtagNotes(normalizedHashtag, "shortTtl", {
+      cursor: notesCursor,
+      limit: notesLimit,
+      window: notesWindow,
+    }),
     getRelatedHashtags(normalizedHashtag, "shortTtl"),
   ]);
 
@@ -119,8 +131,9 @@ export default async function HashtagNotesPage({
   );
   // "Show more" appends the next cursor page in place via a server action,
   // preserving the reader's scroll position; the cursor link below remains
-  // as a no-JS fallback.
-  const loadMoreNotes = loadMoreHashtagNotes.bind(null, normalizedHashtag, notesLimit);
+  // as a no-JS fallback. The window must match the fetch above because the
+  // backend scopes continuation cursors to hashtag+sort+window.
+  const loadMoreNotes = loadMoreHashtagNotes.bind(null, normalizedHashtag, notesLimit, notesWindow);
   const semantics = extractNativeApiSemantics(hashtagNotesPayload, relatedHashtagsPayload);
 
   if (notes.length > 0) {
