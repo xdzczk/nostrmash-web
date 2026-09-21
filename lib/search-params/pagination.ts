@@ -28,6 +28,23 @@ export function toUrlSearchParams(params: RouteSearchParams): URLSearchParams {
   return searchParams;
 }
 
+/** Maximum page size the backend list endpoints accept. */
+export const MAX_LIST_LIMIT = 100;
+
+/**
+ * Next page size for a "Show more" control that grows the visible list in
+ * place (20 → 60 → 100) before cursor-based continuation takes over.
+ * Returns undefined once the backend's per-request cap is reached.
+ */
+export function nextShowMoreLimit(
+  current: number,
+  step = 40,
+  max = MAX_LIST_LIMIT
+): number | undefined {
+  if (current >= max) return undefined;
+  return Math.min(current + step, max);
+}
+
 export function buildContinuationHref(
   route: string,
   current: URLSearchParams,

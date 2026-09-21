@@ -15,7 +15,9 @@ import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { isValidHashtag } from "@/lib/hashtags";
 import {
+  MAX_LIST_LIMIT,
   buildContinuationHref,
+  nextShowMoreLimit,
   readSearchParam,
   toUrlSearchParams,
 } from "@/lib/search-params/pagination";
@@ -54,6 +56,9 @@ export default async function HashtagNotesPage({
   const normalizedHashtag = normalizeHashtagParam(hashtag);
   const resolvedSearchParams = await searchParams;
   const notesCursor = readSearchParam(resolvedSearchParams, "cursor");
+  const rawLimit = Number.parseInt(readSearchParam(resolvedSearchParams, "limit") ?? "", 10);
+  const notesLimit =
+    Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, MAX_LIST_LIMIT) : 20;
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   const errors: string[] = [];
   let hashtagNotesPayload: Awaited<ReturnType<typeof getHashtagNotes>> | null = null;
@@ -86,7 +91,7 @@ export default async function HashtagNotesPage({
   }
 
   const [notesResult, relatedResult] = await Promise.allSettled([
-    getHashtagNotes(normalizedHashtag, "shortTtl", { cursor: notesCursor }),
+    getHashtagNotes(normalizedHashtag, "shortTtl", { cursor: notesCursor, limit: notesLimit }),
     getRelatedHashtags(normalizedHashtag, "shortTtl"),
   ]);
 
@@ -104,12 +109,20 @@ export default async function HashtagNotesPage({
   const notes = hashtagNotesPayload?.notes ?? [];
   const relatedHashtags = relatedHashtagsPayload?.related ?? relatedHashtagsPayload?.hashtags ?? [];
   const notesNextCursor = hashtagNotesPayload?.next_cursor;
+  const notesRoute = `/hashtags/${encodeURIComponent(normalizedHashtag)}/notes`;
   const notesContinuationHref = buildContinuationHref(
-    `/hashtags/${encodeURIComponent(normalizedHashtag)}/notes`,
+    notesRoute,
     currentSearchParams,
     "cursor",
     notesNextCursor
   );
+  // "Show more" grows the page size in place (20 → 60 → 100, the backend
+  // cap) before cursor continuation takes over; a full page suggests more.
+  const bumpedLimit = nextShowMoreLimit(notesLimit);
+  const showMoreNotesHref =
+    bumpedLimit !== undefined && notes.length >= notesLimit
+      ? buildContinuationHref(notesRoute, currentSearchParams, "limit", String(bumpedLimit))
+      : undefined;
   const semantics = extractNativeApiSemantics(hashtagNotesPayload, relatedHashtagsPayload);
 
   if (notes.length > 0) {
@@ -170,15 +183,28 @@ export default async function HashtagNotesPage({
         {notes.length > 0 ? (
           <>
             <NotesList notes={notes} authorsByPubkey={authorsByPubkey} />
-            {typeof notesNextCursor === "string" && notesNextCursor.length > 0 ? (
+            {showMoreNotesHref ||
+            (typeof notesNextCursor === "string" && notesNextCursor.length > 0) ? (
               <div className="border-accent/30 bg-accent/10 mt-4 rounded-md border p-3">
                 <p className="text-accent-ink text-xs">More notes are available.</p>
-                <Link
-                  href={notesContinuationHref}
-                  className="border-accent/40 text-link-hover hover:text-accent-ink mt-2 inline-block rounded-full border px-3 py-1 text-xs"
-                >
-                  Continue notes
-                </Link>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {showMoreNotesHref ? (
+                    <Link
+                      href={showMoreNotesHref}
+                      className="border-accent/40 text-link-hover hover:text-accent-ink inline-block rounded-full border px-3 py-1 text-xs"
+                    >
+                      Show more on this page
+                    </Link>
+                  ) : null}
+                  {typeof notesNextCursor === "string" && notesNextCursor.length > 0 ? (
+                    <Link
+                      href={notesContinuationHref}
+                      className="border-accent/40 text-link-hover hover:text-accent-ink inline-block rounded-full border px-3 py-1 text-xs"
+                    >
+                      Continue notes
+                    </Link>
+                  ) : null}
+                </div>
               </div>
             ) : null}
           </>
