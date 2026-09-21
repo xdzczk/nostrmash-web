@@ -1,28 +1,32 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("hashtag notes Show more", () => {
-  test("appends the next page in place without scrolling to the top", async ({ page }) => {
+  test("appends every page in place without scrolling to the top", async ({ page }) => {
     await page.goto("/hashtags/nostr/notes");
 
     const showMore = page.getByRole("button", { name: /show more notes/i });
     await expect(showMore).toBeVisible();
 
-    // Read below the fold so a scroll reset would be observable.
-    await showMore.scrollIntoViewIfNeeded();
-    const scrollBefore = await page.evaluate(() => window.scrollY);
+    // The mock serves a chain of pages 2..5; click through all of them and
+    // assert the scroll position survives every append, not just the first.
+    for (let pageNumber = 2; pageNumber <= 5; pageNumber += 1) {
+      await showMore.scrollIntoViewIfNeeded();
+      const scrollBefore = await page.evaluate(() => window.scrollY);
 
-    await showMore.click();
-    await expect(page.getByText("Second page mock note for hashtag pagination")).toBeVisible();
+      await showMore.click();
+      await expect(page.getByText(`Mock hashtag pagination page ${pageNumber}`)).toBeVisible();
 
-    // First-page content is still present above the appended chunk.
+      const scrollAfter = await page.evaluate(() => window.scrollY);
+      expect(
+        Math.abs(scrollAfter - scrollBefore),
+        `scroll jumped on append of page ${pageNumber}`
+      ).toBeLessThan(200);
+    }
+
+    // First-page content is still present above the appended chunks, the
+    // URL never changed, and the exhausted cursor hides the button.
     await expect(page.getByText(/hello/i).first()).toBeVisible();
-
-    // No navigation happened and the reader kept their position.
     expect(page.url()).toContain("/hashtags/nostr/notes");
-    const scrollAfter = await page.evaluate(() => window.scrollY);
-    expect(Math.abs(scrollAfter - scrollBefore)).toBeLessThan(200);
-
-    // The mock's second page has no cursor, so the button disappears.
     await expect(showMore).toBeHidden();
   });
 });

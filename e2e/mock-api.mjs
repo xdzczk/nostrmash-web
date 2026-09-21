@@ -265,27 +265,35 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (path.startsWith("/api/v1/discovery/hashtags/") && path.endsWith("/notes")) {
-    // Cursor pagination: the first page advertises a continuation, the
-    // second page is distinct so Show more append tests can assert on it.
-    if (url.searchParams.get("cursor") === "mock_hashtag_cursor") {
-      return json(res, 200, {
+    // Cursor pagination: a chain of pages so Show more append tests can
+    // click repeatedly. Page N advertises the cursor for page N+1; the
+    // final page has no cursor.
+    const lastMockPage = 5;
+    const cursorMatch = /^mock_hashtag_cursor_(\d+)$/.exec(url.searchParams.get("cursor") ?? "");
+    if (cursorMatch) {
+      const pageNumber = Number(cursorMatch[1]);
+      const body = {
         hashtag: "nostr",
         notes: [
           {
-            id: "d".repeat(64),
+            id: String(pageNumber).repeat(64).slice(0, 64),
             pubkey: AUTHOR_PK,
             kind: 1,
-            created_at: 1_699_990_000,
-            content: "Second page mock note for hashtag pagination",
+            created_at: 1_699_990_000 - pageNumber,
+            content: `Mock hashtag pagination page ${pageNumber}`,
           },
         ],
         consistency: "eventual",
-      });
+      };
+      if (pageNumber < lastMockPage) {
+        body.next_cursor = `mock_hashtag_cursor_${pageNumber + 1}`;
+      }
+      return json(res, 200, body);
     }
     return json(res, 200, {
       hashtag: "nostr",
       notes: trendingNotes,
-      next_cursor: "mock_hashtag_cursor",
+      next_cursor: "mock_hashtag_cursor_2",
       consistency: "eventual",
     });
   }
