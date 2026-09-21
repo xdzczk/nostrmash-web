@@ -274,8 +274,16 @@ export async function fetchApiJson<T>(
     );
     reportUpstreamFailure(apiError, path, apiError.requestId ?? outboundRequestId);
 
+    // Cloudflare Bot Fight Mode intermittently issues managed challenges to
+    // this worker's own subrequests (it scores Workers egress as bot traffic
+    // and cannot be skipped by custom WAF rules on the free plan). A
+    // challenge page is not a real API 403, so treat it as transient and
+    // serve last-known-good instead of failing the render.
+    const isEdgeChallenge =
+      apiError.status === 403 && response.headers.get("cf-mitigated") === "challenge";
+
     // Serve LKG for transient upstream failures; keep throwing for client/auth errors.
-    if (apiError.status === 429 || apiError.status >= 500) {
+    if (apiError.status === 429 || apiError.status >= 500 || isEdgeChallenge) {
       return tryServeLastKnownGood(apiError);
     }
     throw apiError;

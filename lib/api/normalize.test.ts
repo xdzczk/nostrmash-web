@@ -5,6 +5,8 @@ import {
   isHiddenNoteKind,
   normalizeEventRecord,
   normalizeEventRecords,
+  normalizeHashtagDetailResponse,
+  normalizeHashtagNotesResponse,
   normalizeProfile,
 } from "./normalize";
 import { profileLabel, profilePictureUrl } from "../../components/explorer/utils";
@@ -297,5 +299,57 @@ describe("npub helpers", () => {
     const npub = hexToNpub(pubkey);
     expect(npub).not.toBeNull();
     expect(npubToHex(npub ?? "")).toBe(pubkey);
+  });
+});
+
+describe("normalizeHashtagDetailResponse", () => {
+  it("maps nested summary activity counts into mentions and unique authors", () => {
+    const payload = normalizeHashtagDetailResponse({
+      hashtag: "nostr",
+      activity: {
+        "24h": { event_count: 312, unique_authors: 120 },
+        all: { event_count: 4821, unique_authors: 950 },
+      },
+    });
+
+    expect(payload.count).toBe(4821);
+    expect(payload.event_count).toBe(4821);
+    expect(payload.unique_authors).toBe(950);
+  });
+
+  it("prefers explicit top-level counts over activity", () => {
+    const payload = normalizeHashtagDetailResponse({
+      hashtag: "nostr",
+      count: 7,
+      unique_authors: 3,
+      activity: { all: { event_count: 4821, unique_authors: 950 } },
+    });
+
+    expect(payload.count).toBe(7);
+    expect(payload.unique_authors).toBe(3);
+  });
+});
+
+describe("normalizeHashtagNotesResponse", () => {
+  it("does not fabricate a total from the returned page size", () => {
+    const payload = normalizeHashtagNotesResponse({
+      hashtag: "nostr",
+      notes: [{ id: "ab".repeat(32), pubkey: "cd".repeat(32), kind: 1, content: "hi" }],
+    });
+
+    expect(payload.total).toBeUndefined();
+    expect(payload.notes).toHaveLength(1);
+  });
+
+  it("keeps a backend-reported total and next_cursor", () => {
+    const payload = normalizeHashtagNotesResponse({
+      hashtag: "nostr",
+      notes: [],
+      total: 4821,
+      next_cursor: "opaque_token",
+    });
+
+    expect(payload.total).toBe(4821);
+    expect(payload.next_cursor).toBe("opaque_token");
   });
 });

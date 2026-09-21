@@ -61,8 +61,19 @@ export function normalizeHashtagDetailResponse(value: unknown): HashtagDetailRes
       asRecord(record.context)?.notes ??
       asRecord(record.context)?.events
   );
-  const count = asNumber(record.count) ?? asNumber(record.event_count) ?? asNumber(record.total);
-  const uniqueAuthors = asNumber(record.unique_authors) ?? asNumber(record.unique_profiles);
+  // The summary endpoint reports true mention counts nested under
+  // activity.{24h,7d,30d,all}; without reading them this fell back to the
+  // notes payload's page size and showed "mentions: 20" for any hashtag.
+  const allActivity = asRecord(asRecord(record.activity)?.all);
+  const count =
+    asNumber(record.count) ??
+    asNumber(record.event_count) ??
+    asNumber(allActivity?.event_count) ??
+    asNumber(record.total);
+  const uniqueAuthors =
+    asNumber(record.unique_authors) ??
+    asNumber(record.unique_profiles) ??
+    asNumber(allActivity?.unique_authors);
   const total = asNumber(record.total) ?? (notes.length > 0 ? notes.length : undefined);
 
   return compactDefined({
@@ -87,7 +98,9 @@ export function normalizeHashtagNotesResponse(value: unknown): HashtagNotesRespo
   const notes = normalizeEventRecords(
     record.notes ?? record.events ?? record.items ?? record.data ?? asRecord(record.context)?.notes
   );
-  const total = asNumber(record.total) ?? (notes.length > 0 ? notes.length : undefined);
+  // Only surface a total the backend actually reported. Falling back to the
+  // returned page size dressed the 20-item default up as a "total".
+  const total = asNumber(record.total);
 
   return compactDefined({
     ...record,

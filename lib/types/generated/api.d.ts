@@ -1947,6 +1947,8 @@ export interface paths {
           window?: "24h" | "7d" | "30d" | "all";
           limit?: number;
           offset?: number;
+          /** @description Opaque continuation token from a previous response's `next_cursor`. Mutually exclusive with `offset`; scoped to the same hashtag, sort, and window. */
+          cursor?: string;
         };
         header?: never;
         path: {
@@ -1956,7 +1958,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Hashtag notes list with trust metadata (`trust_mode`, `trust_applied`, `result_scope`) */
+        /** @description Hashtag notes list with trust metadata (`trust_mode`, `trust_applied`, `result_scope`). Includes `next_cursor` when another page is available. */
         200: {
           headers: {
             [name: string]: unknown;

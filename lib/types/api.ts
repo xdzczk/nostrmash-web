@@ -299,6 +299,7 @@ export interface HashtagNotesResponse extends NativeApiSemantics {
   hashtag?: string;
   notes?: EventRecord[];
   total?: number;
+  next_cursor?: string;
   [key: string]: unknown;
 }
 
