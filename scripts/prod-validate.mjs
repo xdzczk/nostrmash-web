@@ -63,10 +63,28 @@ async function check(name, fn) {
   }
 }
 
+/** Summarize a failed response so CI logs show *why* (edge vs app, ray id). */
+async function describeFailure(response) {
+  const headers = ["cf-ray", "cf-mitigated", "server", "content-type"]
+    .map((name) => {
+      const value = response.headers.get(name);
+      return value ? `${name}=${value}` : null;
+    })
+    .filter(Boolean)
+    .join(" ");
+  let body = "";
+  try {
+    body = (await response.text()).replace(/\s+/g, " ").slice(0, 200);
+  } catch {
+    // ignore unreadable bodies
+  }
+  return `HTTP ${response.status} [${headers}] body: ${body}`;
+}
+
 async function fetchText(path, expectedType) {
   const response = await fetchWithRetry(`${baseUrl}${path}`);
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+    throw new Error(await describeFailure(response));
   }
   const contentType = response.headers.get("content-type") ?? "";
   if (expectedType && !contentType.includes(expectedType)) {
