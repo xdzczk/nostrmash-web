@@ -19,8 +19,9 @@ import {
   fetchProfilesByPubkey,
   hydrateProfiles,
 } from "@/lib/api/profile-hydration";
+import { loadMoreSearchNotes, loadMoreSearchProfiles } from "@/app/search/actions";
+import { LoadMoreList } from "@/components/data/load-more-list";
 import { isValidHashtag } from "@/lib/hashtags";
-import { nextShowMoreLimit } from "@/lib/search-params/pagination";
 import { parseSearchQuery } from "@/lib/search-params/search";
 import type { Profile } from "@/lib/types/api";
 import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
@@ -191,28 +192,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   const notesAvailable = (payload?.notes?.length ?? 0) > 0;
   const profilesAvailable = hydratedProfiles.length > 0;
   const suggestedProfilesAvailable = hydratedSuggestedProfiles.length > 0;
-  // "Show more" grows the visible list in place (20 → 60 → 100) before the
-  // cursor-based "Continue" takes over; a full page suggests more rows exist.
+  // "Show more" appends the next cursor page in place via a server action,
+  // so the reader's scroll position is preserved; the cursor links below
+  // remain as a no-JS fallback.
   const currentLimit = query.limit ?? 20;
-  const bumpedLimit = nextShowMoreLimit(currentLimit);
-  const showMoreNotesHref =
-    bumpedLimit !== undefined && (payload?.notes?.length ?? 0) >= currentLimit
-      ? searchHref({
-          tab: activeTab === "all" ? "all" : "notes",
-          limit: bumpedLimit,
-          cursor: activeTab === "all" ? undefined : query.cursor,
-          offset: activeTab === "all" ? undefined : query.offset,
-        })
-      : undefined;
-  const showMoreProfilesHref =
-    bumpedLimit !== undefined && hydratedProfiles.length >= currentLimit
-      ? searchHref({
-          tab: activeTab === "all" ? "all" : "profiles",
-          limit: bumpedLimit,
-          cursor: activeTab === "all" ? undefined : query.cursor,
-          offset: activeTab === "all" ? undefined : query.offset,
-        })
-      : undefined;
+  const loadMoreNotes = loadMoreSearchNotes.bind(null, query.q, currentLimit);
+  const loadMoreProfiles = loadMoreSearchProfiles.bind(null, query.q, currentLimit);
   return (
     <div className="space-y-8">
       <PageHero
@@ -332,29 +317,29 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               ) : (
                 <EmptyState message={`No note hits for "${query.q}".`} />
               )}
-              <div className="mt-3 flex flex-wrap gap-4">
-                {showMoreNotesHref ? (
-                  <Link
-                    href={showMoreNotesHref}
-                    scroll={false}
-                    className="text-link inline-block text-sm"
-                  >
-                    Show more notes
-                  </Link>
-                ) : null}
-                {typeof notesNextCursor === "string" || typeof notesNextOffset === "number" ? (
+              {notesAvailable &&
+              typeof notesNextCursor === "string" &&
+              notesNextCursor.length > 0 ? (
+                <LoadMoreList
+                  initialCursor={notesNextCursor}
+                  loadMore={loadMoreNotes}
+                  label="Show more notes"
+                />
+              ) : null}
+              {typeof notesNextCursor === "string" || typeof notesNextOffset === "number" ? (
+                <noscript>
                   <Link
                     href={searchHref({
                       tab: "notes",
                       cursor: notesNextCursor,
                       offset: notesNextOffset,
                     })}
-                    className="text-link inline-block text-sm"
+                    className="text-link mt-3 inline-block text-sm"
                   >
                     Continue notes search
                   </Link>
-                ) : null}
-              </div>
+                </noscript>
+              ) : null}
             </SectionCard>
           ) : null}
 
@@ -370,30 +355,29 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               ) : (
                 <EmptyState message={`No profile hits for "${query.q}".`} />
               )}
-              <div className="mt-3 flex flex-wrap gap-4">
-                {showMoreProfilesHref ? (
-                  <Link
-                    href={showMoreProfilesHref}
-                    scroll={false}
-                    className="text-link inline-block text-sm"
-                  >
-                    Show more profiles
-                  </Link>
-                ) : null}
-                {typeof profilesNextCursor === "string" ||
-                typeof profilesNextOffset === "number" ? (
+              {profilesAvailable &&
+              typeof profilesNextCursor === "string" &&
+              profilesNextCursor.length > 0 ? (
+                <LoadMoreList
+                  initialCursor={profilesNextCursor}
+                  loadMore={loadMoreProfiles}
+                  label="Show more profiles"
+                />
+              ) : null}
+              {typeof profilesNextCursor === "string" || typeof profilesNextOffset === "number" ? (
+                <noscript>
                   <Link
                     href={searchHref({
                       tab: "profiles",
                       cursor: profilesNextCursor,
                       offset: profilesNextOffset,
                     })}
-                    className="text-link inline-block text-sm"
+                    className="text-link mt-3 inline-block text-sm"
                   >
                     Continue profiles search
                   </Link>
-                ) : null}
-              </div>
+                </noscript>
+              ) : null}
             </SectionCard>
           ) : null}
 

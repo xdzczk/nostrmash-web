@@ -14,10 +14,11 @@ import { getHashtagNotes, getRelatedHashtags } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { isValidHashtag } from "@/lib/hashtags";
+import { loadMoreHashtagNotes } from "@/app/hashtags/[hashtag]/notes/actions";
+import { LoadMoreList } from "@/components/data/load-more-list";
 import {
   MAX_LIST_LIMIT,
   buildContinuationHref,
-  nextShowMoreLimit,
   readSearchParam,
   toUrlSearchParams,
 } from "@/lib/search-params/pagination";
@@ -116,13 +117,10 @@ export default async function HashtagNotesPage({
     "cursor",
     notesNextCursor
   );
-  // "Show more" grows the page size in place (20 → 60 → 100, the backend
-  // cap) before cursor continuation takes over; a full page suggests more.
-  const bumpedLimit = nextShowMoreLimit(notesLimit);
-  const showMoreNotesHref =
-    bumpedLimit !== undefined && notes.length >= notesLimit
-      ? buildContinuationHref(notesRoute, currentSearchParams, "limit", String(bumpedLimit))
-      : undefined;
+  // "Show more" appends the next cursor page in place via a server action,
+  // preserving the reader's scroll position; the cursor link below remains
+  // as a no-JS fallback.
+  const loadMoreNotes = loadMoreHashtagNotes.bind(null, normalizedHashtag, notesLimit);
   const semantics = extractNativeApiSemantics(hashtagNotesPayload, relatedHashtagsPayload);
 
   if (notes.length > 0) {
@@ -183,30 +181,22 @@ export default async function HashtagNotesPage({
         {notes.length > 0 ? (
           <>
             <NotesList notes={notes} authorsByPubkey={authorsByPubkey} />
-            {showMoreNotesHref ||
-            (typeof notesNextCursor === "string" && notesNextCursor.length > 0) ? (
-              <div className="border-accent/30 bg-accent/10 mt-4 rounded-md border p-3">
-                <p className="text-accent-ink text-xs">More notes are available.</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {showMoreNotesHref ? (
-                    <Link
-                      href={showMoreNotesHref}
-                      scroll={false}
-                      className="border-accent/40 text-link-hover hover:text-accent-ink inline-block rounded-full border px-3 py-1 text-xs"
-                    >
-                      Show more on this page
-                    </Link>
-                  ) : null}
-                  {typeof notesNextCursor === "string" && notesNextCursor.length > 0 ? (
-                    <Link
-                      href={notesContinuationHref}
-                      className="border-accent/40 text-link-hover hover:text-accent-ink inline-block rounded-full border px-3 py-1 text-xs"
-                    >
-                      Continue notes
-                    </Link>
-                  ) : null}
-                </div>
-              </div>
+            {typeof notesNextCursor === "string" && notesNextCursor.length > 0 ? (
+              <>
+                <LoadMoreList
+                  initialCursor={notesNextCursor}
+                  loadMore={loadMoreNotes}
+                  label="Show more notes"
+                />
+                <noscript>
+                  <Link
+                    href={notesContinuationHref}
+                    className="border-accent/40 text-link-hover hover:text-accent-ink mt-3 inline-block rounded-full border px-3 py-1 text-xs"
+                  >
+                    Continue notes
+                  </Link>
+                </noscript>
+              </>
             ) : null}
           </>
         ) : (

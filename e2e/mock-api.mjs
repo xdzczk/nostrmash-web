@@ -265,7 +265,29 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (path.startsWith("/api/v1/discovery/hashtags/") && path.endsWith("/notes")) {
-    return json(res, 200, { hashtag: "nostr", notes: trendingNotes, consistency: "eventual" });
+    // Cursor pagination: the first page advertises a continuation, the
+    // second page is distinct so Show more append tests can assert on it.
+    if (url.searchParams.get("cursor") === "mock_hashtag_cursor") {
+      return json(res, 200, {
+        hashtag: "nostr",
+        notes: [
+          {
+            id: "d".repeat(64),
+            pubkey: AUTHOR_PK,
+            kind: 1,
+            created_at: 1_699_990_000,
+            content: "Second page mock note for hashtag pagination",
+          },
+        ],
+        consistency: "eventual",
+      });
+    }
+    return json(res, 200, {
+      hashtag: "nostr",
+      notes: trendingNotes,
+      next_cursor: "mock_hashtag_cursor",
+      consistency: "eventual",
+    });
   }
 
   if (path.startsWith("/api/v1/discovery/")) {
