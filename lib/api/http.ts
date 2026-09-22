@@ -81,6 +81,19 @@ const DEFAULT_TIMEOUT_MS: Record<CacheClass, number> = {
   requestTime: 10_000,
 };
 
+/** Backoffs between retries of subrequests that hit a Cloudflare challenge. */
+const CHALLENGE_RETRY_DELAYS_MS = [150, 400];
+
+/**
+ * Bot Fight Mode intermittently issues managed challenges to this worker's
+ * own API subrequests (it scores Workers egress as bot traffic and cannot be
+ * skipped by custom WAF rules on the free plan). A challenge page is not a
+ * real API 403.
+ */
+function isEdgeChallengeResponse(response: Response): boolean {
+  return response.status === 403 && response.headers.get("cf-mitigated") === "challenge";
+}
+
 function buildApiUrl(path: string, query?: URLSearchParams): string {
   const base = appConfig.apiBaseUrl.endsWith("/")
     ? appConfig.apiBaseUrl.slice(0, -1)
@@ -223,9 +236,8 @@ export async function fetchApiJson<T>(
     return entry.payload as T;
   }
 
-  let response: Response;
-  try {
-    response = await traceApiCall(`api:${path}`, async () =>
+  const performFetch = () =>
+    traceApiCall(`api:${path}`, async () =>
       fetch(buildApiUrl(path, query), {
         method: "GET",
         ...toNextFetchConfig(cacheClass),
@@ -238,6 +250,25 @@ export async function fetchApiJson<T>(
         },
       })
     );
+
+  let response: Response;
+  try {
+    response = await performFetch();
+    // Cloudflare Bot Fight Mode scores each of this worker's subrequests
+    // independently, so a challenged response is usually followed by a clean
+    // one. Retry briefly before falling through to LKG — per-entity paths
+    // (like hashtag notes) have no LKG entry, so without the retry a single
+    // challenge fails the whole section render.
+    for (const delayMs of CHALLENGE_RETRY_DELAYS_MS) {
+      if (!isEdgeChallengeResponse(response)) break;
+      try {
+        await response.body?.cancel();
+      } catch {
+        // ignore; the challenge body is small either way
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      response = await performFetch();
+    }
   } catch (error) {
     if (isAbortError(error)) {
       const timeoutError = new Error(`API request timed out after ${timeoutMs}ms: ${path}`);
@@ -274,16 +305,9 @@ export async function fetchApiJson<T>(
     );
     reportUpstreamFailure(apiError, path, apiError.requestId ?? outboundRequestId);
 
-    // Cloudflare Bot Fight Mode intermittently issues managed challenges to
-    // this worker's own subrequests (it scores Workers egress as bot traffic
-    // and cannot be skipped by custom WAF rules on the free plan). A
-    // challenge page is not a real API 403, so treat it as transient and
-    // serve last-known-good instead of failing the render.
-    const isEdgeChallenge =
-      apiError.status === 403 && response.headers.get("cf-mitigated") === "challenge";
-
-    // Serve LKG for transient upstream failures; keep throwing for client/auth errors.
-    if (apiError.status === 429 || apiError.status >= 500 || isEdgeChallenge) {
+    // Serve LKG for transient upstream failures (including challenges that
+    // survived the retry loop above); keep throwing for client/auth errors.
+    if (apiError.status === 429 || apiError.status >= 500 || isEdgeChallengeResponse(response)) {
       return tryServeLastKnownGood(apiError);
     }
     throw apiError;

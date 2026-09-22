@@ -55,6 +55,47 @@ describe("fetchApiJson timeouts", () => {
     expect(isApiTimeoutError(new Error("API 500: boom"))).toBe(false);
   });
 
+  it("retries subrequests that hit a Cloudflare challenge and returns the clean response", async () => {
+    const challenge = () =>
+      new Response("<html>Just a moment...</html>", {
+        status: 403,
+        headers: { "content-type": "text/html", "cf-mitigated": "challenge" },
+      });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(challenge())
+      .mockResolvedValueOnce(challenge())
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ hashtag: "nsfw", notes: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      fetchApiJson("/api/v1/discovery/hashtags/nsfw/notes", { cacheClass: "requestTime" })
+    ).resolves.toMatchObject({ hashtag: "nsfw" });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("throws after persistent challenges when no last-known-good entry exists", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response("<html>Just a moment...</html>", {
+          status: 403,
+          headers: { "content-type": "text/html", "cf-mitigated": "challenge" },
+        })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      fetchApiJson("/api/v1/discovery/hashtags/nsfw/notes", { cacheClass: "requestTime" })
+    ).rejects.toMatchObject({ status: 403 });
+    // Initial attempt plus one retry per configured backoff.
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("records 404/429 as expected (breadcrumb path) without treating them as incidents", async () => {
     vi.stubGlobal(
       "fetch",
