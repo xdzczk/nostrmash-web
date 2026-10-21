@@ -48,19 +48,28 @@ export function DiscoveryPill({
   );
 }
 
+const STAT_PILL_SIZE = {
+  xs: "text-xs",
+  sm: "text-[13px]",
+  md: "text-sm",
+} as const;
+
 export function DiscoveryStatPills({
   stats,
   className = "",
   compact = false,
+  size,
 }: {
   stats: Array<{ label: string; value: unknown; detail?: string }>;
   className?: string;
   compact?: boolean;
+  size?: keyof typeof STAT_PILL_SIZE;
 }) {
   if (stats.length === 0) return null;
+  const sizeClass = STAT_PILL_SIZE[size ?? (compact ? "xs" : "sm")];
   return (
     <div
-      className={`flex flex-wrap items-center gap-x-2.5 gap-y-1.5 ${compact ? "text-xs" : "text-[13px]"} ${className}`.trim()}
+      className={`flex flex-wrap items-center gap-x-2.5 gap-y-1.5 ${sizeClass} ${className}`.trim()}
     >
       {stats.map((metric, index) => (
         <span key={metric.label} className="inline-flex items-center gap-1.5">
@@ -105,7 +114,7 @@ export function DiscoveryActionLinks({
           ) : null}
           <Link
             href={action.href}
-            className="focus-visible:ring-accent-soft/70 text-link hover:text-link-hover rounded-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+            className="focus-visible:ring-accent-soft/70 text-link hover:text-link-hover inline-flex min-h-6 items-center rounded-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
           >
             {action.label}
           </Link>

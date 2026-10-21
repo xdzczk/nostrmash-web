@@ -17,7 +17,7 @@ export function MetadataList({
     >
       {items.map((item) => (
         <div key={item.label} className="space-y-1">
-          <dt className="text-ink-faint text-[11px]">
+          <dt className="text-ink-dim text-xs">
             {normalizeLabels ? formatMetricLabel(item.label) : item.label}
           </dt>
           <dd className="text-ink-soft text-sm break-words">{formatValue(item.value)}</dd>

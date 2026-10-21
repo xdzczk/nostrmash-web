@@ -24,9 +24,21 @@ import { parseEntityWithIdentity } from "@/lib/api/schemas/parse";
 import { normalizeDiscoveryRanking } from "@/lib/api/normalize/ranking";
 
 export function normalizeEventRecord(value: unknown): EventRecord | null {
-  const record = asRecord(value);
-  if (!record) return null;
-  const counts = asRecord(record.counts);
+  const raw = asRecord(value);
+  if (!raw) return null;
+  const counts = asRecord(raw.counts);
+  // Related/activity entries wrap the signed event in an `event` envelope and
+  // only lift a subset of fields to the top level. Fill the gaps from the
+  // envelope so kind-aware rendering (reposts, hidden kinds, threading) works.
+  const envelope = asRecord(raw.event);
+  const record: Record<string, unknown> = { ...raw };
+  if (envelope) {
+    for (const key of ["kind", "tags", "sig", "created_at", "pubkey", "content"] as const) {
+      if (record[key] === undefined && envelope[key] !== undefined) {
+        record[key] = envelope[key];
+      }
+    }
+  }
 
   const id =
     asString(record.id) ??

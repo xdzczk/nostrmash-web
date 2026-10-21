@@ -1,6 +1,6 @@
 import { ArticleReader } from "@/components/explorer/article-reader";
 import { isLongFormEvent } from "@/components/explorer/article-meta";
-import { NoteCard } from "@/components/explorer/note-card";
+import { NoteCard, type NoteCardDensity } from "@/components/explorer/note-card";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
@@ -9,16 +9,27 @@ export function EventReadingSurface({
   event,
   author,
   contentResolution,
+  density = "detail",
+  priorityMedia = false,
 }: {
   event: EventRecord;
   author?: Profile;
   contentResolution?: NoteContentResolution;
+  density?: Exclude<NoteCardDensity, "list">;
+  priorityMedia?: boolean;
 }) {
   if (isLongFormEvent(event)) {
     return <ArticleReader article={event} author={author} contentResolution={contentResolution} />;
   }
 
   return (
-    <NoteCard note={event} author={author} showFullContent contentResolution={contentResolution} />
+    <NoteCard
+      note={event}
+      author={author}
+      showFullContent
+      density={density}
+      priorityMedia={priorityMedia}
+      contentResolution={contentResolution}
+    />
   );
 }

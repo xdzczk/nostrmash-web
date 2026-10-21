@@ -105,7 +105,7 @@ export function ProfileCard({
           {secondaryIdentity && href ? (
             <Link
               href={href}
-              className="text-ink-faint hover:text-ink-muted truncate text-xs"
+              className="text-ink-faint hover:text-ink-muted inline-flex min-h-6 max-w-full items-center truncate text-xs"
               title={secondaryIdentity}
             >
               {truncateIdentifier(secondaryIdentity, identifierKind, "secondary")}

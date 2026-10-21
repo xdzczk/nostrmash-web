@@ -39,7 +39,7 @@ test.describe("product + SEO surfaces", () => {
   test("note page linkifies content and exposes share/OG/JSON-LD", async ({ page }) => {
     await page.goto(`/notes/${FOCAL_ID}`);
 
-    await page.getByText("Open, share, and embed", { exact: true }).click();
+    await page.getByText("Share, open in a client, or embed", { exact: true }).click();
     await expect(page.getByRole("button", { name: /share/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /copy nevent/i })).toBeVisible();
     await expect(page.getByRole("link", { name: "#nostr" }).first()).toHaveAttribute(

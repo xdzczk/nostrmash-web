@@ -17,6 +17,7 @@ import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { fetchProfilesByPubkey, listHydratablePubkeys } from "@/lib/api/profile-hydration";
 import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
+import { resolveReplyParent, resolveReplyRoot } from "@/lib/notes/thread-tree";
 import { readSearchParam, toUrlSearchParams } from "@/lib/search-params/pagination";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
@@ -126,15 +127,21 @@ export async function loadNoteFocalData(eventId: string) {
     ...authorsByPubkey,
   };
 
+  // Prefer the index's thread context; fall back to the event's own NIP-10
+  // tags so replies are still recognised when the summary omits it.
   const threadContextFromSummary = isRecord(noteSummary?.thread) ? noteSummary.thread : {};
   const rootEventId =
     typeof threadContextFromSummary.root_event_id === "string"
       ? threadContextFromSummary.root_event_id
-      : undefined;
+      : focal
+        ? resolveReplyRoot(focal)
+        : undefined;
   const parentEventId =
     typeof threadContextFromSummary.parent_event_id === "string"
       ? threadContextFromSummary.parent_event_id
-      : undefined;
+      : focal
+        ? resolveReplyParent(focal)
+        : undefined;
 
   const compactErrors = errors.filter((value) => value.length > 0);
   const errorMessage =
@@ -241,6 +248,38 @@ export async function loadNoteThreadData(
   };
 }
 
+/** One cursor page of replies only (in-place "Show more replies"). */
+export async function loadRepliesPage(eventId: string, cursor: string) {
+  const payload = await getEventReplies(eventId, "shortTtl", { cursor });
+  const replies = payload.replies ?? [];
+
+  let authorsByPubkey: Record<string, Profile> = {};
+  try {
+    authorsByPubkey = await fetchProfilesByPubkey(
+      listHydratablePubkeys(replies.flatMap((note) => (note.pubkey ? [note.pubkey] : []))),
+      "shortTtl"
+    );
+  } catch {
+    authorsByPubkey = {};
+  }
+
+  const contentResolution = await resolveContentReferences(replies).catch(() => ({
+    profilesByPubkey: {},
+    eventsById: {},
+  }));
+  contentResolution.profilesByPubkey = {
+    ...contentResolution.profilesByPubkey,
+    ...authorsByPubkey,
+  };
+
+  return {
+    authorsByPubkey,
+    contentResolution,
+    replies,
+    repliesNextCursor: payload.next_cursor,
+  };
+}
+
 export async function loadNoteActivityData(
   rootEventId: string,
   resolvedSearchParams: Record<string, string | string[] | undefined>
@@ -254,6 +293,9 @@ export async function loadNoteActivityData(
       threadActivityPayload: null,
       threadSummaryPayload: null,
       authorsByPubkey: {} as Record<string, Profile>,
+      contentResolution: { profilesByPubkey: {}, eventsById: {} } as Awaited<
+        ReturnType<typeof resolveContentReferences>
+      >,
     };
   }
 
@@ -277,11 +319,20 @@ export async function loadNoteActivityData(
   } catch {
     authorsByPubkey = {};
   }
+  const contentResolution = await resolveContentReferences(activity).catch(() => ({
+    profilesByPubkey: {},
+    eventsById: {},
+  }));
+  contentResolution.profilesByPubkey = {
+    ...contentResolution.profilesByPubkey,
+    ...authorsByPubkey,
+  };
 
   return {
     activity,
     activityNextCursor: threadActivityPayload?.next_cursor,
     authorsByPubkey,
+    contentResolution,
     includeThreadActivity: true,
     threadActivityPayload,
     threadSummaryPayload,
@@ -296,6 +347,9 @@ export async function loadNoteRelatedData(
   if (!includeRelatedNotes) {
     return {
       authorsByPubkey: {} as Record<string, Profile>,
+      contentResolution: { profilesByPubkey: {}, eventsById: {} } as Awaited<
+        ReturnType<typeof resolveContentReferences>
+      >,
       includeRelatedNotes: false,
       relatedNextCursor: undefined as string | undefined,
       relatedNotes: [] as EventRecord[],
@@ -320,9 +374,18 @@ export async function loadNoteRelatedData(
   } catch {
     authorsByPubkey = {};
   }
+  const contentResolution = await resolveContentReferences(relatedNotes).catch(() => ({
+    profilesByPubkey: {},
+    eventsById: {},
+  }));
+  contentResolution.profilesByPubkey = {
+    ...contentResolution.profilesByPubkey,
+    ...authorsByPubkey,
+  };
 
   return {
     authorsByPubkey,
+    contentResolution,
     includeRelatedNotes: true,
     relatedNextCursor: relatedPayload?.next_cursor,
     relatedNotes,

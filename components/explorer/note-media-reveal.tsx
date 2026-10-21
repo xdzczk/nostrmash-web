@@ -108,7 +108,12 @@ export function NoteMediaReveal({
             fetchPriority={priority ? "high" : "auto"}
             decoding="async"
             referrerPolicy="no-referrer"
-            className={fill ? "h-full w-full object-cover" : "max-h-[28rem] w-full object-cover"}
+            className={
+              fill
+                ? "h-full w-full object-cover"
+                : // Natural ratio, letterboxed when tall: screenshots stay legible.
+                  "max-h-[40rem] w-full object-contain"
+            }
           />
         </EnlargeableImage>
       ) : null}

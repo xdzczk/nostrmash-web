@@ -181,3 +181,32 @@ describe("NoteCard", () => {
     expect(screen.queryByText(/sats/)).not.toBeInTheDocument();
   });
 });
+
+describe("NoteCard reposts", () => {
+  const REPOST = {
+    id: "00640a99a88846a44d8db324f28d0fbd137f6ca23158a5af0d0bbf9810569fea",
+    pubkey: "8245d2287fda971e7f360512ab11b5c5a96baf5c28cdcff4da6bb347d27a1481",
+    kind: 6,
+    created_at: 1_700_000_100,
+    content: JSON.stringify(NOTE),
+    tags: [
+      ["e", NOTE.id],
+      ["p", NOTE.pubkey],
+    ],
+  };
+  const REPOSTER = { pubkey: REPOST.pubkey, display_name: "Marco", npub: "npub1marco" };
+
+  it("renders the reposter header and the embedded original instead of raw JSON", () => {
+    render(<NoteCard note={REPOST} author={REPOSTER} density="reply" />);
+    expect(screen.getByRole("article", { name: "Repost by Marco" })).toBeInTheDocument();
+    expect(screen.getByText("reposted")).toBeInTheDocument();
+    expect(screen.getByText(/Hello/)).toBeInTheDocument();
+    expect(screen.queryByText(/"kind":/)).not.toBeInTheDocument();
+  });
+
+  it("collapses reposts of the page's own note to a one-line attribution", () => {
+    render(<NoteCard note={REPOST} author={REPOSTER} density="reply" contextEventId={NOTE.id} />);
+    expect(screen.getByText("reposted this note")).toBeInTheDocument();
+    expect(screen.queryByText(/Hello/)).not.toBeInTheDocument();
+  });
+});

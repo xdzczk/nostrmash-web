@@ -79,6 +79,14 @@ function QuoteCard({
   );
 }
 
+export type NoteContentSize = "list" | "reply" | "detail";
+
+const SIZE_CLASS: Record<NoteContentSize, string> = {
+  list: "text-sm leading-5 sm:leading-6",
+  reply: "nm-reply-body",
+  detail: "nm-note-body",
+};
+
 export function NoteContent({
   tokens,
   className = "",
@@ -86,6 +94,7 @@ export function NoteContent({
   resolution,
   hideLinkPreviewUrls = [],
   as: Tag = "div",
+  size = "list",
 }: {
   tokens: NoteToken[];
   className?: string;
@@ -94,12 +103,12 @@ export function NoteContent({
   /** URLs rendered as preview cards; omit from inline link text. */
   hideLinkPreviewUrls?: string[];
   as?: "div" | "span";
+  /** Type scale: list cards stay compact; the detail page reads at prose size. */
+  size?: NoteContentSize;
 }) {
   const hiddenLinks = new Set(hideLinkPreviewUrls);
   return (
-    <Tag
-      className={`text-ink text-sm leading-5 [overflow-wrap:anywhere] sm:leading-6 ${className}`}
-    >
+    <Tag className={`text-ink [overflow-wrap:anywhere] ${SIZE_CLASS[size]} ${className}`}>
       {tokens.map((token, index) => {
         const key = `${token.type}-${index}`;
         switch (token.type) {

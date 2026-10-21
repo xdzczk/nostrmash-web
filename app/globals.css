@@ -391,6 +391,18 @@
   line-height: 1.7;
 }
 
+/* Focal note on the note detail page: comfortable reading size. */
+.nm-note-body {
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.125rem);
+  line-height: 1.6;
+}
+
+/* Replies and ancestors in a thread: a notch above list cards. */
+.nm-reply-body {
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
 .nm-meta {
   color: var(--ink-muted);
   font-size: 0.75rem;

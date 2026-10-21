@@ -60,6 +60,120 @@ const focalNote = {
   },
 };
 
+// --- Note page thread fixtures -------------------------------------------
+// A direct reply, a nested reply (rendered one level deep with "replying to"),
+// two identical replies from one author (folded), a kind-6 repost of another
+// note and a kind-6 repost of the focal note (collapses to one line), plus a
+// second page of replies behind `next_cursor`.
+const REPLIER_PK = "d".repeat(64);
+const NESTED_PK = "e".repeat(64);
+const DUP_PK = "f".repeat(64);
+const REPOSTER_PK = "1".repeat(64);
+const REPLY_A_ID = "2".repeat(64);
+const REPLY_B_ID = "3".repeat(64);
+const DUP_1_ID = "4".repeat(64);
+const DUP_2_ID = "5".repeat(64);
+const REPLY_C_ID = "6".repeat(64);
+const REPLY_D_ID = "9".repeat(64);
+const REPOST_OTHER_ID = "7".repeat(64);
+const REPOST_FOCAL_ID = "8".repeat(64);
+const REPLIES_CURSOR_2 = "mock_replies_cursor_2";
+
+const replyA = {
+  id: REPLY_A_ID,
+  pubkey: REPLIER_PK,
+  kind: 1,
+  created_at: 1_700_000_100,
+  // Media detection requires https; the host never resolves in CI, which is
+  // fine because the assertions are about layout classes, not pixels.
+  content: "First direct reply with a tall image https://media.example.invalid/tall.png",
+  tags: [
+    ["e", FOCAL_ID, "", "root"],
+    ["p", AUTHOR_PK],
+  ],
+  reply_count: 1,
+};
+const replyB = {
+  id: REPLY_B_ID,
+  pubkey: NESTED_PK,
+  kind: 1,
+  created_at: 1_700_000_200,
+  content: "Nested reply to the first reply",
+  tags: [
+    ["e", FOCAL_ID, "", "root"],
+    ["e", REPLY_A_ID, "", "reply"],
+    ["p", REPLIER_PK],
+  ],
+};
+// Depth-2 reply: flattened under the top-level ancestor with "replying to".
+const replyD = {
+  id: REPLY_D_ID,
+  pubkey: REPLIER_PK,
+  kind: 1,
+  created_at: 1_700_000_250,
+  content: "Deep reply to the nested reply",
+  tags: [
+    ["e", FOCAL_ID, "", "root"],
+    ["e", REPLY_B_ID, "", "reply"],
+    ["p", NESTED_PK],
+  ],
+};
+const duplicateReply = (id, createdAt) => ({
+  id,
+  pubkey: DUP_PK,
+  kind: 1,
+  created_at: createdAt,
+  content: "Same reply posted twice",
+  tags: [["e", FOCAL_ID, "", "root"]],
+});
+const replyC = {
+  id: REPLY_C_ID,
+  pubkey: REPLIER_PK,
+  kind: 1,
+  created_at: 1_700_000_500,
+  content: "Second page reply loaded in place",
+  tags: [["e", FOCAL_ID, "", "root"]],
+};
+const repostOfOther = {
+  id: REPOST_OTHER_ID,
+  pubkey: REPOSTER_PK,
+  kind: 6,
+  created_at: 1_700_000_600,
+  content: JSON.stringify(quotedEvent),
+  tags: [
+    ["e", QUOTED_ID],
+    ["p", AUTHOR_PK],
+  ],
+};
+// Related entries come back wrapped in an `event` envelope with only a subset
+// of fields lifted to the top level (mirrors the production API).
+const relatedRepostOfFocal = {
+  event_id: REPOST_FOCAL_ID,
+  author_pubkey: REPOSTER_PK,
+  content: "",
+  created_at: 1_700_000_700,
+  counts: { reaction_count: 0, reply_count: 0, repost_count: 0, zap_count: 0, zap_msats: 0 },
+  reasons: ["repost_linkage"],
+  score: 51,
+  event: {
+    id: REPOST_FOCAL_ID,
+    pubkey: REPOSTER_PK,
+    kind: 6,
+    created_at: 1_700_000_700,
+    content: "",
+    tags: [
+      ["e", FOCAL_ID],
+      ["p", AUTHOR_PK],
+    ],
+  },
+};
+const threadProfiles = [
+  { pubkey: REPLIER_PK, npub: "npub1replier", display_name: "Replier One", name: "replier" },
+  { pubkey: NESTED_PK, npub: "npub1nested", display_name: "Nested Nancy", name: "nested" },
+  { pubkey: DUP_PK, npub: "npub1dup", display_name: "Double Dan", name: "dup" },
+  { pubkey: REPOSTER_PK, npub: "npub1reposter", display_name: "Rhea Reposter", name: "rhea" },
+];
+
 const authorProfile = {
   pubkey: AUTHOR_PK,
   npub: "npub1author",
@@ -145,15 +259,23 @@ const trendingDomains = [
   { domain: "nostrmash.com", count: 8 },
 ];
 
+const threadEventsById = new Map(
+  [quotedEvent, replyA, replyB, replyC, replyD].map((event) => [event.id, event])
+);
+
 function notePayload(id = FOCAL_ID) {
-  const note = id === QUOTED_ID ? quotedEvent : { ...focalNote, id };
+  const note = threadEventsById.get(id) ?? { ...focalNote, id };
+  const author = [authorProfile, ...threadProfiles].find(
+    (profile) => profile.pubkey === note.pubkey
+  );
   return {
     note,
     event: note,
-    root: note,
+    root: id === REPLY_B_ID ? focalNote : note,
+    author: author ? { profile: author, pubkey: author.pubkey } : undefined,
     ancestors: [],
     replies: [],
-    counts: { reply_count: 2, reaction_count: 5 },
+    counts: { reply_count: id === FOCAL_ID ? 5 : 2, reaction_count: 5 },
     seen_on: [{ relay: "wss://relay.example.com" }],
     consistency: "eventual",
   };
@@ -377,7 +499,7 @@ const server = http.createServer(async (req, res) => {
   if (path === "/api/v1/profiles/batch") {
     const body = (await readBody(req)) ?? {};
     const pubkeys = Array.isArray(body.pubkeys) ? body.pubkeys : [];
-    const profiles = [authorProfile, mentionProfile].filter((profile) =>
+    const profiles = [authorProfile, mentionProfile, ...threadProfiles].filter((profile) =>
       pubkeys.length === 0 ? true : pubkeys.includes(profile.pubkey)
     );
     return json(res, 200, { profiles });
@@ -386,7 +508,7 @@ const server = http.createServer(async (req, res) => {
   if (path === "/api/v1/events/batch") {
     const body = (await readBody(req)) ?? {};
     const ids = Array.isArray(body.ids) ? body.ids : [];
-    const events = [focalNote, quotedEvent].filter((event) =>
+    const events = [focalNote, quotedEvent, replyA, replyB, replyC, replyD].filter((event) =>
       ids.length === 0 ? true : ids.includes(event.id)
     );
     return json(res, 200, { events, missing: [] });
@@ -497,17 +619,45 @@ const server = http.createServer(async (req, res) => {
   ) {
     const parts = path.split("/").filter(Boolean);
     const id = parts[3] && /^[a-f0-9]{64}$/i.test(parts[3]) ? parts[3].toLowerCase() : FOCAL_ID;
-    if (path.endsWith("/ancestors") || path.endsWith("/replies") || path.endsWith("/related")) {
-      return json(res, 200, { events: [], notes: [], ancestors: [], replies: [] });
+    const isFocal = id === FOCAL_ID;
+    if (path.endsWith("/ancestors")) {
+      // The nested reply has the focal note and the first reply above it.
+      const ancestors = id === REPLY_B_ID ? [focalNote, replyA] : [];
+      return json(res, 200, { ancestors, missing_ancestor_ids: [] });
+    }
+    if (path.endsWith("/replies")) {
+      if (!isFocal) return json(res, 200, { replies: [] });
+      const cursor = url.searchParams.get("cursor");
+      if (cursor === REPLIES_CURSOR_2) {
+        return json(res, 200, { replies: [replyC], consistency: "eventual" });
+      }
+      return json(res, 200, {
+        replies: [
+          replyA,
+          replyB,
+          replyD,
+          duplicateReply(DUP_1_ID, 1_700_000_300),
+          duplicateReply(DUP_2_ID, 1_700_000_310),
+        ],
+        next_cursor: REPLIES_CURSOR_2,
+        consistency: "eventual",
+      });
+    }
+    if (path.endsWith("/related")) {
+      if (!isFocal) return json(res, 200, { related: [] });
+      return json(res, 200, { event_id: FOCAL_ID, related: [relatedRepostOfFocal] });
     }
     if (path.endsWith("/seen-on")) {
       return json(res, 200, { seen_on: [{ relay: "wss://relay.example.com" }] });
     }
     if (path.endsWith("/counts")) {
-      return json(res, 200, { counts: { reply_count: 2, reaction_count: 5 } });
+      return json(res, 200, {
+        counts: { reply_count: isFocal ? 5 : 2, reaction_count: 5 },
+      });
     }
     if (path.endsWith("/activity")) {
-      return json(res, 200, { activity: [] });
+      if (!isFocal) return json(res, 200, { activity: [] });
+      return json(res, 200, { root_event_id: FOCAL_ID, activity: [repostOfOther, replyA] });
     }
     return json(res, 200, notePayload(id));
   }

@@ -40,7 +40,12 @@ export default async function EmbedNotePage({ params }: { params: Params }) {
 
   return (
     <main className="bg-background text-foreground min-h-screen p-3">
-      <EventReadingSurface event={note} author={author} contentResolution={contentResolution} />
+      <EventReadingSurface
+        event={note}
+        author={author}
+        contentResolution={contentResolution}
+        density="reply"
+      />
       <p className="text-ink-faint mt-3 text-center text-xs">
         <Link
           href={absoluteUrl(`/notes/${encodeURIComponent(resolvedId)}`)}

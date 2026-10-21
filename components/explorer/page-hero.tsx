@@ -9,6 +9,7 @@ export function PageHero({
   support,
   className,
   emphasize = false,
+  compact = false,
   subtitleFromSm = false,
 }: {
   eyebrow?: string;
@@ -19,15 +20,18 @@ export function PageHero({
   support?: ReactNode;
   className?: string;
   emphasize?: boolean;
+  /** Tighter vertical rhythm for detail pages where the content is the hero. */
+  compact?: boolean;
   /** Show the subtitle from `sm` up only (phones get the title and tabs). */
   subtitleFromSm?: boolean;
 }) {
+  const padding = compact
+    ? "space-y-3 pt-1 pb-4 sm:pt-2 sm:pb-5"
+    : emphasize
+      ? "space-y-3.5 pt-5 pb-6 sm:pt-10 sm:pb-9"
+      : "space-y-3.5 pt-5 pb-6 sm:pt-7 sm:pb-7";
   return (
-    <section
-      className={`nm-signal-rule border-edge/80 space-y-3.5 border-b pt-5 pb-6 sm:pt-7 sm:pb-7 ${
-        emphasize ? "sm:pt-10 sm:pb-9" : ""
-      } ${className ?? ""}`}
-    >
+    <section className={`nm-signal-rule border-edge/80 border-b ${padding} ${className ?? ""}`}>
       <div className="space-y-2">
         {eyebrow ? <p className="nm-kicker">{eyebrow}</p> : null}
         <h1 className={`text-ink-strong ${emphasize ? "nm-display-xl" : "nm-display-lg"}`}>

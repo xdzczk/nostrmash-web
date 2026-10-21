@@ -1,101 +1,70 @@
-import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { EmptyState } from "@/components/explorer/empty-state";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { ThreadNode } from "@/components/thread/thread-node";
+import { buildReplyTree, type ReplyNode } from "@/lib/notes/thread-tree";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
-function getAuthorByPubkey(
-  authorsByPubkey: Record<string, Profile> | undefined,
-  pubkey: unknown
-): Profile | undefined {
-  if (!authorsByPubkey || typeof pubkey !== "string") return undefined;
-  const normalized = pubkey.trim().toLowerCase();
-  return authorsByPubkey[normalized] ?? authorsByPubkey[pubkey];
-}
-
-export function ThreadView({
-  ancestors,
-  replies,
-  missingAncestorIds = [],
-  nextCursor,
-  continuationHref,
-  continuationLabel = "Load next replies",
+/** Server-renderable reply list; also used by the "Show more replies" action. */
+export function ThreadReplies({
+  nodes,
   authorsByPubkey,
   contentResolution,
 }: {
-  ancestors: EventRecord[];
-  replies: EventRecord[];
-  missingAncestorIds?: string[];
-  nextCursor?: string;
-  continuationHref?: string;
-  continuationLabel?: string;
+  nodes: ReplyNode[];
   authorsByPubkey?: Record<string, Profile>;
   contentResolution?: NoteContentResolution;
 }) {
-  if (ancestors.length === 0 && replies.length === 0) {
-    return <EmptyState message="No replies or ancestors have been indexed for this note yet." />;
+  if (nodes.length === 0) return null;
+  return (
+    <ul className="space-y-1">
+      {nodes.map((node, index) => (
+        <ThreadNode
+          key={node.reply.id ?? `reply-${index}`}
+          node={node}
+          authorsByPubkey={authorsByPubkey}
+          contentResolution={contentResolution}
+        />
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Replies to the focal note, one level threaded. Ancestors are rendered
+ * separately above the focal note (see `ThreadAncestors`).
+ */
+export function ThreadView({
+  focalEventId,
+  replies,
+  authorsByPubkey,
+  contentResolution,
+  /** In-place pagination control rendered after the first page. */
+  continuation,
+  emptyMessage = "No replies have been indexed for this note yet.",
+}: {
+  focalEventId: string;
+  replies: EventRecord[];
+  authorsByPubkey?: Record<string, Profile>;
+  contentResolution?: NoteContentResolution;
+  continuation?: ReactNode;
+  emptyMessage?: string;
+}) {
+  const nodes = buildReplyTree(replies, focalEventId);
+
+  if (nodes.length === 0 && !continuation) {
+    return <EmptyState message={emptyMessage} />;
   }
 
   return (
-    <div className="space-y-5">
-      {missingAncestorIds.length > 0 ? (
-        <div className="border-warning/30 bg-warning-soft rounded-md border p-3">
-          <p className="text-warning-ink text-xs break-all">
-            Missing ancestors: {missingAncestorIds.slice(0, 4).join(", ")}
-            {missingAncestorIds.length > 4 ? ` +${missingAncestorIds.length - 4} more` : ""}
-          </p>
-        </div>
-      ) : null}
-
-      {ancestors.length > 0 ? (
-        <section className="space-y-3">
-          <p className="text-ink-dim text-sm font-medium">Ancestors</p>
-          <div className="space-y-3">
-            {ancestors.map((ancestor, index) => (
-              <ThreadNode
-                key={ancestor.id ?? `ancestor-${index}`}
-                note={ancestor}
-                author={getAuthorByPubkey(authorsByPubkey, ancestor.pubkey)}
-                role="ancestor"
-                contentResolution={contentResolution}
-              />
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {replies.length > 0 ? (
-        <section className="space-y-3">
-          <p className="text-ink-dim text-sm font-medium">Replies</p>
-          <div className="space-y-3">
-            {replies.map((reply, index) => (
-              <ThreadNode
-                key={reply.id ?? `reply-${index}`}
-                note={reply}
-                author={getAuthorByPubkey(authorsByPubkey, reply.pubkey)}
-                role="reply"
-                contentResolution={contentResolution}
-              />
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {typeof nextCursor === "string" && nextCursor.length > 0 ? (
-        <div className="border-accent/30 bg-accent/10 rounded-md border p-3">
-          <p className="text-accent-ink text-xs">More replies are available.</p>
-          {continuationHref ? (
-            <Link
-              href={continuationHref}
-              className="border-accent/40 text-link-hover hover:text-accent-ink mt-2 inline-block rounded-full border px-3 py-1 text-xs"
-            >
-              {continuationLabel}
-            </Link>
-          ) : null}
-          <p className="text-link/80 mt-2 text-xs break-all">cursor: {nextCursor}</p>
-        </div>
-      ) : null}
+    <div className="space-y-3">
+      <ThreadReplies
+        nodes={nodes}
+        authorsByPubkey={authorsByPubkey}
+        contentResolution={contentResolution}
+      />
+      {continuation}
     </div>
   );
 }

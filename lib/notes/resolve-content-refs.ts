@@ -6,12 +6,29 @@ import {
   collectTokenReferences,
   tokenizeNoteContent,
 } from "@/lib/notes/tokenize";
+import { isRepostEvent, parseRepostTarget } from "@/lib/notes/repost";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
-export type ContentRefInput = string | { content?: unknown; tags?: unknown };
+export type ContentRefInput = string | { content?: unknown; tags?: unknown; kind?: unknown };
 
-function asContentInput(input: ContentRefInput): { content: string; tags?: unknown } {
+function asContentInput(input: ContentRefInput): {
+  content: string;
+  tags?: unknown;
+  repostTargetId?: string;
+  repostTargetPubkey?: string;
+} {
   if (typeof input === "string") return { content: input };
+  if (isRepostEvent(input as EventRecord)) {
+    // Repost content is the embedded event JSON, not prose: resolve the target
+    // (and its author) instead of tokenizing the payload.
+    const target = parseRepostTarget(input as EventRecord);
+    return {
+      content: "",
+      tags: input.tags,
+      repostTargetId: target.embedded ? undefined : target.targetId,
+      repostTargetPubkey: target.targetPubkey,
+    };
+  }
   return {
     content: typeof input.content === "string" ? input.content : "",
     tags: input.tags,
@@ -26,7 +43,10 @@ export function collectContentReferences(inputs: ContentRefInput[]): {
   const eventIds = new Set<string>();
 
   for (const input of inputs) {
-    const { content, tags } = asContentInput(input);
+    const { content, tags, repostTargetId, repostTargetPubkey } = asContentInput(input);
+    if (repostTargetId) eventIds.add(repostTargetId);
+    if (repostTargetPubkey) pubkeys.add(repostTargetPubkey);
+    if (!content) continue;
     const tokens = tokenizeNoteContent(content, { tags });
     const refs = collectTokenReferences(tokens);
     refs.pubkeys.forEach((pubkey) => pubkeys.add(pubkey));

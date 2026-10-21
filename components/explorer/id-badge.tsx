@@ -20,7 +20,7 @@ export function IdBadge({
   return (
     <span
       title={id}
-      className={`border-edge-strong bg-surface/80 text-ink-dim inline-flex items-center gap-2 rounded-full border px-2 py-1 text-[11px] ${className}`}
+      className={`border-edge-strong bg-surface/80 text-ink-dim inline-flex min-h-6 items-center gap-2 rounded-full border px-2 py-0.5 text-xs ${className}`}
     >
       <span className="text-ink-faint">{label}</span>
       <code className="font-mono">{truncateIdentifier(id, kind, surface)}</code>

@@ -1,9 +1,15 @@
-import Link from "next/link";
+import { cache } from "react";
 
+import {
+  loadMoreReplies,
+  loadRelatedNotes,
+  loadThreadActivity,
+} from "@/app/notes/[eventId]/actions";
+import { LoadMoreList } from "@/components/data/load-more-list";
 import { NoteCard } from "@/components/explorer/note-card";
 import { EmptyState } from "@/components/explorer/empty-state";
-import { StatCard } from "@/components/explorer/stat-card";
-import { extractPrimitiveStats } from "@/components/explorer/utils";
+import { OnDemandSection } from "@/components/notes/on-demand-section";
+import { ThreadAncestors } from "@/components/thread/thread-node";
 import { ThreadView } from "@/components/thread/thread-view";
 import { SectionCard } from "@/components/ui/section-card";
 import {
@@ -11,85 +17,73 @@ import {
   loadNoteRelatedData,
   loadNoteThreadData,
 } from "@/lib/notes/load-note-page-data";
-import { buildContinuationHref } from "@/lib/search-params/pagination";
 
-function toThreadRoute(eventId: string): string {
-  return `/search?q=${encodeURIComponent(eventId)}&tab=notes`;
+/** Ancestors and replies come from one fetch; both boundaries share it per request. */
+const loadThreadOnce = cache(loadNoteThreadData);
+
+/** Earlier notes in the conversation, shown above the focal note. */
+export async function DeferredNoteAncestors({
+  eventId,
+  searchParams,
+}: {
+  eventId: string;
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
+  const data = await loadThreadOnce(eventId, searchParams);
+  if (data.ancestors.length === 0) return null;
+  return (
+    <ThreadAncestors
+      ancestors={data.ancestors}
+      authorsByPubkey={data.authorsByPubkey}
+      contentResolution={data.contentResolution}
+    />
+  );
 }
 
 export async function DeferredNoteThread({
   eventId,
   searchParams,
-  rootEventId: rootFromFocal,
-  parentEventId,
+  replyCount,
 }: {
   eventId: string;
   searchParams: Record<string, string | string[] | undefined>;
-  rootEventId?: string;
-  parentEventId?: string;
+  /** Known total from the note summary, used for the heading. */
+  replyCount?: number;
 }) {
-  const data = await loadNoteThreadData(eventId, searchParams);
-  const rootEventId = rootFromFocal ?? data.rootEventId;
-  const repliesContinuationHref = buildContinuationHref(
-    `/notes/${encodeURIComponent(eventId)}`,
-    new URLSearchParams(
-      Object.entries(searchParams).flatMap(([key, value]) =>
-        typeof value === "string" ? [[key, value]] : []
-      )
-    ),
-    "replies_cursor",
-    data.repliesNextCursor
-  );
+  const data = await loadThreadOnce(eventId, searchParams);
+  const nextCursor =
+    typeof data.repliesNextCursor === "string" && data.repliesNextCursor.length > 0
+      ? data.repliesNextCursor
+      : undefined;
+  const loadMore = loadMoreReplies.bind(null, eventId);
+  const title =
+    typeof replyCount === "number" && replyCount > 0
+      ? `${replyCount.toLocaleString()} ${replyCount === 1 ? "reply" : "replies"}`
+      : "Replies";
 
   return (
-    <div id="conversation-context">
-      <SectionCard title="Conversation context" description="The surrounding thread for this note.">
-        <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
-          <Link
-            href="/discovery/conversations/hot"
-            className="border-edge-strong text-ink-dim hover:text-ink-strong rounded-full border px-2 py-1"
-          >
-            Explore hot conversations
-          </Link>
-          <Link
-            href="/discovery/profiles/rising"
-            className="border-edge-strong text-ink-dim hover:text-ink-strong rounded-full border px-2 py-1"
-          >
-            Explore rising profiles
-          </Link>
-          {rootEventId ? (
-            <Link
-              href={`/notes/${encodeURIComponent(rootEventId)}`}
-              className="border-edge-strong text-ink-dim hover:text-ink-strong rounded-full border px-2 py-1"
-            >
-              Open thread root
-            </Link>
-          ) : null}
-          {parentEventId ? (
-            <Link
-              href={`/notes/${encodeURIComponent(parentEventId)}`}
-              className="border-edge-strong text-ink-dim hover:text-ink-strong rounded-full border px-2 py-1"
-            >
-              Open parent note
-            </Link>
-          ) : null}
-          <Link
-            href={toThreadRoute(rootEventId ?? eventId)}
-            className="border-edge-strong text-ink-dim hover:text-ink-strong rounded-full border px-2 py-1"
-          >
-            View related thread activity
-          </Link>
-        </div>
-        <ThreadView
-          ancestors={data.ancestors}
-          replies={data.replies}
-          missingAncestorIds={data.missingAncestorIds}
-          nextCursor={data.repliesNextCursor}
-          continuationHref={repliesContinuationHref}
-          continuationLabel="Continue replies"
-          authorsByPubkey={data.authorsByPubkey}
-          contentResolution={data.contentResolution}
-        />
+    <div id="conversation-context" className="scroll-mt-24">
+      <SectionCard title={title}>
+        {data.errorMessage && data.replies.length === 0 ? (
+          <EmptyState message={data.errorMessage} />
+        ) : (
+          <ThreadView
+            focalEventId={eventId}
+            replies={data.replies}
+            authorsByPubkey={data.authorsByPubkey}
+            contentResolution={data.contentResolution}
+            continuation={
+              nextCursor ? (
+                <LoadMoreList
+                  initialCursor={nextCursor}
+                  loadMore={loadMore}
+                  label="Show more replies"
+                  pendingLabel="Loading replies…"
+                />
+              ) : null
+            }
+          />
+        )}
       </SectionCard>
     </div>
   );
@@ -105,86 +99,61 @@ export async function DeferredNoteActivity({
   searchParams: Record<string, string | string[] | undefined>;
 }) {
   const data = await loadNoteActivityData(rootEventId, searchParams);
-  const extendedContextHref = buildContinuationHref(
-    `/notes/${encodeURIComponent(eventId)}`,
-    new URLSearchParams(
-      Object.entries(searchParams).flatMap(([key, value]) =>
-        typeof value === "string" ? [[key, value]] : []
-      )
-    ),
-    "view",
-    "full"
-  );
-  const activityContinuationHref = buildContinuationHref(
-    `/notes/${encodeURIComponent(eventId)}`,
-    new URLSearchParams(
-      Object.entries(searchParams).flatMap(([key, value]) =>
-        typeof value === "string" ? [[key, value]] : []
-      )
-    ),
-    "activity_cursor",
-    data.activityNextCursor
-  );
-  const threadSummaryStats = extractPrimitiveStats(data.threadSummaryPayload ?? {}, []).slice(0, 8);
+  const load = loadThreadActivity.bind(null, rootEventId, eventId);
+  const isFocalRoot = rootEventId === eventId;
 
   return (
-    <>
-      {threadSummaryStats.length > 0 ? (
-        <section className="space-y-3">
-          <p className="text-ink-dim text-sm font-medium">Thread activity summary</p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {threadSummaryStats.map((stat) => (
-              <StatCard key={stat.label} label={stat.label} value={stat.value} />
-            ))}
-          </div>
-        </section>
-      ) : null}
-      <div id="thread-activity">
+    <div id="thread-activity" className="scroll-mt-24">
+      <SectionCard
+        title="Thread activity"
+        description={
+          isFocalRoot
+            ? "Recent notes across this conversation."
+            : "Recent notes across the whole conversation, from the root."
+        }
+      >
         {data.includeThreadActivity ? (
-          <SectionCard title="Thread activity" description="Recent activity from this thread.">
-            {data.activity.length > 0 ? (
-              <div className="space-y-3">
+          data.activity.length > 0 ? (
+            <div className="space-y-1">
+              <ul className="space-y-1">
                 {data.activity.map((note, index) => (
-                  <NoteCard
-                    key={note.id ?? `activity-${index}`}
-                    note={note}
-                    author={
-                      typeof note.pubkey === "string"
-                        ? data.authorsByPubkey[note.pubkey.toLowerCase()]
-                        : undefined
-                    }
-                  />
+                  <li key={note.id ?? `activity-${index}`} className="min-w-0">
+                    <NoteCard
+                      note={note}
+                      author={
+                        typeof note.pubkey === "string"
+                          ? data.authorsByPubkey[note.pubkey.toLowerCase()]
+                          : undefined
+                      }
+                      density="reply"
+                      contentResolution={data.contentResolution}
+                      contextEventId={eventId}
+                    />
+                  </li>
                 ))}
-              </div>
-            ) : (
-              <EmptyState message="No activity entries were returned for this thread." />
-            )}
-            {typeof data.activityNextCursor === "string" && data.activityNextCursor.length > 0 ? (
-              <div className="border-accent/30 bg-accent/10 mt-4 rounded-md border p-3">
-                <p className="text-accent-ink text-xs">More thread activity is available.</p>
-                <Link
-                  href={activityContinuationHref}
-                  className="border-accent/40 text-link-hover hover:text-accent-ink mt-2 inline-block rounded-full border px-3 py-1 text-xs"
-                >
-                  Continue activity
-                </Link>
-              </div>
-            ) : null}
-          </SectionCard>
-        ) : (
-          <SectionCard title="Thread activity" description="Recent activity from this thread.">
-            <div className="hover:bg-surface/40 rounded-lg p-3 transition-colors">
-              <p className="text-ink-dim text-xs">
-                Extended thread context is skipped for faster initial loads.
-              </p>
-              <Link href={extendedContextHref} className="text-link mt-2 inline-block text-xs">
-                Load full context
-              </Link>
+              </ul>
+              {typeof data.activityNextCursor === "string" && data.activityNextCursor.length > 0 ? (
+                <LoadMoreList
+                  initialCursor={data.activityNextCursor}
+                  loadMore={load}
+                  label="Show more activity"
+                />
+              ) : null}
             </div>
-          </SectionCard>
+          ) : (
+            <EmptyState message="No activity has been indexed for this thread yet." />
+          )
+        ) : (
+          <OnDemandSection
+            load={load}
+            label="Show thread activity"
+            pendingLabel="Loading activity…"
+            moreLabel="Show more activity"
+            emptyMessage="No activity has been indexed for this thread yet."
+          />
         )}
-      </div>
-    </>
+      </SectionCard>
+    </div>
   );
 }
 
@@ -196,69 +165,52 @@ export async function DeferredNoteRelated({
   searchParams: Record<string, string | string[] | undefined>;
 }) {
   const data = await loadNoteRelatedData(eventId, searchParams);
-  const params = new URLSearchParams(
-    Object.entries(searchParams).flatMap(([key, value]) =>
-      typeof value === "string" ? [[key, value]] : []
-    )
-  );
-  const extendedContextHref = buildContinuationHref(
-    `/notes/${encodeURIComponent(eventId)}`,
-    params,
-    "view",
-    "full"
-  );
-  const relatedContinuationHref = buildContinuationHref(
-    `/notes/${encodeURIComponent(eventId)}`,
-    params,
-    "related_cursor",
-    data.relatedNextCursor
-  );
+  const load = loadRelatedNotes.bind(null, eventId);
 
   return (
-    <div id="related-notes">
-      {data.includeRelatedNotes ? (
-        <SectionCard title="Related notes" description="Other notes linked to this one.">
-          {data.relatedNotes.length > 0 ? (
-            <div className="space-y-3">
-              {data.relatedNotes.map((note, index) => (
-                <NoteCard
-                  key={note.id ?? `related-${index}`}
-                  note={note}
-                  author={
-                    typeof note.pubkey === "string"
-                      ? data.authorsByPubkey[note.pubkey.toLowerCase()]
-                      : undefined
-                  }
+    <div id="related-notes" className="scroll-mt-24">
+      <SectionCard title="Related notes" description="Quotes, mentions, and notes linking here.">
+        {data.includeRelatedNotes ? (
+          data.relatedNotes.length > 0 ? (
+            <div className="space-y-1">
+              <ul className="space-y-1">
+                {data.relatedNotes.map((note, index) => (
+                  <li key={note.id ?? `related-${index}`} className="min-w-0">
+                    <NoteCard
+                      note={note}
+                      author={
+                        typeof note.pubkey === "string"
+                          ? data.authorsByPubkey[note.pubkey.toLowerCase()]
+                          : undefined
+                      }
+                      density="reply"
+                      contentResolution={data.contentResolution}
+                      contextEventId={eventId}
+                    />
+                  </li>
+                ))}
+              </ul>
+              {typeof data.relatedNextCursor === "string" && data.relatedNextCursor.length > 0 ? (
+                <LoadMoreList
+                  initialCursor={data.relatedNextCursor}
+                  loadMore={load}
+                  label="Show more related notes"
                 />
-              ))}
+              ) : null}
             </div>
           ) : (
-            <EmptyState message="No related notes were returned for this event." />
-          )}
-          {typeof data.relatedNextCursor === "string" && data.relatedNextCursor.length > 0 ? (
-            <div className="border-accent/30 bg-accent/10 mt-4 rounded-md border p-3">
-              <p className="text-accent-ink text-xs">More related notes are available.</p>
-              <Link
-                href={relatedContinuationHref}
-                className="border-accent/40 text-link-hover hover:text-accent-ink mt-2 inline-block rounded-full border px-3 py-1 text-xs"
-              >
-                Continue related notes
-              </Link>
-            </div>
-          ) : null}
-        </SectionCard>
-      ) : (
-        <SectionCard title="Related notes" description="Other notes linked to this one.">
-          <div className="hover:bg-surface/40 rounded-lg p-3 transition-colors">
-            <p className="text-ink-dim text-xs">
-              Related-note expansion is skipped for faster initial loads.
-            </p>
-            <Link href={extendedContextHref} className="text-link mt-2 inline-block text-xs">
-              Load full context
-            </Link>
-          </div>
-        </SectionCard>
-      )}
+            <EmptyState message="No related notes have been indexed for this event yet." />
+          )
+        ) : (
+          <OnDemandSection
+            load={load}
+            label="Show related notes"
+            pendingLabel="Loading related notes…"
+            moreLabel="Show more related notes"
+            emptyMessage="No related notes have been indexed for this event yet."
+          />
+        )}
+      </SectionCard>
     </div>
   );
 }

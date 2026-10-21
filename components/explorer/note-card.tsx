@@ -29,17 +29,37 @@ import {
   truncateProfileLabel,
 } from "@/components/explorer/utils";
 import { extractNoteLinkUrls } from "@/lib/notes/links";
+import { isRepostEvent } from "@/lib/notes/repost";
 import { tokenizeNoteContent } from "@/lib/notes/tokenize";
 import type { EventRecord, Profile } from "@/lib/types/api";
+
+import { RepostCard } from "./repost-card";
+
+/**
+ * - `list`: clamped preview with action links (trending, search, profiles).
+ * - `detail`: the focal note on its own page — prose type, no action links.
+ * - `reply`: a thread participant — full content, timestamp is the permalink,
+ *   zero-valued stats and chip rows hidden.
+ */
+export type NoteCardDensity = "list" | "detail" | "reply";
+
+function isNonZeroStat(stat: { value: unknown }): boolean {
+  if (typeof stat.value === "number") return stat.value > 0;
+  if (typeof stat.value === "string") return stat.value.trim() !== "" && stat.value !== "0";
+  return stat.value !== null && stat.value !== undefined;
+}
 
 export function NoteCard({
   note,
   author,
   href,
   rank,
-  showFullContent = false,
+  showFullContent,
   discoverySignals = false,
   contentResolution,
+  density = "list",
+  priorityMedia = false,
+  contextEventId,
 }: {
   note: EventRecord;
   author?: Profile;
@@ -48,7 +68,62 @@ export function NoteCard({
   showFullContent?: boolean;
   discoverySignals?: boolean;
   contentResolution?: NoteContentResolution;
+  density?: NoteCardDensity;
+  /** Eager-load the first image (LCP candidate on the detail page). */
+  priorityMedia?: boolean;
+  /** Note the surrounding page is about; reposts of it render as one line. */
+  contextEventId?: string;
 }) {
+  if (isRepostEvent(note)) {
+    return (
+      <RepostCard
+        repost={note}
+        author={author}
+        href={href}
+        density={density}
+        contentResolution={contentResolution}
+        contextEventId={contextEventId}
+      />
+    );
+  }
+  return (
+    <NoteCardBody
+      note={note}
+      author={author}
+      href={href}
+      rank={rank}
+      showFullContent={showFullContent ?? density !== "list"}
+      discoverySignals={discoverySignals}
+      contentResolution={contentResolution}
+      density={density}
+      priorityMedia={priorityMedia}
+    />
+  );
+}
+
+function NoteCardBody({
+  note,
+  author,
+  href,
+  rank,
+  showFullContent,
+  discoverySignals,
+  contentResolution,
+  density,
+  priorityMedia,
+}: {
+  note: EventRecord;
+  author?: Profile;
+  href?: string;
+  rank?: number;
+  showFullContent: boolean;
+  discoverySignals: boolean;
+  contentResolution?: NoteContentResolution;
+  density: NoteCardDensity;
+  priorityMedia: boolean;
+}) {
+  const isReply = density === "reply";
+  const isDetail = density === "detail";
   const resolvedAuthor = author ?? noteInlineAuthorProfile(note);
   const resolvedNoteId =
     (typeof note.id === "string" && note.id.length > 0
@@ -86,24 +161,39 @@ export function NoteCard({
     : prefersCompactClamp
       ? "line-clamp-2"
       : "line-clamp-4";
-  const metrics = extractEngagementStats(note);
+  const allMetrics = extractEngagementStats(note);
+  const metrics = isReply ? allMetrics.filter(isNonZeroStat) : allMetrics;
   const isTopRank = typeof rank === "number" && rank <= 3;
-  const noteDomains = extractDomainsFromNote(note, 2).map((domain) => ({
-    raw: domain,
-    label: truncateIdentifier(normalizeDomainLabel(domain), "domain", "primary"),
-  }));
-  const noteHashtags = extractHashtagsFromNote(note, 2);
-  const relayHosts = extractRelayHostsFromNote(note, 2).map((relayHost) => ({
-    raw: relayHost,
-    label: truncateIdentifier(relayHost, "relay", "primary"),
-  }));
+  const noteDomains = isReply
+    ? []
+    : extractDomainsFromNote(note, 2).map((domain) => ({
+        raw: domain,
+        label: truncateIdentifier(normalizeDomainLabel(domain), "domain", "primary"),
+      }));
+  const noteHashtags = isReply ? [] : extractHashtagsFromNote(note, 2);
+  const relayHosts = isReply
+    ? []
+    : extractRelayHostsFromNote(note, 2).map((relayHost) => ({
+        raw: relayHost,
+        label: truncateIdentifier(relayHost, "relay", "primary"),
+      }));
   const reasonCandidates = mapNoteWhyNow(note);
   const rankLabel = typeof rank === "number" ? String(rank).padStart(2, "0") : null;
+  const contentSize = isDetail ? "detail" : isReply ? "reply" : "list";
+  const metaTextClass = density === "list" ? "text-xs" : "text-[13px]";
+  const chipRowClass = `text-ink-muted mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 ${metaTextClass}`;
+  const chipLinkClass = "inline-flex min-h-6 items-center";
+  const surfaceClass = isDetail
+    ? "px-0 py-0"
+    : isReply
+      ? "border-b border-edge/60 bg-transparent px-1 py-4 last:border-b-0 sm:px-2"
+      : cardTierClassName("standard");
+  const timestamp = <Timestamp unixSeconds={note.created_at} />;
 
   return (
     <article
-      className={`group ${cardTierClassName("standard")} ${
-        isTopRank ? "border-accent-soft/40" : "border-edge/70"
+      className={`group ${surfaceClass} ${
+        density === "list" ? (isTopRank ? "border-accent-soft/40" : "border-edge/70") : ""
       } ${cardHref ? cardHitTargetClassName : ""}`}
     >
       <div className="flex items-start gap-3">
@@ -137,12 +227,12 @@ export function NoteCard({
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 ${metaTextClass}`}>
             {authorHref ? (
               <Link
                 href={authorHref}
                 title={authorLabel}
-                className="text-ink-soft hover:text-ink-strong inline-block max-w-[min(100%,16rem)] truncate font-medium hover:underline"
+                className={`text-ink-soft hover:text-ink-strong ${chipLinkClass} max-w-[min(100%,16rem)] truncate font-medium hover:underline`}
               >
                 {truncateProfileLabel(authorLabel)}
               </Link>
@@ -157,46 +247,62 @@ export function NoteCard({
             {authorSecondaryLabel && authorHref ? (
               <Link
                 href={authorHref}
-                className="text-ink-faint hover:text-ink-muted"
+                className={`${density === "list" ? "text-ink-faint" : "text-ink-dim"} hover:text-ink-muted ${chipLinkClass}`}
                 title={authorSecondaryLabel}
               >
                 {truncateIdentifier(authorSecondaryLabel, "npub", "secondary")}
               </Link>
             ) : authorSecondaryLabel ? (
-              <span className="text-ink-faint" title={authorSecondaryLabel}>
+              <span
+                className={density === "list" ? "text-ink-faint" : "text-ink-dim"}
+                title={authorSecondaryLabel}
+              >
                 {truncateIdentifier(authorSecondaryLabel, "npub", "secondary")}
               </span>
             ) : null}
-            <span aria-hidden className="text-ink-faint/70">
-              •
+            <span className="inline-flex items-center gap-2 whitespace-nowrap">
+              <span aria-hidden className="text-ink-faint/70">
+                •
+              </span>
+              {isReply && noteHref ? (
+                <Link
+                  href={noteHref}
+                  className={`${chipLinkClass} hover:text-ink rounded-sm hover:underline`}
+                  aria-label={`Open reply by ${authorLabel}`}
+                >
+                  {timestamp}
+                </Link>
+              ) : (
+                timestamp
+              )}
             </span>
-            <Timestamp unixSeconds={note.created_at} />
           </div>
         </div>
       </div>
 
       {preview.prefersMediaFirst && typeof note.content === "string" && note.content.length > 0 ? (
         <>
-          <NoteMedia content={note.content} />
+          <NoteMedia content={note.content} priority={priorityMedia} />
           <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
         </>
       ) : null}
       <NoteContent
         tokens={tokenizeNoteContent(content, { tags: note.tags })}
-        className={`mt-2.5 ${clampClassName}`}
+        className={`${isDetail ? "mt-4" : "mt-2.5"} ${clampClassName}`}
         showQuotes={showFullContent}
         resolution={contentResolution}
         hideLinkPreviewUrls={linkPreviewUrls}
+        size={contentSize}
       />
       {!preview.prefersMediaFirst && typeof note.content === "string" && note.content.length > 0 ? (
         <>
-          <NoteMedia content={note.content} />
+          <NoteMedia content={note.content} priority={priorityMedia} />
           <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
         </>
       ) : null}
 
       {noteDomains.length > 0 ? (
-        <div className="text-ink-muted mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+        <div className={`${chipRowClass} mt-3`}>
           <span className="text-ink-faint">Links</span>
           {noteDomains.map((domain) => (
             <span key={domain.raw} className="inline-flex items-center gap-2">
@@ -206,7 +312,7 @@ export function NoteCard({
               <Link
                 href={`/domains/${encodeURIComponent(domain.raw)}`}
                 title={domain.raw}
-                className="text-ink-dim hover:text-ink transition"
+                className={`text-ink-dim hover:text-ink transition ${chipLinkClass}`}
               >
                 {domain.label}
               </Link>
@@ -216,7 +322,7 @@ export function NoteCard({
       ) : null}
 
       {noteHashtags.length > 0 ? (
-        <div className="text-ink-muted mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+        <div className={chipRowClass}>
           <span className="text-ink-faint">Topics</span>
           {noteHashtags.map((hashtag) => (
             <span key={hashtag} className="inline-flex items-center gap-2">
@@ -225,7 +331,7 @@ export function NoteCard({
               </span>
               <Link
                 href={`/hashtags/${encodeURIComponent(hashtag)}`}
-                className="text-ink-dim hover:text-ink transition"
+                className={`text-ink-dim hover:text-ink transition ${chipLinkClass}`}
               >
                 #{hashtag}
               </Link>
@@ -235,7 +341,7 @@ export function NoteCard({
       ) : null}
 
       {relayHosts.length > 0 ? (
-        <div className="text-ink-muted mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+        <div className={chipRowClass}>
           <span className="text-ink-faint">Relays</span>
           {relayHosts.map((relayHost) => (
             <span key={relayHost.raw} className="inline-flex items-center gap-2">
@@ -245,7 +351,7 @@ export function NoteCard({
               <Link
                 href={`/relays/${encodeURIComponent(relayHost.raw)}`}
                 title={relayHost.raw}
-                className="hover:text-link-hover text-ink-dim transition"
+                className={`hover:text-link-hover text-ink-dim transition ${chipLinkClass}`}
               >
                 {relayHost.label}
               </Link>
@@ -258,9 +364,13 @@ export function NoteCard({
         <WhyNow reasons={reasonCandidates} showLabel={false} className="mt-2.5 sm:mt-3" />
       ) : null}
 
-      <DiscoveryStatPills stats={metrics} className="mt-2.5 sm:mt-3" />
+      <DiscoveryStatPills
+        stats={metrics}
+        className={isDetail ? "mt-4" : "mt-2.5 sm:mt-3"}
+        size={isDetail ? "md" : "sm"}
+      />
 
-      {resolvedNoteId ? (
+      {resolvedNoteId && density === "list" ? (
         <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
           <DiscoveryActionLinks
             actions={[
