@@ -51,6 +51,8 @@ export const NATIVE_SEMANTIC_KEYS = [
   "trust_mode",
   "trust_applied",
   "result_scope",
+  "degraded",
+  "degraded_reason",
   "next_cursor",
   "window",
   "computed_at",

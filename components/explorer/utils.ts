@@ -699,7 +699,8 @@ export function profileSecondaryLabel(profile: Profile): string | null {
     return name;
   }
   if (nip05) {
-    return nip05;
+    // NIP-05 root identifiers (`_@domain`) are conventionally shown as the bare domain.
+    return nip05.startsWith("_@") ? nip05.slice(2) : nip05;
   }
   return identifier !== "unknown" ? truncateIdentifier(identifier, "npub", "secondary") : null;
 }

@@ -24,19 +24,22 @@ import {
   DeferredProfileActivity,
   DeferredProfileDiscovery,
 } from "@/components/profile/deferred-profile-sections";
+import { ProfileBannerBackdrop } from "@/components/profile/profile-banner-backdrop";
+import { ProfileHeroSignals } from "@/components/profile/profile-hero-signals";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Disclosure } from "@/components/ui/disclosure";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
+import { isApiError } from "@/lib/api/errors";
 import { hexToNpub } from "@/lib/nostr/nip19";
-import { buildProfileActivityTabHref } from "@/lib/profile/activity-tabs";
+import { formatNip05, formatUnixDate } from "@/lib/profile/hero-signals";
 import {
   getProfileSummaryCached,
   loadProfileFocalData,
 } from "@/lib/profile/load-profile-page-data";
 import { isValidPubkeyOrNpubParam, resolvePubkeyParam } from "@/lib/routing/params";
-import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import { absoluteUrl, buildEntityMetadata } from "@/lib/seo/metadata";
+import { getRequestNowMs } from "@/lib/time/request-now";
 import type { Profile, ProfileStats } from "@/lib/types/api";
 
 type Params = Promise<{ pubkeyOrNpub: string }>;
@@ -65,6 +68,11 @@ function asMetadataPrimitiveValue(value: unknown): MetadataPrimitiveValue | null
   return { raw, display, copyable, truncated };
 }
 
+/**
+ * The summary's `hero.actions` currently point at API routes (`/api/v1/...`),
+ * which are not pages on this site. Only absolute external links are kept;
+ * in-app shortcuts are rendered by the page itself (tabs, EntityActions).
+ */
 function normalizeHeroActions(value: unknown): HeroAction[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -72,7 +80,8 @@ function normalizeHeroActions(value: unknown): HeroAction[] {
       if (!isRecord(entry)) return null;
       const id = typeof entry.id === "string" ? entry.id : "";
       const label = typeof entry.label === "string" ? entry.label : "";
-      const href = typeof entry.href === "string" ? sanitizeExternalHref(entry.href) : null;
+      const rawHref = typeof entry.href === "string" ? entry.href.trim() : "";
+      const href = /^https?:\/\//i.test(rawHref) ? sanitizeExternalHref(rawHref) : null;
       if (!label || !href) return null;
       return {
         id: id || label.toLowerCase().replace(/\s+/g, "_"),
@@ -122,7 +131,45 @@ function fallbackIdentityDetails(
   push("lud16", "LUD-16", profile.lud16);
   push("about", "About", profile.about, 120);
   push("metadata_event_id", "Metadata event", summary?.metadata_event_id);
+  const createdAt = summary?.metadata_created_at;
+  if (typeof createdAt === "number" || typeof createdAt === "string") {
+    push("metadata_created_at", "Metadata created at", String(createdAt));
+  }
   return rows;
+}
+
+type IdentityDetailRow = { key: string; label: string; value: MetadataPrimitiveValue };
+
+/** Keys already represented elsewhere in the hero (badge, bio, hero name). */
+const HERO_DUPLICATE_IDENTITY_KEYS = new Set(["npub_or_pubkey", "npub", "pubkey", "about", "name"]);
+
+/**
+ * Drop fields the hero already shows and turn raw unix timestamps into a
+ * readable date (the raw value stays available via `title` and copy).
+ */
+function presentIdentityDetails(rows: IdentityDetailRow[]): IdentityDetailRow[] {
+  const seen = new Set<string>();
+  const result: IdentityDetailRow[] = [];
+  for (const row of rows) {
+    const key = row.key.toLowerCase();
+    if (HERO_DUPLICATE_IDENTITY_KEYS.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    if (key === "metadata_created_at") {
+      const iso = formatUnixDate(row.value.raw ?? row.value.display);
+      result.push({
+        ...row,
+        label: "Metadata updated",
+        value: {
+          ...row.value,
+          display: iso ? `${iso} (unix ${row.value.raw ?? row.value.display})` : row.value.display,
+          copyable: true,
+        },
+      });
+      continue;
+    }
+    result.push(row);
+  }
+  return result;
 }
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
@@ -146,18 +193,25 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       imagePath: `/profiles/${encodeURIComponent(pubkeyOrNpub)}/opengraph-image`,
       type: "profile",
       rss: {
-        url: `/feeds/profiles/${encodeURIComponent(pubkeyOrNpub)}.xml`,
+        url: `/feeds/profiles/${encodeURIComponent(pubkeyOrNpub)}/xml`,
         title: `${label} notes`,
       },
     });
-  } catch {
+  } catch (error) {
+    if (isApiError(error) && error.isNotFound) {
+      return {
+        title: "Profile not found",
+        description: "This profile is not in the NostrMash index.",
+        robots: { index: false, follow: false },
+      };
+    }
     return buildEntityMetadata({
       title: `Profile ${truncateMiddle(resolved, 24)}`,
       description: `View profile activity, notes, and network context for ${pubkeyOrNpub}.`,
       path: `/profiles/${encodeURIComponent(pubkeyOrNpub)}`,
       type: "profile",
       rss: {
-        url: `/feeds/profiles/${encodeURIComponent(pubkeyOrNpub)}.xml`,
+        url: `/feeds/profiles/${encodeURIComponent(pubkeyOrNpub)}/xml`,
         title: "Profile notes",
       },
     });
@@ -176,7 +230,6 @@ export default async function ProfilePage({
     notFound();
   }
   const resolvedSearchParams = await searchParams;
-  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   const {
     contentResolution,
     errorMessage,
@@ -187,29 +240,22 @@ export default async function ProfilePage({
     semantics,
     summary,
     summaryRecord,
+    notFound: profileNotFound,
   } = await loadProfileFocalData(pubkeyOrNpub);
+  if (profileNotFound) {
+    notFound();
+  }
 
   const hero = isRecord(summaryRecord?.hero) ? summaryRecord.hero : null;
   const heroMetadata = isRecord(hero?.metadata) ? hero.metadata : null;
   const heroCounters = toCounterRows(
     (isRecord(hero?.counters) ? hero.counters : summary?.stats) as ProfileStats
   );
-  const parsedHeroActions = normalizeHeroActions(hero?.actions);
-  const heroActions =
-    parsedHeroActions.length > 0
-      ? parsedHeroActions
-      : [
-          {
-            id: "recent_notes",
-            label: "Recent notes",
-            href: `${buildProfileActivityTabHref(profileRoute, currentSearchParams, "notes")}#profile-activity`,
-          },
-          {
-            id: "related_profiles",
-            label: "Related profiles",
-            href: `${profileRoute}#related-profiles`,
-          },
-        ];
+  const externalHeroActions = normalizeHeroActions(hero?.actions);
+  const nowMs = getRequestNowMs();
+  const trustSummary = summary?.trust_summary ?? null;
+  const recentActivityAt = summary?.stats?.recent_activity_at;
+  const bannerSrc = normalizeImageSrc(profile?.banner);
 
   const heroNpubOrPubkey =
     asMetadataPrimitiveValue(heroMetadata?.npub_or_pubkey) ??
@@ -226,6 +272,15 @@ export default async function ProfilePage({
   const heroWebsiteRaw = asMetadataPrimitiveValue(heroMetadata?.website) ?? null;
   const heroWebsiteHref = heroWebsiteRaw?.raw ? sanitizeExternalHref(heroWebsiteRaw.raw) : null;
   const heroWebsite = heroWebsiteHref ? { ...heroWebsiteRaw, raw: heroWebsiteHref } : null;
+  const heroWebsiteLabel = heroWebsite?.raw
+    ? truncateMiddle(
+        heroWebsite.raw
+          .replace(/^https?:\/\//i, "")
+          .replace(/^www\./i, "")
+          .replace(/\/$/, ""),
+        32
+      )
+    : null;
   const heroLud16 = asMetadataPrimitiveValue(heroMetadata?.lud16) ?? null;
 
   const identityDetailsFromSummary = (() => {
@@ -246,10 +301,18 @@ export default async function ProfilePage({
         Boolean(entry)
       );
   })();
-  const identityDetails =
+  const identityDetails = presentIdentityDetails(
     identityDetailsFromSummary.length > 0
       ? identityDetailsFromSummary
-      : fallbackIdentityDetails(profile, summaryRecord);
+      : fallbackIdentityDetails(profile, summaryRecord)
+  );
+  const pubkeyHex =
+    resolvePubkeyParam(pubkeyOrNpub) ??
+    (typeof profile?.pubkey === "string" ? profile.pubkey : null);
+  const canonicalNpub =
+    (typeof profile?.npub === "string" && profile.npub) ||
+    (pubkeyHex ? hexToNpub(pubkeyHex) : null) ||
+    pubkeyOrNpub;
 
   const heroDisplayName =
     (typeof hero?.display_name === "string" ? hero.display_name : undefined) ??
@@ -275,7 +338,11 @@ export default async function ProfilePage({
           heroHandleRaw.startsWith("npub1") ? "npub" : "pubkey",
           "secondary"
         )
-      : heroHandleRaw;
+      : formatNip05(heroHandleRaw);
+  // Avoid repeating the display name as its own handle (e.g. name "fiatjaf" under "fiatjaf").
+  const showHeroHandle = Boolean(
+    heroHandle && heroHandle.toLowerCase() !== heroDisplayName.toLowerCase()
+  );
   const rawHeroBio =
     (typeof hero?.bio === "string" ? hero.bio : undefined) ??
     (typeof profile?.about === "string" ? profile.about : undefined);
@@ -288,7 +355,7 @@ export default async function ProfilePage({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {errorMessage ? (
         profile ? (
           <SoftRefreshNote message={errorMessage} />
@@ -297,22 +364,26 @@ export default async function ProfilePage({
         )
       ) : null}
 
-      <section className="nm-signal-rule border-edge/70 border-b pt-8 pb-10 sm:pt-12 sm:pb-14">
-        <p className="nm-kicker mb-6">Profile intelligence</p>
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+      <section className="nm-signal-rule relative isolate pt-6 pb-1 sm:pt-8 sm:pb-2">
+        {bannerSrc ? <ProfileBannerBackdrop src={bannerSrc} /> : null}
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <p className="nm-kicker">Profile intelligence</p>
+          <EntityContextNav view="people" compact />
+        </div>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
           <div className="flex min-w-0 items-start gap-5 sm:gap-7">
             <ProfileAvatar
               profile={avatarProfile}
               size={112}
               alt={profile ? profileLabel(profile) : heroDisplayName}
               enlarge
-              className="border-edge h-20 w-20 rounded-full border object-cover sm:h-28 sm:w-28"
+              className="border-edge bg-surface h-20 w-20 rounded-full border object-cover sm:h-28 sm:w-28"
             />
-            <div className="min-w-0 flex-1 space-y-3">
+            <div className="min-w-0 flex-1 space-y-2.5">
               <h1 className="nm-display-lg text-ink-strong truncate" title={heroDisplayName}>
                 {heroDisplayName}
               </h1>
-              {heroHandle ? (
+              {showHeroHandle && heroHandle ? (
                 <p className="text-ink-muted truncate text-base" title={heroHandleRaw}>
                   {heroHandle}
                 </p>
@@ -328,31 +399,56 @@ export default async function ProfilePage({
                   {heroBio}
                 </p>
               )}
+              <ProfileHeroSignals
+                trust={trustSummary}
+                recentActivityAt={recentActivityAt}
+                nowMs={nowMs}
+                bot={profile?.bot}
+                fields={profile?.fields}
+                className="pt-1"
+              />
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 text-sm lg:justify-end">
-            {heroWebsite?.raw ? (
-              <Link
-                href={heroWebsite.raw}
-                rel="noopener noreferrer nofollow"
-                target="_blank"
-                className="text-link hover:text-link-hover"
-              >
-                {heroWebsite.display ?? truncateMiddle(heroWebsite.raw, 28)}
-              </Link>
-            ) : null}
-            {heroLud16?.raw ? (
-              <a href={`lightning:${heroLud16.raw}`} className="text-link hover:text-link-hover">
-                {heroLud16.display ?? heroLud16.raw}
-              </a>
-            ) : null}
-          </div>
+          {heroWebsite?.raw || heroLud16?.raw || externalHeroActions.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm lg:justify-end lg:pt-9">
+              {heroWebsite?.raw ? (
+                <Link
+                  href={heroWebsite.raw}
+                  rel="noopener noreferrer nofollow"
+                  target="_blank"
+                  className="text-link hover:text-link-hover"
+                  title={heroWebsite.raw}
+                >
+                  {heroWebsiteLabel}
+                  <span aria-hidden className="text-ink-faint ml-1">
+                    ↗
+                  </span>
+                </Link>
+              ) : null}
+              {heroLud16?.raw ? (
+                <a href={`lightning:${heroLud16.raw}`} className="text-link hover:text-link-hover">
+                  {heroLud16.display ?? heroLud16.raw}
+                </a>
+              ) : null}
+              {externalHeroActions.map((action) => (
+                <Link
+                  key={action.id}
+                  href={action.href}
+                  rel="noopener noreferrer nofollow"
+                  target="_blank"
+                  className="text-link hover:text-link-hover"
+                >
+                  {action.label}
+                </Link>
+              ))}
+            </div>
+          ) : null}
         </div>
 
-        <div className="border-edge/60 mt-9 grid gap-7 border-t pt-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <div className="border-edge/60 mt-7 grid gap-5 border-t pt-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           {heroCounters.length > 0 ? (
-            <dl className="grid grid-cols-2 gap-x-8 gap-y-5 sm:flex sm:flex-wrap sm:gap-10">
+            <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:flex sm:flex-wrap sm:gap-10">
               {heroCounters.map((counter) => (
                 <div key={counter.key} className="min-w-20">
                   <dt className="text-ink-faint text-xs">{counter.label}</dt>
@@ -362,51 +458,86 @@ export default async function ProfilePage({
                 </div>
               ))}
             </dl>
-          ) : null}
+          ) : (
+            <div />
+          )}
 
-          <nav aria-label="Profile shortcuts" className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-            {heroActions.map((action) => (
-              <Link key={action.id} href={action.href} className="text-link hover:text-link-hover">
-                {action.label}
-              </Link>
-            ))}
-          </nav>
+          <div data-testid="profile-actions" className="lg:justify-self-end">
+            <EntityActions
+              kind="profile"
+              absoluteUrl={absoluteUrl(`/profiles/${encodeURIComponent(canonicalNpub)}`)}
+              identifier={canonicalNpub}
+              nostrUri={`nostr:${canonicalNpub}`}
+              njumpUrl={`https://njump.me/${canonicalNpub}`}
+            />
+          </div>
         </div>
 
         <Disclosure
-          title="Open, share, and technical identity"
-          description="Protocol identifiers and external client actions."
-          className="mt-8"
+          title="Identity and protocol details"
+          description="Keys, verification, and metadata event for this profile."
+          className="mt-6"
         >
           <div className="space-y-4">
-            {heroNpubOrPubkey?.raw ? (
-              <IdBadge
-                id={heroNpubOrPubkey.raw}
-                label={heroNpubOrPubkey.raw.startsWith("npub1") ? "npub" : "pubkey"}
-              />
-            ) : null}
-            {(() => {
-              const pubkeyHex =
-                resolvePubkeyParam(pubkeyOrNpub) ??
-                (typeof profile?.pubkey === "string" ? profile.pubkey : null);
-              const npub =
-                (typeof profile?.npub === "string" && profile.npub) ||
-                (pubkeyHex ? hexToNpub(pubkeyHex) : null) ||
-                pubkeyOrNpub;
-              return (
-                <EntityActions
-                  kind="profile"
-                  absoluteUrl={absoluteUrl(`/profiles/${encodeURIComponent(npub)}`)}
-                  identifier={npub}
-                  nostrUri={`nostr:${npub}`}
-                  njumpUrl={`https://njump.me/${npub}`}
+            <div className="flex flex-wrap gap-2">
+              {heroNpubOrPubkey?.raw ? (
+                <IdBadge
+                  id={heroNpubOrPubkey.raw}
+                  label={heroNpubOrPubkey.raw.startsWith("npub1") ? "npub" : "pubkey"}
                 />
-              );
-            })()}
+              ) : null}
+              {pubkeyHex && heroNpubOrPubkey?.raw !== pubkeyHex ? (
+                <IdBadge id={pubkeyHex} label="hex" kind="pubkey" />
+              ) : null}
+              {heroNpubOrPubkey?.raw ? <CopyValueButton value={heroNpubOrPubkey.raw} /> : null}
+            </div>
+            {identityDetails.length > 0 ? (
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {identityDetails.map((field) => {
+                  const raw = field.value.raw ?? "";
+                  const display = field.value.display ?? raw;
+                  const safeUrl = /^https?:\/\//i.test(raw) ? sanitizeExternalHref(raw) : null;
+                  const isLud16 = field.key.toLowerCase() === "lud16";
+                  return (
+                    <li
+                      key={`${field.key}-${field.label}`}
+                      className="bg-surface-sunken/40 hover:bg-surface-sunken/60 rounded-lg p-3 transition-colors"
+                    >
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <p className="text-ink-faint text-[11px]">{field.label}</p>
+                        {field.value.copyable && raw ? <CopyValueButton value={raw} /> : null}
+                      </div>
+                      {safeUrl ? (
+                        <Link
+                          href={safeUrl}
+                          rel="noopener noreferrer nofollow"
+                          target="_blank"
+                          className="text-link hover:text-link-hover text-sm break-all"
+                        >
+                          {display}
+                        </Link>
+                      ) : isLud16 ? (
+                        <a
+                          href={`lightning:${raw}`}
+                          className="text-link hover:text-link-hover text-sm break-all"
+                        >
+                          {display}
+                        </a>
+                      ) : (
+                        <p className="text-ink-soft text-sm break-all" title={raw || display}>
+                          {display}
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <EmptyState message="No lower-level identity details were returned for this profile." />
+            )}
           </div>
         </Disclosure>
       </section>
-      <EntityContextNav view="people" />
 
       <JsonLd
         data={{
@@ -416,6 +547,7 @@ export default async function ProfilePage({
           description: heroBio,
           url: absoluteUrl(`/profiles/${encodeURIComponent(pubkeyOrNpub)}`),
           identifier: pubkeyOrNpub,
+          ...(heroAvatar ? { image: heroAvatar } : {}),
         }}
       />
 
@@ -437,56 +569,6 @@ export default async function ProfilePage({
           searchParams={resolvedSearchParams}
         />
       </Suspense>
-
-      <Disclosure
-        title="Identity details"
-        description="Public metadata primitives with compact display and full-value access."
-      >
-        {identityDetails.length > 0 ? (
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {identityDetails.map((field) => {
-              const raw = field.value.raw ?? "";
-              const display = field.value.display ?? raw;
-              const safeUrl = sanitizeExternalHref(raw);
-              const isLud16 = field.key.toLowerCase() === "lud16";
-              return (
-                <li
-                  key={`${field.key}-${field.label}`}
-                  className="bg-surface-sunken/40 hover:bg-surface-sunken/60 rounded-lg p-3 transition-colors"
-                >
-                  <div className="mb-1 flex items-center justify-between gap-2">
-                    <p className="text-ink-faint text-[11px]">{field.label}</p>
-                    {field.value.copyable && raw ? <CopyValueButton value={raw} /> : null}
-                  </div>
-                  {safeUrl ? (
-                    <Link
-                      href={safeUrl}
-                      rel="noopener noreferrer nofollow"
-                      target="_blank"
-                      className="text-link hover:text-link-hover text-sm break-all"
-                    >
-                      {display}
-                    </Link>
-                  ) : isLud16 ? (
-                    <a
-                      href={`lightning:${raw}`}
-                      className="text-link hover:text-link-hover text-sm break-all"
-                    >
-                      {display}
-                    </a>
-                  ) : (
-                    <p className="text-ink-soft text-sm break-all" title={raw || display}>
-                      {display}
-                    </p>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <EmptyState message="No lower-level identity details were returned for this profile." />
-        )}
-      </Disclosure>
 
       <AboutThisData semantics={semantics} />
 

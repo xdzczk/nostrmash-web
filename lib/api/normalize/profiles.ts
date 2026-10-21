@@ -16,6 +16,7 @@ import type {
 } from "@/lib/types/api";
 import {
   asArray,
+  asBoolean,
   asNumber,
   asRecord,
   asString,
@@ -153,6 +154,16 @@ export function normalizeProfileSummaryResponse(value: unknown): ProfileSummaryR
     record.recent_note_previews ?? record.recentNotes ?? record.recent_notes
   );
 
+  const trustRecord = asRecord(record.trust_summary);
+  const trustSummary = trustRecord
+    ? compactDefined({
+        ...trustRecord,
+        tier: asString(trustRecord.tier),
+        hop_distance: asNumber(trustRecord.hop_distance),
+        percentile: asNumber(trustRecord.percentile),
+      })
+    : undefined;
+
   return {
     ...record,
     ...(profile ?? {}),
@@ -160,6 +171,9 @@ export function normalizeProfileSummaryResponse(value: unknown): ProfileSummaryR
     pubkey: asString(record.pubkey) ?? profile?.pubkey,
     profile: profile ?? undefined,
     stats,
+    trust_summary: trustSummary,
+    metadata_event_id: asString(record.metadata_event_id),
+    metadata_created_at: asNumber(record.metadata_created_at),
     recent_note_previews: recentNotePreviews.length > 0 ? recentNotePreviews : undefined,
   };
 }
@@ -396,11 +410,16 @@ export function normalizeRelatedProfilesResponse(value: unknown): RelatedProfile
       fallbackItems
   );
   const total = asNumber(record.total) ?? asNumber(record.count);
+  const degraded = asBoolean(record.degraded) ?? asBoolean(asRecord(record.meta)?.degraded);
+  const degradedReason =
+    asString(record.degraded_reason) ?? asString(asRecord(record.meta)?.degraded_reason);
 
-  return {
+  return compactDefined({
     ...record,
     pubkey: asString(record.pubkey) ?? asString(record.author_pubkey),
     related_profiles: dedupeProfilesByPubkey(relatedProfiles),
     total: total ?? relatedProfiles.length,
-  };
+    degraded,
+    degraded_reason: degradedReason,
+  });
 }

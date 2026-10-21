@@ -13,6 +13,21 @@ test.describe("edge hardening", () => {
     await expect(page.getByText(/page not found/i)).toBeVisible();
   });
 
+  test("profile not-found is a real 404, not a streamed 200", async ({ request }) => {
+    const invalid = await request.get("/profiles/not-a-real-key");
+    expect(invalid.status()).toBe(404);
+
+    // Valid-looking key the API has never seen → 404 for the page, its OG
+    // image, and its RSS feed.
+    const unknown = "d".repeat(64);
+    const page = await request.get(`/profiles/${unknown}`);
+    expect(page.status()).toBe(404);
+    const og = await request.get(`/profiles/${unknown}/opengraph-image`);
+    expect(og.status()).toBe(404);
+    const feed = await request.get(`/feeds/profiles/${unknown}/xml`);
+    expect(feed.status()).toBe(404);
+  });
+
   test("invalid domain ids render not-found", async ({ page }) => {
     await page.goto("/domains/not%20a%20domain");
     await expect(page.getByText(/page not found/i)).toBeVisible();

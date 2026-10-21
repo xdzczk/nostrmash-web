@@ -105,9 +105,57 @@ function positiveNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
 }
 
+/**
+ * Related-profile adjacency signals from `/profiles/{pubkey}/related` and the
+ * summary's `related_discovery`. Returns [] for profiles that did not come
+ * from a relatedness query so callers can fall through to momentum reasons.
+ */
+export function mapRelatedProfileReasons(profile: Profile): WhyNowReason[] {
+  const reasonCodes = Array.isArray(profile.reasons)
+    ? new Set(profile.reasons.filter((code): code is string => typeof code === "string"))
+    : new Set<string>();
+  const interactions = positiveNumber(profile.interaction_adjacency);
+  const replies = positiveNumber(profile.reply_adjacency);
+  const quoteReposts = positiveNumber(profile.quote_repost_adjacency);
+  const topics = positiveNumber(profile.topic_overlap);
+
+  const reasons: WhyNowReason[] = [];
+  if (interactions !== null || reasonCodes.has("interaction_adjacency")) {
+    reasons.push({
+      text: "interacts often",
+      support:
+        interactions !== null
+          ? readableCount(interactions, "interaction", "interactions")
+          : undefined,
+    });
+  }
+  if (replies !== null || reasonCodes.has("reply_adjacency")) {
+    reasons.push({
+      text: "replies back and forth",
+      support: replies !== null ? readableCount(replies, "reply", "replies") : undefined,
+    });
+  }
+  if (quoteReposts !== null || reasonCodes.has("quote_repost_adjacency")) {
+    reasons.push({
+      text: "quotes and reposts",
+      support: quoteReposts !== null ? readableCount(quoteReposts, "share", "shares") : undefined,
+    });
+  }
+  if (topics !== null || reasonCodes.has("topic_overlap")) {
+    reasons.push({
+      text: "shared topics",
+      support: topics !== null ? readableCount(topics, "topic", "topics") : undefined,
+    });
+  }
+  return dedupeReasons(reasons);
+}
+
 export function mapProfileWhyNow(profile: Profile): WhyNowReason[] {
   const serverReasons = mapServerRankingReasons(profile.ranking);
   if (serverReasons.length > 0) return serverReasons;
+
+  const relatedReasons = mapRelatedProfileReasons(profile);
+  if (relatedReasons.length > 0) return relatedReasons;
 
   const metrics = extractPrimitiveStats(profile, []);
   const postCount =

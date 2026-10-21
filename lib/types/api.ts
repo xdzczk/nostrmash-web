@@ -37,6 +37,9 @@ export interface NativeApiSemantics {
   trust_mode?: TrustMode;
   trust_applied?: boolean;
   result_scope?: string | Record<string, unknown>;
+  /** Upstream served a fallback dataset instead of the requested one. */
+  degraded?: boolean;
+  degraded_reason?: string;
   next_cursor?: string;
   window?: string;
   computed_at?: string;
@@ -69,6 +72,10 @@ export interface Profile {
   nip05?: string;
   lud16?: string;
   website?: string;
+  banner?: string;
+  bot?: boolean;
+  /** Custom profile fields (label, value) pairs from kind-0 metadata. */
+  fields?: ProfileField[];
   recent_post_count?: number;
   recent_reply_count?: number;
   recent_engagement_received?: number;
@@ -78,6 +85,23 @@ export interface Profile {
   recent_activity_at?: number;
   follower_count?: number;
   ranking?: DiscoveryItemRanking;
+  /** Related-profile signals (only present on `/related` results). */
+  reasons?: string[];
+  interaction_adjacency?: number;
+  reply_adjacency?: number;
+  quote_repost_adjacency?: number;
+  topic_overlap?: number;
+  score?: number;
+  [key: string]: unknown;
+}
+
+export type ProfileField = [label: string, value: string];
+
+export interface TrustSummary {
+  tier?: string;
+  hop_distance?: number;
+  /** 0..1 fraction; lower means more trusted (0.001 = top 0.1%). */
+  percentile?: number;
   [key: string]: unknown;
 }
 
@@ -419,6 +443,9 @@ export interface ProfileSummaryResponse extends NativeApiSemantics {
   pubkey?: string;
   profile?: Profile;
   stats?: ProfileStats;
+  trust_summary?: TrustSummary;
+  metadata_event_id?: string;
+  metadata_created_at?: number;
   recent_note_previews?: EventRecord[];
   note_count?: number;
   follower_count?: number;

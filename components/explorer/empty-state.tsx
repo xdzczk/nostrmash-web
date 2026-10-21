@@ -9,10 +9,13 @@ import type { ReactNode } from "react";
 export function EmptyState({
   title,
   message,
+  hint,
   actions,
 }: {
   title?: string;
   message: string;
+  /** Secondary explanatory line, e.g. what this list would contain. */
+  hint?: string;
   actions?: ReactNode;
 }) {
   return (
@@ -47,6 +50,7 @@ export function EmptyState({
         ) : (
           <p className="text-ink-dim mx-auto max-w-md text-[15px] leading-6">{message}</p>
         )}
+        {hint ? <p className="text-ink-faint mx-auto max-w-md text-sm leading-6">{hint}</p> : null}
       </div>
       {actions ? <div className="mt-1">{actions}</div> : null}
     </div>

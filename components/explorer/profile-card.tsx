@@ -24,11 +24,14 @@ export function ProfileCard({
   rank,
   summary,
   discoverySignals = false,
+  maxReasons = 1,
 }: {
   profile: Profile;
   rank?: number;
   summary?: Record<string, unknown>;
   discoverySignals?: boolean;
+  /** How many "why" chips to show when `discoverySignals` is on. */
+  maxReasons?: number;
 }) {
   const label = profileLabel(profile);
   const secondaryLabel = profileSecondaryLabel(profile);
@@ -122,7 +125,12 @@ export function ProfileCard({
       </div>
 
       {discoverySignals ? (
-        <WhyNow reasons={profileReasons} showLabel={false} className="mt-2.5 sm:mt-3" />
+        <WhyNow
+          reasons={profileReasons}
+          maxReasons={maxReasons}
+          showLabel={false}
+          className="mt-2.5 sm:mt-3"
+        />
       ) : null}
 
       <DiscoveryStatPills stats={metrics} className="mt-2.5 sm:mt-3" />

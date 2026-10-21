@@ -19,6 +19,15 @@ const QUOTED_ID = "c".repeat(64);
 const MENTION_PK = "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d";
 const MENTION_NPUB = "npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6";
 const QUOTED_NOTE = "note1enxvenxvenxvenxvenxvenxvenxvenxvenxvenxvenxvenxvenxqzqztj2";
+// Profile page fixtures: a pubkey the API has never seen (hard 404) and one
+// whose related-profiles endpoint is degraded to a trending fallback.
+const UNKNOWN_PK = "d".repeat(64);
+const DEGRADED_RELATED_PK = "e".repeat(64);
+// 1×1 PNG used as the author's banner so the hero backdrop renders. Served as a
+// data: URL because the site CSP only allows https: (and data:) image sources.
+const MOCK_BANNER_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+const MOCK_BANNER_DATA_URL = `data:image/png;base64,${MOCK_BANNER_PNG_BASE64}`;
 
 const quotedEvent = {
   id: QUOTED_ID,
@@ -57,6 +66,9 @@ const authorProfile = {
   display_name: "Mock Author",
   name: "mockauthor",
   about: "Mock author bio",
+  nip05: "_@mockauthor.example",
+  banner: MOCK_BANNER_DATA_URL,
+  fields: [["GitHub", "https://github.com/mockauthor"]],
   recent_post_count: 8,
   recent_new_followers: 14,
   ranking: {
@@ -77,6 +89,13 @@ const mentionProfile = {
   npub: MENTION_NPUB,
   display_name: "Mentioned User",
   name: "mentioned",
+};
+
+const degradedSubjectProfile = {
+  pubkey: DEGRADED_RELATED_PK,
+  display_name: "Lonely Account",
+  name: "lonely",
+  about: "Profile whose related list is degraded in the mock API",
 };
 
 // A note with an image attachment so the overview's compact (thumbnail) note
@@ -314,6 +333,27 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
+  if (path.startsWith("/api/v1/discovery/profiles/") && path.endsWith("/related")) {
+    const parts = path.split("/").filter(Boolean);
+    const pk = parts[4] ?? "";
+    if (pk === DEGRADED_RELATED_PK) {
+      // Upstream fell back to trending; includes the subject itself, which the
+      // UI must drop.
+      return json(res, 200, {
+        pubkey: pk,
+        related_profiles: [degradedSubjectProfile, authorProfile, mentionProfile],
+        degraded: true,
+        degraded_reason: "related_profiles_unavailable",
+        consistency: "eventual",
+      });
+    }
+    return json(res, 200, {
+      pubkey: pk,
+      related_profiles: [mentionProfile],
+      consistency: "eventual",
+    });
+  }
+
   if (path.startsWith("/api/v1/discovery/")) {
     return json(res, 200, {
       notes: trendingNotes,
@@ -367,12 +407,34 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (path.startsWith("/api/v1/users/") && path.endsWith("/summary")) {
+    const parts = path.split("/").filter(Boolean);
+    const pk = parts[3] ?? "";
+    if (pk === UNKNOWN_PK) {
+      return json(res, 404, { error: { code: "not_found", message: "profile not found" } });
+    }
+    if (pk === DEGRADED_RELATED_PK) {
+      return json(res, 200, {
+        pubkey: pk,
+        profile: degradedSubjectProfile,
+        hero: {
+          display_name: degradedSubjectProfile.display_name,
+          handle: degradedSubjectProfile.name,
+          bio: degradedSubjectProfile.about,
+          counters: { note_count: 0, follower_count: 2 },
+        },
+        stats: { note_count: 0, follower_count: 2, reply_count: 0 },
+        recent_note_previews: [],
+        // Empty here forces the page onto the /related endpoint, which is degraded.
+        related_discovery: { related_profiles: [], rising_profiles: [] },
+        consistency: "eventual",
+      });
+    }
     return json(res, 200, {
       pubkey: AUTHOR_PK,
       profile: authorProfile,
       hero: {
         display_name: authorProfile.display_name,
-        handle: authorProfile.name,
+        handle: authorProfile.nip05,
         bio: authorProfile.about,
         counters: { note_count: 3, follower_count: 10 },
       },
@@ -383,12 +445,32 @@ const server = http.createServer(async (req, res) => {
             label: "Npub",
             value: { raw: authorProfile.npub, display: authorProfile.npub, copyable: true },
           },
+          {
+            key: "metadata_created_at",
+            label: "Metadata created at",
+            value: { raw: "1789138347", display: "1789138347", copyable: false },
+          },
         ],
       },
-      stats: { note_count: 3, follower_count: 10 },
+      stats: {
+        note_count: 3,
+        follower_count: 10,
+        reply_count: 0,
+        recent_activity_at: Math.floor(Date.now() / 1000) - 5 * 3600,
+      },
+      trust_summary: { tier: "seed", hop_distance: 0, percentile: 0.0012 },
+      metadata_event_id: "67a59200716c385cd43c84dbbc5ebed783844ca56625787fdbf586bfc471ee67",
+      metadata_created_at: 1789138347,
       recent_note_previews: trendingNotes,
       related_discovery: {
-        related_profiles: [mentionProfile],
+        related_profiles: [
+          {
+            ...mentionProfile,
+            reasons: ["interaction_adjacency", "reply_adjacency"],
+            interaction_adjacency: 6,
+            reply_adjacency: 5,
+          },
+        ],
         rising_profiles: [mentionProfile],
       },
       consistency: "eventual",
@@ -396,6 +478,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (path.startsWith("/api/v1/profiles/") || path.startsWith("/api/v1/users/")) {
+    const parts = path.split("/").filter(Boolean);
+    if ((parts[3] ?? "") === UNKNOWN_PK) {
+      return json(res, 404, { error: { code: "not_found", message: "profile not found" } });
+    }
     return json(res, 200, {
       pubkey: AUTHOR_PK,
       profile: authorProfile,

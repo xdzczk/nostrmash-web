@@ -123,10 +123,12 @@ export function ProfilesList({
   profiles,
   ranked = false,
   discoverySignals = false,
+  maxReasons,
 }: {
   profiles: Profile[];
   ranked?: boolean;
   discoverySignals?: boolean;
+  maxReasons?: number;
 }) {
   return (
     <ul>
@@ -136,6 +138,7 @@ export function ProfilesList({
             profile={profile}
             rank={ranked ? (profile.ranking?.rank ?? index + 1) : undefined}
             discoverySignals={discoverySignals}
+            maxReasons={maxReasons}
           />
         </li>
       ))}

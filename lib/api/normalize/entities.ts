@@ -5,10 +5,12 @@ import type {
   EventRecord,
   HashtagEntry,
   Profile,
+  ProfileField,
   ProfileStats,
 } from "@/lib/types/api";
 import {
   asArray,
+  asBoolean,
   asNumber,
   asRecord,
   asString,
@@ -153,6 +155,31 @@ export function filterAuthoredNotes(events: EventRecord[]): EventRecord[] {
   });
 }
 
+const MAX_PROFILE_FIELDS = 8;
+const MAX_PROFILE_FIELD_LENGTH = 200;
+
+/**
+ * Custom kind-0 `fields` arrive as `[label, value]` tuples. Anything that is
+ * not a pair of non-empty strings is dropped; the list is capped so a hostile
+ * profile cannot flood the hero.
+ */
+export function normalizeProfileFields(value: unknown): ProfileField[] | undefined {
+  const fields = asArray(value)
+    .map((entry): ProfileField | null => {
+      if (!Array.isArray(entry) || entry.length < 2) return null;
+      const label = asString(entry[0])?.trim();
+      const fieldValue = asString(entry[1])?.trim();
+      if (!label || !fieldValue) return null;
+      if (label.length > MAX_PROFILE_FIELD_LENGTH || fieldValue.length > MAX_PROFILE_FIELD_LENGTH) {
+        return null;
+      }
+      return [label, fieldValue];
+    })
+    .filter((entry): entry is ProfileField => entry !== null)
+    .slice(0, MAX_PROFILE_FIELDS);
+  return fields.length > 0 ? fields : undefined;
+}
+
 export function normalizeProfile(value: unknown): Profile | null {
   const record = asRecord(value);
   if (!record) return null;
@@ -218,6 +245,9 @@ export function normalizeProfile(value: unknown): Profile | null {
       asProfileRecord.web,
       asProfileRecord.homepage
     ),
+    banner: firstString(asProfileRecord.banner, asProfileRecord.banner_url, asProfileRecord.cover),
+    bot: asBoolean(asProfileRecord.bot),
+    fields: normalizeProfileFields(asProfileRecord.fields),
     ranking: normalizeDiscoveryRanking(asProfileRecord.ranking),
   };
 

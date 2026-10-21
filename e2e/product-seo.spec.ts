@@ -59,14 +59,35 @@ test.describe("product + SEO surfaces", () => {
     expect(parsed["@type"]).toBe("SocialMediaPosting");
   });
 
-  test("profile page exposes Person JSON-LD and actions", async ({ page }) => {
+  test("profile page exposes Person JSON-LD and actions", async ({ page, request }) => {
     await page.goto(`/profiles/${AUTHOR_PK}`);
-    await page.getByText("Open, share, and technical identity", { exact: true }).click();
+    // Share/copy actions are visible in the hero without opening a disclosure.
     await expect(page.getByRole("button", { name: /share/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /copy npub/i })).toBeVisible();
+    // Protocol identifiers live in a single merged disclosure.
+    await page.getByText("Identity and protocol details", { exact: true }).click();
+    await expect(page.getByText("Metadata updated", { exact: true })).toBeVisible();
+    await expect(page.getByText("2026-09-11 (unix 1789138347)", { exact: true })).toBeVisible();
+
     const jsonLd = page.locator('script[type="application/ld+json"]');
     await expect(jsonLd.first()).toBeAttached();
     const parsed = JSON.parse((await jsonLd.first().textContent()) ?? "{}");
     expect(parsed["@type"]).toBe("Person");
+
+    // RSS alternate must point at a route that actually exists.
+    const rssHref = await page
+      .locator('link[rel="alternate"][type="application/rss+xml"]')
+      .first()
+      .getAttribute("href");
+    expect(rssHref).toMatch(new RegExp(`/feeds/profiles/${AUTHOR_PK}/xml$`));
+    const feed = await request.get(rssHref!);
+    expect(feed.ok()).toBeTruthy();
+    expect(await feed.text()).toContain("<rss");
+
+    // OG image renders the richer card (avatar/stat row) as a PNG.
+    const og = await request.get(`/profiles/${AUTHOR_PK}/opengraph-image`);
+    expect(og.ok()).toBeTruthy();
+    expect(og.headers()["content-type"] ?? "").toMatch(/image\/png/);
   });
 
   test("embed page renders note without site nav chrome", async ({ page }) => {

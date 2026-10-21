@@ -31,10 +31,12 @@ function OgFrame({
   eyebrow,
   children,
   variant,
+  badge,
 }: {
   eyebrow: string;
   children: ReactNode;
   variant: keyof typeof OG_SURFACE;
+  badge?: string;
 }) {
   return (
     <div
@@ -53,16 +55,35 @@ function OgFrame({
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
         <div style={{ width: 112, height: 4, borderRadius: 999, background: "#9b87f5" }} />
-        <div
-          style={{
-            fontSize: 20,
-            letterSpacing: 3.5,
-            opacity: 0.62,
-            fontFamily: "sans-serif",
-            textTransform: "uppercase",
-          }}
-        >
-          {eyebrow}
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <div
+            style={{
+              fontSize: 20,
+              letterSpacing: 3.5,
+              opacity: 0.62,
+              fontFamily: "sans-serif",
+              textTransform: "uppercase",
+            }}
+          >
+            {eyebrow}
+          </div>
+          {badge ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                fontSize: 20,
+                padding: "6px 16px",
+                borderRadius: 999,
+                border: "1.5px solid rgba(163,159,151,0.5)",
+                background: "rgba(98,95,89,0.18)",
+                color: "#dedbd4",
+                fontFamily: "sans-serif",
+              }}
+            >
+              {badge}
+            </div>
+          ) : null}
         </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>{children}</div>
@@ -82,37 +103,154 @@ function OgFrame({
   );
 }
 
+export type OgMetaItem = { label: string; value: string };
+
+const AVATAR_SIZE = 160;
+const AVATAR_FETCH_TIMEOUT_MS = 2500;
+const AVATAR_MAX_BYTES = 2_000_000;
+
+/**
+ * Fetch a remote avatar and inline it as a data URL so Satori does not have
+ * to make its own network request (and so a slow/broken UGC host degrades to
+ * the fallback disc instead of failing the whole image).
+ */
+export async function loadOgAvatar(url: string | undefined | null): Promise<string | null> {
+  if (!url || !/^https:\/\//i.test(url)) return null;
+  try {
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(AVATAR_FETCH_TIMEOUT_MS),
+      headers: { Accept: "image/png,image/jpeg,image/webp,image/*;q=0.8" },
+    });
+    if (!response.ok) return null;
+    const type = response.headers.get("content-type") ?? "";
+    if (!/^image\/(png|jpe?g|webp|gif)/i.test(type)) return null;
+    const buffer = await response.arrayBuffer();
+    if (buffer.byteLength === 0 || buffer.byteLength > AVATAR_MAX_BYTES) return null;
+    const mime = type.split(";")[0]?.trim() ?? "image/png";
+    return `data:${mime};base64,${Buffer.from(buffer).toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
+function OgAvatar({ src, initial }: { src: string | null; initial: string }) {
+  const common = {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: 999,
+    flexShrink: 0,
+    border: "3px solid rgba(255,255,255,0.14)",
+  } as const;
+  if (src) {
+    // eslint-disable-next-line @next/next/no-img-element -- Satori renders plain <img>
+    return <img src={src} alt="" style={{ ...common, objectFit: "cover" }} />;
+  }
+  return (
+    <div
+      style={{
+        ...common,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "linear-gradient(135deg, #4b4944 0%, #282825 100%)",
+        fontSize: 72,
+        fontWeight: 600,
+        color: OG_INK,
+      }}
+    >
+      {initial}
+    </div>
+  );
+}
+
 export async function createOgImage({
   eyebrow,
   title,
   subtitle,
   variant = "default",
   titleSize = 64,
+  avatarUrl,
+  avatarInitial,
+  meta,
+  badge,
 }: {
   eyebrow: string;
   title: string;
   subtitle?: string;
   variant?: keyof typeof OG_SURFACE;
   titleSize?: number;
+  /** Already-inlined (data:) or https avatar; see `loadOgAvatar`. */
+  avatarUrl?: string | null;
+  /** Letter shown in the fallback disc when the avatar is missing. */
+  avatarInitial?: string;
+  /** Stats row rendered under the title/subtitle, e.g. Followers / Notes. */
+  meta?: OgMetaItem[];
+  /** Small pill next to the eyebrow, e.g. "Trust · Seed · top 0.1%". */
+  badge?: string;
 }): Promise<ImageResponse> {
   const fontData = await loadDisplayFont();
+  const showAvatar = avatarUrl !== undefined || avatarInitial !== undefined;
+  const metaItems = (meta ?? []).filter((item) => item.value.trim().length > 0).slice(0, 4);
 
-  return new ImageResponse(
-    <OgFrame eyebrow={eyebrow} variant={variant}>
+  const heading = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
       <div
         style={{
           fontSize: titleSize,
           fontWeight: 600,
           lineHeight: 1.1,
-          maxHeight: 320,
+          maxHeight: showAvatar ? 160 : 320,
           overflow: "hidden",
         }}
       >
         {title}
       </div>
       {subtitle ? (
-        <div style={{ fontSize: 28, opacity: 0.8, maxWidth: 900, fontFamily: "sans-serif" }}>
+        <div
+          style={{
+            fontSize: 28,
+            opacity: 0.8,
+            maxWidth: 900,
+            maxHeight: 80,
+            overflow: "hidden",
+            lineHeight: 1.4,
+            fontFamily: "sans-serif",
+          }}
+        >
           {subtitle}
+        </div>
+      ) : null}
+    </div>
+  );
+
+  return new ImageResponse(
+    <OgFrame eyebrow={eyebrow} variant={variant} badge={badge}>
+      {showAvatar ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 40 }}>
+          <OgAvatar src={avatarUrl ?? null} initial={avatarInitial ?? (title.charAt(0) || "N")} />
+          {heading}
+        </div>
+      ) : (
+        heading
+      )}
+      {metaItems.length > 0 ? (
+        <div style={{ display: "flex", gap: 48, marginTop: 10 }}>
+          {metaItems.map((item) => (
+            <div key={item.label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <div
+                style={{
+                  fontSize: 18,
+                  letterSpacing: 2,
+                  opacity: 0.55,
+                  textTransform: "uppercase",
+                  fontFamily: "sans-serif",
+                }}
+              >
+                {item.label}
+              </div>
+              <div style={{ fontSize: 34, fontWeight: 600 }}>{item.value}</div>
+            </div>
+          ))}
         </div>
       ) : null}
     </OgFrame>,

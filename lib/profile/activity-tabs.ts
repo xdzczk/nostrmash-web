@@ -1,18 +1,26 @@
 import { buildContinuationHref } from "@/lib/search-params/pagination";
 
+/**
+ * `secondary` tabs are lower-traffic lists; the tab bar folds them into a
+ * "More" menu so the primary row stays scannable on narrow screens.
+ */
 export const PROFILE_ACTIVITY_TABS = [
-  { id: "notes", label: "Recent notes" },
-  { id: "replies", label: "Recent replies" },
-  { id: "reactions", label: "Recent reactions" },
-  { id: "zaps", label: "Recent zaps" },
-  { id: "long_form", label: "Long-form" },
-  { id: "bookmarks", label: "Bookmarks" },
-  { id: "highlights", label: "Highlights" },
-  { id: "mute_list", label: "Mute list" },
-  { id: "muted_by", label: "Muted by" },
+  { id: "notes", label: "Recent notes", secondary: false },
+  { id: "replies", label: "Recent replies", secondary: false },
+  { id: "reactions", label: "Recent reactions", secondary: false },
+  { id: "zaps", label: "Recent zaps", secondary: false },
+  { id: "long_form", label: "Long-form", secondary: false },
+  { id: "bookmarks", label: "Bookmarks", secondary: true },
+  { id: "highlights", label: "Highlights", secondary: true },
+  { id: "mute_list", label: "Mute list", secondary: true },
+  { id: "muted_by", label: "Muted by", secondary: true },
 ] as const;
 
 export type ProfileActivityTab = (typeof PROFILE_ACTIVITY_TABS)[number]["id"];
+
+export function isSecondaryProfileActivityTab(tab: ProfileActivityTab): boolean {
+  return PROFILE_ACTIVITY_TABS.find((entry) => entry.id === tab)?.secondary ?? false;
+}
 
 const PROFILE_ACTIVITY_TAB_SET = new Set<string>(PROFILE_ACTIVITY_TABS.map((tab) => tab.id));
 

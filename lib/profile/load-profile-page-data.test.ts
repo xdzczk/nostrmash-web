@@ -119,6 +119,95 @@ describe("loadProfilePageData", () => {
     const data = await loadProfilePageData("npub1example", {});
 
     expect(data.profile).toBeNull();
+    expect(data.notFound).toBe(false);
     expect(data.errorMessage).toMatch(/Failed to load profile summary|summary failed/i);
+  });
+
+  it("flags notFound when the summary 404s and enrichment finds nothing", async () => {
+    mocked.getProfileSummary.mockRejectedValue(new Error("API 404: not found"));
+    mocked.getProfile.mockRejectedValue(new Error("API 404: not found"));
+
+    const data = await loadProfilePageData("a".repeat(64), {});
+
+    expect(data.notFound).toBe(true);
+    expect(data.profile).toBeNull();
+    // A 404 is a verdict, not a failure: no error banner copy.
+    expect(data.errorMessage).toBe("");
+  });
+
+  it("does not flag notFound when enrichment still knows the profile", async () => {
+    const pubkey = "b".repeat(64);
+    mocked.getProfileSummary.mockRejectedValue(new Error("API 404: not found"));
+    mocked.getProfile.mockResolvedValue({ pubkey, name: "ghost" });
+
+    const data = await loadProfilePageData(pubkey, {});
+
+    expect(data.notFound).toBe(false);
+    expect(data.profile?.name).toBe("ghost");
+    expect(data.errorMessage).toMatch(/summary is not available yet/i);
+  });
+
+  describe("related profiles source", () => {
+    const pubkey = "c".repeat(64);
+
+    beforeEach(() => {
+      mocked.getProfileSummary.mockResolvedValue({
+        pubkey,
+        profile: { pubkey, display_name: "Subject" },
+        related_discovery: { related_profiles: [] },
+      });
+    });
+
+    it("reports the summary as the source and keeps adjacency reasons", async () => {
+      mocked.getProfileSummary.mockResolvedValue({
+        pubkey,
+        profile: { pubkey, display_name: "Subject" },
+        related_discovery: {
+          related_profiles: [
+            {
+              pubkey: "d".repeat(64),
+              display_name: "Neighbor",
+              reasons: ["interaction_adjacency"],
+              interaction_adjacency: 13,
+            },
+          ],
+        },
+      });
+
+      const data = await loadProfilePageData(pubkey, {});
+
+      expect(data.relatedSource).toBe("summary");
+      expect(data.relatedDegradedReason).toBeUndefined();
+      expect(data.relatedProfiles[0]).toMatchObject({ interaction_adjacency: 13 });
+      expect(mocked.getRelatedProfiles).not.toHaveBeenCalled();
+    });
+
+    it("labels a degraded related payload as a trending fallback", async () => {
+      mocked.getRelatedProfiles.mockResolvedValue({
+        related_profiles: [{ pubkey: "e".repeat(64), display_name: "Trendy" }],
+        degraded: true,
+        degraded_reason: "related_profiles_unavailable",
+      });
+
+      const data = await loadProfilePageData(pubkey, {});
+
+      expect(data.relatedSource).toBe("trending-fallback");
+      expect(data.relatedDegradedReason).toBe("related_profiles_unavailable");
+      expect(data.relatedProfiles).toHaveLength(1);
+    });
+
+    it("uses the related endpoint when it is healthy and drops the subject itself", async () => {
+      mocked.getRelatedProfiles.mockResolvedValue({
+        related_profiles: [
+          { pubkey, display_name: "Subject (self)" },
+          { pubkey: "f".repeat(64), display_name: "Other" },
+        ],
+      });
+
+      const data = await loadProfilePageData(pubkey, {});
+
+      expect(data.relatedSource).toBe("related");
+      expect(data.relatedProfiles.map((entry) => entry.pubkey)).toEqual(["f".repeat(64)]);
+    });
   });
 });

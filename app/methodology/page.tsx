@@ -59,6 +59,32 @@ export default function MethodologyPage() {
             <li>RSS feeds and sitemaps sample hot entities rather than the full index.</li>
           </ul>
         </SectionCard>
+
+        <SectionCard
+          id="trust"
+          title="Trust tiers"
+          description="What the Trust badge on a profile page means."
+        >
+          <ul className="text-ink-dim list-disc space-y-1 pl-5 text-sm">
+            <li>
+              Trust is a web-of-trust distance from a small seed set of well-established accounts,
+              not an endorsement of content.
+            </li>
+            <li>
+              <strong className="text-ink-soft font-medium">Seed</strong> accounts anchor the graph;
+              <strong className="text-ink-soft font-medium"> Hop 1</strong>,{" "}
+              <strong className="text-ink-soft font-medium">Hop 2</strong>, and so on are one, two,
+              or more follow-steps away.
+            </li>
+            <li>
+              The percentile (for example “top 0.1%”) ranks the account among all indexed profiles
+              by trust score.
+            </li>
+            <li>
+              Profiles outside the reachable graph show no Trust badge rather than a low tier.
+            </li>
+          </ul>
+        </SectionCard>
       </div>
     </div>
   );

@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     path: `/hashtags/${encodeURIComponent(normalized || hashtag)}`,
     imagePath: `/hashtags/${encodeURIComponent(normalized || hashtag)}/opengraph-image`,
     rss: {
-      url: `/feeds/hashtags/${encodeURIComponent(normalized || hashtag)}.xml`,
+      url: `/feeds/hashtags/${encodeURIComponent(normalized || hashtag)}/xml`,
       title: `${label} notes`,
     },
   });

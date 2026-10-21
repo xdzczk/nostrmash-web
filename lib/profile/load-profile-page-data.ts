@@ -112,16 +112,27 @@ function readActivitySearchParams(
   };
 }
 
-/** Fast path: summary + optional profile enrichment only. */
+/**
+ * Fast path: summary + optional profile enrichment only.
+ *
+ * `notFound` is true when the API has never seen this pubkey (summary 404 and
+ * no enrichment either). Callers should turn that into a real 404 response
+ * rather than rendering an empty shell with a 200.
+ */
 export async function loadProfileFocalData(pubkeyOrNpub: string) {
   const errors: string[] = [];
   let summary: Awaited<ReturnType<typeof getProfileSummary>> | null = null;
   let profileEnrichment: Awaited<ReturnType<typeof getProfile>> | null = null;
+  let summaryNotFound = false;
 
   try {
     summary = await getProfileSummaryCached(pubkeyOrNpub);
   } catch (error) {
-    errors.push(toUserFacingErrorMessage(error, "Failed to load profile summary."));
+    if (isNotFoundReason(error)) {
+      summaryNotFound = true;
+    } else {
+      errors.push(toUserFacingErrorMessage(error, "Failed to load profile summary."));
+    }
   }
 
   const summaryRecord = isRecord(summary) ? summary : null;
@@ -134,11 +145,21 @@ export async function loadProfileFocalData(pubkeyOrNpub: string) {
     try {
       profileEnrichment = await getProfile(lookupKey, "shortTtl");
     } catch (error) {
-      errors.push(toUserFacingErrorMessage(error, "Failed to enrich profile metadata."));
+      // A 404 here just confirms the summary's verdict; anything else is a
+      // real failure the reader should hear about.
+      if (!isNotFoundReason(error)) {
+        errors.push(toUserFacingErrorMessage(error, "Failed to enrich profile metadata."));
+      }
     }
   }
 
   const profile = mergeProfile(summaryProfile, profileEnrichment);
+  const notFound = summaryNotFound && !profileEnrichment;
+  if (summaryNotFound && !notFound) {
+    // Summary 404 but enrichment found the profile — the summary projection is
+    // lagging. Render what we have and say so.
+    errors.push("Profile summary is not available yet; showing basic metadata only.");
+  }
   const semantics = extractNativeApiSemantics(summary, profileEnrichment);
   const about = typeof profile?.about === "string" ? profile.about : "";
   const contentResolution =
@@ -154,6 +175,7 @@ export async function loadProfileFocalData(pubkeyOrNpub: string) {
     contentResolution,
     errorMessage: summarizeLoadErrors(errors) ?? "",
     profileRoute,
+    notFound,
   };
 }
 
@@ -487,13 +509,26 @@ export async function loadProfileDiscoveryData(
     );
   }
 
-  const relatedProfiles =
-    summaryRelatedProfiles.length > 0
-      ? summaryRelatedProfiles
-      : (relatedProfilesFallbackPayload?.related_profiles ?? []);
-  const relatedProfilesNextCursor = extractNativeApiSemantics(
-    relatedProfilesFallbackPayload
-  ).next_cursor;
+  const fallbackSemantics = extractNativeApiSemantics(relatedProfilesFallbackPayload);
+  const usingFallbackEndpoint = summaryRelatedProfiles.length === 0;
+  // The /related endpoint tells us when it substituted a generic list (today:
+  // trending) for genuine adjacency. Surface that so the UI never presents a
+  // fallback as "related".
+  const relatedDegraded = usingFallbackEndpoint && fallbackSemantics.degraded === true;
+  const relatedSource: "summary" | "related" | "trending-fallback" = !usingFallbackEndpoint
+    ? "summary"
+    : relatedDegraded
+      ? "trending-fallback"
+      : "related";
+  const relatedDegradedReason = relatedDegraded ? fallbackSemantics.degraded_reason : undefined;
+
+  const subjectPubkey = lookupKey.toLowerCase();
+  const relatedProfiles = (
+    usingFallbackEndpoint
+      ? (relatedProfilesFallbackPayload?.related_profiles ?? [])
+      : summaryRelatedProfiles
+  ).filter((entry) => entry.pubkey.toLowerCase() !== subjectPubkey);
+  const relatedProfilesNextCursor = fallbackSemantics.next_cursor;
   const relatedProfilesContinuationHref = buildContinuationHref(
     profileRoute,
     currentSearchParams,
@@ -504,6 +539,8 @@ export async function loadProfileDiscoveryData(
   return {
     errorMessage: summarizeLoadErrors(errors) ?? "",
     relatedProfiles,
+    relatedSource,
+    relatedDegradedReason,
     relatedProfilesContinuationHref,
     relatedProfilesFallbackPayload,
     relatedProfilesNextCursor,
