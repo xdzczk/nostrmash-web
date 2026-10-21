@@ -15,6 +15,7 @@ import {
   type WhyNowReason,
 } from "@/components/explorer/why-now";
 import {
+  domainHeadlineCount,
   extractEngagementStats,
   formatCompactNumber,
   normalizeDomainLabel,
@@ -127,26 +128,19 @@ function EditorialNote({
       className={`${
         lead
           ? "nm-elevated-surface relative overflow-hidden rounded-[var(--radius-surface)] border px-5 py-6 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-[var(--ink-muted)] sm:px-7 sm:py-8"
-          : "border-edge/70 border-t py-6 first:border-t-0"
+          : "border-edge/70 border-t py-5 first:border-t-0"
       } ${noteHref ? cardHitTargetClassName : ""}`}
     >
-      <div className="flex items-center justify-between gap-4">
-        <span
-          className={
-            lead
-              ? "text-ink-soft text-[3.25rem] leading-none font-medium tracking-[-0.09em]"
-              : "text-ink-muted text-xl font-medium tracking-[-0.05em]"
-          }
-          aria-label={`Rank ${rank}`}
-        >
-          {String(rank).padStart(2, "0")}
-        </span>
-        {!lead && noteHref ? (
-          <Link href={noteHref} className="nm-meta hover:text-ink">
-            Open note
-          </Link>
-        ) : null}
-      </div>
+      <span
+        className={
+          lead
+            ? "text-ink-soft block text-[3.25rem] leading-none font-medium tracking-[-0.09em]"
+            : "text-ink-muted block text-xl leading-none font-medium tracking-[-0.05em]"
+        }
+        aria-label={`Rank ${rank}`}
+      >
+        {String(rank).padStart(2, "0")}
+      </span>
 
       <div className={lead ? "mt-5" : "mt-3"}>
         <div className="flex items-center gap-3">
@@ -164,7 +158,7 @@ function EditorialNote({
               <Link
                 href={authorLink}
                 title={authorLabel}
-                className="text-ink block min-w-0 truncate text-sm font-medium hover:underline"
+                className="text-ink block min-h-6 min-w-0 truncate py-0.5 text-sm leading-5 font-medium hover:underline"
               >
                 {truncateProfileLabel(authorLabel)}
               </Link>
@@ -182,24 +176,28 @@ function EditorialNote({
             className={
               lead
                 ? "text-ink-strong mt-5 line-clamp-8 max-w-[44rem] text-[clamp(1.35rem,1rem+1.15vw,2rem)] leading-[1.38] tracking-[-0.028em] [overflow-wrap:anywhere] whitespace-pre-wrap"
-                : "text-ink-dim mt-4 line-clamp-4 text-[15px] leading-6 [overflow-wrap:anywhere] whitespace-pre-wrap"
+                : "text-ink-dim mt-3 line-clamp-3 text-[15px] leading-6 [overflow-wrap:anywhere] whitespace-pre-wrap"
             }
           >
             {editorialText}
           </p>
         ) : null}
         {typeof note.content === "string" && note.content.length > 0 ? (
-          <>
-            <NoteMedia content={note.content} />
-            <NoteLinkPreviews content={note.content} limit={1} />
-          </>
+          lead ? (
+            <>
+              <NoteMedia content={note.content} variant="lead" priority />
+              <NoteLinkPreviews content={note.content} limit={1} />
+            </>
+          ) : (
+            <NoteMedia content={note.content} variant="compact" />
+          )
         ) : null}
         <EvidenceLine reasons={mapNoteWhyNow(note)} ranking={note.ranking} />
         <DiscoveryStatPills stats={extractEngagementStats(note)} className="mt-2.5" />
         {lead && noteHref ? (
           <Link
             href={noteHref}
-            className="text-ink hover:text-accent-ink mt-5 inline-flex min-h-11 items-center text-sm font-medium underline decoration-[var(--accent-soft)] underline-offset-4"
+            className="nm-action-link mt-5 min-h-11 text-sm text-[var(--ink)] [text-decoration-color:var(--accent-soft)]"
           >
             Read the leading note
           </Link>
@@ -242,7 +240,7 @@ function ProfileRanking({
         </div>
         <Link
           href={fullRankingHref ?? `/trending/profiles?window=${window}`}
-          className="nm-meta hover:text-ink"
+          className="nm-action-link shrink-0"
         >
           Full ranking
         </Link>
@@ -282,7 +280,10 @@ function ProfileRanking({
                     </p>
                   )}
                   {secondary && href ? (
-                    <Link href={href} className="nm-meta hover:text-ink mt-0.5 block truncate">
+                    <Link
+                      href={href}
+                      className="nm-meta hover:text-ink mt-0.5 block min-h-6 truncate py-0.5 text-[13px]"
+                    >
                       {truncateIdentifier(secondary, "npub", "secondary")}
                     </Link>
                   ) : secondary ? (
@@ -305,25 +306,30 @@ function ProfileRanking({
   );
 }
 
-function IdeasIndex({
+function TopicsIndex({
   hashtags,
-  domains,
   window,
   headingId = "ideas-gaining-ground",
 }: {
   hashtags: HashtagEntry[];
-  domains: DomainEntry[];
   window: StatsWindow;
   headingId?: string;
 }) {
   return (
-    <section aria-labelledby={headingId} className="space-y-9">
-      <div>
-        <p className="nm-kicker">Ideas</p>
-        <h2 id={headingId} className="nm-title text-ink mt-2">
-          Gaining ground
-        </h2>
-        <div className="mt-5 flex flex-wrap gap-x-5 gap-y-3">
+    <section aria-labelledby={headingId}>
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="nm-kicker">Ideas</p>
+          <h2 id={headingId} className="nm-title text-ink mt-2">
+            Gaining ground
+          </h2>
+        </div>
+        <Link href={`/trending/hashtags?window=${window}`} className="nm-action-link shrink-0">
+          Full ranking
+        </Link>
+      </div>
+      {hashtags.length > 0 ? (
+        <div className="border-edge/70 mt-6 flex flex-wrap gap-x-5 gap-y-3 border-t pt-6">
           {hashtags.slice(0, 8).map((entry, index) => {
             const hashtag = String(entry.hashtag ?? "").replace(/^#/, "");
             if (!hashtag) return null;
@@ -344,41 +350,89 @@ function IdeasIndex({
             );
           })}
         </div>
-      </div>
-
-      <div className="border-edge/70 border-t pt-7">
-        <div className="flex items-center justify-between gap-4">
-          <p className="nm-kicker">Links circulating</p>
-          <Link href={`/trending/domains?window=${window}`} className="nm-meta hover:text-ink">
-            Full ranking
-          </Link>
+      ) : (
+        <div className="border-edge/70 text-ink-muted mt-6 border-y py-8 text-sm">
+          No topics gaining ground in this window.
         </div>
-        <ol className="mt-4 space-y-3">
-          {domains.slice(0, 6).map((entry, index) => {
-            const domain = normalizeDomainLabel(String(entry.domain ?? ""));
-            if (!domain) return null;
-            const count = entry.count ?? entry.event_count;
-            const reason = firstReason(mapDomainWhyNow(entry));
-            return (
-              <li key={`${domain}-${index}`} className="flex items-baseline gap-3">
-                <span className="text-accent-ink w-7 text-[13px] tabular-nums">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <Link
-                  href={`/domains/${encodeURIComponent(domain)}`}
-                  title={reason?.support ?? reason?.text}
-                  className="text-ink-dim hover:text-ink min-w-0 flex-1 truncate text-sm"
-                >
-                  {domain}
-                </Link>
-                <span className="nm-meta tabular-nums">
-                  {typeof count === "number" ? formatCompactNumber(count) : "—"}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
+      )}
+    </section>
+  );
+}
+
+function LinksIndex({
+  domains,
+  window,
+  headingId = "links-circulating",
+}: {
+  domains: DomainEntry[];
+  window: StatsWindow;
+  headingId?: string;
+}) {
+  const visibleDomains = domains
+    .slice(0, 6)
+    .map((entry) => ({
+      domain: normalizeDomainLabel(String(entry.domain ?? "")),
+      count: domainHeadlineCount(entry),
+      authors:
+        typeof entry.unique_authors === "number" && entry.unique_authors > 1
+          ? formatCompactNumber(entry.unique_authors)
+          : null,
+      reason: firstReason(mapDomainWhyNow(entry)),
+    }))
+    .filter((entry) => entry.domain.length > 0);
+  // Only render the count column when the payload actually carries counts;
+  // a column of dashes reads as broken data.
+  const showDomainCounts = visibleDomains.some((entry) => typeof entry.count === "number");
+  return (
+    <section aria-labelledby={headingId}>
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="nm-kicker">Links</p>
+          <h2 id={headingId} className="nm-title text-ink mt-2">
+            Links circulating
+          </h2>
+        </div>
+        <Link href={`/trending/domains?window=${window}`} className="nm-action-link shrink-0">
+          Full ranking
+        </Link>
       </div>
+      {visibleDomains.length > 0 ? (
+        <ol className="border-edge/70 mt-6 space-y-2 border-t pt-5">
+          {visibleDomains.map(({ domain, count, authors, reason }, index) => (
+            <li key={`${domain}-${index}`} className="flex items-baseline gap-3">
+              <span className="text-accent-ink w-7 text-[13px] tabular-nums">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <Link
+                href={`/domains/${encodeURIComponent(domain)}`}
+                title={
+                  [reason?.support ?? reason?.text, authors ? `${authors} authors` : null]
+                    .filter(Boolean)
+                    .join(" · ") || undefined
+                }
+                className="text-ink-dim hover:text-ink min-w-0 flex-1 truncate py-0.5 text-sm leading-5"
+              >
+                {domain}
+              </Link>
+              {showDomainCounts ? (
+                <span className="nm-meta tabular-nums">
+                  {typeof count === "number" ? (
+                    <>
+                      <span className="text-ink-soft">{formatCompactNumber(count)}</span> links
+                    </>
+                  ) : (
+                    ""
+                  )}
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <div className="border-edge/70 text-ink-muted mt-6 border-y py-8 text-sm">
+          No links circulating in this window.
+        </div>
+      )}
     </section>
   );
 }
@@ -399,7 +453,9 @@ function LeadSection({
   contentResolution?: NoteContentResolution;
 }) {
   return (
-    <section aria-labelledby={headingId}>
+    // Sticky so the lead stays in view if the supporting column runs longer;
+    // `items-start` on the parent grid is required for this to take effect.
+    <section aria-labelledby={headingId} className="lg:sticky lg:top-20 lg:self-start">
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
           <p className="nm-kicker">Lead signal</p>
@@ -447,7 +503,7 @@ function SupportingNotes({
         <h2 id={headingId} className="nm-kicker">
           Also moving
         </h2>
-        <Link href={`/trending/notes?window=${window}`} className="nm-meta hover:text-ink">
+        <Link href={`/trending/notes?window=${window}`} className="nm-action-link shrink-0">
           All notes
         </Link>
       </div>
@@ -527,22 +583,13 @@ export async function EditorialOverview({
         />
       </section>
 
-      <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.72fr)] lg:gap-16 xl:gap-20">
+      <div className="grid items-start gap-14 lg:grid-cols-2 lg:gap-16 xl:gap-20">
         <ProfileRanking
           profiles={profiles}
           degraded={sectionFailures.profiles}
           window={window}
           headingId="profiles-in-motion"
         />
-        <IdeasIndex
-          hashtags={visibleHashtags}
-          domains={visibleDomains}
-          window={window}
-          headingId="ideas-gaining-ground"
-        />
-      </div>
-
-      <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.72fr)] lg:gap-16 xl:gap-20">
         <ProfileRanking
           profiles={risingProfiles}
           degraded={sectionFailures.risingProfiles}
@@ -553,6 +600,11 @@ export async function EditorialOverview({
           emptyMessage="No small accounts gaining ground yet."
           degradedMessage="Up-and-coming profiles are temporarily unavailable."
         />
+      </div>
+
+      <div className="grid items-start gap-14 lg:grid-cols-2 lg:gap-16 xl:gap-20">
+        <TopicsIndex hashtags={visibleHashtags} window={window} headingId="ideas-gaining-ground" />
+        <LinksIndex domains={visibleDomains} window={window} headingId="links-circulating" />
       </div>
 
       <NetworkPulseStrip title="Network pulse" stats={pulseStats} />

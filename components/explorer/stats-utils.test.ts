@@ -202,6 +202,47 @@ describe("flattenPrimitiveStats", () => {
       "computed_at"
     );
   });
+
+  it("collapses the same relay leaf emitted under several prefixes", () => {
+    // Mirrors /discovery/stats/network: relays.active_24h is flattened as
+    // `network_relays_active_24h`, `relays_active_24h` and bare `active_24h`.
+    const payload = {
+      network: {
+        activity: {
+          active_authors: { "24h": 3994, "7d": 8599 },
+          note_volume: { "24h": 42333, "7d": 308338 },
+        },
+        relays: {
+          active_24h: 11,
+          active_7d: 11,
+          event_volume: { "24h": 456038, "7d": 3087198 },
+          total: 216,
+        },
+      },
+    };
+
+    const picked = pickTopPrimitiveStats(
+      payload,
+      [
+        "active_authors_24h",
+        "note_volume_24h",
+        "network_relays_active_24h",
+        "relays_active_24h",
+        "active_24h",
+        "event_volume_24h",
+      ],
+      4,
+      "24h"
+    );
+
+    expect(picked.map((stat) => stat.label)).toEqual([
+      "active_authors_24h",
+      "note_volume_24h",
+      "network_relays_active_24h",
+      "event_volume_24h",
+    ]);
+    expect(picked.filter((stat) => stat.value === 11)).toHaveLength(1);
+  });
 });
 
 describe("collectStatsArraySections", () => {

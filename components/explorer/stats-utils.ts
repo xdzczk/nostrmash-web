@@ -596,6 +596,16 @@ export function pickTopPrimitiveStats(
   const isUniqueAuthorsKey = (label: string) => /(^|_)unique_authors(?:_|$)/.test(label);
   const isComputedAtKey = (label: string) =>
     label === "computed_at" || label.endsWith("_computed_at");
+  // Flattening emits the same leaf under several prefixes (e.g. `active_24h`,
+  // `relays_active_24h`, `network_relays_active_24h`). Treat a candidate as a
+  // duplicate when an already-selected stat has the same value and one label
+  // is a `_`-delimited suffix of the other.
+  const isPrefixedDuplicate = (stat: { label: string; value: unknown }) =>
+    selected.some(
+      (entry) =>
+        entry.value === stat.value &&
+        (entry.label.endsWith(`_${stat.label}`) || stat.label.endsWith(`_${entry.label}`))
+    );
 
   for (const key of resolvedPreferredKeys) {
     const stat = byKey.get(key);
@@ -605,6 +615,10 @@ export function pickTopPrimitiveStats(
       isUniqueAuthorsKey(stat.label) &&
       selected.some((entry) => isActiveAuthorsKey(entry.label))
     ) {
+      continue;
+    }
+    if (isPrefixedDuplicate(stat)) {
+      seen.add(key);
       continue;
     }
     selected.push(stat);
@@ -618,6 +632,7 @@ export function pickTopPrimitiveStats(
     if (seen.has(stat.label)) continue;
     if (isComputedAtKey(stat.label) || isTimestampStatValue(stat.value)) continue;
     if (hasActiveAuthors && isUniqueAuthorsKey(stat.label)) continue;
+    if (isPrefixedDuplicate(stat)) continue;
     selected.push(stat);
     if (selected.length >= limit) break;
   }

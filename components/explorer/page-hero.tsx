@@ -21,11 +21,11 @@ export function PageHero({
 }) {
   return (
     <section
-      className={`nm-signal-rule border-edge/80 space-y-4 border-b pt-7 pb-8 sm:pt-10 sm:pb-10 ${
-        emphasize ? "sm:pt-12 sm:pb-11" : ""
+      className={`nm-signal-rule border-edge/80 space-y-3.5 border-b pt-5 pb-6 sm:pt-7 sm:pb-7 ${
+        emphasize ? "sm:pt-10 sm:pb-9" : ""
       } ${className ?? ""}`}
     >
-      <div className="space-y-2.5">
+      <div className="space-y-2">
         {eyebrow ? <p className="nm-kicker">{eyebrow}</p> : null}
         <h1 className={`text-ink-strong ${emphasize ? "nm-display-xl" : "nm-display-lg"}`}>
           {title}

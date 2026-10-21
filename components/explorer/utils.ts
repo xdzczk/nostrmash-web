@@ -1,4 +1,4 @@
-import type { EventRecord, Profile } from "@/lib/types/api";
+import type { DomainEntry, EventRecord, Profile } from "@/lib/types/api";
 import { extractHashtagsFromText, extractLinkableUrls } from "@/lib/notes/text";
 import { hexToNpub } from "../../lib/nostr/npub";
 
@@ -22,8 +22,16 @@ const LABEL_ALIASES: Record<string, string> = {
   active_authors_7d: "Active authors (7d)",
   note_volume_24h: "Note volume (24h)",
   note_volume_7d: "Note volume (7d)",
-  active_24h: "Active (24h)",
-  active_7d: "Active (7d)",
+  active_24h: "Active relays (24h)",
+  active_7d: "Active relays (7d)",
+  relays_active_24h: "Active relays (24h)",
+  relays_active_7d: "Active relays (7d)",
+  network_relays_active_24h: "Active relays (24h)",
+  network_relays_active_7d: "Active relays (7d)",
+  event_volume_24h: "Relay event volume (24h)",
+  event_volume_7d: "Relay event volume (7d)",
+  relays_event_volume_24h: "Relay event volume (24h)",
+  relays_event_volume_7d: "Relay event volume (7d)",
   events_ingested: "Events ingested",
   projected_profiles: "Projected profiles",
   active_profiles: "Active profiles",
@@ -280,6 +288,17 @@ export function truncateProfileLabel(
   if (units.length <= maxLength) return trimmed;
   const room = Math.max(1, maxLength - ELLIPSIS.length);
   return `${units.slice(0, room).join("")}${ELLIPSIS}`;
+}
+
+/**
+ * Headline count for a trending domain. Newer payloads report `link_count`
+ * (links in the window); older ones used `count`/`event_count`.
+ */
+export function domainHeadlineCount(entry: DomainEntry): number | undefined {
+  const candidates = [entry.link_count, entry.count, entry.event_count, entry.note_count];
+  return candidates.find(
+    (value): value is number => typeof value === "number" && Number.isFinite(value) && value > 0
+  );
 }
 
 export function normalizeDomainLabel(value: string): string {

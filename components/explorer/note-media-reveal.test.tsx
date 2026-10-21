@@ -24,6 +24,30 @@ describe("NoteMediaReveal", () => {
     expect(screen.getByRole("dialog", { name: "Image attached to note" })).toBeInTheDocument();
   });
 
+  it("lazy-loads by default and eager-loads priority media", () => {
+    const { container, rerender } = render(
+      <NoteMediaReveal url="https://media.example/image.jpg" kind="image" />
+    );
+    expect(container.querySelector("img")).toHaveAttribute("loading", "lazy");
+
+    rerender(<NoteMediaReveal url="https://media.example/image.jpg" kind="image" priority />);
+    const image = container.querySelector("img");
+    expect(image).toHaveAttribute("loading", "eager");
+    expect(image).toHaveAttribute("fetchpriority", "high");
+  });
+
+  it("shows a +N badge for attachments hidden by the compact variant", () => {
+    render(
+      <NoteMediaReveal
+        url="https://media.example/image.jpg"
+        kind="image"
+        variant="compact"
+        hiddenCount={2}
+      />
+    );
+    expect(screen.getByLabelText("2 more attachments")).toHaveTextContent("+2");
+  });
+
   it("renders videos with an early-frame media fragment", () => {
     const url = "https://media.example/clip.mp4";
     const { container } = render(<NoteMediaReveal url={url} kind="video" />);

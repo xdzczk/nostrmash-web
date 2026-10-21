@@ -18,6 +18,7 @@ import { isRecord } from "@/components/explorer/utils";
 import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import {
+  NETWORK_PULSE_TILE_LIMIT,
   networkPulsePreferredKeys,
   readStatsWindow,
   type StatsWindow,
@@ -261,7 +262,7 @@ export async function loadHomePageData(
   const basePulseStats = pickTopPrimitiveStats(
     { ...homeStats, ...(networkStats ?? {}) },
     networkPulsePreferredKeys(window),
-    6,
+    NETWORK_PULSE_TILE_LIMIT,
     window
   );
   const noteVolumeSeries =
@@ -272,12 +273,14 @@ export async function loadHomePageData(
     activeAuthorsSeriesResult.status === "fulfilled"
       ? normalizeSeriesPoints(activeAuthorsSeriesResult.value)
       : [];
+  // Attach the two history series we have to the matching metrics only; relay
+  // event volume has no series yet and must not borrow the note-volume one.
   const pulseStats = basePulseStats.map((stat) => {
     const label = stat.label.toLowerCase();
-    if (label.includes("note") || label.includes("volume") || label.includes("event")) {
+    if (/(^|_)note_volume(_|$)/.test(label) || /(^|_)notes?(_|$)/.test(label)) {
       return { ...stat, series: noteVolumeSeries };
     }
-    if (label.includes("author") || label.includes("profile")) {
+    if (/(^|_)active_authors(_|$)/.test(label)) {
       return { ...stat, series: activeAuthorsSeries };
     }
     return stat;

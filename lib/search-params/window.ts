@@ -52,15 +52,26 @@ export function preferredMetricKeysForWindow(keys: string[], window: StatsWindow
   });
 }
 
+/**
+ * Preferred Network Pulse metrics, in display order. The first four form the
+ * default 2×2 strip (authors, notes, active relays, relay event volume); the
+ * remaining keys are fallbacks for older stats payloads that lack them.
+ */
 export function networkPulsePreferredKeys(window: StatsWindow): string[] {
   return [
-    "events_ingested",
-    "projected_profiles",
     `active_authors_${window}`,
     `note_volume_${window}`,
-    window === "7d" ? "active_7d" : "active_24h",
+    `network_relays_active_${window}`,
+    `relays_active_${window}`,
+    `active_${window}`,
+    `event_volume_${window}`,
+    "events_ingested",
+    "projected_profiles",
   ];
 }
+
+/** Number of tiles the homepage Network Pulse strip shows. */
+export const NETWORK_PULSE_TILE_LIMIT = 4;
 
 export function resolveApiWindow(payload: unknown, fallback: StatsWindow): StatsWindow {
   if (typeof payload === "object" && payload !== null) {

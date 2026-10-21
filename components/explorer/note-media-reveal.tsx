@@ -15,7 +15,7 @@ export function videoPreviewSrc(url: string): string {
   return `${base}#t=0.001`;
 }
 
-function NoteVideo({ url }: { url: string }) {
+function NoteVideo({ url, fill = false }: { url: string; fill?: boolean }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const primedUrlRef = useRef<string | null>(null);
 
@@ -52,36 +52,68 @@ function NoteVideo({ url }: { url: string }) {
       controls
       playsInline
       preload="metadata"
-      className="max-h-[28rem] w-full bg-black"
+      className={fill ? "h-full w-full bg-black object-cover" : "max-h-[28rem] w-full bg-black"}
     />
   );
 }
 
-export function NoteMediaReveal({ url, kind }: { url: string; kind: MediaKind }) {
+export function NoteMediaReveal({
+  url,
+  kind,
+  variant = "full",
+  priority = false,
+  hiddenCount = 0,
+}: {
+  url: string;
+  kind: MediaKind;
+  variant?: "full" | "lead" | "compact";
+  /** Eager-load with high fetch priority (lead/LCP image). */
+  priority?: boolean;
+  /** Number of further attachments not rendered; shown as a `+N` badge. */
+  hiddenCount?: number;
+}) {
+  // Fixed-ratio variants reserve their box before the image loads (no CLS).
+  const fixedRatio =
+    variant === "compact" ? "aspect-[16/10]" : variant === "lead" ? "aspect-[16/9]" : "";
+  const fill = fixedRatio.length > 0;
+  const badge =
+    hiddenCount > 0 ? (
+      <span
+        className="bg-surface/90 text-ink border-edge pointer-events-none absolute right-2 bottom-2 z-[3] rounded-full border px-2 py-0.5 text-xs font-medium tabular-nums backdrop-blur-sm"
+        aria-label={`${hiddenCount} more ${hiddenCount === 1 ? "attachment" : "attachments"}`}
+      >
+        +{hiddenCount}
+      </span>
+    ) : null;
+
   return (
-    <div className="border-edge bg-surface-sunken/60 overflow-hidden rounded-[var(--radius-control)] border">
+    <div
+      className={`border-edge bg-surface-sunken/60 relative overflow-hidden rounded-[var(--radius-control)] border ${fixedRatio}`}
+    >
       {kind === "image" ? (
         <EnlargeableImage
           src={url}
           alt="Image attached to note"
-          className="block w-full cursor-zoom-in"
+          className={`block w-full cursor-zoom-in ${fill ? "h-full" : ""}`}
         >
           <img
             src={url}
             alt="Image attached to note"
-            loading="lazy"
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
             decoding="async"
             referrerPolicy="no-referrer"
-            className="max-h-[28rem] w-full object-cover"
+            className={fill ? "h-full w-full object-cover" : "max-h-[28rem] w-full object-cover"}
           />
         </EnlargeableImage>
       ) : null}
-      {kind === "video" ? <NoteVideo url={url} /> : null}
+      {kind === "video" ? <NoteVideo url={url} fill={fill} /> : null}
       {kind === "audio" ? (
-        <div className="p-3">
+        <div className={fill ? "flex h-full items-center p-3" : "p-3"}>
           <audio src={url} controls preload="metadata" className="w-full" />
         </div>
       ) : null}
+      {badge}
     </div>
   );
 }

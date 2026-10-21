@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { DiscoverShell } from "@/components/discover/discover-shell";
-import { EditorialOverview } from "@/components/discover/overview/editorial-overview";
+import { HomeFreshness, HomeOverviewBody } from "@/components/home/home-overview-stream";
 import { JsonLd } from "@/components/seo/json-ld";
-import { getStaleDataNotice } from "@/lib/api/http";
+import { DiscoverOverviewBodySkeleton } from "@/components/ui/skeleton";
 import { loadHomePageData } from "@/lib/home/load-home-page-data";
+import { toUrlSearchParams } from "@/lib/search-params/pagination";
+import { readStatsWindow } from "@/lib/search-params/window";
 import { absoluteUrl } from "@/lib/seo/metadata";
-import { formatUpdatedRelative } from "@/lib/time/freshness";
 
 export const metadata: Metadata = {
   title: "NostrMash",
@@ -25,12 +27,14 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
   const resolvedSearchParams = await searchParams;
-  const home = await loadHomePageData(resolvedSearchParams);
-  const hasContent =
-    home.homeNotes.length > 0 ||
-    home.hydratedHomeProfiles.length > 0 ||
-    home.homeHashtags.length > 0 ||
-    home.homeDomains.length > 0;
+  const window = readStatsWindow(resolvedSearchParams);
+  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
+  // Kick off the fan-out without awaiting: the hero and tabs render in the
+  // first flush and the data-dependent parts stream in behind Suspense.
+  const home = loadHomePageData(resolvedSearchParams);
+  // Both consumers await inside Suspense; this only prevents an
+  // "unhandled rejection" warning if the loader fails before they mount.
+  home.catch(() => undefined);
 
   return (
     <>
@@ -50,33 +54,19 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
       <DiscoverShell
         view="overview"
         path="/"
-        searchParams={home.currentSearchParams}
-        window={home.window}
-        freshnessLabel={formatUpdatedRelative(home.computedAt)}
-        staleMessage={getStaleDataNotice()}
-        errorMessage={home.errorMessage}
-        hasContent={hasContent}
+        searchParams={currentSearchParams}
+        window={window}
+        freshness={
+          <Suspense fallback={null}>
+            <HomeFreshness data={home} />
+          </Suspense>
+        }
         title="What has the network’s attention."
         subtitle="A calm, ranked briefing on the notes, people, and ideas moving through Nostr—with the evidence behind their momentum."
-        heroSupport={
-          <p className="text-ink-faint text-xs">
-            Ranked by momentum · public relay scope · transparent evidence
-          </p>
-        }
       >
-        {hasContent ? (
-          <EditorialOverview
-            notes={home.homeNotes}
-            profiles={home.hydratedHomeProfiles}
-            risingProfiles={home.hydratedHomeRisingProfiles}
-            hashtags={home.homeHashtags}
-            domains={home.homeDomains}
-            authorsByPubkey={home.noteAuthorsByPubkey}
-            pulseStats={home.pulseStats}
-            sectionFailures={home.sectionFailures}
-            window={home.window}
-          />
-        ) : null}
+        <Suspense fallback={<DiscoverOverviewBodySkeleton />}>
+          <HomeOverviewBody data={home} />
+        </Suspense>
       </DiscoverShell>
     </>
   );

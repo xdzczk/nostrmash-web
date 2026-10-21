@@ -98,7 +98,8 @@ const trendingHashtags = [
 const trendingDomains = [
   {
     domain: "example.com",
-    count: 12,
+    link_count: 12,
+    note_count: 11,
     unique_authors: 7,
     ranking: {
       rank: 1,
@@ -107,6 +108,7 @@ const trendingDomains = [
       reasons: [{ code: "link_circulation", evidence: [{ metric: "link_count", value: 12 }] }],
     },
   },
+  // Legacy shape (pre `link_count`) to keep the fallback path exercised.
   { domain: "nostrmash.com", count: 8 },
 ];
 

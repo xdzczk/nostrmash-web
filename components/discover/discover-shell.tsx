@@ -10,6 +10,15 @@ import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
 import { DISCOVER_MODE_LINKS, type DiscoverMode, type DiscoverView } from "@/lib/discover/views";
 import type { StatsWindow } from "@/lib/search-params/window";
 
+export function FreshnessBadge({ label }: { label: string }) {
+  return (
+    <span className="text-ink-muted inline-flex items-center gap-2">
+      <span className="nm-live-dot" aria-hidden />
+      {label}
+    </span>
+  );
+}
+
 export function DiscoverShell({
   view,
   mode = "default",
@@ -20,6 +29,7 @@ export function DiscoverShell({
   searchParams,
   window,
   freshnessLabel,
+  freshness,
   staleMessage,
   errorMessage,
   hasContent = true,
@@ -35,6 +45,11 @@ export function DiscoverShell({
   searchParams: URLSearchParams;
   window: StatsWindow;
   freshnessLabel?: string | null;
+  /**
+   * Streamed alternative to `freshnessLabel`: a node (typically wrapped in
+   * Suspense) so the hero can render before the data it describes resolves.
+   */
+  freshness?: ReactNode;
   staleMessage?: string | null;
   errorMessage?: string | null;
   hasContent?: boolean;
@@ -44,7 +59,7 @@ export function DiscoverShell({
   const modeLinks = DISCOVER_MODE_LINKS[view] ?? [];
 
   return (
-    <div className="space-y-7 sm:space-y-9">
+    <div className="space-y-6 sm:space-y-7">
       <DiscoverTelemetry view={view} mode={mode} window={window} />
       <LiveRefresh />
       <PageHero
@@ -54,12 +69,7 @@ export function DiscoverShell({
         badges={
           <div className="nm-meta flex flex-wrap items-center gap-x-3 gap-y-2">
             <WindowSelector path={path} searchParams={searchParams} activeWindow={window} />
-            {freshnessLabel ? (
-              <span className="text-ink-muted inline-flex items-center gap-2">
-                <span className="nm-live-dot" aria-hidden />
-                {freshnessLabel}
-              </span>
-            ) : null}
+            {freshness ?? (freshnessLabel ? <FreshnessBadge label={freshnessLabel} /> : null)}
           </div>
         }
         support={heroSupport}
@@ -74,7 +84,7 @@ export function DiscoverShell({
                 key={item.mode}
                 href={`${item.href}?window=${window}`}
                 aria-current={item.mode === mode ? "page" : undefined}
-                className={`nm-meta font-medium transition ${
+                className={`nm-meta inline-flex min-h-6 items-center py-0.5 text-[13px] font-medium transition ${
                   item.mode === mode
                     ? "text-ink underline decoration-[var(--accent-soft)] decoration-2 underline-offset-4"
                     : "text-ink-muted hover:text-ink"
@@ -99,7 +109,7 @@ export function DiscoverShell({
       {children}
 
       <div className="border-edge/70 border-t pt-4">
-        <Link href="/methodology" className="nm-meta hover:text-ink">
+        <Link href="/methodology" className="nm-action-link">
           How Discover rankings work
         </Link>
       </div>

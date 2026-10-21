@@ -7,6 +7,7 @@ import { HashtagChip } from "@/components/explorer/hashtag-chip";
 import { NoteCard } from "@/components/explorer/note-card";
 import { mapDomainWhyNow, mapHashtagWhyNow, WhyNow } from "@/components/explorer/why-now";
 import {
+  domainHeadlineCount,
   formatCompactNumber,
   normalizeDomainLabel,
   noteInlineAuthorProfile,
@@ -282,7 +283,7 @@ export function DomainsList({
       typeof entry === "string" ? null : pickPrimaryDomainSupportingSignal(entry);
     normalized.push({
       domain: normalizedDomain,
-      count: typeof entry === "string" ? undefined : (entry.count ?? entry.event_count),
+      count: typeof entry === "string" ? undefined : domainHeadlineCount(entry),
       href,
       rank: ranked
         ? typeof entry === "string"

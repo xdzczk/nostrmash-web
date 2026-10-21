@@ -173,6 +173,10 @@ export interface DomainEntry {
   domain?: string;
   count?: number;
   event_count?: number;
+  /** Links to this domain in the window (discovery/home + domains/trending). */
+  link_count?: number;
+  /** Distinct notes linking to this domain in the window. */
+  note_count?: number;
   unique_authors?: number;
   ranking?: DiscoveryItemRanking;
   [key: string]: unknown;

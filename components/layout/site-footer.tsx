@@ -17,12 +17,12 @@ export function SiteFooter() {
             Understand what is moving on Nostr—and why it matters.
           </p>
         </div>
-        <nav aria-label="Footer" className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
+        <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-1">
           {footerLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-ink-muted hover:text-ink focus-visible:ring-accent-soft/70 rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+              className="nm-action-link nm-action-link--quiet focus-visible:ring-accent-soft/70 rounded-sm focus-visible:ring-2 focus-visible:outline-none"
             >
               {link.label}
             </Link>

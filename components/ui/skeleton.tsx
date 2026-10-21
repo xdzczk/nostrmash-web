@@ -74,7 +74,7 @@ export function ChipSkeleton() {
 
 export function PageHeroSkeleton() {
   return (
-    <div className="border-edge/80 space-y-4 border-b pt-7 pb-8 sm:pt-10 sm:pb-10" aria-hidden>
+    <div className="border-edge/80 space-y-3.5 border-b pt-5 pb-6 sm:pt-7 sm:pb-7" aria-hidden>
       <div className="space-y-3">
         <Skeleton className="h-3 w-24" />
         <Skeleton className="h-8 w-3/4 sm:h-10 sm:w-2/3" />
@@ -137,6 +137,15 @@ export function DiscoverOverviewSkeleton() {
     <div className="space-y-9" aria-hidden>
       <PageHeroSkeleton />
       <Skeleton className="h-11 w-full rounded-none" />
+      <DiscoverOverviewBodySkeleton />
+    </div>
+  );
+}
+
+/** Overview content below the hero/tabs; used as the streaming fallback. */
+export function DiscoverOverviewBodySkeleton() {
+  return (
+    <div className="space-y-9" aria-hidden>
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1.42fr)_minmax(300px,0.62fr)] lg:gap-14 xl:gap-20">
         <div className="nm-elevated-surface space-y-5 rounded-[var(--radius-surface)] border px-5 py-6 sm:px-7 sm:py-8">
           <Skeleton className="h-12 w-14" />

@@ -403,6 +403,87 @@
   line-height: 1.55;
 }
 
+/*
+ * Horizontal tab rows: fade whichever edge is clipped so overflow is
+ * discoverable without a scrollbar. `data-overflow` is set by <TabOverflow>.
+ */
+.nm-tab-scroller[data-overflow="end"] {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 3.5rem), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 3.5rem), transparent);
+}
+.nm-tab-scroller[data-overflow="start"] {
+  -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 3.5rem), transparent);
+  mask-image: linear-gradient(to left, #000 calc(100% - 3.5rem), transparent);
+}
+.nm-tab-scroller[data-overflow="both"] {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 3.5rem,
+    #000 calc(100% - 3.5rem),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 3.5rem,
+    #000 calc(100% - 3.5rem),
+    transparent
+  );
+}
+
+/*
+ * Secondary navigation links ("All notes", "Full ranking", footer). Visibly
+ * actionable (arrow, hover underline) and padded to a ≥24px hit target even
+ * at 13px type (WCAG 2.5.8).
+ */
+.nm-action-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  min-height: 1.5rem;
+  padding-block: 0.125rem;
+  color: var(--ink-soft);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.25em;
+  transition:
+    color 160ms cubic-bezier(0.2, 0, 0, 1),
+    text-decoration-color 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+.nm-action-link::after {
+  content: "→";
+  font-weight: 400;
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+.nm-action-link:hover,
+.nm-action-link:focus-visible {
+  color: var(--ink);
+  text-decoration-color: var(--accent-soft);
+}
+.nm-action-link:hover::after {
+  transform: translateX(0.15em);
+}
+.nm-action-link--quiet::after {
+  content: none;
+}
+.nm-action-link--quiet {
+  color: var(--ink-muted);
+  font-weight: 450;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nm-action-link,
+  .nm-action-link::after {
+    transition: none;
+  }
+  .nm-action-link:hover::after {
+    transform: none;
+  }
+}
+
 .nm-elevated-surface {
   border-color: var(--edge-strong);
   background: var(--surface-raised);

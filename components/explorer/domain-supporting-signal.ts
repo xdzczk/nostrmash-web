@@ -1,8 +1,8 @@
 import type { DomainEntry } from "@/lib/types/api";
 
 export type DomainSupportingSignal = {
-  key: "unique_authors" | "event_count" | "count";
-  label: "Authors" | "Linked notes" | "Appearances";
+  key: "unique_authors" | "link_count" | "event_count" | "count";
+  label: "Authors" | "Links" | "Linked notes" | "Appearances";
   value: number;
   valueLabel: string;
   reliabilityRank: number;
@@ -30,11 +30,25 @@ function toCandidates(entry: DomainEntry): CandidateSignal[] {
     });
   }
 
-  if (isPositiveNumber(entry.event_count)) {
+  if (isPositiveNumber(entry.link_count)) {
+    candidates.push({
+      key: "link_count",
+      label: "Links",
+      value: entry.link_count,
+      reliabilityRank: 2,
+    });
+  }
+
+  const linkedNotes = isPositiveNumber(entry.event_count)
+    ? entry.event_count
+    : isPositiveNumber(entry.note_count)
+      ? entry.note_count
+      : null;
+  if (linkedNotes !== null) {
     candidates.push({
       key: "event_count",
       label: "Linked notes",
-      value: entry.event_count,
+      value: linkedNotes,
       reliabilityRank: 2,
     });
   }
@@ -63,9 +77,11 @@ export function pickPrimaryDomainSupportingSignal(
   const valueLabel =
     strongest.key === "unique_authors"
       ? formatCount(strongest.value, "author", "authors")
-      : strongest.key === "event_count"
-        ? formatCount(strongest.value, "note", "notes")
-        : formatCount(strongest.value, "appearance", "appearances");
+      : strongest.key === "link_count"
+        ? formatCount(strongest.value, "link", "links")
+        : strongest.key === "event_count"
+          ? formatCount(strongest.value, "note", "notes")
+          : formatCount(strongest.value, "appearance", "appearances");
 
   return {
     ...strongest,
