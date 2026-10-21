@@ -17,7 +17,10 @@ export function SiteNav() {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Primary" className="text-ink-muted flex shrink-0 items-center gap-5 text-sm">
+    <nav
+      aria-label="Primary"
+      className="text-ink-muted flex shrink-0 items-center gap-3 text-sm sm:gap-5"
+    >
       {navItems.map((item) => {
         const active = isActivePath(pathname, item.href);
         return (

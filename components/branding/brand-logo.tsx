@@ -4,14 +4,15 @@ const LOGO_DARK = "/branding/NostrMashLogoHorizontalDarkMode.webp";
 const LOGO_LIGHT = "/branding/NostrMashLogoHorizontalLightMode.webp";
 
 export function BrandLogo({
-  className = "",
+  className = "h-8 w-[132px] sm:w-[168px]",
   priority = false,
 }: {
+  /** Sizing classes; the caller owns height and width. */
   className?: string;
   priority?: boolean;
 }) {
   return (
-    <span className={`relative block h-8 w-[132px] shrink-0 sm:w-[168px] ${className}`.trim()}>
+    <span className={`relative block shrink-0 ${className}`.trim()}>
       {/* Both assets render; the theme picks one via CSS so there is no flash on
           first paint and no client JS is required. */}
       <Image
@@ -19,7 +20,7 @@ export function BrandLogo({
         alt="NostrMash"
         fill
         priority={priority}
-        sizes="(min-width: 640px) 168px, 132px"
+        sizes="(min-width: 640px) 168px, 104px"
         className="theme-dark-only object-contain object-left"
       />
       <Image
@@ -27,7 +28,7 @@ export function BrandLogo({
         alt="NostrMash"
         fill
         priority={priority}
-        sizes="(min-width: 640px) 168px, 132px"
+        sizes="(min-width: 640px) 168px, 104px"
         className="theme-light-only object-contain object-left"
         aria-hidden
       />

@@ -66,6 +66,7 @@ export function DiscoverShell({
         eyebrow={eyebrow}
         title={title}
         subtitle={subtitle}
+        subtitleFromSm
         badges={
           <div className="nm-meta flex flex-wrap items-center gap-x-3 gap-y-2">
             <WindowSelector path={path} searchParams={searchParams} activeWindow={window} />

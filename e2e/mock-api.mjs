@@ -79,7 +79,21 @@ const mentionProfile = {
   name: "mentioned",
 };
 
-const trendingNotes = [focalNote, quotedEvent];
+// A note with an image attachment so the overview's compact (thumbnail) note
+// layout is exercised in the ui-quality snapshots. The host never resolves in
+// CI, which is fine: the assertions are about layout, not pixels.
+const mediaNote = {
+  id: "0".repeat(64),
+  pubkey: AUTHOR_PK,
+  kind: 1,
+  created_at: 1_700_000_050,
+  content: "A note with a tall image https://media.example.invalid/tall.png",
+  tags: [],
+  reply_count: 2,
+  repost_count: 1,
+  reaction_count: 3,
+};
+const trendingNotes = [focalNote, quotedEvent, mediaNote];
 const trendingProfiles = [authorProfile, mentionProfile];
 const trendingHashtags = [
   {

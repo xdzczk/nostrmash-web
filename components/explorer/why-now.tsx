@@ -14,8 +14,16 @@ export type WhyNowReason = {
 type WhyNowTone = "default" | "highlight";
 
 function readableCount(value: number, singular: string, plural: string): string {
-  return `${value.toLocaleString()} ${value === 1 ? singular : plural}`;
+  const rounded = Math.round(value);
+  return `${rounded.toLocaleString()} ${rounded === 1 ? singular : plural}`;
 }
+
+/**
+ * A single post, reply, or mention is noise, not momentum. Inferred "momentum"
+ * reasons need at least this many to be shown; otherwise they fall through to
+ * the next reason so a rank is never justified by "1 post".
+ */
+const MOMENTUM_FLOOR = 2;
 
 function findNumericMetric(
   metrics: Array<{ label: string; value: string | number | boolean }>,
@@ -29,10 +37,6 @@ function findNumericMetric(
     return Number.isFinite(normalized) ? normalized : null;
   }
   return null;
-}
-
-function nonEmptyText(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
 function dedupeReasons(reasons: WhyNowReason[]): WhyNowReason[] {
@@ -97,6 +101,10 @@ export function mapNoteWhyNow(note: EventRecord): WhyNowReason[] {
   return dedupeReasons(reasons);
 }
 
+function positiveNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
 export function mapProfileWhyNow(profile: Profile): WhyNowReason[] {
   const serverReasons = mapServerRankingReasons(profile.ranking);
   if (serverReasons.length > 0) return serverReasons;
@@ -106,39 +114,27 @@ export function mapProfileWhyNow(profile: Profile): WhyNowReason[] {
     findNumericMetric(metrics, /recent_post_count|post_count|note_count|recent_post/i) ?? null;
   const activeDays = findNumericMetric(metrics, /recent_active_days|active_days/i);
   const replyPickup = findNumericMetric(metrics, /recent_reply_count|reply_count|repl(y|ies)/i);
-  const identityFields = [
-    nonEmptyText(profile.display_name),
-    nonEmptyText(profile.name),
-    nonEmptyText(profile.about),
-    nonEmptyText(profile.picture),
-    nonEmptyText(profile.nip05),
-    nonEmptyText(profile.lud16),
-    nonEmptyText(profile.website),
-  ].filter(Boolean).length;
 
+  // No "identity completeness" fallback: a filled-in profile is a static
+  // property, not a reason something is moving now. An empty list is more
+  // honest than a filler reason.
   const reasons: WhyNowReason[] = [];
-  if (postCount !== null && postCount > 0) {
+  if (postCount !== null && postCount >= MOMENTUM_FLOOR) {
     reasons.push({
       text: "posting momentum",
       support: readableCount(postCount, "post", "posts"),
     });
   }
-  if (activeDays !== null && activeDays > 0) {
+  if (activeDays !== null && activeDays >= MOMENTUM_FLOOR) {
     reasons.push({
       text: "recent active days",
       support: readableCount(activeDays, "active day", "active days"),
     });
   }
-  if (replyPickup !== null && replyPickup > 0) {
+  if (replyPickup !== null && replyPickup >= MOMENTUM_FLOOR) {
     reasons.push({
       text: "reply pickup",
       support: readableCount(replyPickup, "reply", "replies"),
-    });
-  }
-  if (identityFields >= 3) {
-    reasons.push({
-      text: "identity completeness",
-      support: readableCount(identityFields, "profile signal", "profile signals"),
     });
   }
 
@@ -158,13 +154,13 @@ export function mapHashtagWhyNow(entry: HashtagEntry): WhyNowReason[] {
       : null;
 
   const reasons: WhyNowReason[] = [];
-  if (noteCount !== null) {
+  if (noteCount !== null && noteCount >= MOMENTUM_FLOOR) {
     reasons.push({
       text: "topic lift",
       support: readableCount(noteCount, "note", "notes"),
     });
   }
-  if (mentionCount !== null) {
+  if (mentionCount !== null && mentionCount >= MOMENTUM_FLOOR) {
     reasons.push({
       text: "mention acceleration",
       support: readableCount(mentionCount, "mention", "mentions"),
@@ -184,19 +180,19 @@ export function mapDomainWhyNow(entry: DomainEntry): WhyNowReason[] {
   const serverReasons = mapServerRankingReasons(entry.ranking);
   if (serverReasons.length > 0) return serverReasons;
 
-  const appearanceCount = typeof entry.count === "number" && entry.count > 0 ? entry.count : null;
-  const linkedActivity =
-    typeof entry.event_count === "number" && entry.event_count > 0 ? entry.event_count : null;
-  const authorCount =
-    typeof entry.unique_authors === "number" && entry.unique_authors > 0
-      ? entry.unique_authors
-      : null;
+  const linkCount = positiveNumber(entry.link_count);
+  const linkedNotes = positiveNumber(entry.note_count) ?? positiveNumber(entry.event_count);
+  const appearanceCount = positiveNumber(entry.count);
+  const authorCount = positiveNumber(entry.unique_authors);
 
+  // Order mirrors what the ranking weighs: circulation first, then breadth.
+  // `count` is a legacy appearance tally that can be far below `link_count`
+  // for the same domain, so it is only a last resort.
   const reasons: WhyNowReason[] = [];
-  if (appearanceCount !== null) {
+  if (linkCount !== null && linkCount >= MOMENTUM_FLOOR) {
     reasons.push({
-      text: "repeated appearances",
-      support: readableCount(appearanceCount, "appearance", "appearances"),
+      text: "link circulation",
+      support: readableCount(linkCount, "link", "links"),
     });
   }
   if (authorCount !== null && authorCount > 1) {
@@ -205,10 +201,16 @@ export function mapDomainWhyNow(entry: DomainEntry): WhyNowReason[] {
       support: readableCount(authorCount, "author", "authors"),
     });
   }
-  if (linkedActivity !== null) {
+  if (linkedNotes !== null && linkedNotes >= MOMENTUM_FLOOR) {
     reasons.push({
       text: "linked note activity",
-      support: readableCount(linkedActivity, "note", "notes"),
+      support: readableCount(linkedNotes, "note", "notes"),
+    });
+  }
+  if (appearanceCount !== null && appearanceCount >= MOMENTUM_FLOOR) {
+    reasons.push({
+      text: "repeated appearances",
+      support: readableCount(appearanceCount, "appearance", "appearances"),
     });
   }
 

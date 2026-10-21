@@ -26,18 +26,85 @@ const REASON_LABELS: Record<string, string> = {
   participant_breadth: "participant breadth",
 };
 
-function formatEvidence(evidence: DiscoveryReasonEvidence | undefined): string | undefined {
+/**
+ * Reasons whose evidence is a count of discrete things (posts, followers,
+ * links…). A count of one is noise, not momentum, so these need at least two
+ * to be shown; otherwise the reason falls through to the next one.
+ */
+const COUNT_FLOOR_CODES = new Set([
+  "publishing_momentum",
+  "follower_growth",
+  "mention_volume",
+  "link_circulation",
+  "author_breadth",
+  "participant_breadth",
+]);
+const COUNT_FLOOR = 2;
+
+/** Reasons describing growth, where a leading "+" makes the number read as a delta. */
+const GROWTH_CODES = new Set(["follower_growth"]);
+
+/** Units that count whole things and must never render fractionally. */
+const COUNT_UNIT_PATTERN =
+  /^(followers?|posts?|notes?|repl(y|ies)|reposts?|interactions?|links?|mentions?|authors?|zaps?|reactions?|sources?|relays?|participants?|shares?|appearances?|boosts?|likes?)$/i;
+
+function singularize(unit: string): string {
+  if (/ies$/i.test(unit)) return unit.replace(/ies$/i, "y");
+  if (/s$/i.test(unit) && !/ss$/i.test(unit)) return unit.slice(0, -1);
+  return unit;
+}
+
+/**
+ * Round evidence for display: whole units are rounded to integers (3.75
+ * followers → 4 followers); ratios keep one decimal below 10 (8.214 → 8.2,
+ * 0.403 → 0.4) and none above. Three-decimal precision is false precision
+ * for a "why now" line.
+ */
+export function formatEvidenceValue(value: number, unit?: string): string {
+  if (!Number.isFinite(value)) return "";
+  const isCount = unit ? COUNT_UNIT_PATTERN.test(unit.trim()) : Number.isInteger(value);
+  if (isCount) return Math.round(value).toLocaleString();
+  if (Math.abs(value) >= 10) return Math.round(value).toLocaleString();
+  const rounded = Math.round(value * 10) / 10;
+  return rounded.toLocaleString(undefined, { maximumFractionDigits: 1 });
+}
+
+function humanizeCode(code: string): string {
+  return code.replace(/[_-]+/g, " ").trim().toLowerCase();
+}
+
+function formatEvidence(
+  evidence: DiscoveryReasonEvidence | undefined,
+  code: string
+): string | undefined {
   if (!evidence) return undefined;
-  const value = evidence.value.toLocaleString();
-  return evidence.unit ? `${value} ${evidence.unit}` : value;
+  const rendered = formatEvidenceValue(evidence.value, evidence.unit);
+  if (!rendered) return undefined;
+  const sign = GROWTH_CODES.has(code) && evidence.value > 0 ? "+" : "";
+  if (!evidence.unit) return `${sign}${rendered}`;
+  const unit =
+    COUNT_UNIT_PATTERN.test(evidence.unit.trim()) && Math.round(evidence.value) === 1
+      ? singularize(evidence.unit.trim())
+      : evidence.unit.trim();
+  return `${sign}${rendered} ${unit}`;
+}
+
+function belowFloor(reason: DiscoveryRankingReason): boolean {
+  if (!COUNT_FLOOR_CODES.has(reason.code)) return false;
+  const evidence = reason.evidence?.[0];
+  if (!evidence || !Number.isFinite(evidence.value)) return false;
+  return evidence.value < COUNT_FLOOR;
 }
 
 function presentReason(reason: DiscoveryRankingReason): DiscoveryReasonPresentation | null {
-  const text = REASON_LABELS[reason.code];
+  if (!reason.code || belowFloor(reason)) return null;
+  // Unknown codes are still the server's actual ranking rationale; a humanized
+  // code beats falling back to inferred stats that may contradict the rank.
+  const text = REASON_LABELS[reason.code] ?? humanizeCode(reason.code);
   if (!text) return null;
   return {
     text,
-    support: formatEvidence(reason.evidence?.[0]),
+    support: formatEvidence(reason.evidence?.[0], reason.code),
   };
 }
 
@@ -54,4 +121,28 @@ export function discoveryReasonSource(
   ranking: DiscoveryItemRanking | undefined
 ): "server" | "inferred" {
   return ranking?.reasons?.length ? "server" : "inferred";
+}
+
+export type RankMovement = { direction: "up" | "down"; places: number };
+
+/**
+ * Rank movement versus the previous computation. `previous_rank` is
+ * unambiguous (places moved = previous − current); `rank_delta` is used as a
+ * fallback with the same sign convention (positive = moved up).
+ */
+export function rankMovement(ranking: DiscoveryItemRanking | undefined): RankMovement | null {
+  if (!ranking) return null;
+  if (typeof ranking.previous_rank === "number" && Number.isFinite(ranking.previous_rank)) {
+    const delta = ranking.previous_rank - ranking.rank;
+    if (delta === 0) return null;
+    return { direction: delta > 0 ? "up" : "down", places: Math.abs(delta) };
+  }
+  if (typeof ranking.rank_delta === "number" && Number.isFinite(ranking.rank_delta)) {
+    if (ranking.rank_delta === 0) return null;
+    return {
+      direction: ranking.rank_delta > 0 ? "up" : "down",
+      places: Math.abs(ranking.rank_delta),
+    };
+  }
+  return null;
 }

@@ -9,6 +9,7 @@ export function PageHero({
   support,
   className,
   emphasize = false,
+  subtitleFromSm = false,
 }: {
   eyebrow?: string;
   title: string;
@@ -18,6 +19,8 @@ export function PageHero({
   support?: ReactNode;
   className?: string;
   emphasize?: boolean;
+  /** Show the subtitle from `sm` up only (phones get the title and tabs). */
+  subtitleFromSm?: boolean;
 }) {
   return (
     <section
@@ -31,7 +34,13 @@ export function PageHero({
           {title}
         </h1>
         {subtitle ? (
-          <p className="text-ink-muted max-w-[46rem] text-[1.02rem] leading-7">{subtitle}</p>
+          <p
+            className={`text-ink-muted max-w-[46rem] text-[1.02rem] leading-7 ${
+              subtitleFromSm ? "hidden sm:block" : ""
+            }`}
+          >
+            {subtitle}
+          </p>
         ) : null}
       </div>
       {badges ? <div className="flex flex-wrap items-center gap-2">{badges}</div> : null}

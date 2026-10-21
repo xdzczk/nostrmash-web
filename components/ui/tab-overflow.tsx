@@ -43,6 +43,9 @@ export function TabOverflow({ className, children }: { className?: string; child
     el.addEventListener("scroll", update, { passive: true });
     const observer = new ResizeObserver(update);
     observer.observe(el);
+    // The content can grow without the host changing size (web fonts
+    // swapping in after first paint), so watch the scrolled child as well.
+    for (const child of Array.from(el.children)) observer.observe(child);
     return () => {
       el.removeEventListener("scroll", update);
       observer.disconnect();

@@ -38,6 +38,38 @@ function hasRichIdentity(profile: Profile | undefined): boolean {
   return displayName.length > 0 || name.length > 0 || picture.length > 0;
 }
 
+type PulseStat = { label: string; value: string | number | boolean; series?: SeriesPoint[] };
+
+/**
+ * Pair Pulse tiles with their history series and keep the strip honest: once
+ * any tile has a trend, tiles without one are dropped rather than rendered
+ * with a "No trend yet" placeholder (a half-empty strip reads weaker than a
+ * shorter complete one). If fewer than two tiles would remain, nothing is
+ * dropped so the strip never collapses to a single number.
+ */
+export function attachPulseSeries(
+  stats: PulseStat[],
+  series: { noteVolume: SeriesPoint[]; activeAuthors: SeriesPoint[]; relayEvents: SeriesPoint[] }
+): PulseStat[] {
+  const withSeries = stats.map((stat) => {
+    const label = stat.label.toLowerCase();
+    if (/(^|_)note_volume(_|$)/.test(label) || /(^|_)notes?(_|$)/.test(label)) {
+      return { ...stat, series: series.noteVolume };
+    }
+    if (/(^|_)active_authors(_|$)/.test(label)) {
+      return { ...stat, series: series.activeAuthors };
+    }
+    if (/(^|_)event_volume(_|$)/.test(label) || /(^|_)relay_events(_|$)/.test(label)) {
+      return { ...stat, series: series.relayEvents };
+    }
+    return stat;
+  });
+  const hasTrend = (stat: PulseStat) => Boolean(stat.series && stat.series.length >= 2);
+  if (!withSeries.some(hasTrend)) return withSeries;
+  const trending = withSeries.filter(hasTrend);
+  return trending.length >= 2 ? trending : withSeries;
+}
+
 export type HomeSectionFailures = {
   notes: boolean;
   profiles: boolean;
@@ -57,7 +89,7 @@ export type HomePageData = {
   homeHashtags: HashtagEntry[];
   homeDomains: DomainEntry[];
   noteAuthorsByPubkey: Record<string, Profile>;
-  pulseStats: Array<{ label: string; value: string | number | boolean; series?: SeriesPoint[] }>;
+  pulseStats: PulseStat[];
   relayLeaders: ReturnType<typeof extractRelayRows>;
   upstreamCallCount: number;
   computedAt?: string | null;
@@ -100,10 +132,11 @@ export async function loadHomePageData(
     getDiscoveryHome("shortTtl", { window }),
     getNetworkStats("shortTtl"),
     getRelayStats("shortTtl"),
-    getStatsSeries("note_volume", window === "7d" ? "7d" : "7d", "shortTtl"),
+    getStatsSeries("note_volume", "7d", "shortTtl"),
     getStatsSeries("active_authors", "7d", "shortTtl"),
+    getStatsSeries("relay_events", "7d", "shortTtl"),
   ]);
-  upstreamCallCount += 2;
+  upstreamCallCount += 3;
 
   const [
     homeResult,
@@ -111,6 +144,7 @@ export async function loadHomePageData(
     relayResult,
     noteVolumeSeriesResult,
     activeAuthorsSeriesResult,
+    relayEventsSeriesResult,
   ] = stageOne;
 
   if (homeResult.status === "fulfilled") {
@@ -273,17 +307,16 @@ export async function loadHomePageData(
     activeAuthorsSeriesResult.status === "fulfilled"
       ? normalizeSeriesPoints(activeAuthorsSeriesResult.value)
       : [];
-  // Attach the two history series we have to the matching metrics only; relay
-  // event volume has no series yet and must not borrow the note-volume one.
-  const pulseStats = basePulseStats.map((stat) => {
-    const label = stat.label.toLowerCase();
-    if (/(^|_)note_volume(_|$)/.test(label) || /(^|_)notes?(_|$)/.test(label)) {
-      return { ...stat, series: noteVolumeSeries };
-    }
-    if (/(^|_)active_authors(_|$)/.test(label)) {
-      return { ...stat, series: activeAuthorsSeries };
-    }
-    return stat;
+  const relayEventsSeries =
+    relayEventsSeriesResult.status === "fulfilled"
+      ? normalizeSeriesPoints(relayEventsSeriesResult.value)
+      : [];
+  // Attach each history series to its own metric only; a tile must never
+  // borrow another metric's trend.
+  const pulseStats = attachPulseSeries(basePulseStats, {
+    noteVolume: noteVolumeSeries,
+    activeAuthors: activeAuthorsSeries,
+    relayEvents: relayEventsSeries,
   });
   let relayLeaders = extractRelayRows(networkSummary ?? payload, 1);
   if (relayLeaders.length === 0) {

@@ -73,8 +73,13 @@ export function NoteMediaReveal({
   hiddenCount?: number;
 }) {
   // Fixed-ratio variants reserve their box before the image loads (no CLS).
+  // Compact is a square thumbnail beside the text until `lg`, then a strip.
   const fixedRatio =
-    variant === "compact" ? "aspect-[16/10]" : variant === "lead" ? "aspect-[16/9]" : "";
+    variant === "compact"
+      ? "aspect-square lg:aspect-[16/10]"
+      : variant === "lead"
+        ? "aspect-[16/10]"
+        : "";
   const fill = fixedRatio.length > 0;
   const badge =
     hiddenCount > 0 ? (

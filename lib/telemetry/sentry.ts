@@ -1,31 +1,12 @@
-type ScopeLike = {
-  setTag: (key: string, value: string) => void;
-  setExtra: (key: string, value: unknown) => void;
-  setLevel: (level: "warning" | "info" | "error") => void;
-};
+import { getSentryHandle, type SentryHandle } from "@/lib/telemetry/sentry-handle";
 
-type SentryLike = {
-  withScope: (callback: (scope: ScopeLike) => void) => void;
-  captureException: (error: unknown) => void;
-  captureMessage: (message: string) => void;
-  addBreadcrumb: (breadcrumb: {
-    category?: string;
-    message?: string;
-    level?: "info" | "warning" | "error";
-    data?: Record<string, unknown>;
-  }) => void;
-};
-
-function getSentry(): SentryLike | null {
-  const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN ?? process.env.SENTRY_DSN;
-  if (!dsn) return null;
-  try {
-    // Lazy require keeps this module importable in tests without initializing the SDK.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("@sentry/nextjs") as SentryLike;
-  } catch {
-    return null;
-  }
+/**
+ * The SDK handle published by instrumentation.ts / instrumentation-client.ts.
+ * Deliberately not a `require("@sentry/nextjs")`: see sentry-handle.ts for
+ * why importing the SDK from application code multiplies the worker bundle.
+ */
+function getSentry(): SentryHandle | null {
+  return getSentryHandle();
 }
 
 export function isSentryEnabled(): boolean {

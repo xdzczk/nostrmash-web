@@ -24,15 +24,17 @@ export async function SiteShell({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <header className="border-edge/80 bg-surface/96 supports-[backdrop-filter]:bg-surface/90 sticky top-0 z-50 border-b backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-[82rem] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 sm:px-6 lg:flex-nowrap lg:gap-6 lg:px-8">
+        {/* One row at every width: logo, primary nav, then search/theme. The
+            row only wraps as a last resort on very narrow phones. */}
+        <div className="mx-auto flex w-full max-w-[82rem] flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 sm:gap-x-3 sm:px-6 lg:flex-nowrap lg:gap-6 lg:px-8">
           <Link
             href="/"
             aria-label="NostrMash home"
             className="nm-pressable focus-visible:ring-accent-soft/70 shrink-0 rounded-lg px-1 py-1.5 focus-visible:ring-2 focus-visible:outline-none"
           >
-            <BrandLogo className="h-7 w-[122px] sm:w-[144px]" priority />
+            <BrandLogo className="h-6 w-[104px] sm:h-7 sm:w-[144px]" priority />
           </Link>
-          <div className="border-edge/60 order-3 w-full border-t pt-1 lg:order-none lg:w-auto lg:border-0 lg:pt-0">
+          <div className="min-w-0 shrink-0">
             <SiteNav />
           </div>
           <div className="ml-auto flex min-w-0 items-center gap-2 lg:w-full lg:max-w-[34rem]">

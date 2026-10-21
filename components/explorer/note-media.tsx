@@ -3,8 +3,10 @@ import { extractNoteMediaAttachments } from "@/lib/notes/media";
 
 /**
  * - `full`: every attachment at natural ratio (list and detail cards).
- * - `lead`: fixed 16:9 boxes, max two attachments (homepage lead; no CLS).
- * - `compact`: one fixed 16:10 thumbnail with a `+N` badge (sidebar/list).
+ * - `lead`: max two attachments side by side in fixed boxes (homepage lead;
+ *   no CLS, and the card never grows by more than one image's height).
+ * - `compact`: one attachment with a `+N` badge; a square thumbnail below
+ *   `lg` (sits beside the text) and a 16:10 strip from `lg` up.
  */
 export type NoteMediaVariant = "full" | "lead" | "compact";
 
@@ -32,8 +34,16 @@ export function NoteMedia({
   const visible = attachments.slice(0, Math.max(1, limit));
   const hidden = attachments.length - visible.length;
 
+  const wrapperClassName =
+    variant === "compact"
+      ? ""
+      : variant === "lead"
+        ? // Two lead images share a row instead of stacking.
+          `mt-4 grid gap-3 ${visible.length > 1 ? "grid-cols-2" : "grid-cols-1"}`
+        : "mt-3 space-y-3";
+
   return (
-    <div className={variant === "compact" ? "mt-3" : "mt-3 space-y-3"}>
+    <div className={wrapperClassName}>
       {visible.map((attachment, index) => (
         <NoteMediaReveal
           key={attachment.url}

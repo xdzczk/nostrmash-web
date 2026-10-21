@@ -1,5 +1,7 @@
 import * as Sentry from "@sentry/nextjs";
 
+import { setSentryHandle } from "@/lib/telemetry/sentry-handle";
+
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN ?? process.env.SENTRY_DSN;
 
 export async function register() {
@@ -33,6 +35,9 @@ export async function register() {
       return event;
     },
   });
+  // Application code reaches the SDK through this handle only (keeps the SDK
+  // out of every route chunk; see lib/telemetry/sentry-handle.ts).
+  setSentryHandle(Sentry);
 
   if (process.env.NEXT_RUNTIME === "nodejs") {
     console.info("[instrumentation] Sentry initialized for server runtime");

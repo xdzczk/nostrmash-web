@@ -28,7 +28,55 @@ import {
   getTrendingNotes,
   getTrendingProfiles,
 } from "@/lib/api/endpoints";
-import { loadHomePageData } from "@/lib/home/load-home-page-data";
+import { attachPulseSeries, loadHomePageData } from "@/lib/home/load-home-page-data";
+
+describe("attachPulseSeries", () => {
+  const series = [
+    { t: 1, v: 10 },
+    { t: 2, v: 12 },
+  ];
+  const tiles = [
+    { label: "active_authors_24h", value: 4000 },
+    { label: "note_volume_24h", value: 41600 },
+    { label: "network_relays_active_24h", value: 11 },
+    { label: "event_volume_24h", value: 440000 },
+  ];
+
+  it("pairs each tile with its own series and drops tiles without a trend", () => {
+    const result = attachPulseSeries(tiles, {
+      noteVolume: series,
+      activeAuthors: series,
+      relayEvents: [
+        { t: 1, v: 1 },
+        { t: 2, v: 2 },
+      ],
+    });
+    expect(result.map((stat) => stat.label)).toEqual([
+      "active_authors_24h",
+      "note_volume_24h",
+      "event_volume_24h",
+    ]);
+    expect(result[2]?.series).toEqual([
+      { t: 1, v: 1 },
+      { t: 2, v: 2 },
+    ]);
+  });
+
+  it("keeps every tile when no series are available", () => {
+    const result = attachPulseSeries(tiles, { noteVolume: [], activeAuthors: [], relayEvents: [] });
+    expect(result).toHaveLength(4);
+    expect(result.every((stat) => !stat.series || stat.series.length === 0)).toBe(true);
+  });
+
+  it("never collapses the strip below two tiles", () => {
+    const result = attachPulseSeries(tiles, {
+      noteVolume: series,
+      activeAuthors: [],
+      relayEvents: [],
+    });
+    expect(result).toHaveLength(4);
+  });
+});
 
 describe("loadHomePageData", () => {
   afterEach(() => {
