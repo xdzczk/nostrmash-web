@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { withSentryConfig } from "@sentry/nextjs";
+import { withSentryConfig } from "@sentry/nextjs/config";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 // Only needed for `next dev` bindings. Running during `next build` can crash
@@ -72,9 +72,8 @@ export default withSentryConfig(nextConfig, {
   widenClientFileUpload: true,
   // Disable automatic tunnel route; OpenNext/Workers handle routing themselves.
   tunnelRoute: undefined,
-  webpack: {
-    treeshake: {
-      removeDebugLogging: true,
-    },
+  // Works for Turbopack and webpack. The old `webpack.treeshake` option does not.
+  bundleSizeOptimizations: {
+    excludeDebugStatements: true,
   },
 });
