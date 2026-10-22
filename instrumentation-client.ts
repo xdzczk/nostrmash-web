@@ -1,3 +1,4 @@
+import { restrictiveDataCollection } from "@/lib/telemetry/sentry-data-collection";
 import { UI_VERSION } from "@/lib/ui/version";
 import {
   getSentryClient,
@@ -22,7 +23,7 @@ function initSentry(sentry: SentryClientModule) {
     tracesSampleRate: 0.05,
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 0,
-    sendDefaultPii: false,
+    dataCollection: restrictiveDataCollection,
     initialScope: {
       tags: {
         ui_version: UI_VERSION,

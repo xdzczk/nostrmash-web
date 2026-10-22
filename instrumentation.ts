@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 
+import { restrictiveDataCollection } from "@/lib/telemetry/sentry-data-collection";
 import { setSentryHandle } from "@/lib/telemetry/sentry-handle";
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN ?? process.env.SENTRY_DSN;
@@ -16,7 +17,7 @@ export async function register() {
     dsn,
     enabled: true,
     tracesSampleRate: 0.05,
-    sendDefaultPii: false,
+    dataCollection: restrictiveDataCollection,
     // Defense in depth: page loaders soft-handle these, but onRequestError can
     // still see them if a route lets an ApiError bubble.
     ignoreErrors: [/API 404\b/i, /API 429\b/i, /too many requests/i, /hashtag not found/i],
