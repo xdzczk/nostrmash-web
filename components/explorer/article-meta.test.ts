@@ -47,6 +47,17 @@ describe("getArticlePresentation", () => {
     expect(presentation.summary ?? "").not.toMatch(/&#x20;|& x20;/);
   });
 
+  it("keeps hyphens inside an explicit title", () => {
+    const presentation = getArticlePresentation({
+      id: "f".repeat(64),
+      kind: LONG_FORM_KIND,
+      pubkey: "b".repeat(64),
+      content: "Body.",
+      tags: [["title", "Why long-form matters"]],
+    });
+    expect(presentation.title).toBe("Why long-form matters");
+  });
+
   it("drops pipe tables so a table-only body has no pipe summary and no read time", () => {
     const presentation = getArticlePresentation({
       id: "d".repeat(64),
