@@ -70,8 +70,27 @@ function isPipeTableLine(line: string): boolean {
   return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell));
 }
 
+function decodeEntities(value: string): string {
+  return value
+    .replace(/&#x([0-9a-f]+);/gi, (entity, hex: string) => {
+      const code = Number.parseInt(hex, 16);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : entity;
+    })
+    .replace(/&#(\d+);/g, (entity, num: string) => {
+      const code = Number.parseInt(num, 10);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : entity;
+    })
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&quot;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&amp;/gi, "&");
+}
+
 function stripMarkdown(value: string): string {
-  const withoutTables = value
+  const decoded = decodeEntities(value);
+  const withoutTables = decoded
     .split("\n")
     .filter((line) => !isPipeTableLine(line))
     .join("\n");
@@ -90,6 +109,28 @@ function stripMarkdown(value: string): string {
 /** A summary that is only punctuation, pipes, or symbols is not a summary. */
 function hasReadableText(value: string): boolean {
   return /[\p{L}\p{N}]/u.test(value);
+}
+
+function titleFromSentence(text: string): string {
+  const slice = text.slice(0, 90);
+  const boundary = slice.lastIndexOf(" ");
+  return boundary > 40 ? slice.slice(0, boundary) : slice;
+}
+
+/** Drop a summary that only repeats the title, and continue after a derived title. */
+function summaryAfterTitle(title: string, summary: string): string | undefined {
+  const normalize = (value: string) => value.replace(/\s+/g, " ").trim().toLowerCase();
+  const normalizedSummary = normalize(summary);
+  const normalizedTitle = normalize(title);
+  if (!normalizedSummary || normalizedSummary === normalizedTitle) return undefined;
+  if (normalizedSummary.startsWith(normalizedTitle)) {
+    const rest = summary
+      .slice(title.length)
+      .replace(/^[\s—–\-:.,]+/, "")
+      .trim();
+    return rest.length > 24 ? rest : undefined;
+  }
+  return summary;
 }
 
 function estimateReadingMinutes(content: string): number | undefined {
@@ -111,11 +152,10 @@ export function getArticlePresentation(
   const content = typeof note.content === "string" ? note.content : "";
   const strippedContent = stripMarkdown(content);
 
-  const title =
-    asString(record.title) ??
-    tagValue(note, "title") ??
-    (strippedContent.length > 0 ? strippedContent.slice(0, 90) : undefined) ??
-    "Untitled article";
+  const explicitTitleRaw = asString(record.title) ?? tagValue(note, "title");
+  const explicitTitle = explicitTitleRaw ? stripMarkdown(explicitTitleRaw) : undefined;
+  const derivedTitle = strippedContent.length > 0 ? titleFromSentence(strippedContent) : undefined;
+  const title = explicitTitle ?? derivedTitle ?? "Untitled article";
 
   const explicitSummary =
     asString(record.summary) ?? asString(record.description) ?? tagValue(note, "summary");
@@ -123,13 +163,16 @@ export function getArticlePresentation(
   const summarySource =
     explicitStripped && hasReadableText(explicitStripped)
       ? explicitStripped
-      : strippedContent.length > 0 && hasReadableText(strippedContent)
-        ? strippedContent
-        : undefined;
+      : !explicitTitle && derivedTitle
+        ? strippedContent.slice(derivedTitle.length).replace(/^[\s—–\-:.,]+/, "")
+        : strippedContent.length > 0 && hasReadableText(strippedContent)
+          ? strippedContent
+          : undefined;
   const clampSummary = (value: string) =>
     value.length > summaryMaxLength ? `${value.slice(0, summaryMaxLength - 1).trimEnd()}…` : value;
+  const withoutTitle = summarySource ? summaryAfterTitle(title, summarySource) : undefined;
   const summary =
-    summarySource && hasReadableText(summarySource) ? clampSummary(summarySource) : undefined;
+    withoutTitle && hasReadableText(withoutTitle) ? clampSummary(withoutTitle) : undefined;
   const dek =
     explicitStripped && hasReadableText(explicitStripped)
       ? clampSummary(explicitStripped)

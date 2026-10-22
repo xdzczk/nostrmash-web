@@ -81,7 +81,7 @@ test.describe("note page thread", () => {
 
     // Two identical replies from one author are folded into a single card.
     await expect(thread.getByText("Same reply posted twice")).toHaveCount(1);
-    await expect(thread.getByText("posted 2 times")).toBeVisible();
+    await expect(thread.getByText("2 identical replies")).toBeVisible();
 
     // Replies carry no action row; the timestamp is the permalink.
     await expect(thread.getByRole("link", { name: "Open note" })).toHaveCount(0);
@@ -98,6 +98,14 @@ test.describe("note page thread", () => {
     expect(Math.abs(scrollAfter - scrollBefore)).toBeLessThan(200);
     expect(page.url()).not.toContain("cursor");
     await expect(showMore).toBeHidden();
+    // The counted replies are all reachable, so the gap line stays quiet.
+    await expect(thread.getByText(/aren't in the index/)).toHaveCount(0);
+
+    // An opened branch can be closed without leaving the note.
+    await thread.getByRole("button", { name: "Hide reply" }).first().click();
+    await expect(thread.getByText("Nested reply to the first reply")).toBeHidden();
+    await thread.getByRole("button", { name: "Show 1 reply" }).click();
+    await expect(thread.getByText("Nested reply to the first reply")).toBeVisible();
   });
 
   test("shows ancestors above a nested reply", async ({ page }) => {
@@ -146,6 +154,8 @@ test.describe("note page context", () => {
     await page.getByText("Details & provenance", { exact: true }).click();
     const provenance = page.locator("#note-provenance");
     await expect(provenance.getByText("Has image")).toHaveCount(0);
+    await expect(provenance.getByText("Attachment count")).toHaveCount(0);
+    await expect(provenance.getByText("Open referenced note")).toHaveCount(0);
     await expect(provenance.getByText("1,700,000,000")).toHaveCount(0);
     await expect(provenance.getByRole("definition").filter({ hasText: /^Note$/ })).toBeVisible();
     await expect(provenance.locator("time").first()).toBeVisible();

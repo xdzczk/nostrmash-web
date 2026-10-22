@@ -26,6 +26,7 @@ export function ProfileCard({
   summary,
   discoverySignals = false,
   maxReasons = 1,
+  compact = false,
 }: {
   profile: Profile;
   rank?: number;
@@ -33,12 +34,15 @@ export function ProfileCard({
   discoverySignals?: boolean;
   /** How many "why" chips to show when `discoverySignals` is on. */
   maxReasons?: number;
+  /** One-line bio and no action links, without a rank number. */
+  compact?: boolean;
 }) {
   const label = profileLabel(profile);
   const secondaryLabel = profileSecondaryLabel(profile);
   const secondaryText = secondaryLabel ? formatProfileSecondary(secondaryLabel) : "";
   const href = profileHref(profile);
   const rankedRow = typeof rank === "number";
+  const quietRow = rankedRow || compact;
   const about = typeof profile.about === "string" ? profileAboutLine(profile.about) : "";
   const rawMetrics = extractPrimitiveStats(summary ?? profile, [
     "pubkey",
@@ -118,7 +122,7 @@ export function ProfileCard({
             </p>
           ) : null}
           {about.length > 0 ? (
-            rankedRow ? (
+            quietRow ? (
               <p className="text-ink-dim line-clamp-1 text-sm [overflow-wrap:anywhere]">{about}</p>
             ) : (
               <RichInlineText
@@ -139,9 +143,9 @@ export function ProfileCard({
         />
       ) : null}
 
-      {rankedRow ? null : <DiscoveryStatPills stats={metrics} className="mt-2.5 sm:mt-3" />}
+      {quietRow ? null : <DiscoveryStatPills stats={metrics} className="mt-2.5 sm:mt-3" />}
 
-      {href && !rankedRow ? (
+      {href && !quietRow ? (
         <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
           <DiscoveryActionLinks
             actions={[

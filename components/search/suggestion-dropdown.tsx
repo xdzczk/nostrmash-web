@@ -155,7 +155,7 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                   <span className="truncate font-medium">#{tag}</span>
                   {typeof count === "number" && (
                     <span className="text-ink-faint ml-2 shrink-0 text-xs">
-                      {count.toLocaleString()}
+                      {count.toLocaleString()} {count === 1 ? "note" : "notes"}
                     </span>
                   )}
                 </button>

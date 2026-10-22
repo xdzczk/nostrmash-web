@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { mapProfileWhyNow, mapRelatedProfileReasons } from "@/components/explorer/why-now";
+import {
+  mapProfileWhyNow,
+  mapRelatedProfileReasons,
+  relatedRailReasonLine,
+} from "@/components/explorer/why-now";
 import { normalizeProfile } from "@/lib/api/normalize/entities";
 import {
   normalizeProfileSummaryResponse,
   normalizeRelatedProfilesResponse,
+  normalizeUserMutedByResponse,
 } from "@/lib/api/normalize/profiles";
 
 const PUBKEY = "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d";
@@ -176,5 +181,33 @@ describe("mapRelatedProfileReasons", () => {
       follower_count: 10_000,
     });
     expect(reasons[0]?.text).toBe("interacts often");
+  });
+
+  it("lists every adjacency signal on one rail line", () => {
+    expect(
+      relatedRailReasonLine({
+        pubkey: OTHER,
+        interaction_adjacency: 13,
+        reply_adjacency: 3,
+        quote_repost_adjacency: 7,
+        topic_overlap: 9,
+      })
+    ).toBe("13 interactions · 3 replies · 7 shares · 9 topics");
+  });
+});
+
+describe("normalizeUserMutedByResponse", () => {
+  it("keeps muters identified by muter_pubkey", () => {
+    const result = normalizeUserMutedByResponse({
+      pubkey: PUBKEY,
+      items: [
+        {
+          muter_pubkey: OTHER,
+          source_event_id: "a".repeat(64),
+          mute_list_created_at: 1_792_641_305,
+        },
+      ],
+    });
+    expect(result.profiles?.map((profile) => profile.pubkey)).toEqual([OTHER]);
   });
 });

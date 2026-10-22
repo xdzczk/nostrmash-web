@@ -6,6 +6,7 @@ import {
   clampSuggestLimit,
   clampSuggestQuery,
   clientIpFromRequest,
+  forwardableClientIp,
 } from "@/lib/api/search-suggest-params";
 import { searchSuggestResponseSchema } from "@/lib/api/schemas/core";
 import { nativeApiV1Routes } from "@/lib/api/endpoints/shared";
@@ -38,6 +39,9 @@ export async function GET(request: NextRequest) {
   }
 
   const clientIp = clientIpFromRequest(request.headers);
+  // Only echo an address Cloudflare already attested. A synthesized loopback
+  // or "unknown" value makes the upstream reject the suggest call.
+  const forwardedIp = forwardableClientIp(request.headers.get("cf-connecting-ip") ?? "");
   const allowed = await enforceSuggestRateLimit(clientIp);
   if (!allowed) {
     return NextResponse.json(
@@ -56,12 +60,14 @@ export async function GET(request: NextRequest) {
       timeoutMs: 5_000,
       query: { q, limit },
       schema: searchSuggestResponseSchema,
-      init: {
-        headers: {
-          "X-Forwarded-For": clientIp,
-          "CF-Connecting-IP": clientIp,
-        },
-      },
+      init: forwardedIp
+        ? {
+            headers: {
+              "X-Forwarded-For": forwardedIp,
+              "CF-Connecting-IP": forwardedIp,
+            },
+          }
+        : undefined,
     });
 
     return NextResponse.json(body, {

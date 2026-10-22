@@ -189,6 +189,27 @@ describe("NoteCard", () => {
     expect(screen.getByText("(21 sats)")).toBeInTheDocument();
   });
 
+  it("hides zero engagement on the note page", () => {
+    render(
+      <NoteCard
+        note={{
+          ...NOTE,
+          reply_count: 0,
+          repost_count: 0,
+          reaction_count: 1,
+          zap_count: 0,
+          zap_msats: 0,
+        }}
+        author={AUTHOR}
+        density="detail"
+      />
+    );
+    expect(screen.getByText("Reactions")).toBeInTheDocument();
+    expect(screen.queryByText("Replies")).not.toBeInTheDocument();
+    expect(screen.queryByText("Reposts")).not.toBeInTheDocument();
+    expect(screen.queryByText("Zaps")).not.toBeInTheDocument();
+  });
+
   it("renders zeroed engagement stats when counts are missing", () => {
     const {
       reply_count: _r,

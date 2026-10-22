@@ -45,7 +45,7 @@ export async function SiteShell({ children }: { children: ReactNode }) {
       </header>
       <main
         id="main-content"
-        className="mx-auto flex w-full max-w-[82rem] flex-1 scroll-mt-24 flex-col px-4 py-7 sm:px-6 sm:py-9 lg:px-8 lg:py-11"
+        className="mx-auto flex w-full max-w-[82rem] min-w-0 flex-1 scroll-mt-24 flex-col px-4 py-7 sm:px-6 sm:py-9 lg:px-8 lg:py-11"
       >
         {children}
       </main>

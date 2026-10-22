@@ -76,7 +76,9 @@ export async function NotesList({
             <ArticleCard
               article={note}
               author={getAuthorByPubkey(authorsByPubkey, note)}
-              rank={ranked ? (note.ranking?.rank ?? index + 1) : undefined}
+              rank={
+                ranked ? (conversation ? index + 1 : (note.ranking?.rank ?? index + 1)) : undefined
+              }
               discoverySignals={discoverySignals}
               contentResolution={contentResolution}
               showAuthor={showAuthor}
@@ -87,7 +89,9 @@ export async function NotesList({
             <NoteCard
               note={note}
               author={getAuthorByPubkey(authorsByPubkey, note)}
-              rank={ranked ? (note.ranking?.rank ?? index + 1) : undefined}
+              rank={
+                ranked ? (conversation ? index + 1 : (note.ranking?.rank ?? index + 1)) : undefined
+              }
               showFullContent={showFullContent}
               discoverySignals={discoverySignals}
               contentResolution={contentResolution}
@@ -96,6 +100,7 @@ export async function NotesList({
               showUtilityLinks={showUtilityLinks}
               omitZeroStats={omitZeroStats}
               mediaVariant={compactMedia ? "compact" : undefined}
+              suppressEmbeds={compactMedia}
             />
           )}
         </li>
@@ -154,11 +159,14 @@ export function ProfilesList({
   ranked = false,
   discoverySignals = false,
   maxReasons,
+  compact = false,
 }: {
   profiles: Profile[];
   ranked?: boolean;
   discoverySignals?: boolean;
   maxReasons?: number;
+  /** One-line bio, no action row. Used for conversation participants. */
+  compact?: boolean;
 }) {
   return (
     <ul>
@@ -169,6 +177,7 @@ export function ProfilesList({
             rank={ranked ? (profile.ranking?.rank ?? index + 1) : undefined}
             discoverySignals={discoverySignals}
             maxReasons={maxReasons}
+            compact={compact}
           />
         </li>
       ))}

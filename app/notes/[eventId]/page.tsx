@@ -36,6 +36,7 @@ import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
 import { isHiddenNoteKind } from "@/lib/api/normalize";
 import { encodeNevent, hexToNote } from "@/lib/nostr/nip19";
 import { getNoteSummaryCached, loadNoteFocalData } from "@/lib/notes/load-note-page-data";
+import { referencedNoteIds } from "@/lib/notes/referenced-notes";
 import { summarizeNoteText } from "@/lib/notes/summary-text";
 import { resolveReplyParent } from "@/lib/notes/thread-tree";
 import { isValidEventIdParam, resolveEventIdParam } from "@/lib/routing/params";
@@ -74,13 +75,6 @@ function noteKindLabel(kind: number): string {
   if (kind === 6 || kind === 16) return "Repost";
   if (kind === 30023) return "Long-form";
   return `Kind ${kind}`;
-}
-
-function collectHexIds(value: unknown, found = new Set<string>()): string[] {
-  if (typeof value === "string" && /^[a-f0-9]{64}$/i.test(value)) found.add(value.toLowerCase());
-  else if (Array.isArray(value)) for (const entry of value) collectHexIds(entry, found);
-  else if (isRecord(value)) for (const entry of Object.values(value)) collectHexIds(entry, found);
-  return [...found];
 }
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
@@ -271,14 +265,7 @@ export default async function NotePage({
   const provenanceRelayLinks = Array.from(provenanceRelayByHost.values());
   // Index-internal summaries only surface inside "Details & provenance", and
   // only the fields that actually carry a value.
-  const mediaDetails = isRecord(noteSummary?.media)
-    ? Object.entries(noteSummary.media)
-        .filter(([, value]) => isProvenanceValue(value))
-        .map(([label, value]) => ({ label, value }))
-    : [];
-  const referenceIds = collectHexIds(noteSummary?.quote_repost_context).filter(
-    (id) => id !== eventId.toLowerCase()
-  );
+  const referenceIds = referencedNoteIds(focal, noteSummary?.quote_repost_context, eventId);
   const noteBech32 =
     encodeNevent({
       id: eventId,
@@ -363,7 +350,7 @@ export default async function NotePage({
           <div id="conversation-context" className="relative mt-3">
             <div
               aria-hidden
-              className="bg-edge/70 pointer-events-none absolute top-3 bottom-3 left-5 z-0 w-px"
+              className="bg-ink-faint pointer-events-none absolute top-3 bottom-3 left-5 z-0 w-0.5 -translate-x-1/2"
             />
             <div className="relative z-[1] space-y-2">
               {isReplyNote ? (
@@ -457,16 +444,16 @@ export default async function NotePage({
                   ) : null}
                 </dl>
               ) : null}
-              {mediaDetails.length > 0 ? <MetadataList items={mediaDetails} columns={2} /> : null}
               {referenceIds.length > 0 ? (
-                <ul className="space-y-2">
+                <ul className="flex flex-wrap gap-x-3 gap-y-1">
                   {referenceIds.map((id) => (
                     <li key={id}>
                       <Link
                         href={`/notes/${encodeURIComponent(id)}`}
+                        title={id}
                         className="text-link hover:text-link-hover inline-flex min-h-7 items-center text-sm"
                       >
-                        Open referenced note
+                        Note {id.slice(0, 8)}…
                       </Link>
                     </li>
                   ))}

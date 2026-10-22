@@ -9,6 +9,11 @@ import { ThreadAncestors } from "@/components/thread/thread-node";
 import { ThreadView } from "@/components/thread/thread-view";
 import { SectionCard } from "@/components/ui/section-card";
 import { partitionRelatedNotes } from "@/lib/notes/related-notes";
+import {
+  accountedReplyCount,
+  formatUnindexedReplyLine,
+  unindexedReplyCount,
+} from "@/lib/notes/reply-gap";
 import { formatThreadActivityLine } from "@/lib/notes/thread-activity";
 import {
   loadNoteRelatedData,
@@ -70,6 +75,10 @@ export async function DeferredNoteThread({
         ? "Replies"
         : null;
   const activityLine = stats ? formatThreadActivityLine(stats) : null;
+  const accounted = accountedReplyCount(data.replies);
+  const missingLine = nextCursor
+    ? null
+    : formatUnindexedReplyLine(unindexedReplyCount(accounted, replyCount));
 
   if (!title && !activityLine && data.replies.length === 0 && !data.errorMessage) {
     return <p className="text-ink-dim py-4 text-sm">No replies yet.</p>;
@@ -101,11 +110,14 @@ export async function DeferredNoteThread({
                 loadMore={loadMore}
                 label="Show more replies"
                 pendingLabel="Loading replies…"
+                indexedSoFar={accounted}
+                reportedReplyCount={replyCount}
               />
             ) : null
           }
         />
       )}
+      {missingLine ? <p className="text-ink-dim py-2 text-[13px]">{missingLine}</p> : null}
     </div>
   );
 }

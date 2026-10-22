@@ -98,7 +98,12 @@ export default async function TrendingLongFormPage({
       }
       debugPayload={payload ?? {}}
     >
-      <ArticlesList articles={articles} authorsByPubkey={authorsByPubkey} ranked discoverySignals />
+      <ArticlesList
+        articles={articles}
+        authorsByPubkey={authorsByPubkey}
+        ranked
+        showUtilityLinks={false}
+      />
     </RankedListPage>
   );
 }

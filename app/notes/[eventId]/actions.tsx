@@ -7,6 +7,7 @@ import { ThreadReplies } from "@/components/thread/thread-view";
 import { fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { loadNoteRelatedData, loadRepliesPage } from "@/lib/notes/load-note-page-data";
 import { formatRepostRollup, partitionRelatedNotes } from "@/lib/notes/related-notes";
+import { accountedReplyCount } from "@/lib/notes/reply-gap";
 import { buildReplyTree } from "@/lib/notes/thread-tree";
 import { isValidEventIdParam, resolveEventIdParam } from "@/lib/routing/params";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
@@ -101,6 +102,7 @@ function replyChunk(
       typeof page.repliesNextCursor === "string" && page.repliesNextCursor.length > 0
         ? page.repliesNextCursor
         : undefined,
+    indexedCount: accountedReplyCount(page.replies),
   };
 }
 

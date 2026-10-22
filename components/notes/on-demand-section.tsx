@@ -23,6 +23,8 @@ export function OnDemandSection({
   emptyMessage = "Nothing to show yet.",
   moreLabel = "Show more",
   hint,
+  collapsible = false,
+  hideLabel = "Hide",
 }: {
   load: (cursor: string | null) => Promise<LoadMoreChunk>;
   label: string;
@@ -31,8 +33,12 @@ export function OnDemandSection({
   moreLabel?: string;
   /** Short neutral description shown next to the button before loading. */
   hint?: string;
+  /** Keep the loaded branch and let the reader close it without another fetch. */
+  collapsible?: boolean;
+  hideLabel?: string;
 }) {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const [hidden, setHidden] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const handleLoad = () => {
@@ -60,15 +66,27 @@ export function OnDemandSection({
   if (status.kind === "loaded") {
     return (
       <div className="space-y-1">
-        <div className="min-w-0">{status.content}</div>
-        {status.nextCursor ? (
-          <LoadMoreList
-            initialCursor={status.nextCursor}
-            loadMore={(cursor) => load(cursor)}
-            label={moreLabel}
-            pendingLabel={pendingLabel}
-          />
+        {collapsible ? (
+          <Button
+            variant="chip"
+            size="sm"
+            aria-expanded={!hidden}
+            onClick={() => setHidden((value) => !value)}
+          >
+            {hidden ? label : hideLabel}
+          </Button>
         ) : null}
+        <div hidden={hidden}>
+          <div className="min-w-0">{status.content}</div>
+          {status.nextCursor ? (
+            <LoadMoreList
+              initialCursor={status.nextCursor}
+              loadMore={(cursor) => load(cursor)}
+              label={moreLabel}
+              pendingLabel={pendingLabel}
+            />
+          ) : null}
+        </div>
       </div>
     );
   }

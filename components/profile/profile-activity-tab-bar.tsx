@@ -2,11 +2,40 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type MouseEvent, type ReactNode } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  useTransition,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 
 import { NotesListSkeleton } from "@/components/ui/skeleton";
 import { TabBar, TabLinkContent } from "@/components/ui/tabs";
 import type { TabBarOverflow, TabItem } from "@/components/ui/tab-styles";
+
+function restoreProfileTabScroll(savedY: number) {
+  const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  const y = Math.min(savedY, maxY);
+  if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y);
+
+  const section = document.getElementById("profile-activity");
+  const header = document.querySelector("header.sticky");
+  if (section && savedY > maxY + 8 && header instanceof HTMLElement) {
+    const headerBottom = header.getBoundingClientRect().bottom;
+    const sectionTop = section.getBoundingClientRect().top;
+    if (sectionTop > headerBottom + 8) {
+      window.scrollTo(0, window.scrollY + sectionTop - headerBottom - 8);
+    }
+  }
+
+  const panel = document.querySelector("[data-testid='profile-activity-panel']");
+  const bar = document.querySelector("[data-testid='profile-activity-tab-bar']");
+  if (!(panel instanceof HTMLElement) || !(bar instanceof HTMLElement)) return;
+  const overlap = bar.getBoundingClientRect().bottom - panel.getBoundingClientRect().top;
+  if (overlap > 0 && overlap < 48) window.scrollBy(0, -overlap - 8);
+}
 
 function isPlainLeftClick(event: MouseEvent<HTMLAnchorElement>): boolean {
   return (
@@ -44,6 +73,22 @@ export function ProfileActivityTabBar({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [optimisticKey, setOptimisticKey] = useState<string | null>(null);
+  const savedScrollY = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    if (isPending || savedScrollY.current == null) return;
+    const saved = savedScrollY.current;
+    const apply = () => {
+      if (savedScrollY.current !== saved) return;
+      restoreProfileTabScroll(saved);
+    };
+    apply();
+    const frame = requestAnimationFrame(() => {
+      apply();
+      if (savedScrollY.current === saved) savedScrollY.current = null;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [isPending, activeKey]);
 
   // While a transition is in flight the clicked tab is shown as active; once
   // the server payload lands, isPending drops and the real key takes over.
@@ -58,6 +103,7 @@ export function ProfileActivityTabBar({
       return;
     }
     event.preventDefault();
+    savedScrollY.current = window.scrollY;
     setOptimisticKey(tab.key);
     startTransition(() => {
       router.replace(tab.href, { scroll: false });
@@ -66,7 +112,7 @@ export function ProfileActivityTabBar({
 
   return (
     <>
-      <div className="bg-background sticky top-16 z-30">
+      <div data-testid="profile-activity-tab-bar" className="bg-background sticky top-16 z-30">
         <TabBar
           ariaLabel={ariaLabel}
           items={decorate(items)}
@@ -87,6 +133,7 @@ export function ProfileActivityTabBar({
       <div
         aria-busy={isPending || undefined}
         aria-live="polite"
+        className="scroll-mt-28"
         data-testid="profile-activity-panel"
         data-pending={isPending ? "true" : undefined}
       >

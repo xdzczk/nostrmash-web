@@ -36,6 +36,20 @@ describe("NoteMediaReveal", () => {
     expect(image).toHaveAttribute("fetchpriority", "high");
   });
 
+  it("letterboxes focal and reply images at conversation scale", () => {
+    const { container, rerender } = render(
+      <NoteMediaReveal url="https://media.example/image.jpg" kind="image" variant="detail" />
+    );
+    expect(container.querySelector("img")).toHaveClass("max-h-[min(28rem,52vh)]");
+    expect(container.querySelector("img")).toHaveClass("object-contain");
+
+    rerender(
+      <NoteMediaReveal url="https://media.example/image.jpg" kind="image" variant="thread" />
+    );
+    expect(container.querySelector("img")).toHaveClass("max-h-48");
+    expect(container.querySelector("img")).toHaveClass("object-contain");
+  });
+
   it("shows a +N badge for attachments hidden by the compact variant", () => {
     render(
       <NoteMediaReveal

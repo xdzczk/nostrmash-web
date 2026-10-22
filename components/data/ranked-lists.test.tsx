@@ -32,6 +32,7 @@ describe("HashtagsList", () => {
 
     expect(screen.getByRole("link", { name: "#php" })).toBeInTheDocument();
     expect(screen.getByText("69")).toBeInTheDocument();
+    expect(screen.getByText("sources")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "#122" })).not.toBeInTheDocument();
     expect(screen.queryByText("90")).not.toBeInTheDocument();
   });

@@ -51,8 +51,7 @@ test.describe("profile page", () => {
     await expect(related.getByRole("heading", { name: "Related discovery" })).toBeVisible();
     await expect(related.getByTestId("profile-related-rail")).toBeVisible();
     await expect(related.locator("p", { hasText: /^Related profiles$/ })).toBeVisible();
-    await expect(related.getByText(/interacts often/)).toBeVisible();
-    await expect(related.getByText(/6 interactions/)).toBeVisible();
+    await expect(related.getByText("6 interactions · 5 replies")).toBeVisible();
     await expect(related.getByText("Fallback", { exact: true })).toHaveCount(0);
   });
 

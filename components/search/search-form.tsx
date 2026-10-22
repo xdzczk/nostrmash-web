@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSearchSuggest } from "@/hooks/use-search-suggest";
 import { isValidHashtag } from "@/lib/hashtags";
-import type { Profile } from "@/lib/types/api";
+import { belowVolumeFloor, listedVolume } from "@/lib/discover/reasons";
+import type { HashtagEntry, Profile } from "@/lib/types/api";
 
 type SearchShortcut = {
   label: string;
@@ -61,8 +62,13 @@ export function SearchForm({
         ? "Search NostrMash"
         : "Search notes, profiles, hashtags...");
 
-  const { profiles: suggestedProfiles, hashtags, clear: clearSuggest } = useSearchSuggest(query);
+  const {
+    profiles: suggestedProfiles,
+    hashtags: suggestedHashtags,
+    clear: clearSuggest,
+  } = useSearchSuggest(query);
   const profiles = useMemo(() => dedupeSuggestProfiles(suggestedProfiles), [suggestedProfiles]);
+  const hashtags = useMemo(() => filterSuggestHashtags(suggestedHashtags), [suggestedHashtags]);
   const actions = useMemo(() => stableSearchActions(query, hashtags), [query, hashtags]);
   const totalItems = actions.length + profiles.length + hashtags.length;
   const showDropdown = open && query.trim().length >= 2 && totalItems > 0;
@@ -293,15 +299,28 @@ export function SearchForm({
 }
 
 function dedupeSuggestProfiles(profiles: Profile[]): Profile[] {
-  const seen = new Set<string>();
-  const unique: Profile[] = [];
+  const byLabel = new Map<string, Profile>();
+  const order: string[] = [];
   for (const profile of profiles) {
-    const key = `${profileLabel(profile).trim().toLowerCase()}\n${(profileSecondaryLabel(profile) ?? "").trim().toLowerCase()}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    unique.push(profile);
+    const key = profileLabel(profile).trim().toLowerCase();
+    if (!key) continue;
+    const existing = byLabel.get(key);
+    if (!existing) {
+      byLabel.set(key, profile);
+      order.push(key);
+      continue;
+    }
+    if (!profileSecondaryLabel(existing) && profileSecondaryLabel(profile)) {
+      byLabel.set(key, profile);
+    }
   }
-  return unique;
+  return order.map((key) => byLabel.get(key)!);
+}
+
+function filterSuggestHashtags(hashtags: HashtagEntry[]): HashtagEntry[] {
+  return hashtags.filter(
+    (entry) => !belowVolumeFloor(listedVolume([entry.event_count, entry.count]))
+  );
 }
 
 /** Rows that stay available even when suggest returns only profiles. */

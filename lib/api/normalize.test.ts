@@ -255,6 +255,12 @@ describe("filterAuthoredNotes", () => {
         content: "quoted share",
         tags: [["e", "root-id", "", "root"]],
       },
+      {
+        id: "reply-root-marker",
+        kind: 1,
+        content: "Doug. I've missed you.",
+        tags: [["e", "d".repeat(64), "wss://nostrelites.org/", "root", "b".repeat(64)]],
+      },
     ]);
 
     expect(filtered.map((event) => event.id)).toEqual(["note-1"]);

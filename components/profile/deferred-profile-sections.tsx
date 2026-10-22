@@ -6,6 +6,7 @@ import { ProfileRelatedRail } from "@/components/profile/profile-related-rail";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { isRecord } from "@/components/explorer/utils";
+import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { mapRelatedProfileReasons } from "@/components/explorer/why-now";
 import { ProfileActivityTabs } from "@/components/profile/profile-activity-tabs";
 import {
@@ -16,6 +17,7 @@ import { ProfileHighlightsList } from "@/components/profile/profile-highlights-l
 import { ProfileRepliesList } from "@/components/profile/profile-replies-list";
 import { Pill } from "@/components/ui/pill";
 import { SectionCard } from "@/components/ui/section-card";
+import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import { activityEmptyCopy, suggestActivityTab } from "@/lib/profile/activity-empty-state";
 import { PROFILE_ACTIVITY_TABS, type ProfileActivityTab } from "@/lib/profile/activity-tabs";
 import {
@@ -66,6 +68,27 @@ function readSummaryStats(
   };
 }
 
+async function engagementLineResolution(
+  data: Awaited<ReturnType<typeof loadProfileActivityData>>
+): Promise<NoteContentResolution | undefined> {
+  const inputs =
+    data.activityTab === "replies"
+      ? [...data.replies, ...Object.values(data.replyParentsById)]
+      : data.activityTab === "reactions" || data.activityTab === "zaps"
+        ? Object.values(data.targetNotesById)
+        : [];
+  if (inputs.length === 0) return undefined;
+  const resolution = await resolveContentReferences(inputs).catch(() => undefined);
+  if (!resolution) return undefined;
+  resolution.profilesByPubkey = {
+    ...resolution.profilesByPubkey,
+    ...data.notesAuthorMap,
+    ...data.replyParentAuthorsByPubkey,
+    ...data.targetNoteAuthorsByPubkey,
+  };
+  return resolution;
+}
+
 export async function DeferredProfileActivity({
   lookupKey,
   profile,
@@ -84,6 +107,7 @@ export async function DeferredProfileActivity({
     searchParams
   );
   const stats = readSummaryStats(summaryRecord);
+  const engagementResolution = await engagementLineResolution(data);
   const empty = (tab: ProfileActivityTab) => (
     <ActivityEmpty tab={tab} tabs={data.activityTabs} stats={stats} />
   );
@@ -111,7 +135,11 @@ export async function DeferredProfileActivity({
           <ProfileRepliesList
             replies={data.replies}
             parentsById={data.replyParentsById}
-            authorsByPubkey={data.notesAuthorMap}
+            authorsByPubkey={{
+              ...data.notesAuthorMap,
+              ...data.replyParentAuthorsByPubkey,
+            }}
+            resolution={engagementResolution}
           />
         ) : (
           empty("replies")
@@ -124,6 +152,7 @@ export async function DeferredProfileActivity({
             reactions={data.reactions}
             targetNotesById={data.targetNotesById}
             authorsByPubkey={{ ...data.notesAuthorMap, ...data.targetNoteAuthorsByPubkey }}
+            resolution={engagementResolution}
           />
         ) : (
           empty("reactions")
@@ -136,6 +165,7 @@ export async function DeferredProfileActivity({
             zaps={data.zaps}
             targetNotesById={data.targetNotesById}
             authorsByPubkey={{ ...data.notesAuthorMap, ...data.targetNoteAuthorsByPubkey }}
+            resolution={engagementResolution}
           />
         ) : (
           empty("zaps")
@@ -275,7 +305,7 @@ export async function DeferredProfileDiscovery({
         description={
           isFallback
             ? "Related profiles are unavailable right now; showing trending profiles instead."
-            : "Profiles this account interacts with most, ranked by replies, reposts, and shared topics."
+            : "Ordered by a combined score. Each card lists interactions, replies, shares, and shared topics."
         }
       >
         <div className="space-y-3">

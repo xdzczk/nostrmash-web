@@ -14,11 +14,22 @@ export function SourceFigure({
   const label = count.toLocaleString();
   return (
     <span
-      className={`text-ink shrink-0 text-lg leading-none font-medium tracking-[-0.04em] tabular-nums ${className}`}
+      className={`inline-flex shrink-0 flex-col items-end gap-1 ${className}`}
       title={`${label} sources`}
     >
       <span className="sr-only">{label} sources</span>
-      <span aria-hidden>{label}</span>
+      <span
+        aria-hidden
+        className="text-ink text-lg leading-none font-medium tracking-[-0.04em] tabular-nums"
+      >
+        {label}
+      </span>
+      <span
+        aria-hidden
+        className="text-ink-faint text-[10px] leading-none font-medium tracking-[0.14em] uppercase"
+      >
+        sources
+      </span>
     </span>
   );
 }

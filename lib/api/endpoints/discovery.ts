@@ -30,13 +30,30 @@ import {
 } from "@/lib/api/endpoints/shared";
 import { eventListResponseSchema, profileListResponseSchema } from "@/lib/api/schemas/core";
 
+/** Home hashtag/domain sections share one ranking. 20 is the API maximum. */
+export const HOME_INDEX_LIMIT = 20;
+
+export type DiscoveryHomeQuery = {
+  window?: string;
+  hashtags_limit?: number;
+  domains_limit?: number;
+  notes_limit?: number;
+};
+
 export async function getDiscoveryHome(
   cacheClass: CacheClass = "shortTtl",
-  query?: Pick<CursorQuery, "window">
+  query?: DiscoveryHomeQuery
 ) {
   const response = await fetchApiJson<DiscoveryHomeResponse>(nativeApiV1Routes.discoveryHome, {
     cacheClass,
-    query: buildCursorQuery(query),
+    query: query
+      ? {
+          window: query.window,
+          hashtags_limit: query.hashtags_limit,
+          domains_limit: query.domains_limit,
+          notes_limit: query.notes_limit,
+        }
+      : undefined,
   });
   return normalizeDiscoveryHomeResponse(response);
 }

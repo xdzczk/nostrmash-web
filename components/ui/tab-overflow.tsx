@@ -32,11 +32,12 @@ export function TabOverflow({ className, children }: { className?: string; child
 
     const active = el.querySelector<HTMLElement>('[aria-current="page"]');
     if (active) {
+      // Move only this scroller. scrollIntoView also scrolls the page, and on a
+      // sticky tab that jump lands above the activity section.
       const box = active.getBoundingClientRect();
       const host = el.getBoundingClientRect();
-      if (box.left < host.left || box.right > host.right) {
-        active.scrollIntoView({ block: "nearest", inline: "center", behavior: "instant" });
-      }
+      if (box.left < host.left) el.scrollLeft -= host.left - box.left;
+      else if (box.right > host.right) el.scrollLeft += box.right - host.right;
     }
     update();
 

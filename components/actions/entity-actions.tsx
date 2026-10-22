@@ -1,11 +1,159 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 
 type ActionKind = "note" | "profile";
+type ToastApi = ReturnType<typeof useToast>;
+
+function EntityActionsMenu({
+  absoluteUrl,
+  identifier,
+  nostrUri,
+  embedHtml,
+  njumpUrl,
+  label,
+  copyLabel,
+  menuItemClass,
+  toast,
+}: {
+  absoluteUrl: string;
+  identifier: string;
+  nostrUri: string;
+  embedHtml?: string;
+  njumpUrl?: string;
+  label: string;
+  copyLabel: string;
+  menuItemClass: string;
+  toast: ToastApi;
+}) {
+  const ref = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    const details = ref.current;
+    if (!details) return;
+    const close = () => details.removeAttribute("open");
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && details.open) {
+        event.preventDefault();
+        close();
+        details.querySelector("summary")?.focus();
+      }
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (details.open && event.target instanceof Node && !details.contains(event.target)) close();
+    };
+    const onScroll = () => {
+      if (details.open) close();
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+
+  return (
+    <details ref={ref} className="relative" data-testid="entity-actions-menu">
+      <summary className="nm-pressable border-edge-strong bg-surface/60 text-ink-soft hover:bg-surface/80 inline-flex min-h-9 cursor-pointer list-none items-center justify-center rounded-lg border px-3 py-1.5 text-xs font-medium">
+        Open
+      </summary>
+      <div
+        className="border-edge bg-surface absolute right-0 z-[60] mt-2 flex w-52 flex-col rounded-lg border p-1"
+        onClick={(event) => {
+          if (event.target instanceof Element && event.target.closest("a, button")) {
+            ref.current?.removeAttribute("open");
+          }
+        }}
+      >
+        <a href={nostrUri} className={menuItemClass}>
+          Open in client
+        </a>
+        {njumpUrl ? (
+          <a href={njumpUrl} target="_blank" rel="noopener noreferrer" className={menuItemClass}>
+            njump
+          </a>
+        ) : null}
+        <a
+          href={`https://damus.io/${encodeURIComponent(identifier)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={menuItemClass}
+        >
+          Damus
+        </a>
+        <a
+          href={`https://amethyst.social/${encodeURIComponent(identifier)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={menuItemClass}
+        >
+          Amethyst
+        </a>
+        <button
+          type="button"
+          className={menuItemClass}
+          onClick={async () => {
+            const ok = await copyText(identifier);
+            if (ok) toast.success(`Copied ${label} id`);
+            else toast.danger("Copy failed");
+          }}
+        >
+          Copy {copyLabel}
+        </button>
+        <button
+          type="button"
+          className={menuItemClass}
+          onClick={async () => {
+            const ok = await copyText(nostrUri);
+            if (ok) toast.success("nostr: URI copied");
+            else toast.danger("Copy failed");
+          }}
+        >
+          Copy nostr
+        </button>
+        <button
+          type="button"
+          className={menuItemClass}
+          onClick={async () => {
+            if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+              try {
+                await navigator.share({ url: absoluteUrl, title: `NostrMash ${label}` });
+                toast.success("Shared");
+                return;
+              } catch {
+                // fall through to copy
+              }
+            }
+            const ok = await copyText(absoluteUrl);
+            if (ok) toast.success("Link copied");
+            else toast.danger("Share failed");
+          }}
+        >
+          Share
+        </button>
+        {embedHtml ? (
+          <button
+            type="button"
+            className={menuItemClass}
+            onClick={async () => {
+              const ok = await copyText(embedHtml);
+              if (ok) toast.success("Embed snippet copied");
+              else toast.danger("Copy failed");
+            }}
+          >
+            Embed
+          </button>
+        ) : null}
+      </div>
+    </details>
+  );
+}
 
 async function copyText(value: string): Promise<boolean> {
   try {
@@ -59,92 +207,17 @@ export function EntityActions({
 
   if (layout === "menu") {
     return (
-      <details className="relative" data-testid="entity-actions-menu">
-        <summary className="nm-pressable border-edge-strong bg-surface/60 text-ink-soft hover:bg-surface/80 inline-flex min-h-9 cursor-pointer list-none items-center justify-center rounded-lg border px-3 py-1.5 text-xs font-medium">
-          Open
-        </summary>
-        <div className="border-edge bg-surface absolute right-0 z-30 mt-2 flex w-52 flex-col rounded-lg border p-1">
-          <a href={nostrUri} className={menuItemClass}>
-            Open in client
-          </a>
-          {njumpUrl ? (
-            <a href={njumpUrl} target="_blank" rel="noopener noreferrer" className={menuItemClass}>
-              njump
-            </a>
-          ) : null}
-          <a
-            href={`https://damus.io/${encodeURIComponent(identifier)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={menuItemClass}
-          >
-            Damus
-          </a>
-          <a
-            href={`https://amethyst.social/${encodeURIComponent(identifier)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={menuItemClass}
-          >
-            Amethyst
-          </a>
-          <button
-            type="button"
-            className={menuItemClass}
-            onClick={async () => {
-              const ok = await copyText(identifier);
-              if (ok) toast.success(`Copied ${label} id`);
-              else toast.danger("Copy failed");
-            }}
-          >
-            Copy {copyLabel}
-          </button>
-          <button
-            type="button"
-            className={menuItemClass}
-            onClick={async () => {
-              const ok = await copyText(nostrUri);
-              if (ok) toast.success("nostr: URI copied");
-              else toast.danger("Copy failed");
-            }}
-          >
-            Copy nostr
-          </button>
-          <button
-            type="button"
-            className={menuItemClass}
-            onClick={async () => {
-              if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-                try {
-                  await navigator.share({ url: absoluteUrl, title: `NostrMash ${label}` });
-                  toast.success("Shared");
-                  return;
-                } catch {
-                  // fall through to copy
-                }
-              }
-              const ok = await copyText(absoluteUrl);
-              if (ok) toast.success("Link copied");
-              else toast.danger("Share failed");
-            }}
-          >
-            Share
-          </button>
-          {embedHtml ? (
-            <button
-              type="button"
-              className={menuItemClass}
-              onClick={async () => {
-                const ok = await copyText(embedHtml);
-                if (ok) toast.success("Embed snippet copied");
-                else toast.danger("Copy failed");
-              }}
-            >
-              Embed
-            </button>
-          ) : null}
-        </div>
-      </details>
+      <EntityActionsMenu
+        absoluteUrl={absoluteUrl}
+        identifier={identifier}
+        nostrUri={nostrUri}
+        embedHtml={embedHtml}
+        njumpUrl={njumpUrl}
+        label={label}
+        copyLabel={copyLabel}
+        menuItemClass={menuItemClass}
+        toast={toast}
+      />
     );
   }
 

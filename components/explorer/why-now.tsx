@@ -150,6 +150,28 @@ export function mapRelatedProfileReasons(profile: Profile): WhyNowReason[] {
   return dedupeReasons(reasons);
 }
 
+/**
+ * One line for the profile rail. The list order is the server's combined
+ * score, so the line lists every signal instead of a single count that
+ * looks like the rank.
+ */
+export function relatedRailReasonLine(profile: Profile): string | null {
+  const parts: string[] = [];
+  const add = (value: number | undefined, singular: string, plural: string) => {
+    if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return;
+    const rounded = Math.round(value);
+    parts.push(`${rounded.toLocaleString()} ${rounded === 1 ? singular : plural}`);
+  };
+  add(profile.interaction_adjacency, "interaction", "interactions");
+  add(profile.reply_adjacency, "reply", "replies");
+  add(profile.quote_repost_adjacency, "share", "shares");
+  add(profile.topic_overlap, "topic", "topics");
+  if (parts.length > 0) return parts.join(" · ");
+  const fallback = mapRelatedProfileReasons(profile)[0];
+  if (!fallback) return null;
+  return fallback.support ? `${fallback.text} · ${fallback.support}` : fallback.text;
+}
+
 export function mapProfileWhyNow(profile: Profile): WhyNowReason[] {
   const serverReasons = mapServerRankingReasons(profile.ranking);
   if (serverReasons.length > 0) return serverReasons;
@@ -263,6 +285,20 @@ export function mapDomainWhyNow(entry: DomainEntry): WhyNowReason[] {
   }
 
   return dedupeReasons(reasons);
+}
+
+/** Stat keys already stated on the why-now line, so the pill row does not repeat them. */
+export function statsCitedByReasons(reasons: WhyNowReason[]): string[] {
+  const blob = reasons
+    .map((reason) => `${reason.text} ${reason.support ?? ""}`)
+    .join(" ")
+    .toLowerCase();
+  const cited: string[] = [];
+  if (/\brepl/.test(blob)) cited.push("reply_count");
+  if (/repost|boost/.test(blob)) cited.push("repost_count");
+  if (/reaction|\blike/.test(blob)) cited.push("reaction_count");
+  if (/\bzap/.test(blob)) cited.push("zap_count");
+  return cited;
 }
 
 export function WhyNow({

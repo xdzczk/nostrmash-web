@@ -61,7 +61,7 @@ export function DiscoverShell({
   const retryHref = query.length > 0 ? `${path}?${query}` : path;
 
   return (
-    <div className="space-y-6 sm:space-y-7">
+    <div className="min-w-0 space-y-6 sm:space-y-7">
       <DiscoverTelemetry view={view} mode={mode} window={window} />
       <LiveRefresh />
       <PageHero
