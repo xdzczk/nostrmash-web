@@ -40,7 +40,7 @@ export function EntityContextNav({
   return (
     <nav
       aria-label="Discovery context"
-      className="border-edge/70 text-ink-muted -mx-4 overflow-x-auto border-y px-4 py-1 text-xs whitespace-nowrap [scrollbar-width:none] sm:mx-0 sm:px-0 sm:py-2 [&::-webkit-scrollbar]:hidden"
+      className="border-edge/70 text-ink-muted -mx-4 [scrollbar-width:none] overflow-x-auto border-y px-4 py-1 text-xs whitespace-nowrap sm:mx-0 sm:px-0 sm:py-2 [&::-webkit-scrollbar]:hidden"
     >
       <ol className="flex items-center gap-x-3">
         <li>

@@ -1,6 +1,4 @@
 import { defineConfig, globalIgnores } from "eslint/config";
-import tseslint from "@typescript-eslint/eslint-plugin";
-import tsParser from "@typescript-eslint/parser";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 import prettier from "eslint-config-prettier/flat";
@@ -10,11 +8,7 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     files: ["**/*.{ts,tsx,mts}"],
-    plugins: {
-      "@typescript-eslint": tseslint,
-    },
     languageOptions: {
-      parser: tsParser,
       parserOptions: {
         project: "./tsconfig.json",
         tsconfigRootDir: import.meta.dirname,
