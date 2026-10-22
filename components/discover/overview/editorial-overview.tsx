@@ -15,23 +15,24 @@ import {
   mapProfileWhyNow,
   type WhyNowReason,
 } from "@/components/explorer/why-now";
+import { SourceFigure } from "@/components/explorer/source-figure";
 import {
   extractEngagementStats,
   formatCompactNumber,
+  formatProfileSecondary,
   normalizeDomainLabel,
   noteAuthorIdentifier,
   noteInlineAuthorProfile,
   profileHref,
   profileLabel,
   profileSecondaryLabel,
-  truncateIdentifier,
   truncateProfileLabel,
 } from "@/components/explorer/utils";
 import { NoteLinkPreviews } from "@/components/explorer/note-link-previews";
 import { NoteMedia } from "@/components/explorer/note-media";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { getEditorialNoteText } from "@/components/explorer/note-preview";
-import { rankMovement } from "@/lib/discover/reasons";
+import { belowVolumeFloor, listedVolume, rankMovement } from "@/lib/discover/reasons";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import { collapsePreviewWhitespace } from "@/lib/notes/summary-text";
 import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
@@ -132,9 +133,6 @@ function EvidenceLine({
   const reason = firstReason(reasons);
   const qualifiers = [
     ...extra,
-    typeof ranking?.source_breadth === "number" && ranking.source_breadth > 1
-      ? `${ranking.source_breadth.toLocaleString()} sources`
-      : null,
     ranking?.confidence ? `${ranking.confidence} confidence` : null,
   ].filter((value): value is string => Boolean(value));
   if (!reason && qualifiers.length === 0) return null;
@@ -259,11 +257,11 @@ function EditorialNote({
     );
   }
 
-  // Compact: below `lg` the thumbnail sits beside the text so three notes
-  // fit in roughly one phone screen; from `lg` the media drops under the text.
+  // Compact at every width: a square thumbnail beside the text, so a
+  // screenshot cannot outrank the lead note in the other column.
   return (
     <article
-      className={`border-edge/70 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 border-t py-5 first:border-t-0 lg:block ${
+      className={`border-edge/70 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 border-t py-5 first:border-t-0 ${
         noteHref ? cardHitTargetClassName : ""
       }`}
     >
@@ -282,7 +280,7 @@ function EditorialNote({
         ) : null}
       </div>
       {hasContent ? (
-        <div className="w-[5.5rem] self-end lg:mt-3 lg:w-auto lg:self-auto">
+        <div className="w-[5.5rem] self-end">
           <NoteMedia content={note.content as string} variant="compact" />
         </div>
       ) : null}
@@ -333,6 +331,7 @@ function ProfileRanking({
             const href = profileHref(profile);
             const label = profileLabel(profile);
             const secondary = profileSecondaryLabel(profile);
+            const secondaryText = secondary ? formatProfileSecondary(secondary) : "";
             return (
               <li
                 key={profile.pubkey ?? profile.npub ?? index}
@@ -348,32 +347,36 @@ function ProfileRanking({
                   className="border-edge h-11 w-11 rounded-full border object-cover"
                 />
                 <div className="min-w-0">
-                  <div className="flex min-w-0 items-center">
-                    {href ? (
-                      <Link
-                        href={href}
-                        title={label}
-                        className="text-ink block min-w-0 truncate font-medium hover:underline"
-                      >
-                        {truncateProfileLabel(label)}
-                      </Link>
-                    ) : (
-                      <p className="text-ink truncate font-medium" title={label}>
-                        {truncateProfileLabel(label)}
-                      </p>
-                    )}
-                    <RankMovement ranking={profile.ranking} />
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex min-w-0 items-center">
+                      {href ? (
+                        <Link
+                          href={href}
+                          title={label}
+                          className="text-ink block min-w-0 truncate font-medium hover:underline"
+                        >
+                          {truncateProfileLabel(label)}
+                        </Link>
+                      ) : (
+                        <p className="text-ink truncate font-medium" title={label}>
+                          {truncateProfileLabel(label)}
+                        </p>
+                      )}
+                      <RankMovement ranking={profile.ranking} />
+                    </div>
+                    <SourceFigure ranking={profile.ranking} className="ml-auto" />
                   </div>
-                  {secondary && href ? (
+                  {secondaryText && href ? (
                     <Link
                       href={href}
+                      title={secondary ?? undefined}
                       className="nm-meta hover:text-ink mt-0.5 block min-h-6 truncate py-0.5 text-[13px]"
                     >
-                      {truncateIdentifier(secondary, "npub", "secondary")}
+                      {secondaryText}
                     </Link>
-                  ) : secondary ? (
-                    <p className="nm-meta mt-0.5 truncate">
-                      {truncateIdentifier(secondary, "npub", "secondary")}
+                  ) : secondaryText ? (
+                    <p className="nm-meta mt-0.5 truncate" title={secondary ?? undefined}>
+                      {secondaryText}
                     </p>
                   ) : null}
                   <EvidenceLine reasons={mapProfileWhyNow(profile)} ranking={profile.ranking} />
@@ -399,9 +402,8 @@ type IndexRow = {
 };
 
 /**
- * Ranked index shared by Topics and Links. Each row carries the reason the
- * ranking cites instead of a bare count column: a number in a sorted column
- * reads as the sort key, and these lists are ranked by momentum, not volume.
+ * Ranked index shared by Topics and Links. Server order follows source
+ * breadth, so the right-hand figure is sources. Volume stays in the reason.
  */
 function RankedIndex({ rows }: { rows: IndexRow[] }) {
   return (
@@ -412,14 +414,17 @@ function RankedIndex({ rows }: { rows: IndexRow[] }) {
             {String(index + 1).padStart(2, "0")}
           </span>
           <div className="min-w-0">
-            <div className="flex min-w-0 items-center">
-              <Link
-                href={row.href}
-                className="text-ink block min-h-6 min-w-0 truncate py-0.5 font-medium hover:underline"
-              >
-                {row.label}
-              </Link>
-              <RankMovement ranking={row.ranking} />
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 items-center">
+                <Link
+                  href={row.href}
+                  className="text-ink block min-h-6 min-w-0 truncate py-0.5 font-medium hover:underline"
+                >
+                  {row.label}
+                </Link>
+                <RankMovement ranking={row.ranking} />
+              </div>
+              <SourceFigure ranking={row.ranking} className="ml-auto" />
             </div>
             <EvidenceLine
               reasons={row.reasons}
@@ -465,6 +470,7 @@ function TopicsIndex({
     .map((entry, index): IndexRow | null => {
       const hashtag = String(entry.hashtag ?? "").replace(/^#/, "");
       if (!hashtag) return null;
+      if (belowVolumeFloor(listedVolume([entry.event_count, entry.count]))) return null;
       const reasons = mapHashtagWhyNow(entry);
       return {
         key: `${hashtag}-${index}`,
@@ -482,7 +488,7 @@ function TopicsIndex({
         kicker="Ideas"
         title="Gaining ground"
         headingId={headingId}
-        action={{ href: `/trending/hashtags?window=${window}`, label: "Full ranking" }}
+        action={{ href: `/trending/hashtags?window=${window}`, label: "Topic index" }}
       />
       {rows.length > 0 ? (
         <RankedIndex rows={rows} />
@@ -507,6 +513,12 @@ function LinksIndex({
     .map((entry, index): IndexRow | null => {
       const domain = normalizeDomainLabel(String(entry.domain ?? ""));
       if (!domain) return null;
+      if (
+        belowVolumeFloor(
+          listedVolume([entry.link_count, entry.count, entry.event_count, entry.note_count])
+        )
+      )
+        return null;
       const reasons = mapDomainWhyNow(entry);
       return {
         key: `${domain}-${index}`,
@@ -524,7 +536,7 @@ function LinksIndex({
         kicker="Links"
         title="Links circulating"
         headingId={headingId}
-        action={{ href: `/trending/domains?window=${window}`, label: "Full ranking" }}
+        action={{ href: `/trending/domains?window=${window}`, label: "Link index" }}
       />
       {rows.length > 0 ? (
         <RankedIndex rows={rows} />

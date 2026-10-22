@@ -7,7 +7,7 @@ import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ran
 import { buildEntityMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = buildEntityMetadata({
-  title: "Trending Hashtags",
+  title: "Topics",
   description: "Explore the topics rising fastest across the network.",
   path: "/trending/hashtags",
 });
@@ -41,15 +41,13 @@ export default async function TrendingHashtagsPage({
   return (
     <RankedListPage
       discoverView="topics"
-      eyebrow="Ranked hashtags"
-      title="Trending hashtags"
+      eyebrow=""
+      title="Topics"
       subtitle="The topics rising fastest across the network."
       path={path}
       searchParams={currentSearchParams}
       window={window}
       semantics={semantics}
-      sectionTitle="Hashtag ranking"
-      sectionDescription="The topics strongest in view."
       errorMessage={errorMessage}
       emptyTitle="No ranked hashtags yet"
       emptyMessage="Ranked hashtags have not populated for this window."

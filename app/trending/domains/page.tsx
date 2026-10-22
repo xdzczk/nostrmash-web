@@ -7,7 +7,7 @@ import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ran
 import { buildEntityMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = buildEntityMetadata({
-  title: "Trending Domains",
+  title: "Links",
   description: "Explore the domains spreading most widely through active notes.",
   path: "/trending/domains",
 });
@@ -41,15 +41,13 @@ export default async function TrendingDomainsPage({
   return (
     <RankedListPage
       discoverView="links"
-      eyebrow="Ranked domains"
-      title="Trending domains"
+      eyebrow=""
+      title="Links"
       subtitle="The domains spreading most widely through active notes."
       path={path}
       searchParams={currentSearchParams}
       window={window}
       semantics={semantics}
-      sectionTitle="Domain ranking"
-      sectionDescription="The domains strongest in view."
       errorMessage={errorMessage}
       emptyTitle="No ranked domains yet"
       emptyMessage="Ranked domains have not populated for this window."

@@ -54,6 +54,7 @@ export function ProfileHeroSignals({
   nowMs,
   bot,
   fields,
+  maxFields = 3,
   className = "",
 }: {
   trust?: TrustSummary | null;
@@ -61,11 +62,13 @@ export function ProfileHeroSignals({
   nowMs: number;
   bot?: boolean;
   fields?: ProfileField[];
+  /** Hero shows a few fields; the rest belong in the identity disclosure. */
+  maxFields?: number;
   className?: string;
 }) {
   const trustLabel = formatTrustTier(trust);
   const activeLabel = lastActiveLabel(recentActivityAt, nowMs);
-  const visibleFields = (fields ?? []).slice(0, 6);
+  const visibleFields = (fields ?? []).slice(0, maxFields);
   const hasSignals = Boolean(trustLabel || activeLabel || bot || visibleFields.length > 0);
   if (!hasSignals) return null;
 

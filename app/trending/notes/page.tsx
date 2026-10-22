@@ -10,7 +10,7 @@ import { buildEntityMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = buildEntityMetadata({
-  title: "Trending Notes",
+  title: "Notes",
   description: "Explore the notes leading the network.",
   path: "/trending/notes",
   rss: { url: "/feeds/trending-notes.xml", title: "Trending notes" },
@@ -53,15 +53,13 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
   return (
     <RankedListPage
       discoverView="notes"
-      eyebrow="Ranked notes"
-      title="Trending notes"
+      eyebrow=""
+      title="Notes"
       subtitle="The notes leading the network."
       path={path}
       searchParams={currentSearchParams}
       window={window}
       semantics={semantics}
-      sectionTitle="Ranked notes"
-      sectionDescription="The strongest notes in view."
       errorMessage={errorMessage}
       emptyTitle="No ranked notes yet"
       emptyMessage="Ranked notes have not populated for this window."

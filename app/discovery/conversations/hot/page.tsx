@@ -21,7 +21,7 @@ import type { Profile } from "@/lib/types/api";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
-  title: "Hot Conversations",
+  title: "Conversations",
   description: "Notes driving active conversation right now.",
 };
 
@@ -80,13 +80,13 @@ export default async function HotConversationsPage({
       )}
       errorMessage={errorMessage}
       hasContent={notes.length > 0}
-      eyebrow="Discovery depth"
-      title="Hot conversations"
+      eyebrow=""
+      title="Conversations"
       subtitle="Notes driving active threads, so you can move from signal to conversation context quickly."
     >
-      <SectionCard title="Conversation feed" description="Ranked by live conversation activity.">
+      <div>
         {notes.length > 0 ? (
-          <NotesList notes={notes} authorsByPubkey={authorsByPubkey} ranked />
+          <NotesList notes={notes} authorsByPubkey={authorsByPubkey} ranked conversation />
         ) : !errorMessage ? (
           <EmptyState
             title="No hot conversations available"
@@ -98,32 +98,34 @@ export default async function HotConversationsPage({
             Load more conversations
           </Link>
         ) : null}
-      </SectionCard>
+      </div>
 
-      <SectionCard
-        title="Conversation participants"
-        description="Profiles active in these conversations."
-      >
-        {activeProfiles.length > 0 ? (
-          <ProfilesList profiles={activeProfiles} />
-        ) : (
-          <EmptyState message="No participant profiles were available for this window." />
-        )}
-        <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          <Link
-            href="/discovery/profiles/rising"
-            className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
-          >
-            Open up and coming
-          </Link>
-          <Link
-            href="/trending/notes"
-            className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
-          >
-            See trending notes
-          </Link>
-        </div>
-      </SectionCard>
+      {!errorMessage ? (
+        <SectionCard
+          title="Conversation participants"
+          description="Profiles active in these conversations."
+        >
+          {activeProfiles.length > 0 ? (
+            <ProfilesList profiles={activeProfiles} />
+          ) : (
+            <EmptyState message="No participant profiles were available for this window." />
+          )}
+          <div className="mt-4 flex flex-wrap gap-2 text-xs">
+            <Link
+              href="/discovery/profiles/rising"
+              className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
+            >
+              Open up and coming
+            </Link>
+            <Link
+              href="/trending/notes"
+              className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
+            >
+              See trending notes
+            </Link>
+          </div>
+        </SectionCard>
+      ) : null}
 
       <AboutThisData semantics={semantics} />
       <DebugDisclosure title="Debug payload" data={payload ?? {}} />

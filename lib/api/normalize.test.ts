@@ -8,6 +8,7 @@ import {
   normalizeHashtagDetailResponse,
   normalizeHashtagNotesResponse,
   normalizeProfile,
+  normalizeThreadActivityResponse,
 } from "./normalize";
 import { profileLabel, profilePictureUrl } from "../../components/explorer/utils";
 import type { Profile } from "../types/api";
@@ -299,6 +300,30 @@ describe("npub helpers", () => {
     const npub = hexToNpub(pubkey);
     expect(npub).not.toBeNull();
     expect(npubToHex(npub ?? "")).toBe(pubkey);
+  });
+});
+
+describe("normalizeThreadActivityResponse", () => {
+  it("lifts hotspot counts when activity is an object", () => {
+    const payload = normalizeThreadActivityResponse({
+      root_event_id: "ab".repeat(32),
+      participant_count: 69,
+      activity: { replies_24h: 22, replies_7d: 40 },
+    });
+
+    expect(payload.activity).toEqual([]);
+    expect(payload.replies_24h).toBe(22);
+    expect(payload.replies_7d).toBe(40);
+    expect(payload.participant_count).toBe(69);
+  });
+
+  it("still treats an activity array as events", () => {
+    const payload = normalizeThreadActivityResponse({
+      activity: [{ id: "ab".repeat(32), pubkey: "cd".repeat(32), kind: 1, content: "hi" }],
+    });
+
+    expect(payload.activity).toHaveLength(1);
+    expect(payload.replies_24h).toBeUndefined();
   });
 });
 

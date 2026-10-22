@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { formatEvidenceValue, mapServerRankingReasons, rankMovement } from "./reasons";
+import {
+  belowVolumeFloor,
+  formatEvidenceValue,
+  listedVolume,
+  mapServerRankingReasons,
+  rankMovement,
+  sourceCount,
+} from "./reasons";
 
 describe("formatEvidenceValue", () => {
   it("never renders fractional people or things", () => {
@@ -52,10 +59,54 @@ describe("mapServerRankingReasons", () => {
     ).toEqual([{ text: "engagement received", support: "40 interactions" }]);
   });
 
+  it("drops ratio reasons below one and keeps the ones worth reading", () => {
+    expect(
+      mapServerRankingReasons({
+        rank: 1,
+        score: 1,
+        reasons: [
+          {
+            code: "relative_engagement_growth",
+            evidence: [{ metric: "x", value: 0.1, unit: "interactions per follower" }],
+          },
+          {
+            code: "engagement_quality",
+            evidence: [{ metric: "x", value: 6.8, unit: "interactions per note" }],
+          },
+          {
+            code: "relative_engagement_growth",
+            evidence: [{ metric: "x", value: 10, unit: "interactions per follower" }],
+          },
+        ],
+      })
+    ).toEqual([
+      { text: "engagement per post", support: "6.8 interactions per note" },
+      { text: "engagement vs. audience size", support: "10 interactions per follower" },
+    ]);
+  });
+
   it("humanises unknown codes instead of discarding the server's rationale", () => {
     expect(
       mapServerRankingReasons({ rank: 1, score: 1, reasons: [{ code: "zap_velocity" }] })
     ).toEqual([{ text: "zap velocity", support: undefined }]);
+  });
+});
+
+describe("sourceCount", () => {
+  it("uses source breadth as the row figure and ignores missing or empty breadth", () => {
+    expect(sourceCount({ rank: 2, score: 4000, source_breadth: 290.4 })).toBe(290);
+    expect(sourceCount({ rank: 1, score: 12 })).toBeNull();
+    expect(sourceCount({ rank: 1, score: 12, source_breadth: 0 })).toBeNull();
+    expect(sourceCount(undefined)).toBeNull();
+  });
+});
+
+describe("listedVolume", () => {
+  it("treats a count under two as below the floor and keeps a missing count", () => {
+    expect(belowVolumeFloor(listedVolume([1]))).toBe(true);
+    expect(belowVolumeFloor(listedVolume([0, 12]))).toBe(false);
+    expect(belowVolumeFloor(listedVolume([undefined]))).toBe(false);
+    expect(listedVolume([0, 0])).toBe(0);
   });
 });
 

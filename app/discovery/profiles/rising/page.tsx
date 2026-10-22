@@ -9,7 +9,7 @@ import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ran
 import type { Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = {
-  title: "Up and Coming Profiles",
+  title: "Up and coming",
   description:
     "Small accounts gaining followers fast or earning outsized engagement relative to their audience.",
 };
@@ -42,15 +42,13 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
     <RankedListPage
       discoverView="people"
       discoverMode="rising"
-      eyebrow="Discovery depth"
+      eyebrow="People"
       title="Up and coming"
       subtitle="Small accounts gaining followers fast, or earning engagement that's large relative to their own audience."
       path={path}
       searchParams={currentSearchParams}
       window={window}
       semantics={semantics}
-      sectionTitle="Up-and-coming profile feed"
-      sectionDescription="Small accounts gathering momentum before they break into the main trending ranking."
       errorMessage={errorMessage}
       emptyTitle="No up-and-coming profiles available"
       emptyMessage="The API did not return up-and-coming profiles for this window."

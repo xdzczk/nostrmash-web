@@ -59,12 +59,38 @@ describe("NoteCard", () => {
   });
 
   it("truncates extremely long author display names", () => {
-    const longName = ":petthex_javasparrow:しゆいろ:petthex_javasparrow:(本物)";
+    const longName = "しゆいろ".repeat(12);
     render(<NoteCard note={NOTE} author={{ ...AUTHOR, display_name: longName }} />);
     const nameLink = screen.getByTitle(longName);
     expect(nameLink).toHaveAttribute("href", `/profiles/${NOTE.pubkey}`);
     expect(nameLink.textContent).toMatch(/…$/);
     expect(nameLink.textContent?.length).toBeLessThan(longName.length);
+  });
+
+  it("strips emoji shortcodes from the author name", () => {
+    render(
+      <NoteCard
+        note={NOTE}
+        author={{ ...AUTHOR, display_name: ":israel_burn:しゆいろ:petthex_javasparrow:(本物)" }}
+      />
+    );
+    expect(screen.getByTitle("しゆいろ(本物)")).toBeInTheDocument();
+  });
+
+  it("uses the card as the link and keeps thread actions off the list row", () => {
+    render(<NoteCard note={NOTE} author={AUTHOR} />);
+    expect(screen.queryByRole("link", { name: "Inspect thread" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Seen on relays" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Open note" })).not.toBeInTheDocument();
+  });
+
+  it("shows the reply count and one thread link on a conversation row", () => {
+    render(<NoteCard note={NOTE} author={AUTHOR} conversation />);
+    expect(screen.getByText("4 replies")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Thread" })).toHaveAttribute(
+      "href",
+      `/notes/${NOTE.id}#conversation-context`
+    );
   });
 
   it("links avatar and account name to the author profile page", () => {

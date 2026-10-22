@@ -1,8 +1,9 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
-import { NoteCard } from "@/components/explorer/note-card";
 import { Timestamp } from "@/components/explorer/timestamp";
-import { cardTierClassName } from "@/components/explorer/card-grammar";
+import { profileLabel } from "@/components/explorer/utils";
+import { presentReactionContent } from "@/lib/profile/reaction-display";
 import type { AuthorReactionRecord, AuthorZapRecord, EventRecord, Profile } from "@/lib/types/api";
 
 function resolveTargetNote(
@@ -16,6 +17,26 @@ function resolveTargetNote(
   const targetEventId = entry.target_event_id;
   if (typeof targetEventId !== "string" || targetEventId.length === 0) return null;
   return targetNotesById[targetEventId.toLowerCase()] ?? null;
+}
+
+function oneLine(value: string | undefined): string {
+  return (value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function targetAuthorLabel(
+  note: EventRecord | null,
+  authorsByPubkey?: Record<string, Profile>
+): string | null {
+  if (!note || typeof note.pubkey !== "string" || note.pubkey.length === 0) return null;
+  const author = authorsByPubkey?.[note.pubkey.toLowerCase()] ?? authorsByPubkey?.[note.pubkey];
+  if (author) return profileLabel(author);
+  return null;
+}
+
+function targetHref(note: EventRecord | null, fallbackId?: string): string | null {
+  const id =
+    (note && typeof note.id === "string" && note.id.length > 0 ? note.id : undefined) ?? fallbackId;
+  return id ? `/notes/${encodeURIComponent(id)}` : null;
 }
 
 function formatZapAmount(zap: AuthorZapRecord): string | null {
@@ -35,6 +56,69 @@ function formatZapAmount(zap: AuthorZapRecord): string | null {
   return null;
 }
 
+function reactionTags(reaction: AuthorReactionRecord): unknown {
+  if (Array.isArray(reaction.tags)) return reaction.tags;
+  const event = reaction.event;
+  if (event && Array.isArray(event.tags)) return event.tags;
+  return undefined;
+}
+
+function reactionContent(reaction: AuthorReactionRecord): string | undefined {
+  if (typeof reaction.reaction === "string" && reaction.reaction.trim().length > 0) {
+    return reaction.reaction;
+  }
+  if (typeof reaction.content === "string" && reaction.content.trim().length > 0) {
+    return reaction.content;
+  }
+  const eventContent = reaction.event?.content;
+  if (typeof eventContent === "string" && eventContent.trim().length > 0) return eventContent;
+  if (typeof reaction.reaction_type === "string" && reaction.reaction_type.trim().length > 0) {
+    return reaction.reaction_type;
+  }
+  return undefined;
+}
+
+function EngagementRow({
+  marker,
+  note,
+  fallbackId,
+  authorsByPubkey,
+  createdAt,
+}: {
+  marker: ReactNode;
+  note: EventRecord | null;
+  fallbackId?: string;
+  authorsByPubkey?: Record<string, Profile>;
+  createdAt?: number;
+}) {
+  const author = targetAuthorLabel(note, authorsByPubkey);
+  const line = oneLine(typeof note?.content === "string" ? note.content : undefined);
+  const href = targetHref(note, fallbackId);
+  const body = (
+    <span className="flex min-w-0 items-start gap-3">
+      <span className="flex shrink-0 items-center justify-center text-lg leading-none">
+        {marker}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="text-ink block truncate text-sm">
+          {author ? <span className="font-medium">{author}</span> : null}
+          {author && line ? <span className="text-ink-faint"> · </span> : null}
+          {line ? <span className="text-ink-dim">{line}</span> : null}
+          {!author && !line ? <span className="text-ink-muted">Note</span> : null}
+        </span>
+        <Timestamp unixSeconds={createdAt} />
+      </span>
+    </span>
+  );
+  return href ? (
+    <Link href={href} className="hover:bg-surface/40 block rounded-lg px-1 py-2.5">
+      {body}
+    </Link>
+  ) : (
+    <div className="px-1 py-2.5">{body}</div>
+  );
+}
+
 export function ProfileReactionsActivityList({
   reactions,
   targetNotesById,
@@ -45,49 +129,33 @@ export function ProfileReactionsActivityList({
   authorsByPubkey?: Record<string, Profile>;
 }) {
   return (
-    <ul className="space-y-3">
+    <ul className="divide-edge/60 divide-y">
       {reactions.map((reaction, index) => {
         const targetNote = resolveTargetNote(reaction, targetNotesById);
-        const reactionLabel =
-          (typeof reaction.reaction === "string" && reaction.reaction.trim().length > 0
-            ? reaction.reaction.trim()
-            : typeof reaction.reaction_type === "string" && reaction.reaction_type.trim().length > 0
-              ? reaction.reaction_type.trim()
-              : "+") ?? "+";
+        const display = presentReactionContent(reactionContent(reaction), reactionTags(reaction));
         const reactionKey =
           reaction.event_id ??
           `${reaction.target_event_id ?? "reaction"}-${reaction.created_at ?? index}`;
-
         return (
-          <li key={reactionKey} className={`${cardTierClassName("standard")} space-y-3 p-4`}>
-            <div className="text-ink-muted flex flex-wrap items-center gap-2 text-xs">
-              <span className="border-warning/30 bg-warning-soft text-warning-ink rounded-full border px-2.5 py-1">
-                Reaction: {reactionLabel}
-              </span>
-              <Timestamp unixSeconds={reaction.created_at} />
-            </div>
-            {targetNote ? (
-              <div className="space-y-2">
-                <p className="text-ink-faint text-xs font-medium">On note</p>
-                <NoteCard
-                  note={targetNote}
-                  author={
-                    targetNote.pubkey
-                      ? authorsByPubkey?.[targetNote.pubkey.toLowerCase()]
-                      : undefined
-                  }
-                />
-              </div>
-            ) : reaction.target_event_id ? (
-              <Link
-                href={`/notes/${encodeURIComponent(reaction.target_event_id)}`}
-                className="text-link hover:text-link-hover text-sm"
-              >
-                Open target note
-              </Link>
-            ) : (
-              <p className="text-ink-faint text-sm">Target note unavailable.</p>
-            )}
+          <li key={reactionKey}>
+            <EngagementRow
+              marker={
+                display.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={display.imageUrl}
+                    alt={display.text}
+                    className="h-5 w-5 object-contain"
+                  />
+                ) : (
+                  <span aria-label={display.text}>{display.text}</span>
+                )
+              }
+              note={targetNote}
+              fallbackId={reaction.target_event_id}
+              authorsByPubkey={authorsByPubkey}
+              createdAt={reaction.created_at}
+            />
           </li>
         );
       })}
@@ -105,55 +173,24 @@ export function ProfileZapsActivityList({
   authorsByPubkey?: Record<string, Profile>;
 }) {
   return (
-    <ul className="space-y-3">
+    <ul className="divide-edge/60 divide-y">
       {zaps.map((zap, index) => {
         const targetNote = resolveTargetNote(zap, targetNotesById);
         const amountLabel = formatZapAmount(zap);
-        const zapText =
-          typeof zap.zap_text === "string" && zap.zap_text.trim().length > 0
-            ? zap.zap_text.trim()
-            : null;
         const zapKey = zap.event_id ?? `${zap.target_event_id ?? "zap"}-${zap.created_at ?? index}`;
-
         return (
-          <li key={zapKey} className={`${cardTierClassName("standard")} space-y-3 p-4`}>
-            <div className="text-ink-muted flex flex-wrap items-center gap-2 text-xs">
-              {amountLabel ? (
-                <span className="border-warning/30 bg-warning-soft text-warning-ink rounded-full border px-2.5 py-1">
-                  {amountLabel}
+          <li key={zapKey}>
+            <EngagementRow
+              marker={
+                <span className="text-ink text-sm font-medium tabular-nums">
+                  {amountLabel ?? "Zap"}
                 </span>
-              ) : (
-                <span className="border-warning/30 bg-warning-soft text-warning-ink rounded-full border px-2.5 py-1">
-                  Zap
-                </span>
-              )}
-              {zapText ? (
-                <span className="text-ink-soft text-sm">&ldquo;{zapText}&rdquo;</span>
-              ) : null}
-              <Timestamp unixSeconds={zap.created_at} />
-            </div>
-            {targetNote ? (
-              <div className="space-y-2">
-                <p className="text-ink-faint text-xs font-medium">On note</p>
-                <NoteCard
-                  note={targetNote}
-                  author={
-                    targetNote.pubkey
-                      ? authorsByPubkey?.[targetNote.pubkey.toLowerCase()]
-                      : undefined
-                  }
-                />
-              </div>
-            ) : zap.target_event_id ? (
-              <Link
-                href={`/notes/${encodeURIComponent(zap.target_event_id)}`}
-                className="text-link hover:text-link-hover text-sm"
-              >
-                Open target note
-              </Link>
-            ) : (
-              <p className="text-ink-faint text-sm">Target note unavailable.</p>
-            )}
+              }
+              note={targetNote}
+              fallbackId={zap.target_event_id}
+              authorsByPubkey={authorsByPubkey}
+              createdAt={zap.created_at}
+            />
           </li>
         );
       })}

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { loadRepostRollup } from "@/app/notes/[eventId]/actions";
 import { EntityActions } from "@/components/actions/entity-actions";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EntityContextNav } from "@/components/discover/entity-context-nav";
@@ -12,8 +13,6 @@ import { MetadataList } from "@/components/explorer/metadata-list";
 import { getArticlePresentation, isLongFormEvent } from "@/components/explorer/article-meta";
 import { EventReadingSurface } from "@/components/explorer/event-reading-surface";
 import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
-import { PageHero } from "@/components/explorer/page-hero";
-import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { ProfileCard } from "@/components/explorer/profile-card";
 import { normalizeRelayHost } from "@/components/explorer/stats-utils";
 import { Timestamp } from "@/components/explorer/timestamp";
@@ -22,18 +21,16 @@ import {
   buildMetadataEntries,
   extractEngagementStats,
   isRecord,
-  profileHref,
   profileLabel,
 } from "@/components/explorer/utils";
 import {
-  DeferredNoteActivity,
   DeferredNoteAncestors,
   DeferredNoteRelated,
   DeferredNoteThread,
 } from "@/components/notes/deferred-note-sections";
+import { RepostRollup } from "@/components/notes/repost-rollup";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Disclosure } from "@/components/ui/disclosure";
-import { SectionCard } from "@/components/ui/section-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
 import { isHiddenNoteKind } from "@/lib/api/normalize";
@@ -46,9 +43,6 @@ import { absoluteUrl, buildEntityMetadata } from "@/lib/seo/metadata";
 
 type Params = Promise<{ eventId: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
-
-/** Prose measure for the focal note and its conversation. */
-const READING_COLUMN = "w-full max-w-[68ch]";
 
 function isNonNull<T>(value: T | null): value is T {
   return value !== null;
@@ -64,6 +58,29 @@ function hasInformativeValue(value: unknown): boolean {
   if (Array.isArray(value)) return value.length > 0;
   if (isRecord(value)) return Object.keys(value).length > 0;
   return true;
+}
+
+/** Provenance hides empty booleans and zero counts ("Has image: no"). */
+function isProvenanceValue(value: unknown): boolean {
+  if (!hasInformativeValue(value)) return false;
+  if (value === false || value === 0) return false;
+  if (typeof value === "string" && /^(no|false|0)$/i.test(value.trim())) return false;
+  if (isRecord(value) || Array.isArray(value)) return false;
+  return true;
+}
+
+function noteKindLabel(kind: number): string {
+  if (kind === 1) return "Note";
+  if (kind === 6 || kind === 16) return "Repost";
+  if (kind === 30023) return "Long-form";
+  return `Kind ${kind}`;
+}
+
+function collectHexIds(value: unknown, found = new Set<string>()): string[] {
+  if (typeof value === "string" && /^[a-f0-9]{64}$/i.test(value)) found.add(value.toLowerCase());
+  else if (Array.isArray(value)) for (const entry of value) collectHexIds(entry, found);
+  else if (isRecord(value)) for (const entry of Object.values(value)) collectHexIds(entry, found);
+  return [...found];
 }
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
@@ -160,9 +177,6 @@ export default async function NotePage({
     focal && isLongFormEvent(focal) ? getArticlePresentation(focal) : null;
   const isReplyNote = Boolean(parentEventId) || (Boolean(rootEventId) && rootEventId !== eventId);
 
-  const noteDetails = focal
-    ? buildMetadataEntries(focal as Record<string, unknown>, ["id", "pubkey", "created_at", "kind"])
-    : [];
   const countsRecord = isRecord(noteSummary?.counts)
     ? noteSummary.counts
     : isRecord(eventCountsPayload?.counts)
@@ -180,8 +194,23 @@ export default async function NotePage({
     const value = Number(stat?.value);
     return Number.isFinite(value) ? value : undefined;
   })();
-  const focalWithEngagement = focal
-    ? applyEngagementStats(focal, countsRecord, noteSummary?.summary)
+  // Summary counts are the index totals. The event's own fields are only a fallback,
+  // so the card and the replies heading can't disagree.
+  const focalForStats = focal ? { ...focal } : null;
+  if (focalForStats) {
+    delete focalForStats.reply_count;
+    delete focalForStats.reaction_count;
+    delete focalForStats.repost_count;
+    delete focalForStats.zap_count;
+    delete focalForStats.zap_msats;
+  }
+  const focalWithEngagement = focalForStats
+    ? applyEngagementStats(
+        focalForStats,
+        countsRecord,
+        isRecord(noteSummary?.summary) ? noteSummary.summary : {},
+        focal
+      )
     : null;
   const provenanceDetails = buildMetadataEntries(
     {
@@ -190,7 +219,7 @@ export default async function NotePage({
       trust_applied: semantics.trust_applied,
     },
     ["consistency", "trust_mode", "trust_applied"]
-  );
+  ).filter((entry) => isProvenanceValue(entry.value));
   const rawProvenanceRelays = Array.isArray(eventSeenOnPayload?.relays)
     ? eventSeenOnPayload.relays
     : isRecord(summaryProvenance) && Array.isArray(summaryProvenance.relays)
@@ -244,14 +273,12 @@ export default async function NotePage({
   // only the fields that actually carry a value.
   const mediaDetails = isRecord(noteSummary?.media)
     ? Object.entries(noteSummary.media)
-        .filter(([, value]) => hasInformativeValue(value))
+        .filter(([, value]) => isProvenanceValue(value))
         .map(([label, value]) => ({ label, value }))
     : [];
-  const quoteDetails = isRecord(noteSummary?.quote_repost_context)
-    ? Object.entries(noteSummary.quote_repost_context)
-        .filter(([, value]) => hasInformativeValue(value))
-        .map(([label, value]) => ({ label, value }))
-    : [];
+  const referenceIds = collectHexIds(noteSummary?.quote_repost_context).filter(
+    (id) => id !== eventId.toLowerCase()
+  );
   const noteBech32 =
     encodeNevent({
       id: eventId,
@@ -266,28 +293,11 @@ export default async function NotePage({
     typeof focal?.content === "string" && focal.content.trim().length > 0
       ? focal.content.trim()
       : "";
-  const authorName = resolvedAuthor ? profileLabel(resolvedAuthor) : null;
-  const authorLink = profileHref(
-    resolvedAuthor,
-    typeof resolvedAuthor?.pubkey === "string"
-      ? resolvedAuthor.pubkey
-      : typeof focal?.pubkey === "string"
-        ? focal.pubkey
-        : undefined
-  );
-  const heroTitle = articlePresentation
-    ? "Article"
-    : `${isReplyNote ? "Reply" : "Note"}${authorName ? ` by ${authorName}` : ""}`;
-  const heroSubtitle = articlePresentation
-    ? [
-        articlePresentation.readingMinutes
-          ? `${articlePresentation.readingMinutes} min read`
-          : null,
-        "Full long-form on Nostr — with author, topics, and provenance.",
-      ]
-        .filter(Boolean)
-        .join(" · ")
-    : undefined;
+  const repostCount = Number(countStats.find((entry) => entry.label === "repost_count")?.value);
+  const repostsControl =
+    Number.isFinite(repostCount) && repostCount > 0 ? (
+      <RepostRollup count={repostCount} load={loadRepostRollup.bind(null, eventId, repostCount)} />
+    ) : undefined;
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -328,210 +338,205 @@ export default async function NotePage({
             : undefined,
         }}
       />
-      <div className="space-y-3 sm:space-y-4">
-        <EntityContextNav view="notes" />
-        <PageHero
-          title={heroTitle}
-          subtitle={heroSubtitle}
-          compact
-          badges={
-            <div className="text-ink-muted flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
-              {resolvedAuthor ? (
-                authorLink ? (
-                  <Link
-                    href={authorLink}
-                    className="border-edge-strong bg-surface/50 text-ink-soft hover:text-ink inline-flex min-h-7 items-center gap-2 rounded-full border px-2 py-0.5"
-                  >
-                    <ProfileAvatar
-                      profile={resolvedAuthor}
-                      size={18}
-                      alt=""
-                      className="h-[18px] w-[18px] rounded-full object-cover"
-                    />
-                    {authorName}
-                  </Link>
-                ) : (
-                  <span className="border-edge-strong bg-surface/50 text-ink-soft inline-flex min-h-7 items-center gap-2 rounded-full border px-2 py-0.5">
-                    <ProfileAvatar
-                      profile={resolvedAuthor}
-                      size={18}
-                      alt=""
-                      className="h-[18px] w-[18px] rounded-full object-cover"
-                    />
-                    {authorName}
-                  </span>
-                )
-              ) : focal?.pubkey ? (
-                <Link
-                  href={`/profiles/${encodeURIComponent(focal.pubkey)}`}
-                  className="inline-flex min-h-7 items-center hover:opacity-90"
-                >
-                  <IdBadge id={focal.pubkey} label="author" />
-                </Link>
-              ) : null}
-              <Timestamp unixSeconds={focal?.created_at} />
-              {isReplyNote && !articlePresentation ? (
-                <span className="border-edge text-ink-dim inline-flex min-h-7 items-center rounded-full border px-2 py-0.5">
-                  Reply in a conversation
-                </span>
-              ) : null}
-            </div>
-          }
-        />
-      </div>
-
-      {errorMessage ? (
-        focal ? (
-          <SoftRefreshNote message={errorMessage} />
-        ) : (
-          <ErrorPanel message={errorMessage} />
-        )
-      ) : null}
-
-      <div className={`${READING_COLUMN} space-y-6`}>
-        {isReplyNote ? (
-          <Suspense fallback={<Skeleton className="h-16 w-full rounded-xl" />}>
-            <DeferredNoteAncestors eventId={eventId} searchParams={resolvedSearchParams} />
-          </Suspense>
-        ) : null}
-
-        {focalWithEngagement ? (
-          <article id="note" className="scroll-mt-24">
-            <EventReadingSurface
-              event={focalWithEngagement}
-              author={
-                typeof focalWithEngagement.pubkey === "string"
-                  ? authorsByPubkey[focalWithEngagement.pubkey.toLowerCase()]
-                  : undefined
-              }
-              contentResolution={contentResolution}
-              density="detail"
-              priorityMedia
-            />
-          </article>
-        ) : (
-          <EmptyState message="No focal note payload was returned." />
-        )}
-
-        {focal ? (
-          <Disclosure title="Share, open in a client, or embed">
-            <EntityActions
-              kind="note"
-              absoluteUrl={noteAbsoluteUrl}
-              identifier={noteBech32}
-              nostrUri={`nostr:${noteBech32}`}
-              njumpUrl={`https://njump.me/${noteBech32}`}
-              embedHtml={embedHtml}
-            />
-          </Disclosure>
-        ) : null}
-      </div>
-
-      <div className={READING_COLUMN}>
-        <Suspense fallback={<Skeleton className="h-48 w-full rounded-xl" />}>
-          <DeferredNoteThread
-            eventId={eventId}
-            searchParams={resolvedSearchParams}
-            replyCount={replyCount}
-          />
-        </Suspense>
-      </div>
-
-      {resolvedAuthor ? (
-        <SectionCard title="About the author">
-          <ProfileCard
-            profile={resolvedAuthor}
-            summary={isRecord(noteSummary?.author) ? noteSummary.author : undefined}
-          />
-        </SectionCard>
-      ) : null}
-
-      <Suspense fallback={<Skeleton className="h-32 w-full rounded-xl" />}>
-        <DeferredNoteActivity
-          eventId={eventId}
-          rootEventId={rootEventId ?? eventId}
-          searchParams={resolvedSearchParams}
-        />
-      </Suspense>
-
-      <Suspense fallback={<Skeleton className="h-32 w-full rounded-xl" />}>
-        <DeferredNoteRelated eventId={eventId} searchParams={resolvedSearchParams} />
-      </Suspense>
-
-      <Disclosure
-        id="note-provenance"
-        title="Details & provenance"
-        description="Event metadata, relays that served it, and how the index scoped this view."
-        className="scroll-mt-24"
-      >
-        <div className="space-y-4">
-          {noteDetails.length > 0 ? <MetadataList items={noteDetails} columns={2} /> : null}
-          {mediaDetails.length > 0 || quoteDetails.length > 0 ? (
-            <MetadataList items={[...mediaDetails, ...quoteDetails]} columns={2} />
+      <div className="lg:grid lg:grid-cols-[minmax(0,68ch)_minmax(16rem,20rem)] lg:items-start lg:gap-x-10">
+        <div className="order-1 min-w-0 lg:col-start-1 lg:row-start-1">
+          <EntityContextNav view="notes" />
+          {isReplyNote && rootEventId && rootEventId !== eventId && !articlePresentation ? (
+            <p className="mt-3 mb-1 text-sm">
+              <Link
+                href={`/notes/${encodeURIComponent(rootEventId)}`}
+                className="text-ink-dim hover:text-ink inline-flex min-h-6 items-center"
+              >
+                Reply in a conversation
+              </Link>
+            </p>
           ) : null}
-          <div className="space-y-3">
-            {provenanceDetails.length > 0 ? (
-              <MetadataList items={provenanceDetails} columns={2} />
-            ) : null}
-            {provenanceRelayLinks.length > 0 ? (
-              <ul className="space-y-2">
-                {provenanceRelayLinks.map((observation) => (
-                  <li
-                    key={observation.key}
-                    className="bg-surface/30 flex flex-wrap items-center justify-between gap-2 rounded-lg p-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-ink-soft truncate text-sm">{observation.routeHost}</p>
-                      {observation.seenAt !== undefined ? (
-                        <p className="text-ink-dim mt-0.5 truncate text-xs">
-                          seen{" "}
-                          <Timestamp
-                            unixSeconds={
-                              typeof observation.seenAt === "number"
-                                ? observation.seenAt
-                                : undefined
-                            }
-                            isoString={
-                              typeof observation.seenAt === "string"
-                                ? observation.seenAt
-                                : undefined
-                            }
-                          />
-                        </p>
-                      ) : null}
-                    </div>
-                    <Link
-                      href={`/relays/${encodeURIComponent(observation.routeHost)}`}
-                      className="border-edge-strong text-link inline-flex min-h-7 items-center rounded-full border px-3 text-xs"
-                    >
-                      Open relay
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {provenanceDetails.length === 0 && provenanceRelayLinks.length === 0 ? (
-              <EmptyState message="No relay observations or trust data were returned for this event." />
-            ) : null}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <NativeSemanticsBadges semantics={semantics} />
-            <IdBadge id={eventId} label="event" />
-            {focal?.pubkey ? <IdBadge id={focal.pubkey} label="author" /> : null}
-            {typeof focal?.kind === "number" ? (
-              <span className="border-edge-strong text-ink-dim inline-flex min-h-6 items-center rounded-full border px-2">
-                kind {focal.kind}
-              </span>
-            ) : null}
+
+          {errorMessage ? (
+            focal ? (
+              <SoftRefreshNote message={errorMessage} />
+            ) : (
+              <ErrorPanel message={errorMessage} />
+            )
+          ) : null}
+
+          <div id="conversation-context" className="relative mt-3">
+            <div
+              aria-hidden
+              className="bg-edge/70 pointer-events-none absolute top-3 bottom-3 left-5 z-0 w-px"
+            />
+            <div className="relative z-[1] space-y-2">
+              {isReplyNote ? (
+                <Suspense fallback={<Skeleton className="h-16 w-full rounded-xl" />}>
+                  <DeferredNoteAncestors eventId={eventId} searchParams={resolvedSearchParams} />
+                </Suspense>
+              ) : null}
+
+              {focalWithEngagement ? (
+                <article id="note" className="scroll-mt-24">
+                  <EventReadingSurface
+                    event={focalWithEngagement}
+                    author={
+                      typeof focalWithEngagement.pubkey === "string"
+                        ? authorsByPubkey[focalWithEngagement.pubkey.toLowerCase()]
+                        : undefined
+                    }
+                    contentResolution={contentResolution}
+                    density="detail"
+                    priorityMedia
+                    repostsControl={repostsControl}
+                  />
+                  <EntityActions
+                    kind="note"
+                    compact
+                    absoluteUrl={noteAbsoluteUrl}
+                    identifier={noteBech32}
+                    nostrUri={`nostr:${noteBech32}`}
+                    njumpUrl={`https://njump.me/${noteBech32}`}
+                    embedHtml={embedHtml}
+                  />
+                </article>
+              ) : (
+                <EmptyState message="No focal note payload was returned." />
+              )}
+
+              <Suspense fallback={<Skeleton className="h-48 w-full rounded-xl" />}>
+                <DeferredNoteThread
+                  eventId={eventId}
+                  rootEventId={rootEventId ?? eventId}
+                  searchParams={resolvedSearchParams}
+                  replyCount={replyCount}
+                />
+              </Suspense>
+            </div>
           </div>
         </div>
-      </Disclosure>
 
-      <div className="space-y-3">
-        <DebugDisclosure title="Debug payload: canonical event" data={eventPayload ?? {}} />
-        <DebugDisclosure title="Debug payload: note summary" data={noteSummary ?? {}} />
-        <DebugDisclosure title="Debug payload: event counts" data={eventCountsPayload ?? {}} />
-        <DebugDisclosure title="Debug payload: event seen-on" data={eventSeenOnPayload ?? {}} />
+        {resolvedAuthor ? (
+          <aside
+            aria-label="About the author"
+            className="order-2 mt-8 min-w-0 lg:sticky lg:top-24 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-0"
+          >
+            <h2 className="text-ink-dim mb-3 text-xs font-medium tracking-wide uppercase">
+              Author
+            </h2>
+            <ProfileCard
+              profile={resolvedAuthor}
+              summary={isRecord(noteSummary?.author) ? noteSummary.author : undefined}
+            />
+          </aside>
+        ) : null}
+
+        <div className="order-3 min-w-0 lg:col-start-1 lg:row-start-2">
+          <Suspense fallback={<Skeleton className="h-32 w-full rounded-xl" />}>
+            <DeferredNoteRelated eventId={eventId} searchParams={resolvedSearchParams} />
+          </Suspense>
+
+          <Disclosure
+            id="note-provenance"
+            title="Details & provenance"
+            description="Event metadata, relays that served it, and how the index scoped this view."
+            className="scroll-mt-24"
+          >
+            <div className="space-y-4">
+              {typeof focal?.created_at === "number" || typeof focal?.kind === "number" ? (
+                <dl className="bg-surface-sunken/30 grid gap-3 rounded-xl p-4 sm:grid-cols-2">
+                  {typeof focal?.created_at === "number" ? (
+                    <div className="space-y-1">
+                      <dt className="text-ink-dim text-xs">Created</dt>
+                      <dd className="text-ink-soft text-sm">
+                        <Timestamp unixSeconds={focal.created_at} />
+                      </dd>
+                    </div>
+                  ) : null}
+                  {typeof focal?.kind === "number" ? (
+                    <div className="space-y-1">
+                      <dt className="text-ink-dim text-xs">Kind</dt>
+                      <dd className="text-ink-soft text-sm">{noteKindLabel(focal.kind)}</dd>
+                    </div>
+                  ) : null}
+                </dl>
+              ) : null}
+              {mediaDetails.length > 0 ? <MetadataList items={mediaDetails} columns={2} /> : null}
+              {referenceIds.length > 0 ? (
+                <ul className="space-y-2">
+                  {referenceIds.map((id) => (
+                    <li key={id}>
+                      <Link
+                        href={`/notes/${encodeURIComponent(id)}`}
+                        className="text-link hover:text-link-hover inline-flex min-h-7 items-center text-sm"
+                      >
+                        Open referenced note
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="space-y-3">
+                {provenanceDetails.length > 0 ? (
+                  <MetadataList items={provenanceDetails} columns={2} />
+                ) : null}
+                {provenanceRelayLinks.length > 0 ? (
+                  <ul className="space-y-2">
+                    {provenanceRelayLinks.map((observation) => (
+                      <li
+                        key={observation.key}
+                        className="bg-surface/30 flex flex-wrap items-center justify-between gap-2 rounded-lg p-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-ink-soft truncate text-sm">{observation.routeHost}</p>
+                          {observation.seenAt !== undefined ? (
+                            <p className="text-ink-dim mt-0.5 truncate text-xs">
+                              seen{" "}
+                              <Timestamp
+                                unixSeconds={
+                                  typeof observation.seenAt === "number"
+                                    ? observation.seenAt
+                                    : undefined
+                                }
+                                isoString={
+                                  typeof observation.seenAt === "string"
+                                    ? observation.seenAt
+                                    : undefined
+                                }
+                              />
+                            </p>
+                          ) : null}
+                        </div>
+                        <Link
+                          href={`/relays/${encodeURIComponent(observation.routeHost)}`}
+                          className="border-edge-strong text-link inline-flex min-h-7 items-center rounded-full border px-3 text-xs"
+                        >
+                          Open relay
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {provenanceDetails.length === 0 && provenanceRelayLinks.length === 0 ? (
+                  <EmptyState message="No relay observations or trust data were returned for this event." />
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <NativeSemanticsBadges semantics={semantics} />
+                <IdBadge id={eventId} label="event" />
+                {focal?.pubkey ? <IdBadge id={focal.pubkey} label="author" /> : null}
+                {typeof focal?.kind === "number" ? (
+                  <span className="border-edge-strong text-ink-dim inline-flex min-h-6 items-center rounded-full border px-2">
+                    {noteKindLabel(focal.kind)}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </Disclosure>
+
+          <div className="space-y-3">
+            <DebugDisclosure title="Debug payload: canonical event" data={eventPayload ?? {}} />
+            <DebugDisclosure title="Debug payload: note summary" data={noteSummary ?? {}} />
+            <DebugDisclosure title="Debug payload: event counts" data={eventCountsPayload ?? {}} />
+            <DebugDisclosure title="Debug payload: event seen-on" data={eventSeenOnPayload ?? {}} />
+          </div>
+        </div>
       </div>
     </div>
   );

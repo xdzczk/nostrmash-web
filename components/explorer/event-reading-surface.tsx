@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { ArticleReader } from "@/components/explorer/article-reader";
 import { isLongFormEvent } from "@/components/explorer/article-meta";
 import { NoteCard, type NoteCardDensity } from "@/components/explorer/note-card";
@@ -11,12 +13,15 @@ export function EventReadingSurface({
   contentResolution,
   density = "detail",
   priorityMedia = false,
+  repostsControl,
 }: {
   event: EventRecord;
   author?: Profile;
   contentResolution?: NoteContentResolution;
   density?: Exclude<NoteCardDensity, "list">;
   priorityMedia?: boolean;
+  /** Replaces the Reposts stat on the focal note. */
+  repostsControl?: ReactNode;
 }) {
   if (isLongFormEvent(event)) {
     return <ArticleReader article={event} author={author} contentResolution={contentResolution} />;
@@ -30,6 +35,7 @@ export function EventReadingSurface({
       density={density}
       priorityMedia={priorityMedia}
       contentResolution={contentResolution}
+      repostsControl={repostsControl}
     />
   );
 }

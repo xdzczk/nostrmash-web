@@ -203,6 +203,41 @@ export function formatMetricLabel(value: string): string {
 
 const ELLIPSIS = "…";
 
+/** `:shortcode:` tokens are not emoji. Drop them so a name stays readable. */
+export function stripEmojiShortcodes(value: string): string {
+  return value
+    .replace(/:[a-z0-9_+-]{2,}:/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Keep the NIP-05 domain intact. A long local-part shrinks from the end
+ * (`mrsaturday@shitposter.mostr.pub` → `mrsaturd…@shitposter.mostr.pub`)
+ * instead of cutting through the middle of the address.
+ */
+export function truncateNip05(value: string, maxLength = 32): string {
+  const trimmed = value.trim();
+  if (trimmed.length <= maxLength) return trimmed;
+  const at = trimmed.lastIndexOf("@");
+  if (at <= 0) return truncateProfileLabel(trimmed, maxLength);
+  const domain = trimmed.slice(at);
+  const local = trimmed.slice(0, at);
+  const room = maxLength - domain.length - ELLIPSIS.length;
+  if (room < 1) {
+    return domain.length <= maxLength ? domain : truncateProfileLabel(domain, maxLength);
+  }
+  return `${[...local].slice(0, room).join("")}${ELLIPSIS}${domain}`;
+}
+
+/** Secondary identity for a row: NIP-05 keeps its domain; everything else end-truncates. */
+export function formatProfileSecondary(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (trimmed.includes("@")) return truncateNip05(trimmed);
+  return truncateProfileLabel(trimmed);
+}
+
 export function truncateMiddle(value: string, maxLength = 36): string {
   if (value.length <= maxLength) return value;
   const room = Math.max(0, maxLength - ELLIPSIS.length);
@@ -542,9 +577,12 @@ export function profileLabel(profile: Profile): string {
   const npubFromPubkey = pubkey ? hexToNpub(pubkey) : null;
   const fallbackNpub = npub ?? npubFromPubkey;
 
+  const cleanedDisplay = displayName ? stripEmojiShortcodes(displayName) : "";
+  const cleanedName = name ? stripEmojiShortcodes(name) : "";
+
   return (
-    displayName ??
-    name ??
+    (cleanedDisplay.length > 0 ? cleanedDisplay : undefined) ??
+    (cleanedName.length > 0 ? cleanedName : undefined) ??
     (fallbackNpub ? truncateIdentifier(fallbackNpub, "npub", "primary") : undefined) ??
     (pubkey ? truncateIdentifier(pubkey, "pubkey", "primary") : undefined) ??
     "Profile"
@@ -693,16 +731,28 @@ export function profileSecondaryLabel(profile: Profile): string | null {
     !/\s|[\u0000-\u001f\u007f-\u009f\ufffd]/u.test(nip05Candidate)
       ? nip05Candidate
       : null;
-  const identifier = profileIdentifier(profile);
-
-  if (displayName && name && displayName !== name) {
-    return name;
+  if (displayName && name && stripEmojiShortcodes(displayName) !== stripEmojiShortcodes(name)) {
+    const handle = stripEmojiShortcodes(name);
+    if (handle.length > 0) return handle;
   }
   if (nip05) {
     // NIP-05 root identifiers (`_@domain`) are conventionally shown as the bare domain.
     return nip05.startsWith("_@") ? nip05.slice(2) : nip05;
   }
-  return identifier !== "unknown" ? truncateIdentifier(identifier, "npub", "secondary") : null;
+  // A name with no NIP-05 does not get a hex pubkey on the line underneath.
+  return null;
+}
+
+/** One readable line of a bio: identifiers, invoices, and shortcodes removed. */
+export function profileAboutLine(about: string): string {
+  return stripEmojiShortcodes(
+    about
+      .replace(/nostr:(?:npub|note|nevent|nprofile|naddr|nrelay)1[a-z0-9]+/gi, " ")
+      .replace(/\b(?:npub|note|nevent|nprofile|naddr|nrelay)1[a-z0-9]{8,}\b/gi, " ")
+      .replace(/\b[0-9a-f]{64}\b/gi, " ")
+      .replace(/\b(?:lnbc|lnurl)[a-z0-9]{20,}\b/gi, " ")
+      .replace(/lightning:[^\s]+/gi, " ")
+  );
 }
 
 export function profileInitial(profile: Profile): string {

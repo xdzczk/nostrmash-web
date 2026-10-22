@@ -41,6 +41,14 @@ const COUNT_FLOOR_CODES = new Set([
 ]);
 const COUNT_FLOOR = 2;
 
+/**
+ * Ratio reasons ("per follower", "per note") below 1 are noise: 0.1
+ * interactions per follower is not a reason to be on the page. 1 and above
+ * stay, including values like 6.8 and 10.
+ */
+const RATE_FLOOR = 1;
+const RATE_CODES = new Set(["relative_engagement_growth", "engagement_quality"]);
+
 /** Reasons describing growth, where a leading "+" makes the number read as a delta. */
 const GROWTH_CODES = new Set(["follower_growth"]);
 
@@ -89,11 +97,42 @@ function formatEvidence(
   return `${sign}${rendered} ${unit}`;
 }
 
+function isRateEvidence(reason: DiscoveryRankingReason): boolean {
+  if (RATE_CODES.has(reason.code)) return true;
+  const unit = reason.evidence?.[0]?.unit ?? "";
+  return /\bper\b/i.test(unit);
+}
+
 function belowFloor(reason: DiscoveryRankingReason): boolean {
-  if (!COUNT_FLOOR_CODES.has(reason.code)) return false;
   const evidence = reason.evidence?.[0];
   if (!evidence || !Number.isFinite(evidence.value)) return false;
+  if (isRateEvidence(reason)) return evidence.value < RATE_FLOOR;
+  if (!COUNT_FLOOR_CODES.has(reason.code)) return false;
   return evidence.value < COUNT_FLOOR;
+}
+
+/** Sources behind a rank. This is the figure the server order follows. */
+export function sourceCount(ranking: DiscoveryItemRanking | undefined): number | null {
+  const value = ranking?.source_breadth;
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
+  return Math.round(value);
+}
+
+/** Volume (events, links, posts) under 2 is the same floor as count reasons. */
+export function belowVolumeFloor(value: unknown): boolean {
+  return typeof value === "number" && Number.isFinite(value) && value < COUNT_FLOOR;
+}
+
+/**
+ * First positive volume among candidates. All-zero counts stay below the
+ * floor; a missing count does not, so a row without a volume figure is kept.
+ */
+export function listedVolume(values: unknown[]): number | undefined {
+  const numbers = values.filter(
+    (value): value is number => typeof value === "number" && Number.isFinite(value)
+  );
+  if (numbers.length === 0) return undefined;
+  return numbers.find((value) => value > 0) ?? numbers[0];
 }
 
 function presentReason(reason: DiscoveryRankingReason): DiscoveryReasonPresentation | null {

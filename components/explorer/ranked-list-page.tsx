@@ -46,8 +46,8 @@ export function RankedListPage({
   window: StatsWindow;
   semantics: NativeApiSemantics;
   heroExtraBadges?: ReactNode;
-  sectionTitle: string;
-  sectionDescription: string;
+  sectionTitle?: string;
+  sectionDescription?: string;
   errorMessage: string;
   emptyTitle: string;
   emptyMessage: string;
@@ -87,21 +87,75 @@ export function RankedListPage({
           }}
         />
       ) : null}
-      <SectionCard title={sectionTitle} description={sectionDescription}>
-        {hasItems ? children : <EmptyState title={emptyTitle} message={emptyMessage} />}
-        {continuationHref ? (
-          <Link
-            href={continuationHref}
-            className="border-edge/80 text-ink hover:text-accent-ink mt-6 inline-flex min-h-11 items-center gap-2 border-t pt-4 text-sm font-medium"
+      {sectionTitle ? (
+        <SectionCard title={sectionTitle} description={sectionDescription}>
+          <RankedListBody
+            hasItems={hasItems}
+            errorMessage={errorMessage}
+            emptyTitle={emptyTitle}
+            emptyMessage={emptyMessage}
+            continuationHref={continuationHref}
+            continuationLabel={continuationLabel}
+            footer={footer}
           >
-            {continuationLabel}
-            <span aria-hidden>→</span>
-          </Link>
-        ) : null}
-        {footer}
-      </SectionCard>
+            {children}
+          </RankedListBody>
+        </SectionCard>
+      ) : (
+        <RankedListBody
+          hasItems={hasItems}
+          errorMessage={errorMessage}
+          emptyTitle={emptyTitle}
+          emptyMessage={emptyMessage}
+          continuationHref={continuationHref}
+          continuationLabel={continuationLabel}
+          footer={footer}
+        >
+          {children}
+        </RankedListBody>
+      )}
       <AboutThisData semantics={semantics} />
       <DebugDisclosure title="Debug payload" data={debugPayload ?? {}} />
     </DiscoverShell>
+  );
+}
+
+function RankedListBody({
+  hasItems,
+  errorMessage,
+  emptyTitle,
+  emptyMessage,
+  continuationHref,
+  continuationLabel,
+  footer,
+  children,
+}: {
+  hasItems: boolean;
+  errorMessage: string;
+  emptyTitle: string;
+  emptyMessage: string;
+  continuationHref?: string;
+  continuationLabel: string;
+  footer?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <>
+      {hasItems ? (
+        children
+      ) : errorMessage ? null : (
+        <EmptyState title={emptyTitle} message={emptyMessage} />
+      )}
+      {continuationHref ? (
+        <Link
+          href={continuationHref}
+          className="border-edge/80 text-ink hover:text-accent-ink mt-6 inline-flex min-h-11 items-center gap-2 border-t pt-4 text-sm font-medium"
+        >
+          {continuationLabel}
+          <span aria-hidden>→</span>
+        </Link>
+      ) : null}
+      {footer}
+    </>
   );
 }

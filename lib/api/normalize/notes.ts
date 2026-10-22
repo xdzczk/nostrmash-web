@@ -90,12 +90,20 @@ export function normalizeThreadActivityResponse(value: unknown): ThreadActivityR
     asString(asRecord(record.thread)?.root_event_id) ??
     asString(timeline?.root_event_id);
 
+  // The activity route returns hotspot counts (`activity: { replies_24h }`),
+  // not a list of events. Only an array is a timeline.
+  const activityRecord = asRecord(record.activity);
+  const activityEvents = Array.isArray(record.activity)
+    ? record.activity
+    : (record.events ?? record.notes ?? timeline?.events);
+
   return {
     ...record,
     root_event_id: rootEventId,
-    activity: normalizeEventRecords(
-      record.activity ?? record.events ?? record.notes ?? timeline?.events
-    ),
+    activity: normalizeEventRecords(activityEvents),
+    replies_24h: asNumber(activityRecord?.replies_24h) ?? asNumber(record.replies_24h),
+    replies_7d: asNumber(activityRecord?.replies_7d) ?? asNumber(record.replies_7d),
+    participant_count: asNumber(record.participant_count),
   };
 }
 

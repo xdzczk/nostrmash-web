@@ -2,19 +2,26 @@ import type { ReactNode } from "react";
 
 import { EmptyState } from "@/components/explorer/empty-state";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
-import { ThreadNode } from "@/components/thread/thread-node";
+import { ThreadNode, type LoadDirectReplies } from "@/components/thread/thread-node";
 import { buildReplyTree, type ReplyNode } from "@/lib/notes/thread-tree";
 import type { EventRecord, Profile } from "@/lib/types/api";
+
+export type { LoadDirectReplies };
 
 /** Server-renderable reply list; also used by the "Show more replies" action. */
 export function ThreadReplies({
   nodes,
   authorsByPubkey,
   contentResolution,
+  loadDirectReplies,
+  depth = 0,
 }: {
   nodes: ReplyNode[];
   authorsByPubkey?: Record<string, Profile>;
   contentResolution?: NoteContentResolution;
+  loadDirectReplies?: LoadDirectReplies;
+  /** 0 indents the next expansion; deeper expansions stay flat and say who they answer. */
+  depth?: number;
 }) {
   if (nodes.length === 0) return null;
   return (
@@ -25,6 +32,8 @@ export function ThreadReplies({
           node={node}
           authorsByPubkey={authorsByPubkey}
           contentResolution={contentResolution}
+          loadDirectReplies={loadDirectReplies}
+          depth={depth}
         />
       ))}
     </ul>
@@ -40,6 +49,7 @@ export function ThreadView({
   replies,
   authorsByPubkey,
   contentResolution,
+  loadDirectReplies,
   /** In-place pagination control rendered after the first page. */
   continuation,
   emptyMessage = "No replies have been indexed for this note yet.",
@@ -48,6 +58,7 @@ export function ThreadView({
   replies: EventRecord[];
   authorsByPubkey?: Record<string, Profile>;
   contentResolution?: NoteContentResolution;
+  loadDirectReplies?: LoadDirectReplies;
   continuation?: ReactNode;
   emptyMessage?: string;
 }) {
@@ -58,11 +69,12 @@ export function ThreadView({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-1">
       <ThreadReplies
         nodes={nodes}
         authorsByPubkey={authorsByPubkey}
         contentResolution={contentResolution}
+        loadDirectReplies={loadDirectReplies}
       />
       {continuation}
     </div>

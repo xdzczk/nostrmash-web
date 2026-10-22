@@ -2,14 +2,18 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { ArticlesList, NotesList, ProfilesList } from "@/components/data/renderers";
+import { ProfileRelatedRail } from "@/components/profile/profile-related-rail";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { isRecord } from "@/components/explorer/utils";
+import { mapRelatedProfileReasons } from "@/components/explorer/why-now";
 import { ProfileActivityTabs } from "@/components/profile/profile-activity-tabs";
 import {
   ProfileReactionsActivityList,
   ProfileZapsActivityList,
 } from "@/components/profile/profile-engagement-activity-list";
+import { ProfileHighlightsList } from "@/components/profile/profile-highlights-list";
+import { ProfileRepliesList } from "@/components/profile/profile-replies-list";
 import { Pill } from "@/components/ui/pill";
 import { SectionCard } from "@/components/ui/section-card";
 import { activityEmptyCopy, suggestActivityTab } from "@/lib/profile/activity-empty-state";
@@ -89,7 +93,14 @@ export async function DeferredProfileActivity({
     case "notes":
       panel =
         data.notes.length > 0 ? (
-          <NotesList notes={data.notes} authorsByPubkey={data.notesAuthorMap} />
+          <NotesList
+            notes={data.notes}
+            authorsByPubkey={data.notesAuthorMap}
+            showAuthor={false}
+            showUtilityLinks={false}
+            omitZeroStats
+            compactMedia
+          />
         ) : (
           empty("notes")
         );
@@ -97,7 +108,11 @@ export async function DeferredProfileActivity({
     case "replies":
       panel =
         data.replies.length > 0 ? (
-          <NotesList notes={data.replies} authorsByPubkey={data.notesAuthorMap} />
+          <ProfileRepliesList
+            replies={data.replies}
+            parentsById={data.replyParentsById}
+            authorsByPubkey={data.notesAuthorMap}
+          />
         ) : (
           empty("replies")
         );
@@ -132,6 +147,9 @@ export async function DeferredProfileActivity({
           <ArticlesList
             articles={data.longFormArticles}
             authorsByPubkey={{ ...data.notesAuthorMap, ...data.eventListAuthorsByPubkey }}
+            showAuthor={false}
+            showUtilityLinks={false}
+            omitZeroStats
           />
         ) : (
           empty("long_form")
@@ -143,6 +161,9 @@ export async function DeferredProfileActivity({
           <NotesList
             notes={data.bookmarks}
             authorsByPubkey={{ ...data.notesAuthorMap, ...data.eventListAuthorsByPubkey }}
+            showUtilityLinks={false}
+            omitZeroStats
+            compactMedia
           />
         ) : (
           empty("bookmarks")
@@ -151,10 +172,7 @@ export async function DeferredProfileActivity({
     case "highlights":
       panel =
         data.highlights.length > 0 ? (
-          <NotesList
-            notes={data.highlights}
-            authorsByPubkey={{ ...data.notesAuthorMap, ...data.eventListAuthorsByPubkey }}
-          />
+          <ProfileHighlightsList highlights={data.highlights} />
         ) : (
           empty("highlights")
         );
@@ -245,7 +263,10 @@ export async function DeferredProfileDiscovery({
     searchParams
   );
   const isFallback = data.relatedSource === "trending-fallback";
-  const hasProfiles = data.relatedProfiles.length > 0;
+  const relatedPeople = isFallback
+    ? data.relatedProfiles
+    : data.relatedProfiles.filter((profile) => mapRelatedProfileReasons(profile).length > 0);
+  const hasProfiles = relatedPeople.length > 0;
 
   return (
     <div id="related-profiles">
@@ -257,7 +278,7 @@ export async function DeferredProfileDiscovery({
             : "Profiles this account interacts with most, ranked by replies, reposts, and shared topics."
         }
       >
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-ink-muted text-xs font-medium">
               {isFallback ? "Trending profiles" : "Related profiles"}
@@ -277,11 +298,7 @@ export async function DeferredProfileDiscovery({
           </div>
           {hasProfiles ? (
             <>
-              <ProfilesList
-                profiles={data.relatedProfiles.slice(0, 8)}
-                discoverySignals={!isFallback}
-                maxReasons={2}
-              />
+              <ProfileRelatedRail profiles={relatedPeople} allowWithoutReason={isFallback} />
               {typeof data.relatedProfilesNextCursor === "string" &&
               data.relatedProfilesNextCursor.length > 0 ? (
                 <Link

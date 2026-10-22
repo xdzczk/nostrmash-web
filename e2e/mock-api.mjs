@@ -78,6 +78,8 @@ const REPLY_D_ID = "9".repeat(64);
 const REPOST_OTHER_ID = "7".repeat(64);
 const REPOST_FOCAL_ID = "8".repeat(64);
 const REPLIES_CURSOR_2 = "mock_replies_cursor_2";
+const DEEP_ID = "a1".repeat(32);
+const QUOTE_ID = "c1".repeat(32);
 
 const replyA = {
   id: REPLY_A_ID,
@@ -98,6 +100,7 @@ const replyB = {
   pubkey: NESTED_PK,
   kind: 1,
   created_at: 1_700_000_200,
+  reply_count: 1,
   content: "Nested reply to the first reply",
   tags: [
     ["e", FOCAL_ID, "", "root"],
@@ -166,6 +169,27 @@ const relatedRepostOfFocal = {
       ["p", AUTHOR_PK],
     ],
   },
+};
+const relatedQuote = {
+  id: QUOTE_ID,
+  pubkey: REPLIER_PK,
+  kind: 1,
+  created_at: 1_700_000_800,
+  content: "Quoting this note from another client",
+  reasons: ["quote_linkage"],
+  tags: [["q", FOCAL_ID]],
+};
+const deepNote = {
+  id: DEEP_ID,
+  pubkey: NESTED_PK,
+  kind: 1,
+  created_at: 1_700_000_900,
+  content: "A reply deep in the chain",
+  tags: [
+    ["e", FOCAL_ID, "", "root"],
+    ["e", REPLY_C_ID, "", "reply"],
+    ["p", REPLIER_PK],
+  ],
 };
 const threadProfiles = [
   { pubkey: REPLIER_PK, npub: "npub1replier", display_name: "Replier One", name: "replier" },
@@ -260,7 +284,7 @@ const trendingDomains = [
 ];
 
 const threadEventsById = new Map(
-  [quotedEvent, replyA, replyB, replyC, replyD].map((event) => [event.id, event])
+  [quotedEvent, replyA, replyB, replyC, replyD, deepNote].map((event) => [event.id, event])
 );
 
 function notePayload(id = FOCAL_ID) {
@@ -275,7 +299,11 @@ function notePayload(id = FOCAL_ID) {
     author: author ? { profile: author, pubkey: author.pubkey } : undefined,
     ancestors: [],
     replies: [],
-    counts: { reply_count: id === FOCAL_ID ? 5 : 2, reaction_count: 5 },
+    counts: {
+      reply_count: id === FOCAL_ID ? 5 : 2,
+      reaction_count: 5,
+      repost_count: id === FOCAL_ID ? 22 : 0,
+    },
     seen_on: [{ relay: "wss://relay.example.com" }],
     consistency: "eventual",
   };
@@ -518,6 +546,22 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { relays: [{ host: "relay.example.com", event_count: 10 }] });
   }
 
+  if (path.startsWith("/api/v1/authors/") && path.endsWith("/replies")) {
+    return json(res, 200, {
+      replies: [
+        {
+          id: "f".repeat(64),
+          pubkey: AUTHOR_PK,
+          kind: 1,
+          created_at: 1_700_000_200,
+          content: "Thanks for the note",
+          tags: [["e", FOCAL_ID, "", "reply"]],
+        },
+      ],
+      consistency: "eventual",
+    });
+  }
+
   if (path.startsWith("/api/v1/authors/")) {
     return json(res, 200, {
       events: trendingNotes,
@@ -622,20 +666,26 @@ const server = http.createServer(async (req, res) => {
     const isFocal = id === FOCAL_ID;
     if (path.endsWith("/ancestors")) {
       // The nested reply has the focal note and the first reply above it.
-      const ancestors = id === REPLY_B_ID ? [focalNote, replyA] : [];
+      // The deep note has a four-note chain so the middle collapses.
+      const ancestors =
+        id === REPLY_B_ID
+          ? [focalNote, replyA]
+          : id === DEEP_ID
+            ? [focalNote, replyA, replyB, replyC]
+            : [];
       return json(res, 200, { ancestors, missing_ancestor_ids: [] });
     }
     if (path.endsWith("/replies")) {
-      if (!isFocal) return json(res, 200, { replies: [] });
       const cursor = url.searchParams.get("cursor");
+      if (id === REPLY_A_ID) return json(res, 200, { replies: [replyB], consistency: "eventual" });
+      if (id === REPLY_B_ID) return json(res, 200, { replies: [replyD], consistency: "eventual" });
+      if (!isFocal) return json(res, 200, { replies: [] });
       if (cursor === REPLIES_CURSOR_2) {
         return json(res, 200, { replies: [replyC], consistency: "eventual" });
       }
       return json(res, 200, {
         replies: [
           replyA,
-          replyB,
-          replyD,
           duplicateReply(DUP_1_ID, 1_700_000_300),
           duplicateReply(DUP_2_ID, 1_700_000_310),
         ],
@@ -645,19 +695,22 @@ const server = http.createServer(async (req, res) => {
     }
     if (path.endsWith("/related")) {
       if (!isFocal) return json(res, 200, { related: [] });
-      return json(res, 200, { event_id: FOCAL_ID, related: [relatedRepostOfFocal] });
+      return json(res, 200, { event_id: FOCAL_ID, related: [relatedRepostOfFocal, relatedQuote] });
     }
     if (path.endsWith("/seen-on")) {
       return json(res, 200, { seen_on: [{ relay: "wss://relay.example.com" }] });
     }
     if (path.endsWith("/counts")) {
       return json(res, 200, {
-        counts: { reply_count: isFocal ? 5 : 2, reaction_count: 5 },
+        counts: { reply_count: isFocal ? 5 : 2, reaction_count: 5, repost_count: isFocal ? 22 : 0 },
       });
     }
     if (path.endsWith("/activity")) {
-      if (!isFocal) return json(res, 200, { activity: [] });
-      return json(res, 200, { root_event_id: FOCAL_ID, activity: [repostOfOther, replyA] });
+      return json(res, 200, {
+        root_event_id: isFocal ? FOCAL_ID : id,
+        participant_count: isFocal ? 69 : 3,
+        activity: { replies_24h: isFocal ? 22 : 1, replies_7d: isFocal ? 40 : 2 },
+      });
     }
     return json(res, 200, notePayload(id));
   }

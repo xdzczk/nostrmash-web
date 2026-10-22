@@ -34,6 +34,9 @@ export function ArticleCard({
   rank,
   discoverySignals = false,
   contentResolution,
+  showAuthor = true,
+  showUtilityLinks = true,
+  omitZeroStats = false,
 }: {
   article: EventRecord;
   author?: Profile;
@@ -41,6 +44,10 @@ export function ArticleCard({
   rank?: number;
   discoverySignals?: boolean;
   contentResolution?: NoteContentResolution;
+  /** Hide the author row. The profile page already names the subject. */
+  showAuthor?: boolean;
+  showUtilityLinks?: boolean;
+  omitZeroStats?: boolean;
 }) {
   const presentation = getArticlePresentation(article);
   const imageSrc = normalizeImageSrc(presentation.image);
@@ -135,7 +142,7 @@ export function ArticleCard({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-        {authorAvatarProfile ? (
+        {showAuthor && authorAvatarProfile ? (
           <ProfileAvatar
             profile={authorAvatarProfile}
             size={24}
@@ -144,7 +151,7 @@ export function ArticleCard({
             className="border-edge-strong h-6 w-6 rounded-full border object-cover"
           />
         ) : null}
-        {authorHref ? (
+        {showAuthor && authorHref ? (
           <Link
             href={authorHref}
             title={authorLabel}
@@ -152,15 +159,15 @@ export function ArticleCard({
           >
             {truncateProfileLabel(authorLabel)}
           </Link>
-        ) : (
+        ) : showAuthor ? (
           <span
             className="text-ink-soft inline-block max-w-[min(100%,16rem)] truncate font-medium"
             title={authorLabel}
           >
             {truncateProfileLabel(authorLabel)}
           </span>
-        )}
-        {authorSecondaryLabel && authorHref ? (
+        ) : null}
+        {showAuthor && authorSecondaryLabel && authorHref ? (
           <Link
             href={authorHref}
             className="text-ink-faint hover:text-ink-muted"
@@ -168,14 +175,16 @@ export function ArticleCard({
           >
             {truncateIdentifier(authorSecondaryLabel, "npub", "secondary")}
           </Link>
-        ) : authorSecondaryLabel ? (
+        ) : showAuthor && authorSecondaryLabel ? (
           <span className="text-ink-faint" title={authorSecondaryLabel}>
             {truncateIdentifier(authorSecondaryLabel, "npub", "secondary")}
           </span>
         ) : null}
-        <span aria-hidden className="text-ink-faint/70">
-          •
-        </span>
+        {showAuthor ? (
+          <span aria-hidden className="text-ink-faint/70">
+            •
+          </span>
+        ) : null}
         <Timestamp unixSeconds={presentation.publishedAt} />
       </div>
 
@@ -205,9 +214,9 @@ export function ArticleCard({
         </div>
       ) : null}
 
-      <DiscoveryStatPills stats={metrics} className="mt-2.5 sm:mt-3" />
+      <DiscoveryStatPills stats={metrics} omitZero={omitZeroStats} className="mt-2.5 sm:mt-3" />
 
-      {resolvedArticleId ? (
+      {showUtilityLinks && resolvedArticleId ? (
         <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
           <DiscoveryActionLinks
             actions={[

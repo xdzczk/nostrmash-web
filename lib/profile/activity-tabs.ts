@@ -5,11 +5,11 @@ import { buildContinuationHref } from "@/lib/search-params/pagination";
  * "More" menu so the primary row stays scannable on narrow screens.
  */
 export const PROFILE_ACTIVITY_TABS = [
-  { id: "notes", label: "Recent notes", secondary: false },
-  { id: "replies", label: "Recent replies", secondary: false },
-  { id: "reactions", label: "Recent reactions", secondary: false },
-  { id: "zaps", label: "Recent zaps", secondary: false },
-  { id: "long_form", label: "Long-form", secondary: false },
+  { id: "notes", label: "Notes", secondary: false },
+  { id: "replies", label: "Replies", secondary: false },
+  { id: "reactions", label: "Reactions", secondary: false },
+  { id: "zaps", label: "Zaps", secondary: false },
+  { id: "long_form", label: "Articles", secondary: false },
   { id: "bookmarks", label: "Bookmarks", secondary: true },
   { id: "highlights", label: "Highlights", secondary: true },
   { id: "mute_list", label: "Mute list", secondary: true },

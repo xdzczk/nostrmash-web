@@ -9,7 +9,8 @@ test.describe("note page reading surface", () => {
 
     const headings = page.getByRole("heading", { level: 1 });
     await expect(headings).toHaveCount(1);
-    await expect(headings).toHaveText("Note by Mock Author");
+    await expect(headings).toHaveText("Mock Author");
+    await expect(page.getByRole("heading", { name: "Note by Mock Author" })).toHaveCount(0);
 
     // The focal note is the first thing in the reading column and renders at
     // reading size; nothing on the page is below 12px.
@@ -60,20 +61,23 @@ test.describe("note page thread", () => {
     await page.goto(`/notes/${FOCAL_ID}`);
 
     const thread = page.locator("#conversation-context");
-    await expect(thread.getByRole("heading", { name: /^\d+ replies$/ })).toBeVisible();
+    await expect(thread.getByRole("heading", { name: /5 replies/ })).toBeVisible();
+    await expect(thread.getByRole("heading", { name: /22 in the last day/ })).toBeVisible();
+    await expect(thread.getByRole("heading", { name: /69 people/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Show thread activity" })).toHaveCount(0);
 
-    // Two top-level replies; the nested reply and the depth-2 reply both sit
-    // one visual level down, and the depth-2 one says who it answers.
+    // Direct replies only. The branch under the first reply loads in place.
     const topLevel = thread.getByRole("article", { name: "Reply", exact: true });
     await expect(topLevel).toHaveCount(2);
+    await expect(thread.getByText("Nested reply to the first reply")).toHaveCount(0);
+    await thread.getByRole("button", { name: "Show 1 reply" }).click();
+    await expect(thread.getByText("Nested reply to the first reply")).toBeVisible();
+    await thread.getByRole("button", { name: "Show 1 reply" }).click();
     const nested = thread.getByRole("article", { name: "Nested reply" });
-    await expect(nested).toHaveCount(2);
     const deep = nested.filter({ hasText: "Deep reply to the nested reply" });
     await expect(deep.getByText("replying to")).toBeVisible();
     await expect(deep.getByRole("link", { name: "@Nested Nancy" })).toBeVisible();
-    await expect(
-      nested.filter({ hasText: "Nested reply to the first reply" }).getByText("replying to")
-    ).toHaveCount(0);
+    expect(page.url()).not.toContain("cursor");
 
     // Two identical replies from one author are folded into a single card.
     await expect(thread.getByText("Same reply posted twice")).toHaveCount(1);
@@ -98,7 +102,8 @@ test.describe("note page thread", () => {
 
   test("shows ancestors above a nested reply", async ({ page }) => {
     await page.goto(`/notes/${NESTED_REPLY_ID}`);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Reply by Nested Nancy");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Nested Nancy");
+    await expect(page.getByRole("link", { name: "Reply in a conversation" })).toBeVisible();
     const ancestors = page.getByRole("list", { name: "Earlier in this thread" });
     await expect(ancestors).toBeVisible();
     await expect(ancestors.getByText(/Hello/)).toBeVisible();
@@ -123,26 +128,38 @@ test.describe("note page thread", () => {
   });
 });
 
-test.describe("note page on-demand sections", () => {
-  test("thread activity renders reposts as attributions, never raw JSON", async ({ page }) => {
+test.describe("note page context", () => {
+  test("reposts roll up and quotes stay in their own section", async ({ page }) => {
     await page.goto(`/notes/${FOCAL_ID}`);
-    const activity = page.locator("#thread-activity");
-    await activity.getByRole("button", { name: "Show thread activity" }).click();
+    await page.getByRole("button", { name: /Reposts/ }).click();
+    await expect(page.getByText("Reposted by Rhea Reposter, and 21 others")).toBeVisible();
 
-    await expect(activity.getByRole("article", { name: "Repost by Rhea Reposter" })).toBeVisible();
-    await expect(activity.getByText("Quoted note body for mock e2e")).toBeVisible();
-    await expect(activity.getByText(/"kind":/)).toHaveCount(0);
-    expect(page.url()).not.toContain("view=full");
+    const related = page.locator("#related-notes");
+    await related.getByRole("button", { name: "Show quotes and mentions" }).click();
+    await expect(related.getByText("Quoting this note from another client")).toBeVisible();
+    await expect(related.getByText(/reposted this note/i)).toHaveCount(0);
+    await expect(related.getByText(/"sig":/)).toHaveCount(0);
   });
 
-  test("related reposts of the focal note collapse to one line", async ({ page }) => {
+  test("provenance uses a date and drops empty schema fields", async ({ page }) => {
     await page.goto(`/notes/${FOCAL_ID}`);
-    const related = page.locator("#related-notes");
-    await related.getByRole("button", { name: "Show related notes" }).click();
+    await page.getByText("Details & provenance", { exact: true }).click();
+    const provenance = page.locator("#note-provenance");
+    await expect(provenance.getByText("Has image")).toHaveCount(0);
+    await expect(provenance.getByText("1,700,000,000")).toHaveCount(0);
+    await expect(provenance.getByRole("definition").filter({ hasText: /^Note$/ })).toBeVisible();
+    await expect(provenance.locator("time").first()).toBeVisible();
+  });
 
-    await expect(related.getByText("reposted this note")).toBeVisible();
-    await expect(related.getByText(/Hello https:\/\/example\.com/)).toHaveCount(0);
-    await expect(related.getByText(/"sig":/)).toHaveCount(0);
+  test("a long ancestor chain collapses the middle", async ({ page }) => {
+    await page.goto(`/notes/${"a1".repeat(32)}`);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Nested Nancy");
+    await expect(page.getByText("A reply deep in the chain")).toBeVisible();
+    await expect(page.getByText("Second page reply loaded in place")).toBeVisible();
+    await expect(page.getByText("Nested reply to the first reply")).toHaveCount(0);
+    await page.getByRole("button", { name: "Show 2 earlier notes" }).click();
+    await expect(page.getByText("Nested reply to the first reply")).toBeVisible();
+    await expect(page.getByText("First direct reply with a tall image")).toBeVisible();
   });
 });
 
@@ -151,7 +168,7 @@ test.describe("note page mobile", () => {
 
   test("no horizontal overflow and the breadcrumb stays on one row", async ({ page }) => {
     await page.goto(`/notes/${FOCAL_ID}`);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Note by Mock Author");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mock Author");
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth
     );

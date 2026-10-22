@@ -66,22 +66,24 @@ export function ProfileActivityTabBar({
 
   return (
     <>
-      <TabBar
-        ariaLabel={ariaLabel}
-        items={decorate(items)}
-        overflow={overflow ? { ...overflow, items: decorate(overflow.items) } : undefined}
-        renderLink={(tab, className, options) => (
-          <Link
-            href={tab.href}
-            onClick={select(tab)}
-            role={options?.role}
-            aria-current={tab.active ? "page" : undefined}
-            className={className}
-          >
-            <TabLinkContent tab={tab} />
-          </Link>
-        )}
-      />
+      <div className="bg-background sticky top-16 z-30">
+        <TabBar
+          ariaLabel={ariaLabel}
+          items={decorate(items)}
+          overflow={overflow ? { ...overflow, items: decorate(overflow.items) } : undefined}
+          renderLink={(tab, className, options) => (
+            <Link
+              href={tab.href}
+              onClick={select(tab)}
+              role={options?.role}
+              aria-current={tab.active ? "page" : undefined}
+              className={className}
+            >
+              <TabLinkContent tab={tab} />
+            </Link>
+          )}
+        />
+      </div>
       <div
         aria-busy={isPending || undefined}
         aria-live="polite"

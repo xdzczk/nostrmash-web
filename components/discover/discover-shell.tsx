@@ -57,6 +57,8 @@ export function DiscoverShell({
   children: ReactNode;
 }) {
   const modeLinks = DISCOVER_MODE_LINKS[view] ?? [];
+  const query = searchParams.toString();
+  const retryHref = query.length > 0 ? `${path}?${query}` : path;
 
   return (
     <div className="space-y-6 sm:space-y-7">
@@ -103,7 +105,7 @@ export function DiscoverShell({
         hasContent ? (
           <SoftRefreshNote message={errorMessage} />
         ) : (
-          <ErrorPanel message={errorMessage} />
+          <ErrorPanel message={errorMessage} retryHref={retryHref} />
         )
       ) : null}
 

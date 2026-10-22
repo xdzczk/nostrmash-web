@@ -5,8 +5,7 @@ import { extractNoteMediaAttachments } from "@/lib/notes/media";
  * - `full`: every attachment at natural ratio (list and detail cards).
  * - `lead`: max two attachments side by side in fixed boxes (homepage lead;
  *   no CLS, and the card never grows by more than one image's height).
- * - `compact`: one attachment with a `+N` badge; a square thumbnail below
- *   `lg` (sits beside the text) and a 16:10 strip from `lg` up.
+ * - `compact`: one attachment with a `+N` badge, always a square thumbnail.
  */
 export type NoteMediaVariant = "full" | "lead" | "compact";
 
@@ -36,7 +35,7 @@ export function NoteMedia({
 
   const wrapperClassName =
     variant === "compact"
-      ? ""
+      ? "w-[5.5rem]"
       : variant === "lead"
         ? // Two lead images share a row instead of stacking.
           `mt-4 grid gap-3 ${visible.length > 1 ? "grid-cols-2" : "grid-cols-1"}`

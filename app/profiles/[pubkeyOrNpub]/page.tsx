@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { CopyValueButton } from "@/components/actions/copy-value-button";
@@ -12,6 +11,7 @@ import { IdBadge } from "@/components/explorer/id-badge";
 import { AboutThisData } from "@/components/explorer/about-this-data";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { RichInlineText } from "@/components/explorer/note-content";
+import { NotFoundState } from "@/components/layout/not-found-state";
 import {
   isRecord,
   normalizeImageSrc,
@@ -24,7 +24,7 @@ import {
   DeferredProfileActivity,
   DeferredProfileDiscovery,
 } from "@/components/profile/deferred-profile-sections";
-import { ProfileBannerBackdrop } from "@/components/profile/profile-banner-backdrop";
+import { ProfileCover } from "@/components/profile/profile-banner-backdrop";
 import { ProfileHeroSignals } from "@/components/profile/profile-hero-signals";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Disclosure } from "@/components/ui/disclosure";
@@ -140,19 +140,71 @@ function fallbackIdentityDetails(
 
 type IdentityDetailRow = { key: string; label: string; value: MetadataPrimitiveValue };
 
-/** Keys already represented elsewhere in the hero (badge, bio, hero name). */
-const HERO_DUPLICATE_IDENTITY_KEYS = new Set(["npub_or_pubkey", "npub", "pubkey", "about", "name"]);
+/** Keys and labels already visible in the hero (name, bio, website, Lightning, NIP-05). */
+const HERO_DUPLICATE_IDENTITY_KEYS = new Set([
+  "npub_or_pubkey",
+  "npub",
+  "pubkey",
+  "about",
+  "name",
+  "display_name",
+  "displayname",
+  "nip05",
+  "nip_05",
+  "website",
+  "lud16",
+  "lud_16",
+  "lightning",
+  "lnurl",
+]);
+const HERO_DUPLICATE_IDENTITY_LABELS = new Set([
+  "display name",
+  "name",
+  "about",
+  "nip-05",
+  "website",
+  "lud-16",
+  "lightning",
+]);
 
 /**
  * Drop fields the hero already shows and turn raw unix timestamps into a
  * readable date (the raw value stays available via `title` and copy).
  */
+function appendOverflowProfileFields(
+  rows: IdentityDetailRow[],
+  fields: Array<[string, string]>
+): IdentityDetailRow[] {
+  if (fields.length === 0) return rows;
+  const seen = new Set(rows.map((row) => row.label.trim().toLowerCase()));
+  const extra = fields.flatMap(([label, value]): IdentityDetailRow[] => {
+    const key = label.trim().toLowerCase();
+    if (!key || seen.has(key)) return [];
+    seen.add(key);
+    return [
+      {
+        key: `field:${key}`,
+        label,
+        value: { raw: value, display: value, copyable: true },
+      },
+    ];
+  });
+  return extra.length > 0 ? [...rows, ...extra] : rows;
+}
+
 function presentIdentityDetails(rows: IdentityDetailRow[]): IdentityDetailRow[] {
   const seen = new Set<string>();
   const result: IdentityDetailRow[] = [];
   for (const row of rows) {
     const key = row.key.toLowerCase();
-    if (HERO_DUPLICATE_IDENTITY_KEYS.has(key) || seen.has(key)) continue;
+    const labelKey = row.label.trim().toLowerCase();
+    if (
+      HERO_DUPLICATE_IDENTITY_KEYS.has(key) ||
+      HERO_DUPLICATE_IDENTITY_LABELS.has(labelKey) ||
+      seen.has(key)
+    ) {
+      continue;
+    }
     seen.add(key);
     if (key === "metadata_created_at") {
       const iso = formatUnixDate(row.value.raw ?? row.value.display);
@@ -161,7 +213,7 @@ function presentIdentityDetails(rows: IdentityDetailRow[]): IdentityDetailRow[] 
         label: "Metadata updated",
         value: {
           ...row.value,
-          display: iso ? `${iso} (unix ${row.value.raw ?? row.value.display})` : row.value.display,
+          display: iso ?? row.value.display,
           copyable: true,
         },
       });
@@ -227,7 +279,7 @@ export default async function ProfilePage({
 }) {
   const { pubkeyOrNpub } = await params;
   if (!isValidPubkeyOrNpubParam(pubkeyOrNpub)) {
-    notFound();
+    return <NotFoundState />;
   }
   const resolvedSearchParams = await searchParams;
   const {
@@ -243,7 +295,7 @@ export default async function ProfilePage({
     notFound: profileNotFound,
   } = await loadProfileFocalData(pubkeyOrNpub);
   if (profileNotFound) {
-    notFound();
+    return <NotFoundState />;
   }
 
   const hero = isRecord(summaryRecord?.hero) ? summaryRecord.hero : null;
@@ -301,10 +353,16 @@ export default async function ProfilePage({
         Boolean(entry)
       );
   })();
-  const identityDetails = presentIdentityDetails(
-    identityDetailsFromSummary.length > 0
-      ? identityDetailsFromSummary
-      : fallbackIdentityDetails(profile, summaryRecord)
+  const heroFieldLimit = 3;
+  const heroFields = (profile?.fields ?? []).slice(0, heroFieldLimit);
+  const overflowFields = (profile?.fields ?? []).slice(heroFieldLimit);
+  const identityDetails = appendOverflowProfileFields(
+    presentIdentityDetails(
+      identityDetailsFromSummary.length > 0
+        ? identityDetailsFromSummary
+        : fallbackIdentityDetails(profile, summaryRecord)
+    ),
+    overflowFields
   );
   const pubkeyHex =
     resolvePubkeyParam(pubkeyOrNpub) ??
@@ -364,86 +422,86 @@ export default async function ProfilePage({
         )
       ) : null}
 
-      <section className="nm-signal-rule relative isolate pt-6 pb-1 sm:pt-8 sm:pb-2">
-        {bannerSrc ? <ProfileBannerBackdrop src={bannerSrc} /> : null}
+      <section className="nm-signal-rule relative pt-6 pb-1 sm:pt-8 sm:pb-2">
         <div className="mb-5 flex items-center justify-between gap-4">
           <p className="nm-kicker">Profile intelligence</p>
           <EntityContextNav view="people" compact />
         </div>
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-          <div className="flex min-w-0 items-start gap-5 sm:gap-7">
+        {bannerSrc ? <ProfileCover src={bannerSrc} /> : null}
+        <div className={bannerSrc ? "relative z-10 -mt-8 sm:-mt-10" : undefined}>
+          <div className="flex min-w-0 items-start gap-4 sm:gap-5">
             <ProfileAvatar
               profile={avatarProfile}
               size={112}
               alt={profile ? profileLabel(profile) : heroDisplayName}
               enlarge
-              className="border-edge bg-surface h-20 w-20 rounded-full border object-cover sm:h-28 sm:w-28"
+              className={`bg-surface h-16 w-16 rounded-full object-cover sm:h-24 sm:w-24 ${
+                bannerSrc ? "ring-background ring-4" : "border-edge border"
+              }`}
             />
-            <div className="min-w-0 flex-1 space-y-2.5">
+            <div className="min-w-0 flex-1 space-y-2 pt-1 sm:pt-3">
               <h1 className="nm-display-lg text-ink-strong truncate" title={heroDisplayName}>
                 {heroDisplayName}
               </h1>
               {showHeroHandle && heroHandle ? (
-                <p className="text-ink-muted truncate text-base" title={heroHandleRaw}>
+                <p className="text-ink-muted truncate text-sm sm:text-base" title={heroHandleRaw}>
                   {heroHandle}
                 </p>
+              ) : null}
+              {heroWebsite?.raw || heroLud16?.raw || externalHeroActions.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                  {heroWebsite?.raw ? (
+                    <Link
+                      href={heroWebsite.raw}
+                      rel="noopener noreferrer nofollow"
+                      target="_blank"
+                      className="text-link hover:text-link-hover"
+                      title={heroWebsite.raw}
+                    >
+                      {heroWebsiteLabel}
+                      <span aria-hidden className="text-ink-faint ml-1">
+                        ↗
+                      </span>
+                    </Link>
+                  ) : null}
+                  {heroLud16?.raw ? (
+                    <a
+                      href={`lightning:${heroLud16.raw}`}
+                      className="text-link hover:text-link-hover"
+                    >
+                      {heroLud16.display ?? heroLud16.raw}
+                    </a>
+                  ) : null}
+                  {externalHeroActions.map((action) => (
+                    <Link
+                      key={action.id}
+                      href={action.href}
+                      rel="noopener noreferrer nofollow"
+                      target="_blank"
+                      className="text-link hover:text-link-hover"
+                    >
+                      {action.label}
+                    </Link>
+                  ))}
+                </div>
               ) : null}
               {rawHeroBio ? (
                 <RichInlineText
                   text={rawHeroBio}
-                  className="text-ink-dim max-w-3xl text-base leading-7 [overflow-wrap:anywhere]"
+                  className="text-ink-dim line-clamp-2 max-w-3xl text-sm leading-6 [overflow-wrap:anywhere] sm:text-base sm:leading-7"
                   resolution={contentResolution}
                 />
-              ) : (
-                <p className="text-ink-dim max-w-3xl text-base leading-7 [overflow-wrap:anywhere]">
-                  {heroBio}
-                </p>
-              )}
+              ) : null}
               <ProfileHeroSignals
                 trust={trustSummary}
                 recentActivityAt={recentActivityAt}
                 nowMs={nowMs}
                 bot={profile?.bot}
-                fields={profile?.fields}
+                fields={heroFields}
                 className="pt-1"
               />
             </div>
           </div>
-
-          {heroWebsite?.raw || heroLud16?.raw || externalHeroActions.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm lg:justify-end lg:pt-9">
-              {heroWebsite?.raw ? (
-                <Link
-                  href={heroWebsite.raw}
-                  rel="noopener noreferrer nofollow"
-                  target="_blank"
-                  className="text-link hover:text-link-hover"
-                  title={heroWebsite.raw}
-                >
-                  {heroWebsiteLabel}
-                  <span aria-hidden className="text-ink-faint ml-1">
-                    ↗
-                  </span>
-                </Link>
-              ) : null}
-              {heroLud16?.raw ? (
-                <a href={`lightning:${heroLud16.raw}`} className="text-link hover:text-link-hover">
-                  {heroLud16.display ?? heroLud16.raw}
-                </a>
-              ) : null}
-              {externalHeroActions.map((action) => (
-                <Link
-                  key={action.id}
-                  href={action.href}
-                  rel="noopener noreferrer nofollow"
-                  target="_blank"
-                  className="text-link hover:text-link-hover"
-                >
-                  {action.label}
-                </Link>
-              ))}
-            </div>
-          ) : null}
         </div>
 
         <div className="border-edge/60 mt-7 grid gap-5 border-t pt-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
@@ -465,6 +523,7 @@ export default async function ProfilePage({
           <div data-testid="profile-actions" className="lg:justify-self-end">
             <EntityActions
               kind="profile"
+              layout="menu"
               absoluteUrl={absoluteUrl(`/profiles/${encodeURIComponent(canonicalNpub)}`)}
               identifier={canonicalNpub}
               nostrUri={`nostr:${canonicalNpub}`}
@@ -551,19 +610,19 @@ export default async function ProfilePage({
         }}
       />
 
-      <Suspense fallback={<Skeleton className="h-48 w-full rounded-xl" />}>
-        <DeferredProfileActivity
+      <Suspense fallback={<Skeleton className="h-28 w-full rounded-xl" />}>
+        <DeferredProfileDiscovery
           lookupKey={lookupKey}
-          profile={profile}
           profileRoute={profileRoute}
           summaryRecord={summaryRecord}
           searchParams={resolvedSearchParams}
         />
       </Suspense>
 
-      <Suspense fallback={<Skeleton className="h-40 w-full rounded-xl" />}>
-        <DeferredProfileDiscovery
+      <Suspense fallback={<Skeleton className="h-48 w-full rounded-xl" />}>
+        <DeferredProfileActivity
           lookupKey={lookupKey}
+          profile={profile}
           profileRoute={profileRoute}
           summaryRecord={summaryRecord}
           searchParams={resolvedSearchParams}

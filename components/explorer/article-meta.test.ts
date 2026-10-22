@@ -32,6 +32,21 @@ describe("getArticlePresentation", () => {
     const presentation = getArticlePresentation(ARTICLE);
     expect(presentation.body.length).toBe(ARTICLE.content.length);
   });
+
+  it("drops pipe tables so a table-only body has no pipe summary and no read time", () => {
+    const presentation = getArticlePresentation({
+      id: "d".repeat(64),
+      kind: LONG_FORM_KIND,
+      pubkey: "b".repeat(64),
+      content: "| Imagine | IF |\n| --- | --- |\n| 2026 |  |\n",
+      tags: [["title", "Imagine IF 2026"]],
+    });
+    expect(presentation.title).toBe("Imagine IF 2026");
+    expect(presentation.summary ?? "").not.toMatch(/\|/);
+    expect(presentation.summary).toBeUndefined();
+    expect(presentation.readingMinutes).toBeUndefined();
+    expect(presentation.readingMinutes).not.toBe(0);
+  });
 });
 
 describe("isLongFormEvent", () => {

@@ -4,11 +4,14 @@ export function ErrorPanel({
   message,
   title = "Couldn’t load this section",
   detail,
+  retryHref,
 }: {
   message: string;
   title?: string;
   /** Dev-only raw diagnostic (request ids, paths). Hidden in production. */
   detail?: string;
+  /** Same-page link that asks the reader to load the section again. */
+  retryHref?: string;
 }) {
   const showDetail =
     process.env.NODE_ENV !== "production" && typeof detail === "string" && detail.trim().length > 0;
@@ -20,6 +23,11 @@ export function ErrorPanel({
     >
       <p className="text-ink font-medium">{title}</p>
       <p className="text-ink-muted mt-1.5 leading-6">{message}</p>
+      {retryHref ? (
+        <a href={retryHref} className="nm-action-link mt-3 inline-flex min-h-11 items-center">
+          Try again
+        </a>
+      ) : null}
       {showDetail ? (
         <details className="border-edge mt-3 rounded-lg border px-3 py-2 text-xs">
           <summary className="cursor-pointer select-none">Technical details</summary>

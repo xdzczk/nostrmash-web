@@ -59,10 +59,9 @@ describe("NoteContent", () => {
 
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("Quoted body")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /note1/ })).toHaveAttribute(
-      "href",
-      `/notes/${encodeURIComponent(EVENT_ID)}`
-    );
+    const noteLink = screen.getByRole("link", { name: "note" });
+    expect(noteLink).toHaveAttribute("href", `/notes/${encodeURIComponent(EVENT_ID)}`);
+    expect(noteLink).toHaveAttribute("title", EVENT_ID);
   });
 
   it("redacts nsec secrets", () => {

@@ -17,6 +17,7 @@ import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { fetchProfilesByPubkey, listHydratablePubkeys } from "@/lib/api/profile-hydration";
 import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
+import type { ThreadActivityStats } from "@/lib/notes/thread-activity";
 import { resolveReplyParent, resolveReplyRoot } from "@/lib/notes/thread-tree";
 import { readSearchParam, toUrlSearchParams } from "@/lib/search-params/pagination";
 import type { EventRecord, Profile } from "@/lib/types/api";
@@ -248,9 +249,9 @@ export async function loadNoteThreadData(
   };
 }
 
-/** One cursor page of replies only (in-place "Show more replies"). */
-export async function loadRepliesPage(eventId: string, cursor: string) {
-  const payload = await getEventReplies(eventId, "shortTtl", { cursor });
+/** One cursor page of replies. Omit `cursor` for the first page. */
+export async function loadRepliesPage(eventId: string, cursor?: string) {
+  const payload = await getEventReplies(eventId, "shortTtl", cursor ? { cursor } : undefined);
   const replies = payload.replies ?? [];
 
   let authorsByPubkey: Record<string, Profile> = {};
@@ -279,6 +280,23 @@ export async function loadRepliesPage(eventId: string, cursor: string) {
     repliesNextCursor: payload.next_cursor,
   };
 }
+
+/** Hotspot counts for the replies heading. The activity route does not return events. */
+export const loadThreadActivityStats = cache(
+  async (rootEventId: string): Promise<ThreadActivityStats> => {
+    try {
+      const payload = await getThreadActivity(rootEventId, "shortTtl");
+      return {
+        replies24h: typeof payload.replies_24h === "number" ? payload.replies_24h : undefined,
+        replies7d: typeof payload.replies_7d === "number" ? payload.replies_7d : undefined,
+        participantCount:
+          typeof payload.participant_count === "number" ? payload.participant_count : undefined,
+      };
+    } catch {
+      return {};
+    }
+  }
+);
 
 export async function loadNoteActivityData(
   rootEventId: string,

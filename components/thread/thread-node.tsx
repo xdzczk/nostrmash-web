@@ -1,10 +1,20 @@
 import Link from "next/link";
 
+import type { LoadMoreChunk } from "@/components/data/load-more-list";
+import { OnDemandSection } from "@/components/notes/on-demand-section";
 import { EventReadingSurface } from "@/components/explorer/event-reading-surface";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
+import { AncestorReveal } from "@/components/thread/ancestor-reveal";
+import { FocusFocalNote } from "@/components/thread/focus-focal-note";
 import { lookupProfileByPubkey, profileHref, profileLabel } from "@/components/explorer/utils";
 import type { ReplyNode } from "@/lib/notes/thread-tree";
 import type { EventRecord, Profile } from "@/lib/types/api";
+
+export type LoadDirectReplies = (
+  eventId: string,
+  flattenUnderPubkey: string,
+  cursor: string | null
+) => Promise<LoadMoreChunk>;
 
 export function getAuthorByPubkey(
   authorsByPubkey: Record<string, Profile> | undefined,
@@ -70,18 +80,31 @@ function ReplyContext({
 }
 
 /** One reply, with its one level of nested children. */
+function replyCountOf(event: EventRecord): number {
+  return typeof event.reply_count === "number" && event.reply_count > 0 ? event.reply_count : 0;
+}
+
 export function ThreadNode({
   node,
   authorsByPubkey,
   contentResolution,
+  loadDirectReplies,
   depth = 0,
 }: {
   node: ReplyNode;
   authorsByPubkey?: Record<string, Profile>;
   contentResolution?: NoteContentResolution;
+  loadDirectReplies?: LoadDirectReplies;
   depth?: number;
 }) {
   const { reply, children, duplicateCount, replyingToPubkey } = node;
+  const replyCount = replyCountOf(reply);
+  const replyId = typeof reply.id === "string" ? reply.id : "";
+  // The replies API returns only direct children, so a count with nothing
+  // nested in this payload is a branch the reader can open here.
+  const canExpand =
+    Boolean(loadDirectReplies) && replyId.length > 0 && children.length === 0 && replyCount > 0;
+  const flattenUnder = depth === 0 ? "" : typeof reply.pubkey === "string" ? reply.pubkey : "";
   return (
     <li className="min-w-0">
       <article aria-label={depth === 0 ? "Reply" : "Nested reply"}>
@@ -99,45 +122,106 @@ export function ThreadNode({
         />
       </article>
       {children.length > 0 ? (
-        <ul className="border-edge/70 mt-1 ml-3 space-y-1 border-l-2 pl-3 sm:ml-5 sm:pl-4">
+        <ul className="border-edge/70 mt-1 ml-5 space-y-1 border-l pl-3 sm:ml-6">
           {children.map((child, index) => (
             <ThreadNode
               key={child.reply.id ?? `child-${index}`}
               node={child}
               authorsByPubkey={authorsByPubkey}
               contentResolution={contentResolution}
+              loadDirectReplies={loadDirectReplies}
               depth={depth + 1}
             />
           ))}
         </ul>
       ) : null}
+      {canExpand && loadDirectReplies ? (
+        <div className={depth === 0 ? "border-edge/70 mt-1 ml-5 border-l pl-3 sm:ml-6" : "mt-1"}>
+          <OnDemandSection
+            load={loadDirectReplies.bind(null, replyId, flattenUnder)}
+            label={
+              replyCount === 1 ? "Show 1 reply" : `Show ${replyCount.toLocaleString()} replies`
+            }
+            pendingLabel="Loading replies…"
+            moreLabel="Show more replies"
+            emptyMessage="No replies have been indexed for this note yet."
+          />
+        </div>
+      ) : null}
     </li>
   );
 }
 
-/** Ancestors rendered as a connected rail above the focal note. */
+function AncestorItem({
+  event,
+  authorsByPubkey,
+  contentResolution,
+}: {
+  event: EventRecord;
+  authorsByPubkey?: Record<string, Profile>;
+  contentResolution?: NoteContentResolution;
+}) {
+  return (
+    <li className="min-w-0">
+      <EventReadingSurface
+        event={event}
+        author={getAuthorByPubkey(authorsByPubkey, event.pubkey)}
+        contentResolution={contentResolution}
+        density="reply"
+      />
+    </li>
+  );
+}
+
+/**
+ * Ancestors above the focal note, on the same rail. Chains longer than the
+ * root plus the immediate parent collapse the middle until the reader asks.
+ */
 export function ThreadAncestors({
   ancestors,
   authorsByPubkey,
   contentResolution,
+  missingCount = 0,
 }: {
   ancestors: EventRecord[];
   authorsByPubkey?: Record<string, Profile>;
   contentResolution?: NoteContentResolution;
+  missingCount?: number;
 }) {
-  if (ancestors.length === 0) return null;
+  if (ancestors.length === 0 && missingCount === 0) return null;
+  const shared = { authorsByPubkey, contentResolution };
+  const collapsed = ancestors.length > 2;
+  const hidden = collapsed ? ancestors.slice(1, -1) : [];
+  const visible = collapsed ? [ancestors[0]!, ancestors[ancestors.length - 1]!] : ancestors;
   return (
-    <ol aria-label="Earlier in this thread" className="border-edge/70 ml-5 border-l-2 pl-4 sm:ml-6">
-      {ancestors.map((ancestor, index) => (
-        <li key={ancestor.id ?? `ancestor-${index}`} className="min-w-0">
-          <EventReadingSurface
-            event={ancestor}
-            author={getAuthorByPubkey(authorsByPubkey, ancestor.pubkey)}
-            contentResolution={contentResolution}
-            density="reply"
-          />
-        </li>
-      ))}
-    </ol>
+    <>
+      <ol aria-label="Earlier in this thread">
+        {collapsed ? (
+          <>
+            <AncestorItem event={visible[0]!} {...shared} />
+            <AncestorReveal count={hidden.length} missing={missingCount > 0}>
+              <ol>
+                {hidden.map((ancestor, index) => (
+                  <AncestorItem
+                    key={ancestor.id ?? `hidden-${index}`}
+                    event={ancestor}
+                    {...shared}
+                  />
+                ))}
+              </ol>
+            </AncestorReveal>
+            <AncestorItem event={visible[1]!} {...shared} />
+          </>
+        ) : (
+          ancestors.map((ancestor, index) => (
+            <AncestorItem key={ancestor.id ?? `ancestor-${index}`} event={ancestor} {...shared} />
+          ))
+        )}
+      </ol>
+      {missingCount > 0 && !collapsed ? (
+        <p className="text-ink-dim py-2 text-[13px]">Some earlier notes aren&apos;t indexed.</p>
+      ) : null}
+      <FocusFocalNote />
+    </>
   );
 }

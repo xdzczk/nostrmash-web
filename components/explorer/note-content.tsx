@@ -7,7 +7,6 @@ import {
   lookupProfileByHandle,
   lookupProfileByPubkey,
   sanitizeExternalHref,
-  truncateIdentifier,
 } from "@/components/explorer/utils";
 import { isNoteMediaUrl, stripNoteMediaUrls } from "@/lib/notes/media";
 import { hexToNpub } from "@/lib/nostr/nip19";
@@ -180,19 +179,14 @@ export function NoteContent({
             const author = quoted?.pubkey
               ? lookupProfileByPubkey(quoted.pubkey, resolution?.profilesByPubkey)
               : undefined;
-            const eventLabel = truncateIdentifier(
-              token.value.replace(/^nostr:/i, ""),
-              "note",
-              "primary"
-            );
             return (
               <span key={key} className="inline">
                 <Link
                   href={`/notes/${encodeURIComponent(token.id)}`}
-                  className="text-link hover:text-link-hover font-mono text-xs"
-                  title={token.value}
+                  className="text-link hover:text-link-hover font-medium"
+                  title={token.id}
                 >
-                  {eventLabel}
+                  note
                 </Link>
                 {showQuotes && quoted ? (
                   <QuoteCard event={quoted} author={author} resolution={resolution} />

@@ -6,6 +6,7 @@ import {
   getAuthorReactions,
   getAuthorReplies,
   getAuthorZaps,
+  getEventsBatch,
   getProfile,
   getProfileSummary,
   getRelatedProfiles,
@@ -40,7 +41,8 @@ import {
   toUrlSearchParams,
 } from "@/lib/search-params/pagination";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
-import type { Profile } from "@/lib/types/api";
+import { resolveReplyParent } from "@/lib/notes/thread-tree";
+import type { EventRecord, Profile } from "@/lib/types/api";
 
 export const getProfileSummaryCached = cache(async (pubkeyOrNpub: string) =>
   getProfileSummary(pubkeyOrNpub, "shortTtl")
@@ -429,6 +431,8 @@ export async function loadProfileActivityData(
       ? await fetchProfilesByPubkey(eventListAuthorPubkeys, "shortTtl")
       : {};
 
+  const replyParentsById = await loadReplyParents(replies);
+
   const notesAuthorMap =
     profile?.pubkey && profile.pubkey.length > 0
       ? { [profile.pubkey.toLowerCase()]: profile }
@@ -463,10 +467,35 @@ export async function loadProfileActivityData(
     notesAuthorMap,
     reactions,
     replies,
+    replyParentsById,
     targetNoteAuthorsByPubkey,
     targetNotesById,
     zaps,
   };
+}
+
+async function loadReplyParents(replies: EventRecord[]): Promise<Record<string, EventRecord>> {
+  const parentIds = Array.from(
+    new Set(
+      replies.flatMap((reply) => {
+        const id = resolveReplyParent(reply);
+        return id ? [id] : [];
+      })
+    )
+  );
+  if (parentIds.length === 0) return {};
+  try {
+    const { events } = await getEventsBatch(parentIds, "shortTtl");
+    const byId: Record<string, EventRecord> = {};
+    for (const event of events) {
+      if (typeof event.id === "string" && event.id.length > 0) {
+        byId[event.id.toLowerCase()] = event;
+      }
+    }
+    return byId;
+  } catch {
+    return {};
+  }
 }
 
 export async function loadProfileDiscoveryData(

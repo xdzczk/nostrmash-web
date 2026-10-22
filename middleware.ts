@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { isValidPubkeyOrNpubParam } from "@/lib/routing/params";
+
 /**
  * Edge middleware (not proxy.ts): Next.js 16 prefers proxy.ts (Node runtime),
  * but @opennextjs/cloudflare 1.20.x still rejects Node middleware at build time.
@@ -46,6 +48,22 @@ export function middleware(request: NextRequest) {
   requestHeaders.set("x-nonce", nonce);
   // Next reads the nonce from the request CSP header during SSR.
   requestHeaders.set("Content-Security-Policy", csp);
+
+  const profileMatch = /^\/profiles\/([^/]+)$/.exec(request.nextUrl.pathname);
+  if (profileMatch) {
+    const param = decodeURIComponent(profileMatch[1] ?? "");
+    // Invalid identifiers never match a profile. Rewriting to an unmatched
+    // path renders the root not-found page (the in-page notFound() shell stays
+    // blank) and keeps the 404 status.
+    if (!isValidPubkeyOrNpubParam(param)) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/__profile-not-found";
+      const rewrite = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+      rewrite.headers.set("Content-Security-Policy", csp);
+      rewrite.headers.set("X-Frame-Options", "DENY");
+      return rewrite;
+    }
+  }
 
   const response = NextResponse.next({
     request: { headers: requestHeaders },

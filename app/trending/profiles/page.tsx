@@ -11,7 +11,7 @@ import { buildEntityMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = buildEntityMetadata({
-  title: "Trending Profiles",
+  title: "People",
   description: "Explore the profiles with the strongest momentum.",
   path: "/trending/profiles",
 });
@@ -57,15 +57,13 @@ export default async function TrendingProfilesPage({
   return (
     <RankedListPage
       discoverView="people"
-      eyebrow="Ranked profiles"
-      title="Trending profiles"
+      eyebrow=""
+      title="People"
       subtitle="The profiles with the strongest momentum."
       path={path}
       searchParams={currentSearchParams}
       window={window}
       semantics={semantics}
-      sectionTitle="Ranked profiles"
-      sectionDescription="The profiles strongest in view."
       errorMessage={errorMessage}
       emptyTitle="No ranked profiles yet"
       emptyMessage="Ranked profiles have not populated for this window."

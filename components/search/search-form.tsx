@@ -1,10 +1,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
-import { profileIdentifier } from "@/components/explorer/utils";
-import { SuggestionDropdown } from "@/components/search/suggestion-dropdown";
+import {
+  profileIdentifier,
+  profileLabel,
+  profileSecondaryLabel,
+} from "@/components/explorer/utils";
+import {
+  SuggestionDropdown,
+  type SearchSuggestionAction,
+} from "@/components/search/suggestion-dropdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSearchSuggest } from "@/hooks/use-search-suggest";
@@ -54,9 +61,11 @@ export function SearchForm({
         ? "Search NostrMash"
         : "Search notes, profiles, hashtags...");
 
-  const { profiles, hashtags, hasResults, clear: clearSuggest } = useSearchSuggest(query);
-  const totalItems = profiles.length + hashtags.length;
-  const showDropdown = open && hasResults;
+  const { profiles: suggestedProfiles, hashtags, clear: clearSuggest } = useSearchSuggest(query);
+  const profiles = useMemo(() => dedupeSuggestProfiles(suggestedProfiles), [suggestedProfiles]);
+  const actions = useMemo(() => stableSearchActions(query, hashtags), [query, hashtags]);
+  const totalItems = actions.length + profiles.length + hashtags.length;
+  const showDropdown = open && query.trim().length >= 2 && totalItems > 0;
 
   const navigateToSearch = useCallback(
     (text: string) => {
@@ -106,14 +115,30 @@ export function SearchForm({
     [router, clearSuggest, navigateToSearch, onNavigate]
   );
 
+  const handleSelectAction = useCallback(
+    (action: SearchSuggestionAction) => {
+      setOpen(false);
+      clearSuggest();
+      onNavigate?.();
+      router.push(action.href);
+    },
+    [router, clearSuggest, onNavigate]
+  );
+
   const commitActiveItem = useCallback(() => {
     if (activeIndex < 0 || activeIndex >= totalItems) return false;
-    if (activeIndex < profiles.length) {
-      const profile = profiles[activeIndex];
+    if (activeIndex < actions.length) {
+      const action = actions[activeIndex];
+      if (action) handleSelectAction(action);
+      return true;
+    }
+    const profileIndex = activeIndex - actions.length;
+    if (profileIndex < profiles.length) {
+      const profile = profiles[profileIndex];
       if (profile) handleSelectProfile(profile);
       return true;
     }
-    const hashtagIndex = activeIndex - profiles.length;
+    const hashtagIndex = profileIndex - profiles.length;
     const entry = hashtags[hashtagIndex];
     const tag = (entry?.hashtag ?? "").replace(/^#/, "");
     if (tag) {
@@ -121,7 +146,16 @@ export function SearchForm({
       return true;
     }
     return false;
-  }, [activeIndex, totalItems, profiles, hashtags, handleSelectProfile, handleSelectHashtag]);
+  }, [
+    activeIndex,
+    totalItems,
+    actions,
+    profiles,
+    hashtags,
+    handleSelectAction,
+    handleSelectProfile,
+    handleSelectHashtag,
+  ]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -185,9 +219,11 @@ export function SearchForm({
           {showDropdown && (
             <SuggestionDropdown
               ref={dropdownRef}
+              actions={actions}
               profiles={profiles}
               hashtags={hashtags}
               activeIndex={activeIndex}
+              onSelectAction={handleSelectAction}
               onSelectProfile={handleSelectProfile}
               onSelectHashtag={handleSelectHashtag}
             />
@@ -254,4 +290,43 @@ export function SearchForm({
       ) : null}
     </form>
   );
+}
+
+function dedupeSuggestProfiles(profiles: Profile[]): Profile[] {
+  const seen = new Set<string>();
+  const unique: Profile[] = [];
+  for (const profile of profiles) {
+    const key = `${profileLabel(profile).trim().toLowerCase()}\n${(profileSecondaryLabel(profile) ?? "").trim().toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(profile);
+  }
+  return unique;
+}
+
+/** Rows that stay available even when suggest returns only profiles. */
+function stableSearchActions(
+  query: string,
+  hashtags: { hashtag?: string }[]
+): SearchSuggestionAction[] {
+  const trimmed = query.trim();
+  if (trimmed.length < 2) return [];
+  const actions: SearchSuggestionAction[] = [];
+  const tag = trimmed.replace(/^#/, "").trim().toLowerCase();
+  const alreadyListed = hashtags.some(
+    (entry) => (entry.hashtag ?? "").replace(/^#/, "").trim().toLowerCase() === tag
+  );
+  if (isValidHashtag(tag) && !alreadyListed) {
+    actions.push({
+      id: `hashtag-${tag}`,
+      label: `#${tag}`,
+      href: `/hashtags/${encodeURIComponent(tag)}/notes`,
+    });
+  }
+  actions.push({
+    id: "search-notes",
+    label: `Search notes for ${trimmed}`,
+    href: `/search?q=${encodeURIComponent(trimmed)}&tab=notes`,
+  });
+  return actions;
 }

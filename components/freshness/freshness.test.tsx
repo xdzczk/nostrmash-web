@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { IndexedAt } from "@/components/freshness/indexed-at";
@@ -39,6 +39,7 @@ describe("LiveRefresh", () => {
   beforeEach(() => {
     refresh.mockClear();
     vi.useFakeTimers();
+    Object.defineProperty(window, "scrollY", { configurable: true, value: 0 });
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
       get: () => "visible",
@@ -56,6 +57,17 @@ describe("LiveRefresh", () => {
     expect(refresh).toHaveBeenCalledTimes(1);
     vi.advanceTimersByTime(1000);
     expect(refresh).toHaveBeenCalledTimes(2);
+  });
+
+  it("holds a refresh below the top of the page until the reader applies it", async () => {
+    Object.defineProperty(window, "scrollY", { configurable: true, value: 400 });
+    render(<LiveRefresh intervalMs={1000} />);
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(refresh).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Updated" }));
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 
   it("skips refresh when the tab is hidden", () => {

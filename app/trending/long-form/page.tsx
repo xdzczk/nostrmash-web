@@ -10,7 +10,7 @@ import { buildContinuationHref, readSearchParam } from "@/lib/search-params/pagi
 import type { Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = {
-  title: "Trending Long-form",
+  title: "Long-form",
   description: "Explore the long-form articles leading the network.",
 };
 
@@ -66,8 +66,8 @@ export default async function TrendingLongFormPage({
     <RankedListPage
       discoverView="notes"
       discoverMode="long-form"
-      eyebrow="Ranked long-form"
-      title="Trending long-form"
+      eyebrow="Notes"
+      title="Long-form"
       subtitle="The long-form articles leading the network."
       path={path}
       searchParams={currentSearchParams}
@@ -80,8 +80,6 @@ export default async function TrendingLongFormPage({
           </span>
         ) : null
       }
-      sectionTitle="Ranked articles"
-      sectionDescription="The strongest long-form posts in view."
       errorMessage={errorMessage}
       emptyTitle="No ranked articles yet"
       emptyMessage="Ranked long-form articles have not populated for this window."

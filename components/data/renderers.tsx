@@ -5,15 +5,16 @@ import { DomainChip } from "@/components/explorer/domain-chip";
 import { pickPrimaryDomainSupportingSignal } from "@/components/explorer/domain-supporting-signal";
 import { HashtagChip } from "@/components/explorer/hashtag-chip";
 import { NoteCard } from "@/components/explorer/note-card";
+import { SourceFigure } from "@/components/explorer/source-figure";
 import { mapDomainWhyNow, mapHashtagWhyNow, WhyNow } from "@/components/explorer/why-now";
 import {
   domainHeadlineCount,
-  formatCompactNumber,
   normalizeDomainLabel,
   noteInlineAuthorProfile,
 } from "@/components/explorer/utils";
 import { ProfileCard } from "@/components/explorer/profile-card";
 import { isLongFormEvent } from "@/components/explorer/article-meta";
+import { belowVolumeFloor, listedVolume } from "@/lib/discover/reasons";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import {
   type DomainEntry,
@@ -40,12 +41,24 @@ export async function NotesList({
   ranked = false,
   showFullContent = false,
   discoverySignals = false,
+  conversation = false,
+  showAuthor = true,
+  showUtilityLinks = true,
+  omitZeroStats = false,
+  compactMedia = false,
 }: {
   notes: EventRecord[];
   authorsByPubkey?: Record<string, Profile>;
   ranked?: boolean;
   showFullContent?: boolean;
   discoverySignals?: boolean;
+  /** Hot conversations: reply count is the row stat, plus one thread link. */
+  conversation?: boolean;
+  showAuthor?: boolean;
+  showUtilityLinks?: boolean;
+  omitZeroStats?: boolean;
+  /** Square thumbnail instead of full-bleed media. */
+  compactMedia?: boolean;
 }) {
   const contentResolution = await resolveContentReferences(notes).catch(() => undefined);
   if (contentResolution && authorsByPubkey) {
@@ -66,6 +79,9 @@ export async function NotesList({
               rank={ranked ? (note.ranking?.rank ?? index + 1) : undefined}
               discoverySignals={discoverySignals}
               contentResolution={contentResolution}
+              showAuthor={showAuthor}
+              showUtilityLinks={showUtilityLinks}
+              omitZeroStats={omitZeroStats}
             />
           ) : (
             <NoteCard
@@ -75,6 +91,11 @@ export async function NotesList({
               showFullContent={showFullContent}
               discoverySignals={discoverySignals}
               contentResolution={contentResolution}
+              conversation={conversation}
+              showAuthor={showAuthor}
+              showUtilityLinks={showUtilityLinks}
+              omitZeroStats={omitZeroStats}
+              mediaVariant={compactMedia ? "compact" : undefined}
             />
           )}
         </li>
@@ -88,11 +109,17 @@ export async function ArticlesList({
   authorsByPubkey,
   ranked = false,
   discoverySignals = false,
+  showAuthor = true,
+  showUtilityLinks = true,
+  omitZeroStats = false,
 }: {
   articles: EventRecord[];
   authorsByPubkey?: Record<string, Profile>;
   ranked?: boolean;
   discoverySignals?: boolean;
+  showAuthor?: boolean;
+  showUtilityLinks?: boolean;
+  omitZeroStats?: boolean;
 }) {
   const contentResolution = await resolveContentReferences(articles).catch(() => undefined);
   if (contentResolution && authorsByPubkey) {
@@ -112,6 +139,9 @@ export async function ArticlesList({
             rank={ranked ? (article.ranking?.rank ?? index + 1) : undefined}
             discoverySignals={discoverySignals}
             contentResolution={contentResolution}
+            showAuthor={showAuthor}
+            showUtilityLinks={showUtilityLinks}
+            omitZeroStats={omitZeroStats}
           />
         </li>
       ))}
@@ -162,12 +192,16 @@ export function HashtagsList({
     count?: number;
     href?: string;
     rank?: number;
+    ranking?: HashtagEntry["ranking"];
     whyNow: ReturnType<typeof mapHashtagWhyNow>;
   }> = [];
   hashtags.forEach((entry, index) => {
     const hashtag = typeof entry === "string" ? entry : (entry.hashtag ?? "");
     const normalizedHashtag = hashtag.trim().replace(/^#/, "");
     if (normalizedHashtag.length === 0) return;
+    const volume =
+      typeof entry === "string" ? undefined : listedVolume([entry.event_count, entry.count]);
+    if (ranked && belowVolumeFloor(volume)) return;
     const count = typeof entry === "string" ? undefined : (entry.count ?? entry.event_count);
     const href =
       searchable && normalizedHashtag.length > 0
@@ -184,6 +218,7 @@ export function HashtagsList({
           ? index + 1
           : (entry.ranking?.rank ?? index + 1)
         : undefined,
+      ranking: typeof entry === "string" ? undefined : entry.ranking,
       whyNow: typeof entry === "string" ? [] : mapHashtagWhyNow(entry),
     });
   });
@@ -196,9 +231,9 @@ export function HashtagsList({
         {normalized.map((entry, index) => (
           <li
             key={`${entry.hashtag}-${index}`}
-            className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-baseline gap-3 py-4"
+            className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-start gap-3 py-4"
           >
-            <span className="text-accent-ink text-lg tracking-[-0.05em] tabular-nums">
+            <span className="text-accent-ink pt-0.5 text-lg tracking-[-0.05em] tabular-nums">
               {String(entry.rank ?? index + 1).padStart(2, "0")}
             </span>
             <div className="min-w-0">
@@ -214,9 +249,7 @@ export function HashtagsList({
               )}
               <WhyNow reasons={entry.whyNow} maxReasons={1} showLabel={false} className="mt-1.5" />
             </div>
-            <span className="text-ink-muted text-xs tabular-nums">
-              {typeof entry.count === "number" ? formatCompactNumber(entry.count) : "—"}
-            </span>
+            <SourceFigure ranking={entry.ranking} className="pt-0.5" />
           </li>
         ))}
       </ol>
@@ -271,6 +304,7 @@ export function DomainsList({
     count?: number;
     href?: string;
     rank?: number;
+    ranking?: DomainEntry["ranking"];
     whyNow: ReturnType<typeof mapDomainWhyNow>;
     supportingSignal: ReturnType<typeof pickPrimaryDomainSupportingSignal>;
   }> = [];
@@ -278,6 +312,11 @@ export function DomainsList({
     const domain = typeof entry === "string" ? entry : (entry.domain ?? "");
     const normalizedDomain = normalizeDomainLabel(domain);
     if (normalizedDomain.length === 0) return;
+    const volume =
+      typeof entry === "string"
+        ? undefined
+        : listedVolume([entry.link_count, entry.count, entry.event_count, entry.note_count]);
+    if (ranked && belowVolumeFloor(volume)) return;
     const href =
       searchable && normalizedDomain.length > 0
         ? `/domains/${encodeURIComponent(normalizedDomain)}`
@@ -293,6 +332,7 @@ export function DomainsList({
           ? index + 1
           : (entry.ranking?.rank ?? index + 1)
         : undefined,
+      ranking: typeof entry === "string" ? undefined : entry.ranking,
       whyNow: typeof entry === "string" ? [] : mapDomainWhyNow(entry),
       supportingSignal,
     });
@@ -305,9 +345,9 @@ export function DomainsList({
         {normalized.map((entry, index) => (
           <li
             key={`${entry.domain}-${index}`}
-            className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-baseline gap-3 py-4"
+            className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-start gap-3 py-4"
           >
-            <span className="text-accent-ink text-lg tracking-[-0.05em] tabular-nums">
+            <span className="text-accent-ink pt-0.5 text-lg tracking-[-0.05em] tabular-nums">
               {String(entry.rank ?? index + 1).padStart(2, "0")}
             </span>
             <div className="min-w-0">
@@ -323,9 +363,7 @@ export function DomainsList({
               )}
               <WhyNow reasons={entry.whyNow} maxReasons={1} showLabel={false} className="mt-1.5" />
             </div>
-            <span className="text-ink-muted text-xs tabular-nums">
-              {typeof entry.count === "number" ? formatCompactNumber(entry.count) : "—"}
-            </span>
+            <SourceFigure ranking={entry.ranking} className="pt-0.5" />
           </li>
         ))}
       </ol>

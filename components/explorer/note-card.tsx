@@ -1,8 +1,9 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 import { NoteContent, type NoteContentResolution } from "@/components/explorer/note-content";
 import { NoteLinkPreviews } from "@/components/explorer/note-link-previews";
-import { NoteMedia } from "@/components/explorer/note-media";
+import { NoteMedia, type NoteMediaVariant } from "@/components/explorer/note-media";
 import { getNotePreviewPresentation } from "@/components/explorer/note-preview";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
@@ -16,6 +17,7 @@ import {
 import { mapNoteWhyNow, WhyNow } from "@/components/explorer/why-now";
 import {
   extractEngagementStats,
+  formatProfileSecondary,
   normalizeDomainLabel,
   noteInlineAuthorProfile,
   noteAuthorIdentifier,
@@ -29,6 +31,7 @@ import {
   truncateProfileLabel,
 } from "@/components/explorer/utils";
 import { extractNoteLinkUrls } from "@/lib/notes/links";
+import { collapsePreviewWhitespace } from "@/lib/notes/summary-text";
 import { isRepostEvent } from "@/lib/notes/repost";
 import { tokenizeNoteContent } from "@/lib/notes/tokenize";
 import type { EventRecord, Profile } from "@/lib/types/api";
@@ -60,6 +63,12 @@ export function NoteCard({
   density = "list",
   priorityMedia = false,
   contextEventId,
+  repostsControl,
+  conversation = false,
+  showAuthor = true,
+  showUtilityLinks = true,
+  omitZeroStats = false,
+  mediaVariant,
 }: {
   note: EventRecord;
   author?: Profile;
@@ -73,6 +82,17 @@ export function NoteCard({
   priorityMedia?: boolean;
   /** Note the surrounding page is about; reposts of it render as one line. */
   contextEventId?: string;
+  /** Replaces the Reposts stat on the focal note with an expandable rollup. */
+  repostsControl?: ReactNode;
+  /** Reply count is the row stat, with one link into the thread. */
+  conversation?: boolean;
+  /** Hide the author row. Profile activity already names the subject. */
+  showAuthor?: boolean;
+  /** Open note / Inspect thread / Seen on relays. The card hit target stays. */
+  showUtilityLinks?: boolean;
+  /** Drop engagement stats whose value is zero. */
+  omitZeroStats?: boolean;
+  mediaVariant?: NoteMediaVariant;
 }) {
   if (isRepostEvent(note)) {
     return (
@@ -97,6 +117,12 @@ export function NoteCard({
       contentResolution={contentResolution}
       density={density}
       priorityMedia={priorityMedia}
+      repostsControl={repostsControl}
+      conversation={conversation}
+      showAuthor={showAuthor}
+      showUtilityLinks={showUtilityLinks}
+      omitZeroStats={omitZeroStats}
+      mediaVariant={mediaVariant}
     />
   );
 }
@@ -111,6 +137,12 @@ function NoteCardBody({
   contentResolution,
   density,
   priorityMedia,
+  repostsControl,
+  conversation,
+  showAuthor,
+  showUtilityLinks,
+  omitZeroStats,
+  mediaVariant: mediaVariantProp,
 }: {
   note: EventRecord;
   author?: Profile;
@@ -121,6 +153,12 @@ function NoteCardBody({
   contentResolution?: NoteContentResolution;
   density: NoteCardDensity;
   priorityMedia: boolean;
+  repostsControl?: ReactNode;
+  conversation: boolean;
+  showAuthor: boolean;
+  showUtilityLinks: boolean;
+  omitZeroStats: boolean;
+  mediaVariant?: NoteMediaVariant;
 }) {
   const isReply = density === "reply";
   const isDetail = density === "detail";
@@ -137,9 +175,12 @@ function NoteCardBody({
     href ?? (resolvedNoteId ? `/notes/${encodeURIComponent(resolvedNoteId)}` : undefined);
   const cardHref = noteHref && !showFullContent ? noteHref : undefined;
   const authorLabel = resolvedAuthor ? profileLabel(resolvedAuthor) : noteAuthorIdentifier(note);
-  const authorSecondaryLabel = resolvedAuthor
+  const authorSecondaryRaw = resolvedAuthor
     ? profileSecondaryLabel(resolvedAuthor)
     : noteAuthorIdentifier(note);
+  const authorSecondaryLabel = authorSecondaryRaw
+    ? presentAuthorSecondary(authorSecondaryRaw)
+    : null;
   const authorAvatarProfile =
     resolvedAuthor ??
     (typeof note.pubkey === "string" && note.pubkey.length > 0 ? { pubkey: note.pubkey } : null);
@@ -148,19 +189,24 @@ function NoteCardBody({
     typeof note.pubkey === "string" ? note.pubkey : undefined
   );
   const rawContent = typeof note.content === "string" ? note.content : "";
-  const content = rawContent.length > 0 ? rawContent : "(no content)";
+  const content =
+    rawContent.length > 0
+      ? showFullContent
+        ? rawContent
+        : collapsePreviewWhitespace(rawContent)
+      : "(no content)";
   const preview = getNotePreviewPresentation(note);
   const linkPreviewLimit = showFullContent ? 2 : 1;
   const linkPreviewUrls =
     !showFullContent && typeof note.content === "string"
       ? extractNoteLinkUrls(note.content, linkPreviewLimit)
       : [];
-  const prefersCompactClamp = preview.isCompact || preview.mode === "long_identifier_heavy_preview";
   const clampClassName = showFullContent
     ? "overflow-visible whitespace-pre-wrap [display:block] [line-clamp:unset] [-webkit-line-clamp:unset]"
-    : prefersCompactClamp
-      ? "line-clamp-2"
-      : "line-clamp-4";
+    : "line-clamp-2";
+  const mediaVariant =
+    mediaVariantProp ?? (!showFullContent && density === "list" ? "compact" : undefined);
+  const replyCount = noteReplyCount(note);
   const allMetrics = extractEngagementStats(note);
   const metrics = isReply ? allMetrics.filter(isNonZeroStat) : allMetrics;
   const isTopRank = typeof rank === "number" && rank <= 3;
@@ -202,7 +248,7 @@ function NoteCardBody({
             {rankLabel}
           </span>
         ) : null}
-        {authorAvatarProfile ? (
+        {showAuthor && authorAvatarProfile ? (
           <ProfileAvatar
             profile={authorAvatarProfile}
             size={44}
@@ -210,7 +256,7 @@ function NoteCardBody({
             href={authorHref}
             className="border-edge-strong h-10 w-10 rounded-full border object-cover sm:h-11 sm:w-11"
           />
-        ) : authorHref ? (
+        ) : showAuthor && authorHref ? (
           <Link
             href={authorHref}
             aria-label={`View ${authorLabel}`}
@@ -218,52 +264,66 @@ function NoteCardBody({
           >
             {authorLabel.slice(0, 1).toUpperCase() || "?"}
           </Link>
-        ) : (
+        ) : showAuthor ? (
           <div
             aria-hidden
             className="bg-surface-sunken/70 text-ink-faint flex h-10 w-10 items-center justify-center rounded-full text-xs sm:h-11 sm:w-11"
           >
             {authorLabel.slice(0, 1).toUpperCase() || "?"}
           </div>
-        )}
+        ) : null}
         <div className="min-w-0 flex-1">
           <div className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 ${metaTextClass}`}>
-            {authorHref ? (
-              <Link
-                href={authorHref}
-                title={authorLabel}
-                className={`text-ink-soft hover:text-ink-strong ${chipLinkClass} max-w-[min(100%,16rem)] truncate font-medium hover:underline`}
-              >
-                {truncateProfileLabel(authorLabel)}
-              </Link>
-            ) : (
+            {showAuthor && authorHref ? (
+              isDetail ? (
+                <h1 className="m-0 inline max-w-[min(100%,16rem)] truncate text-[13px] leading-5 font-medium">
+                  <Link
+                    href={authorHref}
+                    title={authorLabel}
+                    className={`text-ink-soft hover:text-ink-strong ${chipLinkClass} font-medium hover:underline`}
+                  >
+                    {truncateProfileLabel(authorLabel)}
+                  </Link>
+                </h1>
+              ) : (
+                <Link
+                  href={authorHref}
+                  title={authorLabel}
+                  className={`text-ink-soft hover:text-ink-strong ${chipLinkClass} max-w-[min(100%,16rem)] truncate font-medium hover:underline`}
+                >
+                  {truncateProfileLabel(authorLabel)}
+                </Link>
+              )
+            ) : showAuthor ? (
               <span
                 className="text-ink-soft inline-block max-w-[min(100%,16rem)] truncate font-medium"
                 title={authorLabel}
               >
                 {truncateProfileLabel(authorLabel)}
               </span>
-            )}
-            {authorSecondaryLabel && authorHref ? (
+            ) : null}
+            {showAuthor && authorSecondaryLabel && authorHref ? (
               <Link
                 href={authorHref}
                 className={`${density === "list" ? "text-ink-faint" : "text-ink-dim"} hover:text-ink-muted ${chipLinkClass}`}
-                title={authorSecondaryLabel}
+                title={authorSecondaryRaw ?? undefined}
               >
-                {truncateIdentifier(authorSecondaryLabel, "npub", "secondary")}
+                {authorSecondaryLabel}
               </Link>
-            ) : authorSecondaryLabel ? (
+            ) : showAuthor && authorSecondaryLabel ? (
               <span
                 className={density === "list" ? "text-ink-faint" : "text-ink-dim"}
-                title={authorSecondaryLabel}
+                title={authorSecondaryRaw ?? undefined}
               >
-                {truncateIdentifier(authorSecondaryLabel, "npub", "secondary")}
+                {authorSecondaryLabel}
               </span>
             ) : null}
             <span className="inline-flex items-center gap-2 whitespace-nowrap">
-              <span aria-hidden className="text-ink-faint/70">
-                •
-              </span>
+              {showAuthor ? (
+                <span aria-hidden className="text-ink-faint/70">
+                  •
+                </span>
+              ) : null}
               {isReply && noteHref ? (
                 <Link
                   href={noteHref}
@@ -282,7 +342,7 @@ function NoteCardBody({
 
       {preview.prefersMediaFirst && typeof note.content === "string" && note.content.length > 0 ? (
         <>
-          <NoteMedia content={note.content} priority={priorityMedia} />
+          <NoteMedia content={note.content} priority={priorityMedia} variant={mediaVariant} />
           <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
         </>
       ) : null}
@@ -296,7 +356,7 @@ function NoteCardBody({
       />
       {!preview.prefersMediaFirst && typeof note.content === "string" && note.content.length > 0 ? (
         <>
-          <NoteMedia content={note.content} priority={priorityMedia} />
+          <NoteMedia content={note.content} priority={priorityMedia} variant={mediaVariant} />
           <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
         </>
       ) : null}
@@ -364,13 +424,32 @@ function NoteCardBody({
         <WhyNow reasons={reasonCandidates} showLabel={false} className="mt-2.5 sm:mt-3" />
       ) : null}
 
-      <DiscoveryStatPills
-        stats={metrics}
-        className={isDetail ? "mt-4" : "mt-2.5 sm:mt-3"}
-        size={isDetail ? "md" : "sm"}
-      />
+      {conversation ? (
+        replyCount !== null ? (
+          <p className="text-ink mt-2.5 text-sm font-medium tabular-nums">
+            {replyCount.toLocaleString()} {replyCount === 1 ? "reply" : "replies"}
+          </p>
+        ) : null
+      ) : (
+        <DiscoveryStatPills
+          stats={metrics}
+          omitZero={omitZeroStats}
+          className={isDetail ? "mt-4" : "mt-2.5 sm:mt-3"}
+          size={isDetail ? "md" : "sm"}
+          replacements={isDetail && repostsControl ? { repost_count: repostsControl } : undefined}
+        />
+      )}
 
-      {resolvedNoteId && density === "list" ? (
+      {conversation && replyCount !== null && replyCount > 0 && resolvedNoteId ? (
+        <Link
+          href={`/notes/${encodeURIComponent(resolvedNoteId)}#conversation-context`}
+          className="nm-action-link mt-1 inline-flex min-h-11 items-center text-sm"
+        >
+          Thread
+        </Link>
+      ) : null}
+
+      {showUtilityLinks && resolvedNoteId && density === "list" && !cardHref ? (
         <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
           <DiscoveryActionLinks
             actions={[
@@ -390,4 +469,22 @@ function NoteCardBody({
       {cardHref ? <CardHitTarget href={cardHref} label={`Open note by ${authorLabel}`} /> : null}
     </article>
   );
+}
+
+function presentAuthorSecondary(value: string): string | null {
+  if (/^(npub1|nprofile1)/i.test(value) || /^[0-9a-f]{32,}$/i.test(value)) {
+    return truncateIdentifier(
+      value,
+      value.toLowerCase().startsWith("npub") ? "npub" : "pubkey",
+      "secondary"
+    );
+  }
+  const formatted = formatProfileSecondary(value);
+  return formatted.length > 0 ? formatted : null;
+}
+
+function noteReplyCount(note: EventRecord): number | null {
+  const value = note.reply_count;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return null;
+  return Math.round(value);
 }

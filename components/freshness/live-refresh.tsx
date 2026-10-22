@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
+
+/** Below this scroll offset a new payload can replace the list in place. */
+const TOP_OF_PAGE_PX = 80;
 
 function subscribeOnline(callback: () => void) {
   window.addEventListener("online", callback);
@@ -16,6 +19,7 @@ function subscribeOnline(callback: () => void) {
 export function LiveRefresh({ intervalMs = 75_000 }: { intervalMs?: number }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [updateReady, setUpdateReady] = useState(false);
   const online = useSyncExternalStore(
     subscribeOnline,
     () => navigator.onLine,
@@ -24,9 +28,13 @@ export function LiveRefresh({ intervalMs = 75_000 }: { intervalMs?: number }) {
 
   useEffect(() => {
     const tick = () => {
-      if (document.visibilityState === "visible" && navigator.onLine) {
+      if (document.visibilityState !== "visible" || !navigator.onLine) return;
+      if (window.scrollY <= TOP_OF_PAGE_PX) {
+        setUpdateReady(false);
         startTransition(() => router.refresh());
+        return;
       }
+      setUpdateReady(true);
     };
 
     const timer = window.setInterval(tick, intervalMs);
@@ -46,13 +54,33 @@ export function LiveRefresh({ intervalMs = 75_000 }: { intervalMs?: number }) {
     );
   }
 
-  return isPending ? (
-    <div
-      role="status"
-      className="border-edge/80 bg-surface/95 text-ink-muted fixed right-4 bottom-4 z-40 flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs shadow-lg backdrop-blur-lg sm:right-6 sm:bottom-6"
-    >
-      <span className="nm-live-dot" aria-hidden />
-      Updating changed ranking signals…
-    </div>
-  ) : null;
+  if (isPending) {
+    return (
+      <div
+        role="status"
+        className="border-edge/80 bg-surface/95 text-ink-muted fixed right-4 bottom-4 z-40 flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs shadow-lg backdrop-blur-lg sm:right-6 sm:bottom-6"
+      >
+        <span className="nm-live-dot" aria-hidden />
+        Updating changed ranking signals…
+      </div>
+    );
+  }
+
+  if (updateReady) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setUpdateReady(false);
+          startTransition(() => router.refresh());
+        }}
+        className="border-edge/80 bg-surface/95 text-ink fixed right-4 bottom-4 z-40 inline-flex min-h-11 items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-medium shadow-lg backdrop-blur-lg sm:right-6 sm:bottom-6"
+      >
+        <span className="nm-live-dot" aria-hidden />
+        Updated
+      </button>
+    );
+  }
+
+  return null;
 }

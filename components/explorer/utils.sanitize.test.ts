@@ -7,11 +7,15 @@ import {
   lookupProfileByHandle,
   profileHref,
   profileInitial,
+  formatProfileSecondary,
+  profileAboutLine,
   profileLabel,
   profilePictureUrl,
   profileSecondaryLabel,
   sanitizeExternalHref,
+  stripEmojiShortcodes,
   truncateIdentifier,
+  truncateNip05,
   truncateProfileLabel,
 } from "@/components/explorer/utils";
 
@@ -100,11 +104,30 @@ describe("profile identity presentation", () => {
     expect(profileLabel(profile)).toBe(
       truncateIdentifier("npub1stableidentifier", "npub", "primary")
     );
-    expect(profileSecondaryLabel(profile)).not.toContain("bad identity");
+    expect(profileSecondaryLabel(profile) ?? "").not.toContain("bad identity");
   });
 
-  it("preserves readable unicode names", () => {
+  it("preserves readable unicode names and drops emoji shortcodes", () => {
     expect(profileLabel({ pubkey: "b".repeat(64), display_name: "Иван ⚡" })).toBe("Иван ⚡");
+    expect(profileLabel({ pubkey: "b".repeat(64), display_name: ":israel_burn:Ada" })).toBe("Ada");
+    expect(stripEmojiShortcodes(":petthex_javasparrow:しゆいろ:petthex_javasparrow:(本物)")).toBe(
+      "しゆいろ(本物)"
+    );
+  });
+
+  it("keeps a NIP-05 domain and does not put a pubkey under a display name", () => {
+    expect(truncateNip05("mrsaturday@shitposter.mostr.pub", 28)).toBe(
+      "mrsatu…@shitposter.mostr.pub"
+    );
+    expect(truncateNip05("jeffbooth@nostrverified.com")).toBe("jeffbooth@nostrverified.com");
+    expect(formatProfileSecondary("alice@example.com")).toBe("alice@example.com");
+    const pubkey = "a".repeat(64);
+    expect(profileSecondaryLabel({ pubkey, display_name: "Ada" })).toBeNull();
+    expect(
+      profileAboutLine(
+        "Builder npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq lnbc1qqqqqqqqqqqqqqqqqqqqqq"
+      )
+    ).not.toMatch(/npub|lnbc/);
   });
 
   it("end-truncates extremely long display names without splitting emoji", () => {

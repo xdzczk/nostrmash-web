@@ -73,13 +73,9 @@ export function NoteMediaReveal({
   hiddenCount?: number;
 }) {
   // Fixed-ratio variants reserve their box before the image loads (no CLS).
-  // Compact is a square thumbnail beside the text until `lg`, then a strip.
+  // Compact is a square thumbnail at every width so a screenshot stays a thumb.
   const fixedRatio =
-    variant === "compact"
-      ? "aspect-square lg:aspect-[16/10]"
-      : variant === "lead"
-        ? "aspect-[16/10]"
-        : "";
+    variant === "compact" ? "aspect-square" : variant === "lead" ? "aspect-[16/10]" : "";
   const fill = fixedRatio.length > 0;
   const badge =
     hiddenCount > 0 ? (

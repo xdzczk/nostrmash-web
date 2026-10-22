@@ -54,37 +54,60 @@ const STAT_PILL_SIZE = {
   md: "text-sm",
 } as const;
 
+function isZeroStat(value: unknown): boolean {
+  if (typeof value === "number") return value === 0;
+  if (typeof value === "string") return value.trim() === "" || value.trim() === "0";
+  return value === null || value === undefined;
+}
+
 export function DiscoveryStatPills({
   stats,
   className = "",
   compact = false,
   size,
+  replacements,
+  omitZero = false,
 }: {
   stats: Array<{ label: string; value: unknown; detail?: string }>;
   className?: string;
   compact?: boolean;
   size?: keyof typeof STAT_PILL_SIZE;
+  /** Swap a stat (keyed by its raw label, e.g. `repost_count`) for a control. */
+  replacements?: Partial<Record<string, React.ReactNode>>;
+  /** Hide stats whose value is zero. Discover lists leave zeros visible. */
+  omitZero?: boolean;
 }) {
-  if (stats.length === 0) return null;
+  const visible = omitZero ? stats.filter((stat) => !isZeroStat(stat.value)) : stats;
+  if (visible.length === 0) return null;
   const sizeClass = STAT_PILL_SIZE[size ?? (compact ? "xs" : "sm")];
   return (
     <div
       className={`flex flex-wrap items-center gap-x-2.5 gap-y-1.5 ${sizeClass} ${className}`.trim()}
     >
-      {stats.map((metric, index) => (
-        <span key={metric.label} className="inline-flex items-center gap-1.5">
-          {index > 0 ? (
-            <span aria-hidden className="text-ink-faint/70">
-              •
-            </span>
-          ) : null}
-          <span className="text-ink-faint">{formatMetricLabel(metric.label)}</span>
-          <span className="text-ink-soft font-medium">
-            {truncateMiddle(formatValue(metric.value), compact ? 14 : 18)}
+      {visible.map((metric, index) => {
+        const replacement = replacements?.[metric.label];
+        return (
+          <span
+            key={metric.label}
+            className={replacement ? "contents" : "inline-flex items-center gap-1.5"}
+          >
+            {index > 0 ? (
+              <span aria-hidden className="text-ink-faint/70">
+                •
+              </span>
+            ) : null}
+            {replacement ?? (
+              <>
+                <span className="text-ink-faint">{formatMetricLabel(metric.label)}</span>
+                <span className="text-ink-soft font-medium">
+                  {truncateMiddle(formatValue(metric.value), compact ? 14 : 18)}
+                </span>
+                {metric.detail ? <span className="text-ink-muted">({metric.detail})</span> : null}
+              </>
+            )}
           </span>
-          {metric.detail ? <span className="text-ink-muted">({metric.detail})</span> : null}
-        </span>
-      ))}
+        );
+      })}
     </div>
   );
 }

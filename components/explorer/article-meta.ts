@@ -59,8 +59,23 @@ function extractHashtags(note: EventRecord, limit?: number): string[] {
   return typeof limit === "number" ? unique.slice(0, limit) : unique;
 }
 
+function isPipeTableLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed.includes("|")) return false;
+  if (trimmed.startsWith("|") || trimmed.endsWith("|")) return true;
+  const cells = trimmed
+    .split("|")
+    .map((cell) => cell.trim())
+    .filter((cell) => cell.length > 0);
+  return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell));
+}
+
 function stripMarkdown(value: string): string {
-  return value
+  const withoutTables = value
+    .split("\n")
+    .filter((line) => !isPipeTableLine(line))
+    .join("\n");
+  return withoutTables
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/`[^`]*`/g, " ")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
@@ -70,6 +85,11 @@ function stripMarkdown(value: string): string {
     .replace(/[*_~>#-]{1,}/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** A summary that is only punctuation, pipes, or symbols is not a summary. */
+function hasReadableText(value: string): boolean {
+  return /[\p{L}\p{N}]/u.test(value);
 }
 
 function estimateReadingMinutes(content: string): number | undefined {
@@ -99,12 +119,21 @@ export function getArticlePresentation(
 
   const explicitSummary =
     asString(record.summary) ?? asString(record.description) ?? tagValue(note, "summary");
-  const summaryRaw = explicitSummary ?? (strippedContent.length > 0 ? strippedContent : undefined);
+  const explicitStripped = explicitSummary ? stripMarkdown(explicitSummary) : undefined;
+  const summarySource =
+    explicitStripped && hasReadableText(explicitStripped)
+      ? explicitStripped
+      : strippedContent.length > 0 && hasReadableText(strippedContent)
+        ? strippedContent
+        : undefined;
   const clampSummary = (value: string) =>
     value.length > summaryMaxLength ? `${value.slice(0, summaryMaxLength - 1).trimEnd()}…` : value;
-  const summary = summaryRaw && summaryRaw.length > 0 ? clampSummary(summaryRaw) : undefined;
+  const summary =
+    summarySource && hasReadableText(summarySource) ? clampSummary(summarySource) : undefined;
   const dek =
-    explicitSummary && explicitSummary.length > 0 ? clampSummary(explicitSummary) : undefined;
+    explicitStripped && hasReadableText(explicitStripped)
+      ? clampSummary(explicitStripped)
+      : undefined;
 
   return {
     title,
@@ -116,6 +145,6 @@ export function getArticlePresentation(
     publishedAt:
       asNumber(record.published_at) ?? asNumber(tagValue(note, "published_at")) ?? note.created_at,
     hashtags: extractHashtags(note, options?.hashtagLimit ?? 4),
-    readingMinutes: estimateReadingMinutes(content),
+    readingMinutes: estimateReadingMinutes(strippedContent),
   };
 }

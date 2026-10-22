@@ -6,15 +6,16 @@ import {
   DiscoveryStatPills,
 } from "@/components/explorer/card-grammar";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
+import { SourceFigure } from "@/components/explorer/source-figure";
 import { mapProfileWhyNow, WhyNow } from "@/components/explorer/why-now";
 import { RichInlineText } from "@/components/explorer/note-content";
 import {
   extractPrimitiveStats,
+  formatProfileSecondary,
+  profileAboutLine,
   profileHref,
-  profileIdentifier,
   profileLabel,
   profileSecondaryLabel,
-  truncateIdentifier,
   truncateProfileLabel,
 } from "@/components/explorer/utils";
 import type { Profile } from "@/lib/types/api";
@@ -35,8 +36,10 @@ export function ProfileCard({
 }) {
   const label = profileLabel(profile);
   const secondaryLabel = profileSecondaryLabel(profile);
-  const identifier = profileIdentifier(profile);
+  const secondaryText = secondaryLabel ? formatProfileSecondary(secondaryLabel) : "";
   const href = profileHref(profile);
+  const rankedRow = typeof rank === "number";
+  const about = typeof profile.about === "string" ? profileAboutLine(profile.about) : "";
   const rawMetrics = extractPrimitiveStats(summary ?? profile, [
     "pubkey",
     "npub",
@@ -63,9 +66,7 @@ export function ProfileCard({
     .filter((entry): entry is (typeof rawMetrics)[number] => Boolean(entry))
     .slice(0, 2);
   const isTopRank = typeof rank === "number" && rank <= 3;
-  const rankLabel = typeof rank === "number" ? String(rank).padStart(2, "0") : null;
-  const identifierKind = identifier.startsWith("npub") ? "npub" : "pubkey";
-  const secondaryIdentity = secondaryLabel ?? (identifier !== "unknown" ? identifier : null);
+  const rankLabel = rankedRow ? String(rank).padStart(2, "0") : null;
   const profileReasons = mapProfileWhyNow(profile);
 
   return (
@@ -87,7 +88,7 @@ export function ProfileCard({
           className="border-edge-strong h-10 w-10 rounded-full border object-cover sm:h-11 sm:w-11"
         />
         <div className="min-w-0 flex-1 space-y-1.5">
-          <div className="flex min-w-0 items-start justify-between gap-2">
+          <div className="flex min-w-0 items-start justify-between gap-3">
             {href ? (
               <Link
                 href={href}
@@ -101,25 +102,30 @@ export function ProfileCard({
                 {truncateProfileLabel(label)}
               </p>
             )}
+            {rankedRow ? <SourceFigure ranking={profile.ranking} /> : null}
           </div>
-          {secondaryIdentity && href ? (
+          {secondaryText && href ? (
             <Link
               href={href}
               className="text-ink-faint hover:text-ink-muted inline-flex min-h-6 max-w-full items-center truncate text-xs"
-              title={secondaryIdentity}
+              title={secondaryLabel ?? undefined}
             >
-              {truncateIdentifier(secondaryIdentity, identifierKind, "secondary")}
+              {secondaryText}
             </Link>
-          ) : secondaryIdentity ? (
-            <p className="text-ink-faint truncate text-xs" title={secondaryIdentity}>
-              {truncateIdentifier(secondaryIdentity, identifierKind, "secondary")}
+          ) : secondaryText ? (
+            <p className="text-ink-faint truncate text-xs" title={secondaryLabel ?? undefined}>
+              {secondaryText}
             </p>
           ) : null}
-          {typeof profile.about === "string" && profile.about.length > 0 ? (
-            <RichInlineText
-              text={profile.about}
-              className="text-ink-dim line-clamp-2 text-sm [overflow-wrap:anywhere]"
-            />
+          {about.length > 0 ? (
+            rankedRow ? (
+              <p className="text-ink-dim line-clamp-1 text-sm [overflow-wrap:anywhere]">{about}</p>
+            ) : (
+              <RichInlineText
+                text={about}
+                className="text-ink-dim line-clamp-2 text-sm [overflow-wrap:anywhere]"
+              />
+            )
           ) : null}
         </div>
       </div>
@@ -133,9 +139,9 @@ export function ProfileCard({
         />
       ) : null}
 
-      <DiscoveryStatPills stats={metrics} className="mt-2.5 sm:mt-3" />
+      {rankedRow ? null : <DiscoveryStatPills stats={metrics} className="mt-2.5 sm:mt-3" />}
 
-      {href ? (
+      {href && !rankedRow ? (
         <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
           <DiscoveryActionLinks
             actions={[

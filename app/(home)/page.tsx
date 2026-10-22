@@ -11,7 +11,7 @@ import { readStatsWindow } from "@/lib/search-params/window";
 import { absoluteUrl } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = {
-  title: "NostrMash",
+  title: { absolute: "NostrMash" },
   description:
     "Explore Nostr notes, profiles, relays, and live trends through a public discovery index.",
   alternates: {
@@ -61,6 +61,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
             <HomeFreshness data={home} />
           </Suspense>
         }
+        eyebrow={window === "7d" ? "This week" : "Today"}
         title="What has the network’s attention."
         subtitle="A calm, ranked briefing on the notes, people, and ideas moving through Nostr—with the evidence behind their momentum."
       >

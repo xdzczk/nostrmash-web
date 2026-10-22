@@ -50,6 +50,44 @@ describe("EntityActions", () => {
   });
 });
 
+describe("EntityActions menu", () => {
+  it("hides client links behind one Open control", async () => {
+    const user = userEvent.setup();
+    render(
+      <ToastProvider>
+        <EntityActions
+          kind="profile"
+          layout="menu"
+          absoluteUrl="https://nostrmash.com/profiles/npub1abc"
+          identifier="npub1abc"
+          nostrUri="nostr:npub1abc"
+          njumpUrl="https://njump.me/npub1abc"
+        />
+      </ToastProvider>
+    );
+
+    const menu = screen.getByTestId("entity-actions-menu");
+    expect(menu).not.toHaveAttribute("open");
+    await user.click(screen.getByText("Open"));
+    expect(menu).toHaveAttribute("open");
+    expect(screen.getByRole("link", { name: "Open in client" })).toHaveAttribute(
+      "href",
+      "nostr:npub1abc"
+    );
+    expect(screen.getByRole("link", { name: "njump" })).toHaveAttribute(
+      "href",
+      "https://njump.me/npub1abc"
+    );
+    expect(screen.getByRole("link", { name: "Damus" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Amethyst" })).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Copy npub" }));
+    await waitFor(() => {
+      expect(screen.getByText(/copied profile id/i)).toBeInTheDocument();
+    });
+  });
+});
+
 describe("CopyValueButton", () => {
   it("shows copied toast after click", async () => {
     const user = userEvent.setup();
