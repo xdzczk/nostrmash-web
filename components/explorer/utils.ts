@@ -252,14 +252,7 @@ export function truncateMiddle(value: string, maxLength = 36): string {
 }
 
 export type IdentifierKind =
-  | "npub"
-  | "pubkey"
-  | "note"
-  | "event"
-  | "relay"
-  | "domain"
-  | "path"
-  | "url";
+  "npub" | "pubkey" | "note" | "event" | "relay" | "domain" | "path" | "url";
 
 export type IdentifierSurface = "primary" | "secondary" | "detail";
 

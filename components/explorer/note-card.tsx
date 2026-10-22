@@ -347,8 +347,8 @@ function NoteCardBody({
                 <Link
                   href={noteHref}
                   className={`${chipLinkClass} hover:text-ink rounded-sm hover:underline`}
-                  aria-label={`Open reply by ${authorLabel}`}
                 >
+                  <span className="sr-only">{`Open reply by ${authorLabel} `}</span>
                   {timestamp}
                 </Link>
               ) : (

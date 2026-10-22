@@ -37,16 +37,19 @@ export function ProfileRelatedRail({
         {items.map(({ profile, reason, href }) => {
           const name = profileLabel(profile);
           const secondary = profileSecondaryLabel(profile);
-          const accessible = [name, secondary, reason].filter(Boolean).join(". ");
           return (
             <li key={profile.pubkey} className="w-40 shrink-0">
               <Link
                 href={href!}
-                aria-label={accessible}
                 title={reason ?? name}
                 className="border-edge/80 hover:bg-surface-hover flex h-full flex-col gap-1.5 rounded-xl border p-2.5"
               >
-                <ProfileAvatar profile={profile} size={36} className="h-9 w-9 rounded-full" />
+                <ProfileAvatar
+                  profile={profile}
+                  size={36}
+                  alt=""
+                  className="h-9 w-9 rounded-full"
+                />
                 <span className="min-w-0">
                   <span className="text-ink block truncate text-sm font-medium">{name}</span>
                   {secondary && secondary.toLowerCase() !== name.toLowerCase() ? (
