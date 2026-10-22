@@ -11,6 +11,21 @@ test.describe("global product shell", () => {
     await globalSearch.fill("bitcoin");
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/search\?q=bitcoin&tab=all/);
+    await expect(globalSearch).toHaveValue("");
+    await expect(page.getByRole("main").getByRole("combobox")).toHaveValue("bitcoin");
+
+    await page.getByRole("link", { name: "Network" }).click();
+    await expect(page).toHaveURL(/\/relays/);
+    await expect(globalSearch).toHaveValue("");
+  });
+
+  test("header search clears typed text after leaving without submitting", async ({ page }) => {
+    await page.goto("/trending/notes");
+    const globalSearch = page.locator("#global-search-input");
+    await globalSearch.fill("bitcoin");
+    await page.getByRole("link", { name: "Network" }).click();
+    await expect(page).toHaveURL(/\/relays/);
+    await expect(globalSearch).toHaveValue("");
   });
 
   test("mobile search opens as a focused modal surface", async ({ page }) => {

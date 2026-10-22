@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import {
@@ -47,6 +47,7 @@ export function SearchForm({
   onNavigate?: () => void;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [query, setQuery] = useState(initialQuery);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -54,6 +55,17 @@ export function SearchForm({
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const heroVariant = variant === "hero";
   const globalVariant = variant === "global";
+  const [routePath, setRoutePath] = useState(pathname);
+
+  // Header search stays mounted across navigations. Drop whatever was typed
+  // once the route changes so the field does not keep a previous query.
+  if (globalVariant && routePath !== pathname) {
+    setRoutePath(pathname);
+    setQuery("");
+    setOpen(false);
+    setActiveIndex(-1);
+  }
+
   const inputPlaceholder =
     placeholder ??
     (heroVariant
@@ -73,13 +85,19 @@ export function SearchForm({
   const totalItems = actions.length + profiles.length + hashtags.length;
   const showDropdown = open && query.trim().length >= 2 && totalItems > 0;
 
+  const dismiss = useCallback(() => {
+    setOpen(false);
+    setActiveIndex(-1);
+    clearSuggest();
+    if (globalVariant) setQuery("");
+    onNavigate?.();
+  }, [clearSuggest, globalVariant, onNavigate]);
+
   const navigateToSearch = useCallback(
     (text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
-      setOpen(false);
-      clearSuggest();
-      onNavigate?.();
+      dismiss();
       // Hashtag queries go straight to the browsable hashtag notes list
       // (with Show more / Continue) instead of a text-search results page.
       if (trimmed.startsWith("#")) {
@@ -91,18 +109,16 @@ export function SearchForm({
       }
       router.push(`/search?q=${encodeURIComponent(trimmed)}&tab=all`);
     },
-    [router, clearSuggest, onNavigate]
+    [router, dismiss]
   );
 
   const handleSelectProfile = useCallback(
     (profile: Profile) => {
       const identifier = profileIdentifier(profile);
-      setOpen(false);
-      clearSuggest();
-      onNavigate?.();
+      dismiss();
       router.push(`/profiles/${encodeURIComponent(identifier)}`);
     },
-    [router, clearSuggest, onNavigate]
+    [router, dismiss]
   );
 
   const handleSelectHashtag = useCallback(
@@ -113,22 +129,18 @@ export function SearchForm({
         navigateToSearch(tag);
         return;
       }
-      setOpen(false);
-      clearSuggest();
-      onNavigate?.();
+      dismiss();
       router.push(`/hashtags/${encodeURIComponent(normalized.toLowerCase())}/notes`);
     },
-    [router, clearSuggest, navigateToSearch, onNavigate]
+    [router, dismiss, navigateToSearch]
   );
 
   const handleSelectAction = useCallback(
     (action: SearchSuggestionAction) => {
-      setOpen(false);
-      clearSuggest();
-      onNavigate?.();
+      dismiss();
       router.push(action.href);
     },
-    [router, clearSuggest, onNavigate]
+    [router, dismiss]
   );
 
   const commitActiveItem = useCallback(() => {
@@ -274,7 +286,7 @@ export function SearchForm({
               className="min-h-0 px-2.5 py-1"
               onClick={() => {
                 if (shortcut.href) {
-                  onNavigate?.();
+                  dismiss();
                   router.push(shortcut.href);
                   return;
                 }
