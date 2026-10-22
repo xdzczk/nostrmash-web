@@ -14,7 +14,10 @@ test.describe("global product shell", () => {
     await expect(globalSearch).toHaveValue("");
     await expect(page.getByRole("main").getByRole("combobox")).toHaveValue("bitcoin");
 
-    await page.getByRole("link", { name: "Network" }).click();
+    await page
+      .getByRole("navigation", { name: "Primary" })
+      .getByRole("link", { name: "Network" })
+      .click();
     await expect(page).toHaveURL(/\/relays/);
     await expect(globalSearch).toHaveValue("");
   });
@@ -23,7 +26,10 @@ test.describe("global product shell", () => {
     await page.goto("/trending/notes");
     const globalSearch = page.locator("#global-search-input");
     await globalSearch.fill("bitcoin");
-    await page.getByRole("link", { name: "Network" }).click();
+    await page
+      .getByRole("navigation", { name: "Primary" })
+      .getByRole("link", { name: "Network" })
+      .click();
     await expect(page).toHaveURL(/\/relays/);
     await expect(globalSearch).toHaveValue("");
   });
