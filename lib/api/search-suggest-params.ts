@@ -37,7 +37,9 @@ export function forwardableClientIp(ip: string): string | undefined {
   if (v4) {
     const octets = trimmed.split(".").map((octet) => Number(octet));
     if (octets.some((octet) => octet > 255)) return undefined;
-    const [a, b] = octets;
+    const a = octets[0];
+    const b = octets[1];
+    if (a === undefined || b === undefined) return undefined;
     if (a === 0 || a === 10 || a === 127) return undefined;
     if (a === 169 && b === 254) return undefined;
     if (a === 172 && b >= 16 && b <= 31) return undefined;
