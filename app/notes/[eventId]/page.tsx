@@ -347,12 +347,8 @@ export default async function NotePage({
             )
           ) : null}
 
-          <div id="conversation-context" className="relative mt-3">
-            <div
-              aria-hidden
-              className="bg-ink-faint pointer-events-none absolute top-3 bottom-3 left-5 z-0 w-0.5 -translate-x-1/2"
-            />
-            <div className="relative z-[1] space-y-2">
+          <div id="conversation-context" className="mt-3">
+            <div className="space-y-2">
               {isReplyNote ? (
                 <Suspense fallback={<Skeleton className="h-16 w-full rounded-xl" />}>
                   <DeferredNoteAncestors eventId={eventId} searchParams={resolvedSearchParams} />

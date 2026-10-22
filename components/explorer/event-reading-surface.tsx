@@ -14,6 +14,9 @@ export function EventReadingSurface({
   density = "detail",
   priorityMedia = false,
   repostsControl,
+  connectAbove = false,
+  connectBelow = false,
+  bridgeToNote = false,
 }: {
   event: EventRecord;
   author?: Profile;
@@ -22,6 +25,12 @@ export function EventReadingSurface({
   priorityMedia?: boolean;
   /** Replaces the Reposts stat on the focal note. */
   repostsControl?: ReactNode;
+  /** Continue a thread line down from the note above. */
+  connectAbove?: boolean;
+  /** Draw the line through this note's avatar gutter, beside its text. */
+  connectBelow?: boolean;
+  /** Carry that line across the gap to the open note's avatar. */
+  bridgeToNote?: boolean;
 }) {
   if (isLongFormEvent(event)) {
     return <ArticleReader article={event} author={author} contentResolution={contentResolution} />;
@@ -36,6 +45,9 @@ export function EventReadingSurface({
       priorityMedia={priorityMedia}
       contentResolution={contentResolution}
       repostsControl={repostsControl}
+      connectAbove={connectAbove}
+      connectBelow={connectBelow}
+      bridgeToNote={bridgeToNote}
     />
   );
 }

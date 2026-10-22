@@ -71,6 +71,9 @@ export function NoteCard({
   omitZeroStats = false,
   mediaVariant,
   suppressEmbeds = false,
+  connectAbove = false,
+  connectBelow = false,
+  bridgeToNote = false,
 }: {
   note: EventRecord;
   author?: Profile;
@@ -97,6 +100,12 @@ export function NoteCard({
   mediaVariant?: NoteMediaVariant;
   /** Profile dossier: no link-unfurl cards, domain chips, or relay chips. */
   suppressEmbeds?: boolean;
+  /** Continue a thread line down from the note above. */
+  connectAbove?: boolean;
+  /** Draw the line through this note's avatar gutter, beside its text. */
+  connectBelow?: boolean;
+  /** Carry that line across the gap to the open note's avatar. */
+  bridgeToNote?: boolean;
 }) {
   if (isRepostEvent(note)) {
     return (
@@ -128,6 +137,9 @@ export function NoteCard({
       omitZeroStats={omitZeroStats}
       mediaVariant={mediaVariant}
       suppressEmbeds={suppressEmbeds}
+      connectAbove={connectAbove}
+      connectBelow={connectBelow}
+      bridgeToNote={bridgeToNote}
     />
   );
 }
@@ -149,6 +161,9 @@ function NoteCardBody({
   omitZeroStats,
   mediaVariant: mediaVariantProp,
   suppressEmbeds,
+  connectAbove,
+  connectBelow,
+  bridgeToNote,
 }: {
   note: EventRecord;
   author?: Profile;
@@ -166,6 +181,9 @@ function NoteCardBody({
   omitZeroStats: boolean;
   mediaVariant?: NoteMediaVariant;
   suppressEmbeds: boolean;
+  connectAbove: boolean;
+  connectBelow: boolean;
+  bridgeToNote: boolean;
 }) {
   const isReply = density === "reply";
   const isDetail = density === "detail";
@@ -180,7 +198,7 @@ function NoteCardBody({
           : undefined) ?? undefined;
   const noteHref =
     href ?? (resolvedNoteId ? `/notes/${encodeURIComponent(resolvedNoteId)}` : undefined);
-  const cardHref = noteHref && !showFullContent ? noteHref : undefined;
+  const cardHref = noteHref && (isReply || !showFullContent) ? noteHref : undefined;
   const authorLabel = resolvedAuthor ? profileLabel(resolvedAuthor) : noteAuthorIdentifier(note);
   const authorSecondaryRaw = resolvedAuthor
     ? profileSecondaryLabel(resolvedAuthor)
@@ -248,10 +266,11 @@ function NoteCardBody({
   const metaTextClass = density === "list" ? "text-xs" : "text-[13px]";
   const chipRowClass = `text-ink-muted mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 ${metaTextClass}`;
   const chipLinkClass = "inline-flex min-h-6 items-center";
+  const chained = connectAbove || connectBelow;
   const surfaceClass = isDetail
     ? "px-0 py-0"
     : isReply
-      ? "border-b border-edge/60 bg-transparent px-1 py-4 last:border-b-0 sm:px-2"
+      ? `border-b border-edge/60 bg-transparent py-4 last:border-b-0 ${chained ? "px-0" : "px-1 sm:px-2"}`
       : cardTierClassName("standard");
   const timestamp = <Timestamp unixSeconds={note.created_at} />;
 
@@ -259,7 +278,7 @@ function NoteCardBody({
     <article
       className={`group ${surfaceClass} ${
         density === "list" ? (isTopRank ? "border-accent-soft/40" : "border-edge/70") : ""
-      } ${cardHref ? cardHitTargetClassName : ""}`}
+      } ${chained ? "relative" : ""} ${cardHref ? cardHitTargetClassName : ""}`}
     >
       <div className="flex items-start gap-3">
         {rankLabel ? (
@@ -359,163 +378,184 @@ function NoteCardBody({
         </div>
       </div>
 
-      {listThumb ? (
-        <div className="mt-2.5 flex items-start gap-3">
-          <div className="min-w-0 flex-1">
+      {connectAbove ? (
+        <span
+          data-thread-stem="above"
+          aria-hidden
+          className="bg-ink-faint pointer-events-none absolute -top-4 left-5 h-4 w-0.5 -translate-x-1/2 sm:left-[1.375rem]"
+        />
+      ) : null}
+      {connectBelow ? (
+        <span
+          data-thread-stem="below"
+          aria-hidden
+          className={`bg-ink-faint pointer-events-none absolute top-14 left-5 w-0.5 -translate-x-1/2 sm:top-[3.75rem] sm:left-[1.375rem] ${bridgeToNote ? "-bottom-2" : "bottom-0"}`}
+        />
+      ) : null}
+      <div className={connectBelow ? "pl-14" : undefined}>
+        {listThumb ? (
+          <div className="mt-2.5 flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <NoteContent
+                tokens={tokenizeNoteContent(content, { tags: note.tags })}
+                className={clampClassName}
+                showQuotes={showFullContent}
+                resolution={contentResolution}
+                hideLinkPreviewUrls={linkPreviewUrls}
+                size={contentSize}
+              />
+              {suppressEmbeds ? null : (
+                <NoteLinkPreviews content={note.content ?? ""} limit={linkPreviewLimit} />
+              )}
+            </div>
+            <NoteMedia content={note.content ?? ""} priority={priorityMedia} variant="compact" />
+          </div>
+        ) : (
+          <>
+            {preview.prefersMediaFirst &&
+            typeof note.content === "string" &&
+            note.content.length > 0 ? (
+              <>
+                <NoteMedia content={note.content} priority={priorityMedia} variant={mediaVariant} />
+                {suppressEmbeds ? null : (
+                  <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
+                )}
+              </>
+            ) : null}
             <NoteContent
               tokens={tokenizeNoteContent(content, { tags: note.tags })}
-              className={clampClassName}
+              className={`${isDetail ? "mt-4" : "mt-2.5"} ${clampClassName}`}
               showQuotes={showFullContent}
               resolution={contentResolution}
               hideLinkPreviewUrls={linkPreviewUrls}
               size={contentSize}
             />
-            {suppressEmbeds ? null : (
-              <NoteLinkPreviews content={note.content ?? ""} limit={linkPreviewLimit} />
-            )}
+            {!preview.prefersMediaFirst &&
+            typeof note.content === "string" &&
+            note.content.length > 0 ? (
+              <>
+                <NoteMedia content={note.content} priority={priorityMedia} variant={mediaVariant} />
+                {suppressEmbeds ? null : (
+                  <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
+                )}
+              </>
+            ) : null}
+          </>
+        )}
+
+        {!suppressEmbeds && noteDomains.length > 0 ? (
+          <div className={`${chipRowClass} mt-3`}>
+            <span className="text-ink-faint">Links</span>
+            {noteDomains.map((domain) => (
+              <span key={domain.raw} className="inline-flex items-center gap-2">
+                <span aria-hidden className="text-ink-faint/70">
+                  •
+                </span>
+                <Link
+                  href={`/domains/${encodeURIComponent(domain.raw)}`}
+                  title={domain.raw}
+                  className={`text-ink-dim hover:text-ink transition ${chipLinkClass}`}
+                >
+                  {domain.label}
+                </Link>
+              </span>
+            ))}
           </div>
-          <NoteMedia content={note.content ?? ""} priority={priorityMedia} variant="compact" />
-        </div>
-      ) : (
-        <>
-          {preview.prefersMediaFirst &&
-          typeof note.content === "string" &&
-          note.content.length > 0 ? (
-            <>
-              <NoteMedia content={note.content} priority={priorityMedia} variant={mediaVariant} />
-              {suppressEmbeds ? null : (
-                <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
-              )}
-            </>
-          ) : null}
-          <NoteContent
-            tokens={tokenizeNoteContent(content, { tags: note.tags })}
-            className={`${isDetail ? "mt-4" : "mt-2.5"} ${clampClassName}`}
-            showQuotes={showFullContent}
-            resolution={contentResolution}
-            hideLinkPreviewUrls={linkPreviewUrls}
-            size={contentSize}
+        ) : null}
+
+        {noteHashtags.length > 0 ? (
+          <div className={chipRowClass}>
+            <span className="text-ink-faint">Topics</span>
+            {noteHashtags.map((hashtag) => (
+              <span key={hashtag} className="inline-flex items-center gap-2">
+                <span aria-hidden className="text-ink-faint/70">
+                  •
+                </span>
+                <Link
+                  href={`/hashtags/${encodeURIComponent(hashtag)}`}
+                  className={`text-ink-dim hover:text-ink transition ${chipLinkClass}`}
+                >
+                  #{hashtag}
+                </Link>
+              </span>
+            ))}
+          </div>
+        ) : null}
+
+        {!suppressEmbeds && relayHosts.length > 0 ? (
+          <div className={chipRowClass}>
+            <span className="text-ink-faint">Relays</span>
+            {relayHosts.map((relayHost) => (
+              <span key={relayHost.raw} className="inline-flex items-center gap-2">
+                <span aria-hidden className="text-ink-faint/70">
+                  •
+                </span>
+                <Link
+                  href={`/relays/${encodeURIComponent(relayHost.raw)}`}
+                  title={relayHost.raw}
+                  className={`hover:text-link-hover text-ink-dim transition ${chipLinkClass}`}
+                >
+                  {relayHost.label}
+                </Link>
+              </span>
+            ))}
+          </div>
+        ) : null}
+
+        {discoverySignals ? (
+          <WhyNow reasons={reasonCandidates} showLabel={false} className="mt-2.5 sm:mt-3" />
+        ) : null}
+
+        {conversation ? (
+          replyCount !== null ? (
+            <p className="text-ink mt-2.5 text-sm font-medium tabular-nums">
+              {replyCount.toLocaleString()} {replyCount === 1 ? "reply" : "replies"}
+            </p>
+          ) : null
+        ) : (
+          <DiscoveryStatPills
+            stats={metrics}
+            omitZero={omitZeroStats}
+            omitLabels={discoverySignals ? statsCitedByReasons(reasonCandidates) : undefined}
+            className={isDetail ? "mt-4" : "mt-2.5 sm:mt-3"}
+            size={isDetail ? "md" : "sm"}
+            replacements={isDetail && repostsControl ? { repost_count: repostsControl } : undefined}
           />
-          {!preview.prefersMediaFirst &&
-          typeof note.content === "string" &&
-          note.content.length > 0 ? (
-            <>
-              <NoteMedia content={note.content} priority={priorityMedia} variant={mediaVariant} />
-              {suppressEmbeds ? null : (
-                <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
-              )}
-            </>
-          ) : null}
-        </>
-      )}
+        )}
 
-      {!suppressEmbeds && noteDomains.length > 0 ? (
-        <div className={`${chipRowClass} mt-3`}>
-          <span className="text-ink-faint">Links</span>
-          {noteDomains.map((domain) => (
-            <span key={domain.raw} className="inline-flex items-center gap-2">
-              <span aria-hidden className="text-ink-faint/70">
-                •
-              </span>
-              <Link
-                href={`/domains/${encodeURIComponent(domain.raw)}`}
-                title={domain.raw}
-                className={`text-ink-dim hover:text-ink transition ${chipLinkClass}`}
-              >
-                {domain.label}
-              </Link>
-            </span>
-          ))}
-        </div>
-      ) : null}
+        {conversation && replyCount !== null && replyCount > 0 && resolvedNoteId ? (
+          <Link
+            href={`/notes/${encodeURIComponent(resolvedNoteId)}#conversation-context`}
+            className="nm-action-link mt-1 inline-flex min-h-11 items-center text-sm"
+          >
+            Thread
+          </Link>
+        ) : null}
 
-      {noteHashtags.length > 0 ? (
-        <div className={chipRowClass}>
-          <span className="text-ink-faint">Topics</span>
-          {noteHashtags.map((hashtag) => (
-            <span key={hashtag} className="inline-flex items-center gap-2">
-              <span aria-hidden className="text-ink-faint/70">
-                •
-              </span>
-              <Link
-                href={`/hashtags/${encodeURIComponent(hashtag)}`}
-                className={`text-ink-dim hover:text-ink transition ${chipLinkClass}`}
-              >
-                #{hashtag}
-              </Link>
-            </span>
-          ))}
-        </div>
-      ) : null}
-
-      {!suppressEmbeds && relayHosts.length > 0 ? (
-        <div className={chipRowClass}>
-          <span className="text-ink-faint">Relays</span>
-          {relayHosts.map((relayHost) => (
-            <span key={relayHost.raw} className="inline-flex items-center gap-2">
-              <span aria-hidden className="text-ink-faint/70">
-                •
-              </span>
-              <Link
-                href={`/relays/${encodeURIComponent(relayHost.raw)}`}
-                title={relayHost.raw}
-                className={`hover:text-link-hover text-ink-dim transition ${chipLinkClass}`}
-              >
-                {relayHost.label}
-              </Link>
-            </span>
-          ))}
-        </div>
-      ) : null}
-
-      {discoverySignals ? (
-        <WhyNow reasons={reasonCandidates} showLabel={false} className="mt-2.5 sm:mt-3" />
-      ) : null}
-
-      {conversation ? (
-        replyCount !== null ? (
-          <p className="text-ink mt-2.5 text-sm font-medium tabular-nums">
-            {replyCount.toLocaleString()} {replyCount === 1 ? "reply" : "replies"}
-          </p>
-        ) : null
-      ) : (
-        <DiscoveryStatPills
-          stats={metrics}
-          omitZero={omitZeroStats}
-          omitLabels={discoverySignals ? statsCitedByReasons(reasonCandidates) : undefined}
-          className={isDetail ? "mt-4" : "mt-2.5 sm:mt-3"}
-          size={isDetail ? "md" : "sm"}
-          replacements={isDetail && repostsControl ? { repost_count: repostsControl } : undefined}
-        />
-      )}
-
-      {conversation && replyCount !== null && replyCount > 0 && resolvedNoteId ? (
-        <Link
-          href={`/notes/${encodeURIComponent(resolvedNoteId)}#conversation-context`}
-          className="nm-action-link mt-1 inline-flex min-h-11 items-center text-sm"
-        >
-          Thread
-        </Link>
-      ) : null}
-
-      {showUtilityLinks && resolvedNoteId && density === "list" && !cardHref ? (
-        <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
-          <DiscoveryActionLinks
-            actions={[
-              { label: "Open note", href: noteHref },
-              {
-                label: "Inspect thread",
-                href: `/notes/${encodeURIComponent(resolvedNoteId)}#conversation-context`,
-              },
-              {
-                label: "Seen on relays",
-                href: `/notes/${encodeURIComponent(resolvedNoteId)}#note-provenance`,
-              },
-            ]}
+        {showUtilityLinks && resolvedNoteId && density === "list" && !cardHref ? (
+          <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">
+            <DiscoveryActionLinks
+              actions={[
+                { label: "Open note", href: noteHref },
+                {
+                  label: "Inspect thread",
+                  href: `/notes/${encodeURIComponent(resolvedNoteId)}#conversation-context`,
+                },
+                {
+                  label: "Seen on relays",
+                  href: `/notes/${encodeURIComponent(resolvedNoteId)}#note-provenance`,
+                },
+              ]}
+            />
+          </div>
+        ) : null}
+        {cardHref ? (
+          <CardHitTarget
+            href={cardHref}
+            label={isReply ? `Open reply by ${authorLabel}` : `Open note by ${authorLabel}`}
           />
-        </div>
-      ) : null}
-      {cardHref ? <CardHitTarget href={cardHref} label={`Open note by ${authorLabel}`} /> : null}
+        ) : null}
+      </div>
     </article>
   );
 }

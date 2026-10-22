@@ -17,6 +17,7 @@ test.describe("note page reading surface", () => {
     const body = page.locator("#note .nm-note-body");
     await expect(body).toBeVisible();
     await expect(page.locator("#conversation-context article").first()).toBeVisible();
+    await expect(page.locator("[data-thread-stem]")).toHaveCount(0);
     const fontSize = await body.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
     expect(fontSize).toBeGreaterThanOrEqual(17);
 
@@ -83,9 +84,13 @@ test.describe("note page thread", () => {
     await expect(thread.getByText("Same reply posted twice")).toHaveCount(1);
     await expect(thread.getByText("2 identical replies")).toBeVisible();
 
-    // Replies carry no action row; the timestamp is the permalink.
+    // The reply body opens that reply. Author links stay on the profile.
     await expect(thread.getByRole("link", { name: "Open note" })).toHaveCount(0);
-    await expect(thread.getByRole("link", { name: /Open reply by/ }).first()).toBeVisible();
+    const firstReply = thread.getByRole("article", { name: "Reply", exact: true }).first();
+    await expect(firstReply.locator("[data-card-hit-target]")).toHaveAttribute(
+      "href",
+      `/notes/${"2".repeat(64)}`
+    );
 
     // Second page appends in place without touching the URL.
     const showMore = thread.getByRole("button", { name: "Show more replies" });
@@ -108,6 +113,16 @@ test.describe("note page thread", () => {
     await expect(thread.getByText("Nested reply to the first reply")).toBeVisible();
   });
 
+  test("opens the reply note from the reply itself", async ({ page }) => {
+    await page.goto(`/notes/${FOCAL_ID}`);
+    const reply = page
+      .getByRole("article", { name: "Reply", exact: true })
+      .filter({ hasText: "Same reply posted twice" });
+    await reply.locator("[data-card-hit-target]").click();
+    await expect(page).toHaveURL(new RegExp(`/notes/${"4".repeat(64)}$`));
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  });
+
   test("shows ancestors above a nested reply", async ({ page }) => {
     await page.goto(`/notes/${NESTED_REPLY_ID}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Nested Nancy");
@@ -125,6 +140,33 @@ test.describe("note page thread", () => {
       return ancestorsTop < noteTop;
     });
     expect(order).toBe(true);
+
+    const stem = await page.evaluate(() => {
+      const below = [...document.querySelectorAll('[data-thread-stem="below"]')];
+      const note = document.querySelector("#note");
+      const clear = below.every((stem) => {
+        const body = stem.closest("article")?.querySelector(".nm-reply-body");
+        if (!body) return false;
+        return stem.getBoundingClientRect().right < body.getBoundingClientRect().left - 8;
+      });
+      const share = note?.querySelector("button");
+      const shareBox = share?.getBoundingClientRect();
+      const crossesShare = below.some((stem) => {
+        if (!shareBox) return false;
+        const box = stem.getBoundingClientRect();
+        return box.right > shareBox.left && box.left < shareBox.right && box.bottom > shareBox.top;
+      });
+      return {
+        count: below.length,
+        noteHasStem: note?.querySelector("[data-thread-stem]") != null,
+        clear,
+        crossesShare,
+      };
+    });
+    expect(stem.count).toBe(2);
+    expect(stem.noteHasStem).toBe(false);
+    expect(stem.clear).toBe(true);
+    expect(stem.crossesShare).toBe(false);
   });
 
   test("media is letterboxed instead of cropped", async ({ page }) => {

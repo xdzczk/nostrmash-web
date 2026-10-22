@@ -132,7 +132,7 @@ export function ThreadNode({
         </ul>
       ) : null}
       {canExpand && loadDirectReplies ? (
-        <div className={depth === 0 ? "border-ink-faint mt-1 ml-5 border-l pl-3 sm:ml-6" : "mt-1"}>
+        <div className="mt-1">
           <OnDemandSection
             load={loadDirectReplies.bind(null, replyId, flattenUnder)}
             label={
@@ -143,6 +143,9 @@ export function ThreadNode({
             pendingLabel="Loading replies…"
             moreLabel="Show more replies"
             emptyMessage="No replies have been indexed for this note yet."
+            contentClassName={
+              depth === 0 ? "border-ink-faint ml-5 border-l pl-3 sm:ml-6" : undefined
+            }
           />
         </div>
       ) : null}
@@ -154,10 +157,16 @@ function AncestorItem({
   event,
   authorsByPubkey,
   contentResolution,
+  connectAbove = false,
+  bridgeToNote = false,
 }: {
   event: EventRecord;
   authorsByPubkey?: Record<string, Profile>;
   contentResolution?: NoteContentResolution;
+  /** Continue the line from the ancestor above. The first one in the chain starts it. */
+  connectAbove?: boolean;
+  /** Reach across the gap so the line meets the open note's avatar. */
+  bridgeToNote?: boolean;
 }) {
   return (
     <li className="min-w-0">
@@ -166,14 +175,17 @@ function AncestorItem({
         author={getAuthorByPubkey(authorsByPubkey, event.pubkey)}
         contentResolution={contentResolution}
         density="reply"
+        connectAbove={connectAbove}
+        connectBelow
+        bridgeToNote={bridgeToNote}
       />
     </li>
   );
 }
 
 /**
- * Ancestors above the focal note, on the same rail. Chains longer than the
- * root plus the immediate parent collapse the middle until the reader asks.
+ * Ancestors above the open note. A line runs through their avatar gutter
+ * down to that note, and stops there. Sibling replies are not on the line.
  */
 export function ThreadAncestors({
   ancestors,
@@ -203,16 +215,23 @@ export function ThreadAncestors({
                   <AncestorItem
                     key={ancestor.id ?? `hidden-${index}`}
                     event={ancestor}
+                    connectAbove
                     {...shared}
                   />
                 ))}
               </ol>
             </AncestorReveal>
-            <AncestorItem event={visible[1]!} {...shared} />
+            <AncestorItem event={visible[1]!} connectAbove bridgeToNote {...shared} />
           </>
         ) : (
           ancestors.map((ancestor, index) => (
-            <AncestorItem key={ancestor.id ?? `ancestor-${index}`} event={ancestor} {...shared} />
+            <AncestorItem
+              key={ancestor.id ?? `ancestor-${index}`}
+              event={ancestor}
+              connectAbove={index > 0}
+              bridgeToNote={index === ancestors.length - 1}
+              {...shared}
+            />
           ))
         )}
       </ol>

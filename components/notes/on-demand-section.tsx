@@ -25,6 +25,7 @@ export function OnDemandSection({
   hint,
   collapsible = false,
   hideLabel = "Hide",
+  contentClassName,
 }: {
   load: (cursor: string | null) => Promise<LoadMoreChunk>;
   label: string;
@@ -36,6 +37,8 @@ export function OnDemandSection({
   /** Keep the loaded branch and let the reader close it without another fetch. */
   collapsible?: boolean;
   hideLabel?: string;
+  /** Applied to the loaded replies, not the button that opens them. */
+  contentClassName?: string;
 }) {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [hidden, setHidden] = useState(false);
@@ -76,7 +79,7 @@ export function OnDemandSection({
             {hidden ? label : hideLabel}
           </Button>
         ) : null}
-        <div hidden={hidden}>
+        <div hidden={hidden} className={contentClassName}>
           <div className="min-w-0">{status.content}</div>
           {status.nextCursor ? (
             <LoadMoreList

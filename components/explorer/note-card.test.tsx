@@ -210,6 +210,32 @@ describe("NoteCard", () => {
     expect(screen.queryByText("Zaps")).not.toBeInTheDocument();
   });
 
+  it("opens a reply from the card body", () => {
+    render(<NoteCard note={NOTE} author={AUTHOR} density="reply" />);
+    expect(screen.getByRole("link", { name: "Open reply by Alice" })).toHaveAttribute(
+      "href",
+      `/notes/${NOTE.id}`
+    );
+  });
+
+  it("draws a thread stem beside the note text", () => {
+    const { container } = render(
+      <NoteCard note={NOTE} author={AUTHOR} density="reply" connectBelow bridgeToNote />
+    );
+    const stem = container.querySelector('[data-thread-stem="below"]');
+    const text = screen.getByText(/Hello/);
+    expect(stem).toBeTruthy();
+    expect(stem?.contains(text)).toBe(false);
+    const gutter = stem?.nextElementSibling;
+    expect(gutter).toHaveClass("pl-14");
+    expect(gutter?.contains(text)).toBe(true);
+  });
+
+  it("leaves an ordinary reply off the thread line", () => {
+    const { container } = render(<NoteCard note={NOTE} author={AUTHOR} density="reply" />);
+    expect(container.querySelector("[data-thread-stem]")).toBeNull();
+  });
+
   it("renders zeroed engagement stats when counts are missing", () => {
     const {
       reply_count: _r,
