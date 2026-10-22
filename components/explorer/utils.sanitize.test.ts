@@ -120,6 +120,10 @@ describe("profile identity presentation", () => {
       "mrsatu…@shitposter.mostr.pub"
     );
     expect(truncateNip05("jeffbooth@nostrverified.com")).toBe("jeffbooth@nostrverified.com");
+    expect(truncateNip05("cjd_at_pkteerium.x_at_host@momostr.pink", 28)).toBe("@momostr.pink");
+    expect(profileAboutLine("Merch: https://codeberg.org/shop Email me@example.com")).not.toMatch(
+      /https:|@example/
+    );
     expect(formatProfileSecondary("alice@example.com")).toBe("alice@example.com");
     const pubkey = "a".repeat(64);
     expect(profileSecondaryLabel({ pubkey, display_name: "Ada" })).toBeNull();

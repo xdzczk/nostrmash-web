@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/explorer/empty-state";
 import { AboutThisData } from "@/components/explorer/about-this-data";
 import { SectionCard } from "@/components/ui/section-card";
 import { getHotConversations } from "@/lib/api/endpoints";
+import { presentConversations } from "@/lib/discover/conversation-order";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import {
@@ -47,7 +48,7 @@ export default async function HotConversationsPage({
     errorMessage = toUserFacingErrorMessage(error, "Failed to load hot conversations.");
   }
 
-  const notes = payload?.notes ?? [];
+  const notes = presentConversations(payload?.notes ?? []);
   const semantics = extractNativeApiSemantics(payload);
   const continuationHref = buildContinuationHref(
     "/discovery/conversations/hot",
@@ -106,7 +107,7 @@ export default async function HotConversationsPage({
           description="Profiles active in these conversations."
         >
           {activeProfiles.length > 0 ? (
-            <ProfilesList profiles={activeProfiles} />
+            <ProfilesList profiles={activeProfiles} compact />
           ) : (
             <EmptyState message="No participant profiles were available for this window." />
           )}

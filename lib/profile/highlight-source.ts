@@ -1,10 +1,12 @@
 import type { EventRecord } from "@/lib/types/api";
 
 export type HighlightSource = {
-  /** Full `a` coordinate or event id, for the title tooltip. */
+  /** Full `a` coordinate, event id, or source URL, for the title tooltip. */
   title: string;
   href?: string;
   label: string;
+  /** `href` is an off-site page, not an in-app note. */
+  external?: boolean;
 };
 
 function tagValue(note: EventRecord, name: string): string | undefined {
@@ -19,10 +21,21 @@ function tagValue(note: EventRecord, name: string): string | undefined {
   return undefined;
 }
 
+function httpUrl(value: string | undefined): URL | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Where a highlight (kind 9802) was clipped from. Prefer the addressable `a`
- * tag, then an `e` tag. The subject of the event is the highlighter, not the
- * author of the quoted passage.
+ * tag, then an `e` tag, then an `r` URL. The subject of the event is the
+ * highlighter, not the author of the quoted passage.
  */
 export function highlightSource(note: EventRecord): HighlightSource | null {
   const address = tagValue(note, "a");
@@ -39,6 +52,15 @@ export function highlightSource(note: EventRecord): HighlightSource | null {
       title: eventId,
       href: `/notes/${encodeURIComponent(eventId)}`,
       label: "a note",
+    };
+  }
+  const page = httpUrl(tagValue(note, "r"));
+  if (page) {
+    return {
+      title: page.toString(),
+      href: page.toString(),
+      label: page.hostname.replace(/^www\./, ""),
+      external: true,
     };
   }
   return null;

@@ -1,71 +1,35 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { fetchProfilesByPubkey, hasRichIdentity, hydrateProfiles } from "./profile-hydration";
+import { mergeHydratedProfile } from "@/lib/api/profile-hydration";
+import type { Profile } from "@/lib/types/api";
 
-const getProfileMock = vi.fn();
-const getProfilesBatchMock = vi.fn();
-
-vi.mock("@/lib/api/endpoints", () => ({
-  getProfile: (...args: unknown[]) => getProfileMock(...args),
-  getProfilesBatch: (...args: unknown[]) => getProfilesBatchMock(...args),
-}));
-
-describe("profile hydration", () => {
-  beforeEach(() => {
-    getProfileMock.mockReset();
-    getProfilesBatchMock.mockReset();
-  });
-
-  it("recognizes inline discovery identity as already rich", () => {
-    expect(
-      hasRichIdentity({
-        pubkey: "abc",
-        display_name: "Alice",
-      })
-    ).toBe(true);
-    expect(
-      hasRichIdentity({
-        pubkey: "abc",
-      })
-    ).toBe(false);
-  });
-
-  it("skips network hydration for profiles that already include identity", async () => {
-    const profiles = [
-      {
-        pubkey: "abc",
-        npub: "npub1abc",
-        display_name: "Alice",
-        picture: "https://cdn.example.com/alice.png",
+describe("mergeHydratedProfile", () => {
+  it("keeps the discovery ranking when the profile service has none", () => {
+    const ranked = {
+      pubkey: "aa",
+      display_name: "White Noise",
+      ranking: {
+        rank: 1,
+        score: 33,
+        source_breadth: undefined,
+        reasons: [
+          {
+            code: "engagement_quality",
+            evidence: [{ metric: "engagement_per_post", value: 33, unit: "interactions per note" }],
+          },
+        ],
       },
-    ];
+    } satisfies Profile;
+    const hydrated = {
+      pubkey: "aa",
+      display_name: "White Noise",
+      picture: "https://cdn.example/a.png",
+      ranking: undefined,
+    } satisfies Profile;
 
-    await expect(hydrateProfiles(profiles, "shortTtl")).resolves.toEqual(profiles);
-    expect(getProfilesBatchMock).not.toHaveBeenCalled();
-    expect(getProfileMock).not.toHaveBeenCalled();
-  });
-
-  it("still hydrates sparse profiles through batch and direct fallback", async () => {
-    getProfilesBatchMock.mockResolvedValueOnce([
-      {
-        pubkey: "abc",
-      },
-    ]);
-    getProfileMock.mockResolvedValueOnce({
-      pubkey: "abc",
-      npub: "npub1abc",
-      display_name: "Alice",
-      picture: "https://cdn.example.com/alice.png",
-    });
-
-    const hydrated = await fetchProfilesByPubkey(["abc"], "shortTtl");
-
-    expect(getProfilesBatchMock).toHaveBeenCalledWith(["abc"], "shortTtl");
-    expect(getProfileMock).toHaveBeenCalledWith("abc", "shortTtl");
-    expect(hydrated.abc).toMatchObject({
-      pubkey: "abc",
-      display_name: "Alice",
-      picture: "https://cdn.example.com/alice.png",
-    });
+    expect(mergeHydratedProfile(ranked, hydrated).ranking?.reasons?.[0]?.code).toBe(
+      "engagement_quality"
+    );
+    expect(mergeHydratedProfile(ranked, hydrated).picture).toBe("https://cdn.example/a.png");
   });
 });

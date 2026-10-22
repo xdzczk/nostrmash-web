@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 
 import { HashtagsList } from "@/components/data/renderers";
 import { RankedListPage } from "@/components/explorer/ranked-list-page";
-import { getTrendingHashtags } from "@/lib/api/endpoints";
+import { getDiscoveryHome, HOME_INDEX_LIMIT } from "@/lib/api/endpoints";
 import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
 import { buildEntityMetadata } from "@/lib/seo/metadata";
 
+const TOPICS_SUBTITLE = "The topics on the overview, ranked by how many sources mention them.";
+
 export const metadata: Metadata = buildEntityMetadata({
   title: "Topics",
-  description: "Explore the topics rising fastest across the network.",
+  description: TOPICS_SUBTITLE,
   path: "/trending/hashtags",
 });
 
@@ -20,16 +22,12 @@ export default async function TrendingHashtagsPage({
   searchParams: SearchParams;
 }) {
   const path = "/trending/hashtags";
-  const { cursor, window, currentSearchParams, buildCursorContinuation } = readRankedListContext(
-    await searchParams,
-    path
-  );
+  const { window, currentSearchParams } = readRankedListContext(await searchParams, path);
   const { payload, errorMessage, semantics } = await loadRankedListPayload(
-    () => getTrendingHashtags("shortTtl", { cursor, window }),
-    "Failed to load trending hashtags."
+    () => getDiscoveryHome("shortTtl", { window, hashtags_limit: HOME_INDEX_LIMIT }),
+    "Failed to load topics."
   );
   const hashtags = payload?.hashtags ?? [];
-  const nextCursor = payload?.next_cursor;
   const itemListUrls = hashtags
     .map((entry) => {
       const tag =
@@ -43,7 +41,7 @@ export default async function TrendingHashtagsPage({
       discoverView="topics"
       eyebrow=""
       title="Topics"
-      subtitle="The topics rising fastest across the network."
+      subtitle={TOPICS_SUBTITLE}
       path={path}
       searchParams={currentSearchParams}
       window={window}
@@ -52,12 +50,6 @@ export default async function TrendingHashtagsPage({
       emptyTitle="No ranked hashtags yet"
       emptyMessage="Ranked hashtags have not populated for this window."
       hasItems={hashtags.length > 0}
-      continuationHref={
-        typeof nextCursor === "string" && nextCursor.length > 0
-          ? buildCursorContinuation(nextCursor)
-          : undefined
-      }
-      continuationLabel="Load more hashtags"
       itemListUrls={itemListUrls}
       debugPayload={payload ?? {}}
     >

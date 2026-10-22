@@ -307,6 +307,17 @@ function resolveEditorialTokens(
     .join("");
 }
 
+/** One reading line for profile activity: names, short note ids, short URLs. */
+export function activitySnippet(
+  note: Pick<EventRecord, "content" | "tags">,
+  resolution?: NoteContentResolution
+): string {
+  const content = typeof note.content === "string" ? note.content : "";
+  return resolveEditorialTokens(content, resolution, { tags: note.tags })
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function getEditorialNoteText(
   note: EventRecord,
   resolution?: NoteContentResolution

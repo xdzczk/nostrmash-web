@@ -4,6 +4,7 @@ import {
   clampSuggestLimit,
   clampSuggestQuery,
   clientIpFromRequest,
+  forwardableClientIp,
 } from "@/lib/api/search-suggest-params";
 
 describe("search suggest params", () => {
@@ -27,5 +28,16 @@ describe("search suggest params", () => {
       "x-real-ip": "192.0.2.1",
     });
     expect(clientIpFromRequest(headers)).toBe("203.0.113.10");
+  });
+
+  it("forwards only public client addresses", () => {
+    expect(forwardableClientIp("203.0.113.10")).toBe("203.0.113.10");
+    expect(forwardableClientIp("2001:db8::1")).toBe("2001:db8::1");
+    expect(forwardableClientIp("unknown")).toBeUndefined();
+    expect(forwardableClientIp("999.1.1.1")).toBeUndefined();
+    expect(forwardableClientIp("127.0.0.1")).toBeUndefined();
+    expect(forwardableClientIp("::1")).toBeUndefined();
+    expect(forwardableClientIp("192.168.1.177")).toBeUndefined();
+    expect(forwardableClientIp("::ffff:127.0.0.1")).toBeUndefined();
   });
 });

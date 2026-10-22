@@ -315,7 +315,7 @@ export async function loadProfileActivityData(
   const bookmarks = bookmarksPayload?.events ?? [];
   const highlights = highlightsPayload?.highlights ?? [];
   const mutedProfiles = muteListPayload?.profiles ?? [];
-  const mutedByProfiles = mutedByPayload?.profiles ?? [];
+  const mutedByProfiles = await withProfileIdentity(mutedByPayload?.profiles ?? []);
 
   const notesNextCursor = extractNativeApiSemantics(authoredNotesPayload).next_cursor;
   const repliesNextCursor = extractNativeApiSemantics(authoredRepliesPayload).next_cursor;
@@ -432,6 +432,13 @@ export async function loadProfileActivityData(
       : {};
 
   const replyParentsById = await loadReplyParents(replies);
+  const replyParentAuthorsByPubkey =
+    Object.keys(replyParentsById).length > 0
+      ? await fetchProfilesByPubkey(
+          extractEventAuthorPubkeys(Object.values(replyParentsById)),
+          "shortTtl"
+        )
+      : {};
 
   const notesAuthorMap =
     profile?.pubkey && profile.pubkey.length > 0
@@ -467,11 +474,31 @@ export async function loadProfileActivityData(
     notesAuthorMap,
     reactions,
     replies,
+    replyParentAuthorsByPubkey,
     replyParentsById,
     targetNoteAuthorsByPubkey,
     targetNotesById,
     zaps,
   };
+}
+
+async function withProfileIdentity(profiles: Profile[]): Promise<Profile[]> {
+  const sparse = profiles.filter((profile) => {
+    const display = typeof profile.display_name === "string" ? profile.display_name.trim() : "";
+    const name = typeof profile.name === "string" ? profile.name.trim() : "";
+    return display.length === 0 && name.length === 0;
+  });
+  if (sparse.length === 0) return profiles;
+  const hydrated = await fetchProfilesByPubkey(
+    sparse.map((profile) => profile.pubkey),
+    "shortTtl"
+  );
+  return profiles.map((profile) => {
+    const key = typeof profile.pubkey === "string" ? profile.pubkey.toLowerCase() : "";
+    const extra = key ? hydrated[key] : undefined;
+    if (!extra) return profile;
+    return { ...profile, ...extra, pubkey: profile.pubkey };
+  });
 }
 
 async function loadReplyParents(replies: EventRecord[]): Promise<Record<string, EventRecord>> {

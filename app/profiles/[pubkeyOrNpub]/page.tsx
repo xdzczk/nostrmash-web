@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { CopyValueButton } from "@/components/actions/copy-value-button";
@@ -295,7 +296,8 @@ export default async function ProfilePage({
     notFound: profileNotFound,
   } = await loadProfileFocalData(pubkeyOrNpub);
   if (profileNotFound) {
-    return <NotFoundState />;
+    // Before any Suspense boundary, so the response is a real 404.
+    notFound();
   }
 
   const hero = isRecord(summaryRecord?.hero) ? summaryRecord.hero : null;

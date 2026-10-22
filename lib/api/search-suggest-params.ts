@@ -25,3 +25,37 @@ export function clientIpFromRequest(headers: Headers): string {
 
   return "unknown";
 }
+
+/**
+ * Address safe to send as `CF-Connecting-IP`. Cloudflare rejects missing,
+ * loopback, and other non-public values with error 1000, which fails suggest.
+ */
+export function forwardableClientIp(ip: string): string | undefined {
+  const trimmed = ip.trim();
+  if (!/^[\da-f:.]+$/i.test(trimmed)) return undefined;
+  const v4 = /^(?:\d{1,3}\.){3}\d{1,3}$/.exec(trimmed);
+  if (v4) {
+    const octets = trimmed.split(".").map((octet) => Number(octet));
+    if (octets.some((octet) => octet > 255)) return undefined;
+    const a = octets[0];
+    const b = octets[1];
+    if (a === undefined || b === undefined) return undefined;
+    if (a === 0 || a === 10 || a === 127) return undefined;
+    if (a === 169 && b === 254) return undefined;
+    if (a === 172 && b >= 16 && b <= 31) return undefined;
+    if (a === 192 && b === 168) return undefined;
+    return trimmed;
+  }
+  if (!trimmed.includes(":")) return undefined;
+  const lower = trimmed.toLowerCase();
+  if (
+    lower === "::1" ||
+    lower.startsWith("fe80:") ||
+    lower.startsWith("fc") ||
+    lower.startsWith("fd")
+  ) {
+    return undefined;
+  }
+  if (lower.startsWith("::ffff:")) return forwardableClientIp(trimmed.slice("::ffff:".length));
+  return trimmed;
+}

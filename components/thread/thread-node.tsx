@@ -67,12 +67,8 @@ function ReplyContext({
         </>
       ) : null}
       {duplicateCount > 1 ? (
-        <span
-          className="border-edge-strong text-ink-soft inline-flex min-h-6 items-center gap-1 rounded-md border px-1.5 tabular-nums"
-          title={`${duplicateCount} identical replies from this author were folded into one`}
-        >
-          ×{duplicateCount}
-          <span className="text-ink-dim font-normal">posted {duplicateCount} times</span>
+        <span className="border-edge-strong text-ink-soft inline-flex min-h-6 items-center rounded-md border px-1.5 tabular-nums">
+          {duplicateCount.toLocaleString()} identical replies
         </span>
       ) : null}
     </p>
@@ -122,7 +118,7 @@ export function ThreadNode({
         />
       </article>
       {children.length > 0 ? (
-        <ul className="border-edge/70 mt-1 ml-5 space-y-1 border-l pl-3 sm:ml-6">
+        <ul className="border-ink-faint mt-1 ml-5 space-y-1 border-l pl-3 sm:ml-6">
           {children.map((child, index) => (
             <ThreadNode
               key={child.reply.id ?? `child-${index}`}
@@ -136,12 +132,14 @@ export function ThreadNode({
         </ul>
       ) : null}
       {canExpand && loadDirectReplies ? (
-        <div className={depth === 0 ? "border-edge/70 mt-1 ml-5 border-l pl-3 sm:ml-6" : "mt-1"}>
+        <div className={depth === 0 ? "border-ink-faint mt-1 ml-5 border-l pl-3 sm:ml-6" : "mt-1"}>
           <OnDemandSection
             load={loadDirectReplies.bind(null, replyId, flattenUnder)}
             label={
               replyCount === 1 ? "Show 1 reply" : `Show ${replyCount.toLocaleString()} replies`
             }
+            collapsible
+            hideLabel={replyCount === 1 ? "Hide reply" : "Hide replies"}
             pendingLabel="Loading replies…"
             moreLabel="Show more replies"
             emptyMessage="No replies have been indexed for this note yet."

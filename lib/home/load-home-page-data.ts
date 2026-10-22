@@ -12,7 +12,7 @@ import {
 } from "@/lib/api/endpoints";
 import type { SeriesPoint } from "@/components/charts/sparkline";
 import { isApiTimeoutError } from "@/lib/api/http";
-import { fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
+import { fetchProfilesByPubkey, mergeHydratedProfile } from "@/lib/api/profile-hydration";
 import { extractRelayRows, pickTopPrimitiveStats } from "@/components/explorer/stats-utils";
 import { isRecord } from "@/components/explorer/utils";
 import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
@@ -278,8 +278,7 @@ export async function loadHomePageData(
       noteAuthorsByPubkey = await fetchProfilesByPubkey(pubkeysToHydrate, "shortTtl");
       const hydrateProfile = (profile: Profile) => {
         const key = typeof profile.pubkey === "string" ? profile.pubkey.toLowerCase() : "";
-        const hydrated = key ? noteAuthorsByPubkey[key] : undefined;
-        return { ...profile, ...(hydrated ?? {}) };
+        return mergeHydratedProfile(profile, key ? noteAuthorsByPubkey[key] : undefined);
       };
       hydratedHomeProfiles = homeProfiles.map(hydrateProfile);
       hydratedHomeRisingProfiles = homeRisingProfiles.map(hydrateProfile);

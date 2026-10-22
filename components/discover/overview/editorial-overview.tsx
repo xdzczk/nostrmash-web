@@ -13,8 +13,10 @@ import {
   mapHashtagWhyNow,
   mapNoteWhyNow,
   mapProfileWhyNow,
+  statsCitedByReasons,
   type WhyNowReason,
 } from "@/components/explorer/why-now";
+import { selectSupportingNotes } from "@/lib/discover/lead-notes";
 import { SourceFigure } from "@/components/explorer/source-figure";
 import {
   extractEngagementStats,
@@ -131,13 +133,13 @@ function EvidenceLine({
   className?: string;
 }) {
   const reason = firstReason(reasons);
-  const qualifiers = [
-    ...extra,
-    ranking?.confidence ? `${ranking.confidence} confidence` : null,
-  ].filter((value): value is string => Boolean(value));
+  const qualifiers = extra.filter((value): value is string => Boolean(value));
   if (!reason && qualifiers.length === 0) return null;
   return (
-    <p className={`nm-evidence ${className}`}>
+    <p
+      className={`nm-evidence ${className}`}
+      title={ranking?.confidence ? `${ranking.confidence} confidence` : undefined}
+    >
       <span className="text-ink-faint mr-2.5 font-semibold tracking-[0.1em] uppercase">
         Why now
       </span>
@@ -243,7 +245,11 @@ function EditorialNote({
           </>
         ) : null}
         <EvidenceLine reasons={mapNoteWhyNow(note)} ranking={note.ranking} />
-        <DiscoveryStatPills stats={extractEngagementStats(note)} className="mt-2.5" />
+        <DiscoveryStatPills
+          stats={extractEngagementStats(note)}
+          omitLabels={statsCitedByReasons(mapNoteWhyNow(note))}
+          className="mt-2.5"
+        />
         {noteHref ? (
           <Link
             href={noteHref}
@@ -286,7 +292,11 @@ function EditorialNote({
       ) : null}
       <div className="col-span-2">
         <EvidenceLine reasons={mapNoteWhyNow(note)} ranking={note.ranking} />
-        <DiscoveryStatPills stats={extractEngagementStats(note)} className="mt-2.5" />
+        <DiscoveryStatPills
+          stats={extractEngagementStats(note)}
+          omitLabels={statsCitedByReasons(mapNoteWhyNow(note))}
+          className="mt-2.5"
+        />
       </div>
       {noteHref ? <CardHitTarget href={noteHref} label={`Open note by ${authorLabel}`} /> : null}
     </article>
@@ -322,7 +332,7 @@ function ProfileRanking({
         headingId={headingId}
         action={{
           href: fullRankingHref ?? `/trending/profiles?window=${window}`,
-          label: "Full ranking",
+          label: "People index",
         }}
       />
       {profiles.length > 0 ? (
@@ -654,10 +664,11 @@ export async function EditorialOverview({
   };
   window: StatsWindow;
 }) {
-  const [lead, ...followups] = notes.slice(0, 4);
+  const lead = notes[0];
+  const followups = selectSupportingNotes(notes);
   const visibleHashtags = sectionFailures.hashtags ? [] : hashtags;
   const visibleDomains = sectionFailures.domains ? [] : domains;
-  const contentResolution = await resolveContentReferences(notes.slice(0, 4)).catch(
+  const contentResolution = await resolveContentReferences(lead ? [lead, ...followups] : []).catch(
     () => undefined
   );
   if (contentResolution) {

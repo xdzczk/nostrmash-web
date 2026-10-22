@@ -4,6 +4,7 @@ import Link from "next/link";
 import { NoteContent, type NoteContentResolution } from "@/components/explorer/note-content";
 import { NoteLinkPreviews } from "@/components/explorer/note-link-previews";
 import { NoteMedia, type NoteMediaVariant } from "@/components/explorer/note-media";
+import { extractNoteMediaAttachments } from "@/lib/notes/media";
 import { getNotePreviewPresentation } from "@/components/explorer/note-preview";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
@@ -14,7 +15,7 @@ import {
   DiscoveryActionLinks,
   DiscoveryStatPills,
 } from "@/components/explorer/card-grammar";
-import { mapNoteWhyNow, WhyNow } from "@/components/explorer/why-now";
+import { mapNoteWhyNow, statsCitedByReasons, WhyNow } from "@/components/explorer/why-now";
 import {
   extractEngagementStats,
   formatProfileSecondary,
@@ -69,6 +70,7 @@ export function NoteCard({
   showUtilityLinks = true,
   omitZeroStats = false,
   mediaVariant,
+  suppressEmbeds = false,
 }: {
   note: EventRecord;
   author?: Profile;
@@ -93,6 +95,8 @@ export function NoteCard({
   /** Drop engagement stats whose value is zero. */
   omitZeroStats?: boolean;
   mediaVariant?: NoteMediaVariant;
+  /** Profile dossier: no link-unfurl cards, domain chips, or relay chips. */
+  suppressEmbeds?: boolean;
 }) {
   if (isRepostEvent(note)) {
     return (
@@ -123,6 +127,7 @@ export function NoteCard({
       showUtilityLinks={showUtilityLinks}
       omitZeroStats={omitZeroStats}
       mediaVariant={mediaVariant}
+      suppressEmbeds={suppressEmbeds}
     />
   );
 }
@@ -143,6 +148,7 @@ function NoteCardBody({
   showUtilityLinks,
   omitZeroStats,
   mediaVariant: mediaVariantProp,
+  suppressEmbeds,
 }: {
   note: EventRecord;
   author?: Profile;
@@ -159,6 +165,7 @@ function NoteCardBody({
   showUtilityLinks: boolean;
   omitZeroStats: boolean;
   mediaVariant?: NoteMediaVariant;
+  suppressEmbeds: boolean;
 }) {
   const isReply = density === "reply";
   const isDetail = density === "detail";
@@ -198,17 +205,24 @@ function NoteCardBody({
   const preview = getNotePreviewPresentation(note);
   const linkPreviewLimit = showFullContent ? 2 : 1;
   const linkPreviewUrls =
-    !showFullContent && typeof note.content === "string"
+    !suppressEmbeds && !showFullContent && typeof note.content === "string"
       ? extractNoteLinkUrls(note.content, linkPreviewLimit)
       : [];
   const clampClassName = showFullContent
     ? "overflow-visible whitespace-pre-wrap [display:block] [line-clamp:unset] [-webkit-line-clamp:unset]"
     : "line-clamp-2";
   const mediaVariant =
-    mediaVariantProp ?? (!showFullContent && density === "list" ? "compact" : undefined);
+    mediaVariantProp ??
+    (isDetail
+      ? "detail"
+      : isReply
+        ? "thread"
+        : !showFullContent && density === "list"
+          ? "compact"
+          : undefined);
   const replyCount = noteReplyCount(note);
   const allMetrics = extractEngagementStats(note);
-  const metrics = isReply ? allMetrics.filter(isNonZeroStat) : allMetrics;
+  const metrics = isReply || isDetail ? allMetrics.filter(isNonZeroStat) : allMetrics;
   const isTopRank = typeof rank === "number" && rank <= 3;
   const noteDomains = isReply
     ? []
@@ -224,6 +238,11 @@ function NoteCardBody({
         label: truncateIdentifier(relayHost, "relay", "primary"),
       }));
   const reasonCandidates = mapNoteWhyNow(note);
+  const listThumb =
+    !showFullContent &&
+    density === "list" &&
+    mediaVariant === "compact" &&
+    extractNoteMediaAttachments(rawContent).length > 0;
   const rankLabel = typeof rank === "number" ? String(rank).padStart(2, "0") : null;
   const contentSize = isDetail ? "detail" : isReply ? "reply" : "list";
   const metaTextClass = density === "list" ? "text-xs" : "text-[13px]";
@@ -340,28 +359,57 @@ function NoteCardBody({
         </div>
       </div>
 
-      {preview.prefersMediaFirst && typeof note.content === "string" && note.content.length > 0 ? (
+      {listThumb ? (
+        <div className="mt-2.5 flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <NoteContent
+              tokens={tokenizeNoteContent(content, { tags: note.tags })}
+              className={clampClassName}
+              showQuotes={showFullContent}
+              resolution={contentResolution}
+              hideLinkPreviewUrls={linkPreviewUrls}
+              size={contentSize}
+            />
+            {suppressEmbeds ? null : (
+              <NoteLinkPreviews content={note.content ?? ""} limit={linkPreviewLimit} />
+            )}
+          </div>
+          <NoteMedia content={note.content ?? ""} priority={priorityMedia} variant="compact" />
+        </div>
+      ) : (
         <>
-          <NoteMedia content={note.content} priority={priorityMedia} variant={mediaVariant} />
-          <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
+          {preview.prefersMediaFirst &&
+          typeof note.content === "string" &&
+          note.content.length > 0 ? (
+            <>
+              <NoteMedia content={note.content} priority={priorityMedia} variant={mediaVariant} />
+              {suppressEmbeds ? null : (
+                <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
+              )}
+            </>
+          ) : null}
+          <NoteContent
+            tokens={tokenizeNoteContent(content, { tags: note.tags })}
+            className={`${isDetail ? "mt-4" : "mt-2.5"} ${clampClassName}`}
+            showQuotes={showFullContent}
+            resolution={contentResolution}
+            hideLinkPreviewUrls={linkPreviewUrls}
+            size={contentSize}
+          />
+          {!preview.prefersMediaFirst &&
+          typeof note.content === "string" &&
+          note.content.length > 0 ? (
+            <>
+              <NoteMedia content={note.content} priority={priorityMedia} variant={mediaVariant} />
+              {suppressEmbeds ? null : (
+                <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
+              )}
+            </>
+          ) : null}
         </>
-      ) : null}
-      <NoteContent
-        tokens={tokenizeNoteContent(content, { tags: note.tags })}
-        className={`${isDetail ? "mt-4" : "mt-2.5"} ${clampClassName}`}
-        showQuotes={showFullContent}
-        resolution={contentResolution}
-        hideLinkPreviewUrls={linkPreviewUrls}
-        size={contentSize}
-      />
-      {!preview.prefersMediaFirst && typeof note.content === "string" && note.content.length > 0 ? (
-        <>
-          <NoteMedia content={note.content} priority={priorityMedia} variant={mediaVariant} />
-          <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
-        </>
-      ) : null}
+      )}
 
-      {noteDomains.length > 0 ? (
+      {!suppressEmbeds && noteDomains.length > 0 ? (
         <div className={`${chipRowClass} mt-3`}>
           <span className="text-ink-faint">Links</span>
           {noteDomains.map((domain) => (
@@ -400,7 +448,7 @@ function NoteCardBody({
         </div>
       ) : null}
 
-      {relayHosts.length > 0 ? (
+      {!suppressEmbeds && relayHosts.length > 0 ? (
         <div className={chipRowClass}>
           <span className="text-ink-faint">Relays</span>
           {relayHosts.map((relayHost) => (
@@ -434,6 +482,7 @@ function NoteCardBody({
         <DiscoveryStatPills
           stats={metrics}
           omitZero={omitZeroStats}
+          omitLabels={discoverySignals ? statsCitedByReasons(reasonCandidates) : undefined}
           className={isDetail ? "mt-4" : "mt-2.5 sm:mt-3"}
           size={isDetail ? "md" : "sm"}
           replacements={isDetail && repostsControl ? { repost_count: repostsControl } : undefined}

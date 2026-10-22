@@ -114,8 +114,25 @@ export async function hydrateProfiles(
     const npubKey = typeof profile.npub === "string" ? profile.npub.toLowerCase() : "";
     const hydrated =
       (key ? hydratedByPubkey[key] : undefined) ?? (npubKey ? hydratedByNpub[npubKey] : undefined);
-    return hydrated ? { ...profile, ...hydrated } : profile;
+    return mergeHydratedProfile(profile, hydrated);
   });
+}
+
+/**
+ * Fill in a display name and avatar without dropping the discovery ranking.
+ * A profile-service record has no `ranking`, and spreading it over the
+ * discovery row used to erase the reason the person is on the page.
+ */
+export function mergeHydratedProfile(ranked: Profile, hydrated?: Profile): Profile {
+  if (!hydrated) return ranked;
+  const identity = Object.fromEntries(
+    Object.entries(hydrated).filter(([, value]) => value !== undefined && value !== null)
+  ) as Partial<Profile>;
+  return {
+    ...ranked,
+    ...identity,
+    ranking: ranked.ranking ?? hydrated.ranking,
+  };
 }
 
 export function extractEventAuthorPubkeys(notes: EventRecord[]): string[] {

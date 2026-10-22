@@ -37,7 +37,7 @@ describe("ProfileRepliesList", () => {
       />
     );
 
-    expect(screen.getByRole("link", { name: "Hello from the parent" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Replying to Hello from the parent" })).toHaveAttribute(
       "href",
       `/notes/${PARENT}`
     );

@@ -223,6 +223,11 @@ export function truncateNip05(value: string, maxLength = 32): string {
   if (at <= 0) return truncateProfileLabel(trimmed, maxLength);
   const domain = trimmed.slice(at);
   const local = trimmed.slice(0, at);
+  // Bridged handles (`name_at_instance@relay`) chop into noise. The name is
+  // already on the row, so the secondary line keeps the domain.
+  if (local.includes("_at_")) {
+    return domain.length <= maxLength ? domain : truncateProfileLabel(domain, maxLength);
+  }
   const room = maxLength - domain.length - ELLIPSIS.length;
   if (room < 1) {
     return domain.length <= maxLength ? domain : truncateProfileLabel(domain, maxLength);
@@ -752,6 +757,8 @@ export function profileAboutLine(about: string): string {
       .replace(/\b[0-9a-f]{64}\b/gi, " ")
       .replace(/\b(?:lnbc|lnurl)[a-z0-9]{20,}\b/gi, " ")
       .replace(/lightning:[^\s]+/gi, " ")
+      .replace(/https?:\/\/\S+/gi, " ")
+      .replace(/\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b/gi, " ")
   );
 }
 

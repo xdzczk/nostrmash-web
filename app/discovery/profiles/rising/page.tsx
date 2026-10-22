@@ -77,7 +77,7 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
       }
       debugPayload={payload ?? {}}
     >
-      <ProfilesList profiles={hydratedProfiles} ranked />
+      <ProfilesList profiles={hydratedProfiles} ranked discoverySignals />
     </RankedListPage>
   );
 }

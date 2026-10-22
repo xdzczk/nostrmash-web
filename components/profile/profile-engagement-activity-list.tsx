@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import type { NoteContentResolution } from "@/components/explorer/note-content";
+import { activitySnippet } from "@/components/explorer/note-preview";
 import { Timestamp } from "@/components/explorer/timestamp";
 import { profileLabel } from "@/components/explorer/utils";
 import { presentReactionContent } from "@/lib/profile/reaction-display";
@@ -17,10 +19,6 @@ function resolveTargetNote(
   const targetEventId = entry.target_event_id;
   if (typeof targetEventId !== "string" || targetEventId.length === 0) return null;
   return targetNotesById[targetEventId.toLowerCase()] ?? null;
-}
-
-function oneLine(value: string | undefined): string {
-  return (value ?? "").replace(/\s+/g, " ").trim();
 }
 
 function targetAuthorLabel(
@@ -84,15 +82,17 @@ function EngagementRow({
   fallbackId,
   authorsByPubkey,
   createdAt,
+  resolution,
 }: {
   marker: ReactNode;
   note: EventRecord | null;
   fallbackId?: string;
   authorsByPubkey?: Record<string, Profile>;
   createdAt?: number;
+  resolution?: NoteContentResolution;
 }) {
   const author = targetAuthorLabel(note, authorsByPubkey);
-  const line = oneLine(typeof note?.content === "string" ? note.content : undefined);
+  const line = note ? activitySnippet(note, resolution) : "";
   const href = targetHref(note, fallbackId);
   const body = (
     <span className="flex min-w-0 items-start gap-3">
@@ -123,10 +123,12 @@ export function ProfileReactionsActivityList({
   reactions,
   targetNotesById,
   authorsByPubkey,
+  resolution,
 }: {
   reactions: AuthorReactionRecord[];
   targetNotesById: Record<string, EventRecord>;
   authorsByPubkey?: Record<string, Profile>;
+  resolution?: NoteContentResolution;
 }) {
   return (
     <ul className="divide-edge/60 divide-y">
@@ -155,6 +157,7 @@ export function ProfileReactionsActivityList({
               fallbackId={reaction.target_event_id}
               authorsByPubkey={authorsByPubkey}
               createdAt={reaction.created_at}
+              resolution={resolution}
             />
           </li>
         );
@@ -167,10 +170,12 @@ export function ProfileZapsActivityList({
   zaps,
   targetNotesById,
   authorsByPubkey,
+  resolution,
 }: {
   zaps: AuthorZapRecord[];
   targetNotesById: Record<string, EventRecord>;
   authorsByPubkey?: Record<string, Profile>;
+  resolution?: NoteContentResolution;
 }) {
   return (
     <ul className="divide-edge/60 divide-y">
@@ -190,6 +195,7 @@ export function ProfileZapsActivityList({
               fallbackId={zap.target_event_id}
               authorsByPubkey={authorsByPubkey}
               createdAt={zap.created_at}
+              resolution={resolution}
             />
           </li>
         );

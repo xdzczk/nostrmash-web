@@ -67,6 +67,7 @@ export function DiscoveryStatPills({
   size,
   replacements,
   omitZero = false,
+  omitLabels,
 }: {
   stats: Array<{ label: string; value: unknown; detail?: string }>;
   className?: string;
@@ -76,8 +77,13 @@ export function DiscoveryStatPills({
   replacements?: Partial<Record<string, React.ReactNode>>;
   /** Hide stats whose value is zero. Discover lists leave zeros visible. */
   omitZero?: boolean;
+  /** Raw stat keys already printed elsewhere on the row, such as `reply_count`. */
+  omitLabels?: string[];
 }) {
-  const visible = omitZero ? stats.filter((stat) => !isZeroStat(stat.value)) : stats;
+  const hidden = new Set(omitLabels ?? []);
+  const visible = (omitZero ? stats.filter((stat) => !isZeroStat(stat.value)) : stats).filter(
+    (stat) => !hidden.has(stat.label)
+  );
   if (visible.length === 0) return null;
   const sizeClass = STAT_PILL_SIZE[size ?? (compact ? "xs" : "sm")];
   return (

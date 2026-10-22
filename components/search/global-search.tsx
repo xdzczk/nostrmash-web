@@ -1,11 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { SearchForm } from "@/components/search/search-form";
 
 export function GlobalSearch() {
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMobileOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [mobileOpen]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -61,34 +76,37 @@ export function GlobalSearch() {
         </svg>
       </button>
 
-      {mobileOpen ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Search NostrMash"
-          className="bg-background/98 fixed inset-0 z-[90] px-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-xl md:hidden"
-        >
-          <div className="mx-auto flex max-w-xl items-center gap-3">
-            <SearchForm
-              variant="global"
-              autoFocus
-              onNavigate={() => setMobileOpen(false)}
-              placeholder="Search notes, people, topics, or relays"
-              className="flex-1"
-            />
-            <button
-              type="button"
-              onClick={() => setMobileOpen(false)}
-              className="text-ink-muted hover:text-ink focus-visible:ring-accent-soft/60 min-h-11 rounded-lg px-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+      {mobileOpen
+        ? createPortal(
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Search NostrMash"
+              className="bg-background/98 fixed inset-0 z-[90] px-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-xl md:hidden"
             >
-              Cancel
-            </button>
-          </div>
-          <p className="text-ink-faint mx-auto mt-4 max-w-xl text-sm">
-            Search names, npubs, notes, hashtags, domains, and relay URLs.
-          </p>
-        </div>
-      ) : null}
+              <div className="mx-auto flex w-full max-w-xl items-center gap-3">
+                <SearchForm
+                  variant="global"
+                  autoFocus
+                  onNavigate={() => setMobileOpen(false)}
+                  placeholder="Search notes, people, topics, or relays"
+                  className="min-w-0 flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMobileOpen(false)}
+                  className="text-ink-muted hover:text-ink focus-visible:ring-accent-soft/60 min-h-11 shrink-0 rounded-lg px-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+                >
+                  Cancel
+                </button>
+              </div>
+              <p className="text-ink-faint mx-auto mt-4 max-w-xl text-sm">
+                Search names, npubs, notes, hashtags, domains, and relay URLs.
+              </p>
+            </div>,
+            document.body
+          )
+        : null}
     </>
   );
 }

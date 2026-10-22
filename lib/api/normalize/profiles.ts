@@ -122,20 +122,36 @@ export function normalizeUserMuteListResponse(value: unknown): UserMuteListRespo
   });
 }
 
+function firstPopulatedList(...candidates: unknown[]): unknown[] {
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate) && candidate.length > 0) return candidate;
+  }
+  return [];
+}
+
+/** Live `/muted-by` items identify the muter as `muter_pubkey`, not `pubkey`. */
+function withMuterPubkey(entry: unknown): unknown {
+  const record = asRecord(entry);
+  if (!record) return entry;
+  if (asString(record.pubkey) || asString(record.author_pubkey)) return entry;
+  const muter = asString(record.muter_pubkey) ?? asString(record.muterPubkey);
+  if (!muter) return entry;
+  return { ...record, pubkey: muter };
+}
+
 export function normalizeUserMutedByResponse(value: unknown): UserMutedByResponse {
   const record = asRecord(value) ?? {};
   const fallbackItems = Array.isArray(value) ? value : [];
-  const profiles = dedupeProfilesByPubkey(
-    normalizeProfiles(
-      record.muted_by ??
-        record.muters ??
-        record.profiles ??
-        record.users ??
-        record.items ??
-        record.data ??
-        fallbackItems
-    )
-  );
+  const entries = firstPopulatedList(
+    record.muted_by,
+    record.muters,
+    record.profiles,
+    record.users,
+    record.items,
+    record.data,
+    fallbackItems
+  ).map(withMuterPubkey);
+  const profiles = dedupeProfilesByPubkey(normalizeProfiles(entries));
   const total = asNumber(record.total) ?? asNumber(record.count);
 
   return compactDefined({

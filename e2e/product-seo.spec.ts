@@ -60,13 +60,18 @@ test.describe("product + SEO surfaces", () => {
 
   test("profile page exposes Person JSON-LD and actions", async ({ page, request }) => {
     await page.goto(`/profiles/${AUTHOR_PK}`);
-    // Share/copy actions are visible in the hero without opening a disclosure.
-    await expect(page.getByRole("button", { name: /share/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /copy npub/i })).toBeVisible();
-    // Protocol identifiers live in a single merged disclosure.
+    const openMenu = page.getByTestId("entity-actions-menu");
+    await openMenu.locator("summary").click();
+    await expect(openMenu.getByRole("button", { name: /^Share$/ })).toBeVisible();
+    await expect(openMenu.getByRole("button", { name: /copy npub/i })).toBeVisible();
+    // Protocol identifiers live in a single merged disclosure. The unix
+    // timestamp stays on the title; the visible value is the calendar date.
     await page.getByText("Identity and protocol details", { exact: true }).click();
     await expect(page.getByText("Metadata updated", { exact: true })).toBeVisible();
-    await expect(page.getByText("2026-09-11 (unix 1789138347)", { exact: true })).toBeVisible();
+    await expect(page.getByText("2026-09-11", { exact: true })).toHaveAttribute(
+      "title",
+      "1789138347"
+    );
 
     const jsonLd = page.locator('script[type="application/ld+json"]');
     await expect(jsonLd.first()).toBeAttached();

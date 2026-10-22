@@ -149,12 +149,29 @@ export function eventTagMarker(tag: unknown): string {
   return typeof tag[3] === "string" ? tag[3].toLowerCase() : "";
 }
 
+/**
+ * True when this kind-1 event is a thread reply, using the same parent rule
+ * as the API (`ReplyParentEventID` / `thread_edges`): a `reply` marker, a
+ * `root` marker, or a legacy unmarked `#e` tag. Mention-only tags are quotes,
+ * not replies, and stay in recent notes.
+ */
 export function isAuthoredReplyEvent(event: EventRecord): boolean {
   const tags = event.tags;
   if (!Array.isArray(tags)) return false;
-  return tags.some(
-    (tag) => Array.isArray(tag) && tag[0] === "e" && eventTagMarker(tag) === "reply"
-  );
+  let hasReply = false;
+  let hasRoot = false;
+  let unmarked = 0;
+  for (const tag of tags) {
+    if (!Array.isArray(tag) || tag[0] !== "e") continue;
+    const referenced = typeof tag[1] === "string" ? tag[1].trim() : "";
+    if (!referenced) continue;
+    const marker = eventTagMarker(tag);
+    if (marker === "reply") hasReply = true;
+    else if (marker === "root") hasRoot = true;
+    else if (marker !== "mention") unmarked += 1;
+  }
+  if (hasReply || hasRoot) return true;
+  return unmarked > 0;
 }
 
 export function filterAuthoredNotes(events: EventRecord[]): EventRecord[] {

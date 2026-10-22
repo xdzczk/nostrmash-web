@@ -255,9 +255,34 @@ describe("filterAuthoredNotes", () => {
         content: "quoted share",
         tags: [["e", "root-id", "", "root"]],
       },
+      {
+        id: "reply-root-marker",
+        kind: 1,
+        content: "Doug. I've missed you.",
+        tags: [["e", "d".repeat(64), "wss://nostrelites.org/", "root", "b".repeat(64)]],
+      },
     ]);
 
-    expect(filtered.map((event) => event.id)).toEqual(["note-1", "quote-root-1"]);
+    expect(filtered.map((event) => event.id)).toEqual(["note-1"]);
+  });
+
+  it("keeps mention-only quotes in authored note feeds", () => {
+    const filtered = filterAuthoredNotes([
+      {
+        id: "quote-1",
+        kind: 1,
+        content: "gm nostr:nevent1example",
+        tags: [["e", "quoted-id", "", "mention"]],
+      },
+      {
+        id: "legacy-reply",
+        kind: 1,
+        content: "reply without a marker",
+        tags: [["e", "parent-id"]],
+      },
+    ]);
+
+    expect(filtered.map((event) => event.id)).toEqual(["quote-1"]);
   });
 });
 

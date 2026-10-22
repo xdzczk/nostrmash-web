@@ -36,6 +36,34 @@ describe("highlightSource", () => {
     });
   });
 
+  it("links an r tag to the source page when there is no note or article", () => {
+    expect(
+      highlightSource(
+        highlight([
+          ["context", "surrounding"],
+          ["r", "https://www.bnonews.com/index.php/story"],
+        ])
+      )
+    ).toEqual({
+      title: "https://www.bnonews.com/index.php/story",
+      href: "https://www.bnonews.com/index.php/story",
+      label: "bnonews.com",
+      external: true,
+    });
+  });
+
+  it("prefers an event source over a page url", () => {
+    const id = "c".repeat(64);
+    expect(
+      highlightSource(
+        highlight([
+          ["r", "https://bnonews.com/x"],
+          ["e", id],
+        ])
+      )?.href
+    ).toBe(`/notes/${id}`);
+  });
+
   it("returns nothing when the highlight has no source", () => {
     expect(highlightSource(highlight([["p", "b".repeat(64)]]))).toBeNull();
   });

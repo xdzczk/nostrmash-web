@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -85,6 +85,35 @@ describe("EntityActions menu", () => {
     await waitFor(() => {
       expect(screen.getByText(/copied profile id/i)).toBeInTheDocument();
     });
+  });
+
+  it("closes on Escape, outside pointer, and page scroll", async () => {
+    const user = userEvent.setup();
+    render(
+      <ToastProvider>
+        <EntityActions
+          kind="profile"
+          layout="menu"
+          absoluteUrl="https://nostrmash.com/profiles/npub1abc"
+          identifier="npub1abc"
+          nostrUri="nostr:npub1abc"
+        />
+      </ToastProvider>
+    );
+
+    const menu = screen.getByTestId("entity-actions-menu");
+    await user.click(screen.getByText("Open"));
+    expect(menu).toHaveAttribute("open");
+    await user.keyboard("{Escape}");
+    expect(menu).not.toHaveAttribute("open");
+
+    await user.click(screen.getByText("Open"));
+    fireEvent.scroll(window);
+    expect(menu).not.toHaveAttribute("open");
+
+    await user.click(screen.getByText("Open"));
+    fireEvent.pointerDown(document.body);
+    expect(menu).not.toHaveAttribute("open");
   });
 });
 

@@ -33,6 +33,31 @@ describe("getArticlePresentation", () => {
     expect(presentation.body.length).toBe(ARTICLE.content.length);
   });
 
+  it("decodes entities before markdown stripping and does not repeat a derived title", () => {
+    const presentation = getArticlePresentation({
+      id: "e".repeat(64),
+      kind: LONG_FORM_KIND,
+      pubkey: "b".repeat(64),
+      content:
+        "This article was originally published via my Substack:&#x20;https://frankcorva.substack.com/p/this and then it continues with enough further sentences to remain a summary.",
+    });
+    expect(presentation.title).not.toMatch(/&|x20/);
+    expect(presentation.title.toLowerCase()).toContain("substack");
+    expect(presentation.summary ?? "").not.toMatch(/^this article was originally/i);
+    expect(presentation.summary ?? "").not.toMatch(/&#x20;|& x20;/);
+  });
+
+  it("keeps hyphens inside an explicit title", () => {
+    const presentation = getArticlePresentation({
+      id: "f".repeat(64),
+      kind: LONG_FORM_KIND,
+      pubkey: "b".repeat(64),
+      content: "Body.",
+      tags: [["title", "Why long-form matters"]],
+    });
+    expect(presentation.title).toBe("Why long-form matters");
+  });
+
   it("drops pipe tables so a table-only body has no pipe summary and no read time", () => {
     const presentation = getArticlePresentation({
       id: "d".repeat(64),

@@ -2,10 +2,25 @@ import { describe, expect, it } from "vitest";
 
 import { encodeNprofile, hexToNote, hexToNpub } from "@/lib/nostr/nip19";
 
-import { getEditorialNoteText } from "./note-preview";
+import { activitySnippet, getEditorialNoteText } from "./note-preview";
 
 const PUBKEY = "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d";
 const EVENT_ID = "b3e392b11f5d4f28321cedd09303a748acfd0487aea5a7450b3481c60b6e4f87";
+
+describe("activitySnippet", () => {
+  it("turns nostr mentions and event refs into readable tokens", () => {
+    const npub = hexToNpub(PUBKEY)!;
+    const note = hexToNote(EVENT_ID)!;
+    const text = activitySnippet(
+      { content: `Good morning nostr:${npub} nostr:${note} https://example.com/a/b` },
+      { profilesByPubkey: { [PUBKEY]: { pubkey: PUBKEY, display_name: "Alice" } } }
+    );
+    expect(text).toContain("@Alice");
+    expect(text).not.toMatch(/nostr:/);
+    expect(text).not.toContain(note);
+    expect(text).toMatch(/example\.com/);
+  });
+});
 
 describe("getEditorialNoteText", () => {
   it("resolves mentions to @name and truncates event refs", () => {

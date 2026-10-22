@@ -15,7 +15,7 @@ export function videoPreviewSrc(url: string): string {
   return `${base}#t=0.001`;
 }
 
-function NoteVideo({ url, fill = false }: { url: string; fill?: boolean }) {
+function NoteVideo({ url, className }: { url: string; className: string }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const primedUrlRef = useRef<string | null>(null);
 
@@ -52,7 +52,7 @@ function NoteVideo({ url, fill = false }: { url: string; fill?: boolean }) {
       controls
       playsInline
       preload="metadata"
-      className={fill ? "h-full w-full bg-black object-cover" : "max-h-[28rem] w-full bg-black"}
+      className={className}
     />
   );
 }
@@ -66,7 +66,7 @@ export function NoteMediaReveal({
 }: {
   url: string;
   kind: MediaKind;
-  variant?: "full" | "lead" | "compact";
+  variant?: "full" | "lead" | "compact" | "detail" | "thread";
   /** Eager-load with high fetch priority (lead/LCP image). */
   priority?: boolean;
   /** Number of further attachments not rendered; shown as a `+N` badge. */
@@ -77,6 +77,22 @@ export function NoteMediaReveal({
   const fixedRatio =
     variant === "compact" ? "aspect-square" : variant === "lead" ? "aspect-[16/10]" : "";
   const fill = fixedRatio.length > 0;
+  // Focal notes stay tall enough to read, short enough that the sentence
+  // still starts on the first screen. Replies stay at conversation scale.
+  const framedClass = fill
+    ? "h-full w-full object-cover"
+    : variant === "thread"
+      ? "max-h-48 w-full object-contain"
+      : variant === "detail"
+        ? "max-h-[min(28rem,52vh)] w-full object-contain"
+        : "max-h-[40rem] w-full object-contain";
+  const videoClass = fill
+    ? "h-full w-full bg-black object-cover"
+    : variant === "thread"
+      ? "max-h-48 w-full bg-black object-contain"
+      : variant === "detail"
+        ? "max-h-[min(28rem,52vh)] w-full bg-black object-contain"
+        : "max-h-[28rem] w-full bg-black";
   const badge =
     hiddenCount > 0 ? (
       <span
@@ -104,16 +120,11 @@ export function NoteMediaReveal({
             fetchPriority={priority ? "high" : "auto"}
             decoding="async"
             referrerPolicy="no-referrer"
-            className={
-              fill
-                ? "h-full w-full object-cover"
-                : // Natural ratio, letterboxed when tall: screenshots stay legible.
-                  "max-h-[40rem] w-full object-contain"
-            }
+            className={framedClass}
           />
         </EnlargeableImage>
       ) : null}
-      {kind === "video" ? <NoteVideo url={url} fill={fill} /> : null}
+      {kind === "video" ? <NoteVideo url={url} className={videoClass} /> : null}
       {kind === "audio" ? (
         <div className={fill ? "flex h-full items-center p-3" : "p-3"}>
           <audio src={url} controls preload="metadata" className="w-full" />
