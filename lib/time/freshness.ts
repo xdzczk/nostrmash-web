@@ -25,14 +25,23 @@ function formatAge(date: Date, nowMs: number): string {
   return `${days}d ago`;
 }
 
-/** Relative freshness label like "Updated 3d ago", or null when no timestamp. */
-export function formatUpdatedRelative(
+/** Relative age such as "3d ago", or null when no timestamp. */
+export function formatRelativeAge(
   value: unknown,
   nowMs: number = getRequestNowMs()
 ): string | null {
   const date = parseTimestamp(value);
   if (!date) return null;
-  return `Updated ${formatAge(date, nowMs)}`;
+  return formatAge(date, nowMs);
+}
+
+/** Relative freshness label like "Updated 3d ago", or null when no timestamp. */
+export function formatUpdatedRelative(
+  value: unknown,
+  nowMs: number = getRequestNowMs()
+): string | null {
+  const age = formatRelativeAge(value, nowMs);
+  return age ? `Updated ${age}` : null;
 }
 
 export function isFreshTimestamp(

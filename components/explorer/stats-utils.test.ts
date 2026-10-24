@@ -5,9 +5,13 @@ import {
   extractRelayHealthRows,
   extractRelayRows,
   flattenPrimitiveStats,
+  formatRelayHealthSummary,
+  partitionRelayHealth,
   pickTopPrimitiveStats,
   rankRelayActivity,
+  relayDisplayLabel,
   relayHealthPosture,
+  selectRelayHealthForHost,
 } from "./stats-utils";
 
 describe("extractRelayRows", () => {
@@ -242,6 +246,99 @@ describe("flattenPrimitiveStats", () => {
       "event_volume_24h",
     ]);
     expect(picked.filter((stat) => stat.value === 11)).toHaveLength(1);
+  });
+
+  it("does not repeat a stat when the 24h and 7d keys collapse to one window", () => {
+    const payload = {
+      network: {
+        activity: {
+          active_authors: { "24h": 3902, "7d": 8657 },
+          note_volume: { "24h": 41653, "7d": 303798 },
+        },
+      },
+    };
+
+    const picked = pickTopPrimitiveStats(
+      payload,
+      ["active_authors_24h", "active_authors_7d", "note_volume_24h", "note_volume_7d"],
+      6,
+      "24h"
+    );
+
+    expect(picked).toEqual([
+      { label: "active_authors_24h", value: 3902 },
+      { label: "note_volume_24h", value: 41653 },
+    ]);
+  });
+});
+
+describe("partitionRelayHealth", () => {
+  const nowMs = Date.parse("2026-10-24T12:00:00.000Z");
+
+  it("leads with unhealthy and stale checkpoints, and keeps fresh healthy rows apart", () => {
+    const rows = extractRelayHealthRows(
+      {
+        relays: [
+          {
+            relay_url: "wss://fresh.example",
+            healthy: true,
+            latest_checkpoint_at: "2026-10-24T11:00:00.000Z",
+          },
+          {
+            relay_url: "wss://stale.example",
+            healthy: true,
+            latest_checkpoint_at: "2026-08-30T07:00:00.000Z",
+            mode: "live",
+          },
+          {
+            relay_url: "wss://down.example",
+            healthy: false,
+            latest_checkpoint_at: "2026-10-24T10:00:00.000Z",
+          },
+        ],
+      },
+      10
+    );
+
+    const { attention, current } = partitionRelayHealth(rows, nowMs);
+    expect(attention.map((row) => row.host)).toEqual(["down.example", "stale.example"]);
+    expect(current.map((row) => row.host)).toEqual(["fresh.example"]);
+  });
+
+  it("keeps path relays apart and counts checks, not just hosts", () => {
+    const rows = extractRelayHealthRows(
+      {
+        relays: [
+          {
+            relay_url: "wss://relay.example/alpha",
+            status: "errored",
+            latest_checkpoint_at: "2026-08-29T00:00:00.000Z",
+          },
+          {
+            relay_url: "wss://relay.example/beta",
+            status: "healthy",
+            latest_checkpoint_at: "2026-10-24T11:00:00.000Z",
+          },
+          {
+            relay_url: "wss://fresh.example",
+            status: "healthy",
+            latest_checkpoint_at: "2026-10-24T11:30:00.000Z",
+          },
+        ],
+      },
+      10
+    );
+
+    expect(relayDisplayLabel(rows[0]?.relay ?? "", rows[0]?.host ?? "")).toBe(
+      "relay.example/alpha"
+    );
+    expect(formatRelayHealthSummary(rows, nowMs)).toBe(
+      "1 of 3 checks is unhealthy. These checks cover 2 hosts. 2 checked in healthy within the last day."
+    );
+    expect(selectRelayHealthForHost(rows, "relay.example", nowMs)).toMatchObject({
+      count: 2,
+      row: { relay: "wss://relay.example/alpha" },
+    });
   });
 });
 

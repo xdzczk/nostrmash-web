@@ -37,6 +37,23 @@ export async function getStatsSeries(
   });
 }
 
+/**
+ * Keep points whose timestamp falls inside `hours` of the newest point.
+ * The series endpoint publishes 7-day and 30-day history, so a 24-hour view
+ * is this slice rather than a separate request.
+ */
+export function sliceSeriesToHours(
+  points: Array<{ t: number; v: number }>,
+  hours: number
+): Array<{ t: number; v: number }> {
+  if (points.length === 0 || !Number.isFinite(hours) || hours <= 0) return points;
+  const latest = points.reduce((max, point) => Math.max(max, point.t), 0);
+  const toMs = (value: number) => (value < 1e12 ? value * 1000 : value);
+  const cutoff = toMs(latest) - hours * 60 * 60 * 1000;
+  const sliced = points.filter((point) => toMs(point.t) >= cutoff);
+  return sliced.length > 0 ? sliced : points;
+}
+
 export function normalizeSeriesPoints(
   response: StatsSeriesResponse | null | undefined
 ): Array<{ t: number; v: number }> {

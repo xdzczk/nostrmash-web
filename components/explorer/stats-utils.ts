@@ -1,6 +1,13 @@
 import { isRecord } from "@/components/explorer/utils";
 import type { StatsWindow } from "@/lib/search-params/window";
 import { preferredMetricKeysForWindow } from "@/lib/search-params/window";
+import { parseTimestamp } from "@/lib/time/freshness";
+
+/** Read every health row the payload actually contains, instead of a page-specific cap. */
+export const RELAY_HEALTH_EXTRACT_LIMIT = 500;
+
+/** A checkpoint older than this is not treated as current. */
+export const RELAY_CHECKPOINT_STALE_MS = 24 * 60 * 60 * 1000;
 
 export function classifyStats(value: unknown): {
   primitives: Array<{ label: string; value: string | number | boolean }>;
@@ -315,6 +322,113 @@ export function rankRelayActivity(payload: unknown, limit = 50): RelayActivitySu
     .map((entry, index) => ({ ...entry, rank: index + 1 }));
 }
 
+export function readMetricNumber(
+  metrics: Record<string, string | number | boolean>,
+  ...keys: string[]
+): number | null {
+  for (const key of keys) {
+    const parsed = toNumeric(metrics[key]);
+    if (parsed !== null) return parsed;
+  }
+  return null;
+}
+
+/**
+ * Split health rows into relays that need a look and relays that checked in
+ * healthy within the last day. Attention is ordered unhealthy, then unknown,
+ * then stale, and oldest checkpoint first inside each group.
+ */
+export function partitionRelayHealth(
+  rows: RelayHealthSummary[],
+  nowMs: number
+): { attention: RelayHealthSummary[]; current: RelayHealthSummary[] } {
+  const attention: RelayHealthSummary[] = [];
+  const current: RelayHealthSummary[] = [];
+
+  for (const row of rows) {
+    const checkpoint = row.latestCheckpointAt ?? row.lastSeenAt;
+    const checkedAt = parseTimestamp(checkpoint)?.getTime();
+    const currentHealthy =
+      row.healthy === true &&
+      checkedAt !== undefined &&
+      nowMs - checkedAt <= RELAY_CHECKPOINT_STALE_MS;
+    if (currentHealthy) current.push(row);
+    else attention.push(row);
+  }
+
+  const age = (row: RelayHealthSummary) => {
+    const checkedAt = parseTimestamp(row.latestCheckpointAt ?? row.lastSeenAt)?.getTime();
+    if (checkedAt === undefined) return Number.POSITIVE_INFINITY;
+    return nowMs - checkedAt;
+  };
+  const severity = (row: RelayHealthSummary) =>
+    row.healthy === false ? 0 : row.healthy === undefined ? 1 : 2;
+
+  attention.sort((left, right) => severity(left) - severity(right) || age(right) - age(left));
+  current.sort((left, right) => left.host.localeCompare(right.host));
+  return { attention, current };
+}
+
+/** Hostname, plus the URL path when several relays share that host. */
+export function relayDisplayLabel(relay: string, host: string): string {
+  const trimmed = relay.trim();
+  if (!trimmed) return host;
+  try {
+    const url = new URL(trimmed.includes("://") ? trimmed : `wss://${trimmed}`);
+    let path = url.pathname.replace(/\/+$/, "");
+    try {
+      path = decodeURIComponent(path);
+    } catch {
+      // Keep the raw path when it is not valid percent-encoding.
+    }
+    if (!path || path === "/") return host;
+    return `${host}${path}`;
+  } catch {
+    return host;
+  }
+}
+
+export function relayHealthSummary(rows: RelayHealthSummary[], nowMs: number) {
+  const { attention, current } = partitionRelayHealth(rows, nowMs);
+  const posture = relayHealthPosture(rows);
+  const stale = attention.filter((row) => row.healthy === true).length;
+  const hosts = new Set(rows.map((row) => row.host)).size;
+  return { attention, current, posture, stale, hosts, checks: rows.length };
+}
+
+/** One sentence both the overview and the health page can share. */
+export function formatRelayHealthSummary(rows: RelayHealthSummary[], nowMs: number): string {
+  const summary = relayHealthSummary(rows, nowMs);
+  if (summary.checks === 0) return "";
+  const unhealthyVerb = summary.posture.unhealthy === 1 ? "is" : "are";
+  const parts = [
+    `${summary.posture.unhealthy.toLocaleString()} of ${summary.checks.toLocaleString()} checks ${unhealthyVerb} unhealthy.`,
+  ];
+  if (summary.stale > 0) {
+    parts.push(`${summary.stale.toLocaleString()} healthy checkpoints are older than a day.`);
+  }
+  if (summary.posture.unknown > 0) {
+    parts.push(`${summary.posture.unknown.toLocaleString()} checks have no status.`);
+  }
+  if (summary.hosts !== summary.checks) {
+    parts.push(`These checks cover ${summary.hosts.toLocaleString()} hosts.`);
+  }
+  parts.push(`${summary.current.length.toLocaleString()} checked in healthy within the last day.`);
+  return parts.join(" ");
+}
+
+/** Prefer the checkpoint the health page lists first for this host. */
+export function selectRelayHealthForHost(
+  rows: RelayHealthSummary[],
+  host: string,
+  nowMs: number
+): { row: RelayHealthSummary | null; count: number } {
+  const matches = rows.filter((row) => row.host === host);
+  if (matches.length === 0) return { row: null, count: 0 };
+  const { attention } = partitionRelayHealth(matches, nowMs);
+  return { row: attention[0] ?? matches[0] ?? null, count: matches.length };
+}
+
 export function relayHealthPosture(rows: RelayHealthSummary[]): {
   total: number;
   healthy: number;
@@ -608,6 +722,7 @@ export function pickTopPrimitiveStats(
     );
 
   for (const key of resolvedPreferredKeys) {
+    if (seen.has(key)) continue;
     const stat = byKey.get(key);
     if (!stat) continue;
     if (isComputedAtKey(stat.label) || isTimestampStatValue(stat.value)) continue;

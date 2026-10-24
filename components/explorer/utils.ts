@@ -12,7 +12,9 @@ const LABEL_ALIASES: Record<string, string> = {
   profiles_count: "Profiles",
   relay_count: "Relays",
   relay_url: "Relay",
-  unique_authors: "Unique authors",
+  unique_authors: "Authors seen on relays",
+  unique_authors_24h: "Authors seen on relays (24h)",
+  unique_authors_7d: "Authors seen on relays (7d)",
   unique_relays: "Unique relays",
   unique_notes: "Unique notes",
   unique_profiles: "Unique profiles",
@@ -373,7 +375,14 @@ export function formatValue(value: unknown): string {
   if (value === null || value === undefined) return "—";
   if (typeof value === "number") return Number.isFinite(value) ? value.toLocaleString() : "—";
   if (typeof value === "boolean") return value ? "yes" : "no";
-  if (typeof value === "string") return value.length > 0 ? value : "—";
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+      const parsed = Number(trimmed);
+      if (Number.isFinite(parsed)) return parsed.toLocaleString();
+    }
+    return trimmed.length > 0 ? value : "—";
+  }
   if (Array.isArray(value)) return `${value.length} items`;
   if (isRecord(value)) return `${Object.keys(value).length} fields`;
   return String(value);

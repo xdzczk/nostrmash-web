@@ -52,6 +52,7 @@ export {
   getRelayStats,
   getStatsSeries,
   normalizeSeriesPoints,
+  sliceSeriesToHours,
 } from "@/lib/api/endpoints/stats";
 export type {
   StatsSeriesMetric,

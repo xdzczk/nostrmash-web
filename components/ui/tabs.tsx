@@ -51,7 +51,7 @@ export function TabBar({
       className="border-edge/80 flex w-full max-w-full min-w-0 items-stretch border-b"
     >
       <TabOverflow className="nm-tab-scroller -mb-px min-w-0 flex-1 [scrollbar-width:none] overflow-x-auto pb-px [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        <ul className="flex min-w-max gap-5 sm:gap-7">
+        <ul className="flex min-w-max gap-4 sm:gap-7">
           {items.map((tab) => (
             <li key={tab.key}>
               {renderLink ? (

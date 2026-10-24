@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { formatUpdatedRelative, isFreshTimestamp, parseTimestamp } from "@/lib/time/freshness";
+import {
+  formatRelativeAge,
+  formatUpdatedRelative,
+  isFreshTimestamp,
+  parseTimestamp,
+} from "@/lib/time/freshness";
 
 describe("freshness helpers", () => {
   it("parses unix seconds and ISO strings", () => {
@@ -13,6 +18,7 @@ describe("freshness helpers", () => {
 
   it("formats relative updated labels without inventing fallbacks", () => {
     const nowMs = Date.parse("2026-07-28T12:10:00.000Z");
+    expect(formatRelativeAge("2026-07-28T12:00:00.000Z", nowMs)).toBe("10m ago");
     expect(formatUpdatedRelative("2026-07-28T12:00:00.000Z", nowMs)).toBe("Updated 10m ago");
     expect(formatUpdatedRelative(undefined, nowMs)).toBeNull();
   });

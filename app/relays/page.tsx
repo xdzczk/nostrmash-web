@@ -2,26 +2,27 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import {
+  RELAY_HEALTH_EXTRACT_LIMIT,
   extractRelayHealthRows,
+  formatRelayHealthSummary,
   rankRelayActivity,
-  relayHealthPosture,
+  readMetricNumber,
 } from "@/components/explorer/stats-utils";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
 import { NetworkNav } from "@/components/explorer/network-nav";
-import { StatCard } from "@/components/explorer/stat-card";
-import { formatMetricLabel, formatValue } from "@/components/explorer/utils";
+import { IndexedAt } from "@/components/freshness/indexed-at";
+import { RelayLink, relaySearchHref } from "@/components/relays/relay-link";
+import { ShareBar } from "@/components/relays/share-bar";
+import { StatusPill } from "@/components/relays/status-pill";
 import { SectionCard } from "@/components/ui/section-card";
 import { LoadErrors, SoftRefreshNote } from "@/components/ui/status-panels";
 import { getRelayHealth, getRelayStats } from "@/lib/api/endpoints";
 import { getStaleDataNotice } from "@/lib/api/http";
-import {
-  buildContinuationHref,
-  readSearchParam,
-  toUrlSearchParams,
-} from "@/lib/search-params/pagination";
+import { getRequestNowMs } from "@/lib/time/request-now";
+import { readSearchParam } from "@/lib/search-params/pagination";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
@@ -35,7 +36,6 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 export default async function RelaysPage({ searchParams }: { searchParams: SearchParams }) {
   const resolvedSearchParams = await searchParams;
   const healthCursor = readSearchParam(resolvedSearchParams, "health_cursor");
-  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   const errors: string[] = [];
   let relayStats: Awaited<ReturnType<typeof getRelayStats>> | null = null;
   let relayHealth: Awaited<ReturnType<typeof getRelayHealth>> | null = null;
@@ -57,118 +57,96 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
   const staleNotice = getStaleDataNotice();
 
   const rankedRelays = rankRelayActivity(relayStats, 40);
-  const healthRows = extractRelayHealthRows(relayHealth, 200);
-  const healthByHost = new Map(healthRows.map((row) => [row.host, row]));
-  const posture = relayHealthPosture(healthRows);
+  const healthRows = extractRelayHealthRows(relayHealth, RELAY_HEALTH_EXTRACT_LIMIT);
+  const nowMs = getRequestNowMs();
+  const healthSummary = formatRelayHealthSummary(healthRows, nowMs);
+  const healthByHost = new Map<string, (typeof healthRows)[number]>();
+  for (const row of healthRows) {
+    const existing = healthByHost.get(row.host);
+    if (!existing || (existing.healthy !== false && row.healthy === false)) {
+      healthByHost.set(row.host, row);
+    }
+  }
   const semantics = extractNativeApiSemantics(relayStats, relayHealth);
   const totalActivity = rankedRelays.reduce((sum, row) => sum + row.activityScore, 0);
-  const healthContinuationHref = buildContinuationHref(
-    "/relays",
-    currentSearchParams,
-    "health_cursor",
-    relayHealth?.next_cursor
-  );
+  const headCount = Math.min(3, rankedRelays.length);
+  const headActivity = rankedRelays
+    .slice(0, headCount)
+    .reduce((sum, row) => sum + row.activityScore, 0);
+  const headShare = totalActivity > 0 ? Math.round((headActivity / totalActivity) * 100) : 0;
+  const leaderScore = rankedRelays[0]?.activityScore ?? 0;
+  const healthSampleNote =
+    typeof relayHealth?.next_cursor === "string" && relayHealth.next_cursor.length > 0
+      ? " This is the latest page of health results, not every relay."
+      : "";
 
   return (
     <div className="space-y-8">
       <PageHero
         eyebrow="Network intelligence"
         title="The network behind the conversation."
-        subtitle="Understand where activity is concentrated, which relays are reachable, and how fresh the evidence is."
-        badges={
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
-              ranked relays: {rankedRelays.length.toLocaleString()}
-            </span>
-            <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
-              health rows: {healthRows.length.toLocaleString()}
-            </span>
-            <Link
-              href="/relays/health"
-              className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-2 py-1"
-            >
-              Ingest health
-            </Link>
-            <Link
-              href="/relays/popular"
-              className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-2 py-1"
-            >
-              Popular relays
-            </Link>
-            <Link
-              href="/relays/probe-health"
-              className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-2 py-1"
-            >
-              Probe health
-            </Link>
-          </div>
-        }
+        subtitle="Where indexed events concentrate, and which relays are failing their checks."
       />
       <NetworkNav active="overview" />
+      <IndexedAt computedAt={semantics.computed_at} label="Stats updated" />
 
       {staleNotice ? <SoftRefreshNote message={staleNotice} /> : null}
       <LoadErrors errors={errors} />
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="active relay rows" value={rankedRelays.length} />
-        {posture.healthy + posture.unhealthy === 0 ? (
-          <div className="border-edge/80 bg-surface/35 text-ink-muted col-span-full rounded-xl border px-4 py-3 text-sm sm:col-span-3">
-            Health probes unavailable for this window. Activity rankings below still reflect
-            observed relay share.
-          </div>
-        ) : (
-          <>
-            <StatCard label="healthy relays" value={posture.healthy} />
-            <StatCard label="unhealthy relays" value={posture.unhealthy} />
-            <StatCard label="unknown health" value={posture.unknown} />
-          </>
-        )}
-      </section>
+      {healthRows.length === 0 ? (
+        <p className="text-ink-muted text-sm">
+          Health checks are unavailable right now. The ranking below still shows where indexed
+          events concentrate.
+        </p>
+      ) : (
+        <p className="text-ink-muted max-w-3xl text-sm leading-6">
+          {healthSummary}
+          {healthSampleNote}{" "}
+          <Link href="/relays/health" className="nm-action-link">
+            Open health
+          </Link>
+        </p>
+      )}
 
-      <SectionCard title="Dominant relay activity" description="Relays carrying the most activity.">
+      <SectionCard
+        title="Dominant relay activity"
+        description={
+          rankedRelays.length > 0
+            ? `The top ${headCount} carry ${headShare}% of indexed events in this ranking. Bar length is compared with the leader. This list is not a 24-hour or 7-day window.`
+            : "Relays carrying the most indexed events."
+        }
+      >
         {rankedRelays.length > 0 ? (
-          <ul className="space-y-2">
+          <ul className="divide-edge/70 divide-y">
             {rankedRelays.slice(0, 20).map((row) => {
               const health = healthByHost.get(row.host);
               const share =
                 totalActivity > 0 ? ((row.activityScore / totalActivity) * 100).toFixed(1) : "0.0";
+              const events =
+                readMetricNumber(row.metrics, "event_count", "events") ?? row.activityScore;
+              const authors = readMetricNumber(row.metrics, "unique_authors");
               return (
-                <li key={row.host} className="hover:bg-surface/40 rounded-lg p-3 transition-colors">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-ink truncate text-sm">
-                        #{row.rank} {row.relay}
-                      </p>
-                      <p className="text-ink-faint mt-1 truncate text-xs">
-                        activity share: {share}% • score: {row.activityScore.toLocaleString()}
-                        {health?.healthy === true
-                          ? " • health: healthy"
-                          : health?.healthy === false
-                            ? " • health: unhealthy"
-                            : ""}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      <Link
-                        href={`/relays/${encodeURIComponent(row.host)}`}
-                        className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1"
-                      >
-                        Open relay
-                      </Link>
-                      <Link
-                        href={`/search?q=${encodeURIComponent(row.relay)}&tab=all`}
-                        className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1"
-                      >
+                <li key={row.host} className="py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                    <RelayLink host={row.host} rank={row.rank} />
+                    <div className="flex items-center gap-3">
+                      {health?.healthy === false ? (
+                        <StatusPill tone="bad">Unhealthy</StatusPill>
+                      ) : null}
+                      <Link href={relaySearchHref(row.host)} className="nm-action-link">
                         Search mentions
                       </Link>
                     </div>
                   </div>
-                  <p className="text-ink-faint mt-2 truncate text-xs">
-                    {Object.entries(row.metrics)
-                      .slice(0, 3)
-                      .map(([label, value]) => `${formatMetricLabel(label)}: ${formatValue(value)}`)
-                      .join(" • ")}
+                  <p className="text-ink-faint text-xs">
+                    {share}% of this ranking · {events.toLocaleString()} events
+                    {authors !== null ? ` · ${authors.toLocaleString()} authors` : ""}
                   </p>
+                  <ShareBar
+                    value={row.activityScore}
+                    max={leaderScore}
+                    label={`${row.host} compared with the leading relay`}
+                  />
                 </li>
               );
             })}
@@ -176,15 +154,13 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
         ) : (
           <EmptyState message="Relay activity rankings will appear here once the index has gathered enough relay stats to rank." />
         )}
-        {typeof relayHealth?.next_cursor === "string" && relayHealth.next_cursor.length > 0 ? (
-          <Link href={healthContinuationHref} className="text-link mt-3 inline-block text-sm">
-            Load more relay health context
-          </Link>
-        ) : null}
       </SectionCard>
 
       <DebugDisclosure title="Debug payload: relay stats" data={relayStats ?? {}} />
-      <AboutThisData semantics={semantics} />
+      <AboutThisData semantics={semantics}>
+        Ranked by indexed event volume. Share is within this ranking, not the whole public network.
+        Health counts come from a separate check and can list relays that do not appear here.
+      </AboutThisData>
       <DebugDisclosure title="Debug payload: relay health" data={relayHealth ?? {}} />
     </div>
   );

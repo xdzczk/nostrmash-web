@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import {
   collectStatsArraySections,
   collectStatsMetricGroups,
+  extractRelayRows,
+  normalizeRelayHost,
   pickTopPrimitiveStats,
 } from "@/components/explorer/stats-utils";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
@@ -13,7 +15,8 @@ import { AboutThisData } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
 import { NetworkNav } from "@/components/explorer/network-nav";
 import { StatCard } from "@/components/explorer/stat-card";
-import { formatMetricLabel, isRecord } from "@/components/explorer/utils";
+import { formatMetricLabel, formatValue, isRecord } from "@/components/explorer/utils";
+import { RelayLink, relaySearchHref } from "@/components/relays/relay-link";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { BarChart } from "@/components/charts/bar-chart";
@@ -26,9 +29,9 @@ import {
   getRelayStats,
   getStatsSeries,
   normalizeSeriesPoints,
+  sliceSeriesToHours,
 } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
-import { extractRelayRows } from "@/components/explorer/stats-utils";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import {
   formatStatsWindowLabel,
@@ -49,13 +52,6 @@ const NETWORK_PRIORITY_KEYS = [
   "active_authors_7d",
   "note_volume_24h",
   "note_volume_7d",
-  "active_24h",
-  "active_7d",
-  "event_volume_24h",
-  "event_volume_7d",
-  "unique_authors_24h",
-  "unique_authors_7d",
-  "total",
 ];
 
 const CONTENT_PRIORITY_KEYS = [
@@ -77,22 +73,67 @@ const RELAY_PRIORITY_KEYS = [
   "event_count",
 ];
 
+function dedupeDisplayedStats(
+  stats: Array<{ label: string; value: string | number | boolean }>
+): Array<{ label: string; value: string | number | boolean }> {
+  const seen = new Set<string>();
+  return stats.filter((stat) => {
+    const label = formatMetricLabel(stat.label);
+    if (seen.has(label)) return false;
+    seen.add(label);
+    return true;
+  });
+}
+
+function restatesSelectedStat(
+  groupTitle: string,
+  itemLabel: string,
+  selected: Array<{ label: string }>
+): boolean {
+  const composite = `${groupTitle}_${itemLabel}`.toLowerCase();
+  return selected.some((stat) => {
+    const key = stat.label.toLowerCase();
+    return composite === key || composite.endsWith(`_${key}`) || key.endsWith(`_${composite}`);
+  });
+}
+
 function StatsGroup({
   title,
   description,
   payload,
   preferredKeys,
   window,
+  cardLimit = 6,
+  skipGroupTitles = [],
+  skipArrayLabels = [],
+  hideArrays = false,
 }: {
   title: string;
   description: string;
   payload: unknown;
   preferredKeys: string[];
   window: StatsWindow;
+  cardLimit?: number;
+  skipGroupTitles?: string[];
+  skipArrayLabels?: string[];
+  hideArrays?: boolean;
 }) {
-  const topStats = pickTopPrimitiveStats(payload, preferredKeys, 6, window);
-  const objectEntries = collectStatsMetricGroups(payload, 3, window);
-  const arraySections = collectStatsArraySections(payload, 2, window);
+  const skippedGroups = new Set(skipGroupTitles.map((title) => title.toLowerCase()));
+  const skippedArrays = skipArrayLabels.map((label) => label.toLowerCase());
+  const topStats = dedupeDisplayedStats(
+    pickTopPrimitiveStats(payload, preferredKeys, cardLimit, window)
+  );
+  const objectEntries = collectStatsMetricGroups(payload, 3, window).filter(
+    (group) => !skippedGroups.has(group.title.toLowerCase())
+  );
+  const arraySections = hideArrays
+    ? []
+    : collectStatsArraySections(payload, 2, window).filter((group) => {
+        const label = group.label.toLowerCase();
+        return !skippedArrays.some(
+          (skip) => label === skip || label.endsWith(`.${skip}`) || label.endsWith(`_${skip}`)
+        );
+      });
 
   return (
     <SectionCard title={title} description={description}>
@@ -110,12 +151,18 @@ function StatsGroup({
           />
         )}
 
-        {objectEntries.map((group) => (
-          <div key={group.title} className="space-y-2">
-            <p className="text-ink-faint text-[11px]">{formatMetricLabel(group.title)}</p>
-            <MetadataList items={group.items} columns={2} />
-          </div>
-        ))}
+        {objectEntries.map((group) => {
+          const items = group.items.filter(
+            (item) => !restatesSelectedStat(group.title, item.label, topStats)
+          );
+          if (items.length === 0) return null;
+          return (
+            <div key={group.title} className="space-y-2">
+              <p className="text-ink-faint text-[11px]">{formatMetricLabel(group.title)}</p>
+              <MetadataList items={items} columns={2} />
+            </div>
+          );
+        })}
 
         {arraySections.slice(0, 2).map((group) => (
           <div key={group.label} className="space-y-2">
@@ -169,7 +216,10 @@ export default async function StatsPage({
   let activeAuthorsSeries: Array<{ t: number; v: number }> = [];
   let relayEventsSeries: Array<{ t: number; v: number }> = [];
   let computedAt: string | null = null;
-  const seriesWindow = window === "7d" ? "7d" : "7d";
+  // Series history is published as 7-day or 30-day blocks. The 24h control
+  // slices the 7-day series down to the last day.
+  const seriesWindow = "7d" as const;
+  const seriesHours = window === "24h" ? 24 : 24 * 7;
 
   try {
     const [
@@ -190,9 +240,9 @@ export default async function StatsPage({
     network = networkResult;
     content = contentResult;
     relays = relaysResult;
-    noteVolumeSeries = normalizeSeriesPoints(volumeResult);
-    activeAuthorsSeries = normalizeSeriesPoints(authorsResult);
-    relayEventsSeries = normalizeSeriesPoints(relaySeriesResult);
+    noteVolumeSeries = sliceSeriesToHours(normalizeSeriesPoints(volumeResult), seriesHours);
+    activeAuthorsSeries = sliceSeriesToHours(normalizeSeriesPoints(authorsResult), seriesHours);
+    relayEventsSeries = sliceSeriesToHours(normalizeSeriesPoints(relaySeriesResult), seriesHours);
     computedAt =
       (typeof volumeResult.computed_at === "string" && volumeResult.computed_at) ||
       (isRecord(networkResult) &&
@@ -231,7 +281,11 @@ export default async function StatsPage({
 
       <SectionCard
         title="Time series"
-        description="Hourly snapshot history for note volume, active authors, and relay events."
+        description={
+          window === "24h"
+            ? "The last 24 hours of hourly history. That history is stored in 7-day blocks, and this view is the latest day of the block."
+            : "Hourly history for the last 7 days. Peak and the latest point are labeled under each chart."
+        }
       >
         <div className="grid gap-6 lg:grid-cols-3">
           <div>
@@ -251,67 +305,67 @@ export default async function StatsPage({
 
       <StatsGroup
         title="Network"
-        description="Node-level and topology summary data."
+        description="Authors and notes from the network stats, for the selected window."
         payload={network ?? {}}
         preferredKeys={NETWORK_PRIORITY_KEYS}
         window={window}
+        cardLimit={2}
+        skipGroupTitles={["relays"]}
+        hideArrays
       />
       <StatsGroup
         title="Content"
-        description="Aggregate content activity metrics."
+        description="Counts from the content stats. Note volume here can differ slightly from the network figure above."
         payload={content ?? {}}
         preferredKeys={CONTENT_PRIORITY_KEYS}
         window={window}
       />
       <StatsGroup
         title="Relays"
-        description="Relay availability and health summaries."
+        description="Relays this index reads, and the total the relay stats report. Authors seen on relays are not the same count as active authors above."
         payload={relays ?? {}}
         preferredKeys={RELAY_PRIORITY_KEYS}
         window={window}
+        skipArrayLabels={["top"]}
       />
       <SectionCard
         title="Relay leaderboard"
-        description="Top relay entities extracted from the aggregate relay stats payload."
+        description="Indexed event volume. This ranking is not split into 24-hour and 7-day views, so the window control above does not reorder it."
       >
         {extractRelayRows(relays, 12).length > 0 ? (
-          <ul className="space-y-2">
-            {extractRelayRows(relays, 12).map((row, index) => (
-              <li
-                key={`${row.relay}-${index}`}
-                className={`rounded-lg p-3 transition-colors ${
-                  index < 3 ? "bg-surface/60" : "hover:bg-surface/40"
-                }`}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="text-ink text-sm">
-                      #{index + 1} {row.relay}
-                    </p>
-                    <p className="text-ink-faint mt-1 text-xs">
+          <ul className="divide-edge/70 divide-y">
+            {extractRelayRows(relays, 12).map((row, index) => {
+              const host = normalizeRelayHost(row.relay);
+              return (
+                <li
+                  key={`${row.relay}-${index}`}
+                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2"
+                >
+                  <div className="min-w-0">
+                    {host ? (
+                      <RelayLink host={host} rank={index + 1} />
+                    ) : (
+                      <p className="text-ink text-sm">
+                        #{index + 1} {row.relay}
+                      </p>
+                    )}
+                    <p className="text-ink-faint text-xs">
                       {Object.entries(row.metrics)
                         .slice(0, 3)
-                        .map(([label, value]) => `${formatMetricLabel(label)}: ${String(value)}`)
-                        .join(" • ")}
+                        .map(
+                          ([label, value]) => `${formatMetricLabel(label)}: ${formatValue(value)}`
+                        )
+                        .join(" · ")}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <Link
-                      href={`/relays/${encodeURIComponent(row.relay)}`}
-                      className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1"
-                    >
-                      Open relay
-                    </Link>
-                    <Link
-                      href={`/search?q=${encodeURIComponent(row.relay)}&tab=all`}
-                      className="border-edge-strong hover:border-accent-soft/40 text-link rounded-full border px-3 py-1"
-                    >
+                  {host ? (
+                    <Link href={relaySearchHref(host)} className="nm-action-link">
                       Search mentions
                     </Link>
-                  </div>
-                </div>
-              </li>
-            ))}
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <EmptyState message="Relay rankings will appear here once the index has gathered enough relay activity to rank." />

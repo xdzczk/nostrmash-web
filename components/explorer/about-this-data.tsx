@@ -38,9 +38,13 @@ export function AboutThisData({
       title="About this data"
       description="How the index shaped this view — consistency, trust, and scope."
     >
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        {showSemantics ? <NativeSemanticsBadges semantics={semantics} /> : null}
-        {children}
+      <div className="max-w-2xl space-y-3">
+        {showSemantics ? (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <NativeSemanticsBadges semantics={semantics} />
+          </div>
+        ) : null}
+        {children ? <div className="text-ink-muted text-sm leading-6">{children}</div> : null}
       </div>
     </Disclosure>
   );
