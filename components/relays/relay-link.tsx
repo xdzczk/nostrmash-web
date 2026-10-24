@@ -1,7 +1,11 @@
 import Link from "next/link";
 
-export function relayHref(host: string): string {
-  return `/relays/${encodeURIComponent(host)}`;
+import type { StatsWindow } from "@/lib/search-params/window";
+
+export function relayHref(host: string, window?: StatsWindow): string {
+  const path = `/relays/${encodeURIComponent(host)}`;
+  if (!window || window === "24h") return path;
+  return `${path}?window=${window}`;
 }
 
 export function relaySearchHref(query: string): string {
@@ -9,10 +13,20 @@ export function relaySearchHref(query: string): string {
 }
 
 /** The relay host is the hit target. Rank is optional. `label` can include a URL path. */
-export function RelayLink({ host, rank, label }: { host: string; rank?: number; label?: string }) {
+export function RelayLink({
+  host,
+  rank,
+  label,
+  window,
+}: {
+  host: string;
+  rank?: number;
+  label?: string;
+  window?: StatsWindow;
+}) {
   return (
     <Link
-      href={relayHref(host)}
+      href={relayHref(host, window)}
       className="nm-pressable text-ink hover:text-link focus-visible:ring-accent-soft/70 inline-flex min-h-11 max-w-full items-center gap-2 rounded-sm text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
     >
       {typeof rank === "number" ? (

@@ -6,7 +6,8 @@ import { getDiscoveryHome, HOME_INDEX_LIMIT } from "@/lib/api/endpoints";
 import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
 import { buildEntityMetadata } from "@/lib/seo/metadata";
 
-const TOPICS_SUBTITLE = "The topics on the overview, ranked by how many sources mention them.";
+const TOPICS_SUBTITLE =
+  "The topics on the overview, ranked by how many authors use them. The event count is a separate figure.";
 
 export const metadata: Metadata = buildEntityMetadata({
   title: "Topics",

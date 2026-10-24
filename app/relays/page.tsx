@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import {
-  RELAY_HEALTH_EXTRACT_LIMIT,
   extractRelayHealthRows,
   formatRelayHealthSummary,
   rankRelayActivity,
@@ -10,9 +9,10 @@ import {
 } from "@/components/explorer/stats-utils";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
-import { AboutThisData } from "@/components/explorer/about-this-data";
+import { AboutThisData, readStatsSections } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
 import { NetworkNav } from "@/components/explorer/network-nav";
+import { WindowSelector } from "@/components/explorer/window-selector";
 import { IndexedAt } from "@/components/freshness/indexed-at";
 import { RelayLink, relaySearchHref } from "@/components/relays/relay-link";
 import { ShareBar } from "@/components/relays/share-bar";
@@ -22,7 +22,8 @@ import { LoadErrors, SoftRefreshNote } from "@/components/ui/status-panels";
 import { getRelayHealth, getRelayStats } from "@/lib/api/endpoints";
 import { getStaleDataNotice } from "@/lib/api/http";
 import { getRequestNowMs } from "@/lib/time/request-now";
-import { readSearchParam } from "@/lib/search-params/pagination";
+import { readSearchParam, toUrlSearchParams } from "@/lib/search-params/pagination";
+import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
@@ -35,13 +36,15 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function RelaysPage({ searchParams }: { searchParams: SearchParams }) {
   const resolvedSearchParams = await searchParams;
+  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
+  const window = readStatsWindow(resolvedSearchParams);
   const healthCursor = readSearchParam(resolvedSearchParams, "health_cursor");
   const errors: string[] = [];
   let relayStats: Awaited<ReturnType<typeof getRelayStats>> | null = null;
   let relayHealth: Awaited<ReturnType<typeof getRelayHealth>> | null = null;
 
   const [statsResult, healthResult] = await Promise.allSettled([
-    getRelayStats("shortTtl"),
+    getRelayStats("shortTtl", window),
     getRelayHealth("shortTtl", { cursor: healthCursor }),
   ]);
   if (statsResult.status === "fulfilled") {
@@ -56,10 +59,12 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
   }
   const staleNotice = getStaleDataNotice();
 
-  const rankedRelays = rankRelayActivity(relayStats, 40);
-  const healthRows = extractRelayHealthRows(relayHealth, RELAY_HEALTH_EXTRACT_LIMIT);
+  const rankedRelays = rankRelayActivity(relayStats, 40, window);
+  const healthRows = extractRelayHealthRows(relayHealth);
   const nowMs = getRequestNowMs();
-  const healthSummary = formatRelayHealthSummary(healthRows, nowMs);
+  const healthTotal =
+    typeof relayHealth?.total === "number" ? relayHealth.total : healthRows.length;
+  const healthSummary = formatRelayHealthSummary(healthRows, nowMs, healthTotal);
   const healthByHost = new Map<string, (typeof healthRows)[number]>();
   for (const row of healthRows) {
     const existing = healthByHost.get(row.host);
@@ -86,6 +91,9 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
         eyebrow="Network intelligence"
         title="The network behind the conversation."
         subtitle="Where indexed events concentrate, and which relays are failing their checks."
+        badges={
+          <WindowSelector path="/relays" searchParams={currentSearchParams} activeWindow={window} />
+        }
       />
       <NetworkNav active="overview" />
       <IndexedAt computedAt={semantics.computed_at} label="Stats updated" />
@@ -112,7 +120,7 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
         title="Dominant relay activity"
         description={
           rankedRelays.length > 0
-            ? `The top ${headCount} carry ${headShare}% of indexed events in this ranking. Bar length is compared with the leader. This list is not a 24-hour or 7-day window.`
+            ? `The top ${headCount} carry ${headShare}% of indexed events in this ${formatStatsWindowLabel(window).toLowerCase()} ranking. Bar length is compared with the leader.`
             : "Relays carrying the most indexed events."
         }
       >
@@ -128,7 +136,7 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
               return (
                 <li key={row.host} className="py-3">
                   <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                    <RelayLink host={row.host} rank={row.rank} />
+                    <RelayLink host={row.host} rank={row.rank} window={window} />
                     <div className="flex items-center gap-3">
                       {health?.healthy === false ? (
                         <StatusPill tone="bad">Unhealthy</StatusPill>
@@ -140,7 +148,9 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
                   </div>
                   <p className="text-ink-faint text-xs">
                     {share}% of this ranking · {events.toLocaleString()} events
-                    {authors !== null ? ` · ${authors.toLocaleString()} authors` : ""}
+                    {authors !== null
+                      ? ` · ${authors.toLocaleString()} pubkeys seen on relays`
+                      : ""}
                   </p>
                   <ShareBar
                     value={row.activityScore}
@@ -157,9 +167,10 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
       </SectionCard>
 
       <DebugDisclosure title="Debug payload: relay stats" data={relayStats ?? {}} />
-      <AboutThisData semantics={semantics}>
-        Ranked by indexed event volume. Share is within this ranking, not the whole public network.
-        Health counts come from a separate check and can list relays that do not appear here.
+      <AboutThisData semantics={semantics} sections={readStatsSections(relayStats)}>
+        Ranked by indexed event volume for {formatStatsWindowLabel(window).toLowerCase()}. Share is
+        within this ranking, not the whole public network. Health counts come from a separate check
+        and can list relays that do not appear here.
       </AboutThisData>
       <DebugDisclosure title="Debug payload: relay health" data={relayHealth ?? {}} />
     </div>

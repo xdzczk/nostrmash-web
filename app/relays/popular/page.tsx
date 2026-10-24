@@ -36,6 +36,7 @@ export default async function PopularRelaysPage() {
   }
 
   const relays = data?.relays ?? [];
+  const total = typeof data?.total === "number" ? data.total : relays.length;
   const inRegistry = relays.filter((relay) => relay.in_registry).length;
   const leaderUsers = relays.reduce((max, relay) => Math.max(max, relay.distinct_users), 0);
 
@@ -54,7 +55,9 @@ export default async function PopularRelaysPage() {
         title="Most popular relays"
         description={
           relays.length > 0
-            ? `${relays.length.toLocaleString()} relays, ${inRegistry.toLocaleString()} in the registry. Bars are scaled to the leader.`
+            ? total === relays.length
+              ? `${total.toLocaleString()} relays, ${inRegistry.toLocaleString()} in the registry. Bars are scaled to the leader.`
+              : `${total.toLocaleString()} relays in this ranking. ${relays.length.toLocaleString()} shown, ${inRegistry.toLocaleString()} of them in the registry. Bars are scaled to the leader.`
             : "Ranked by how many people list each relay."
         }
       >

@@ -516,6 +516,9 @@ export interface RelatedProfilesResponse extends NativeApiSemantics {
 }
 
 export interface RelayHealthResponse extends NativeApiSemantics {
+  /** Checkpoint rows in this response, not a count of distinct hosts. */
+  total?: number;
+  scope?: string;
   relays?: Array<{
     relay_url?: string;
     status?: string;
@@ -526,6 +529,8 @@ export interface RelayHealthResponse extends NativeApiSemantics {
     latest_checkpoint_at?: string | number;
     eose_seen_at?: string | number;
     last_seen_at?: string | number;
+    /** True when the checkpoint is older than 24 hours. */
+    stale?: boolean;
     [key: string]: unknown;
   }>;
   [key: string]: unknown;
@@ -617,6 +622,9 @@ export interface PopularRelayEntry {
 
 export interface PopularRelaysResponse {
   relays: PopularRelayEntry[];
+  /** Full ranked population. `relays` is the page after `limit`. */
+  total?: number;
+  limit?: number;
 }
 
 export interface RelayProbeHealthEntry {
@@ -634,4 +642,7 @@ export interface RelayProbeHealthEntry {
 
 export interface RelayProbeHealthResponse {
   relays: RelayProbeHealthEntry[];
+  /** Registry relays that have been probed. `relays` is the page after `limit`. */
+  total?: number;
+  limit?: number;
 }

@@ -74,6 +74,7 @@ export default async function RelayProbeHealthPage() {
   }
 
   const relays = sortRelays(data?.relays ?? []);
+  const total = typeof data?.total === "number" ? data.total : relays.length;
   const failing = relays.filter((relay) => probeNeedsAttention(relay)).length;
   const avgFailRate =
     relays.length > 0
@@ -95,7 +96,11 @@ export default async function RelayProbeHealthPage() {
         title="Probe results"
         description={
           relays.length > 0
-            ? `${failing.toLocaleString()} of ${relays.length.toLocaleString()} are failing the latest checks. Mean fail rate is ${formatFailRate(avgFailRate)}, the average of each relay's own rate, not the share that are down right now.`
+            ? `${
+                total === relays.length
+                  ? `${failing.toLocaleString()} of ${total.toLocaleString()} are failing the latest checks.`
+                  : `${failing.toLocaleString()} of ${relays.length.toLocaleString()} shown are failing the latest checks. ${total.toLocaleString()} relays have been probed.`
+              } Mean fail rate is ${formatFailRate(avgFailRate)}, the average of each shown relay's own rate.`
             : "Latest check of websocket connect, subscribe, and end-of-stored-events."
         }
       >

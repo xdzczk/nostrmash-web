@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import {
-  RELAY_HEALTH_EXTRACT_LIMIT,
   extractRelayHealthRows,
   normalizeRelayHost,
   rankRelayActivity,
@@ -13,9 +12,10 @@ import {
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { MetadataList } from "@/components/explorer/metadata-list";
-import { AboutThisData } from "@/components/explorer/about-this-data";
+import { AboutThisData, readStatsSections } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
 import { NetworkNav } from "@/components/explorer/network-nav";
+import { formatRelayMetricLabel } from "@/components/explorer/utils";
 import { RelayLink } from "@/components/relays/relay-link";
 import { RelaySummaryCard } from "@/components/relays/relay-summary-card";
 import { SectionCard } from "@/components/ui/section-card";
@@ -25,6 +25,7 @@ import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import { getRequestNowMs } from "@/lib/time/request-now";
 import { isValidRelayHostParam, normalizeValidatedRelayHost } from "@/lib/routing/params";
+import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
 import { buildEntityMetadata } from "@/lib/seo/metadata";
 
 type Params = Promise<{ relayHost: string }>;
@@ -39,8 +40,15 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   });
 }
 
-export default async function RelayPage({ params }: { params: Params }) {
+export default async function RelayPage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { relayHost } = await params;
+  const window = readStatsWindow(await searchParams);
   if (!isValidRelayHostParam(relayHost)) {
     notFound();
   }
@@ -53,7 +61,7 @@ export default async function RelayPage({ params }: { params: Params }) {
   let healthPayload: Awaited<ReturnType<typeof getRelayHealth>> | null = null;
 
   const [statsResult, healthResult] = await Promise.allSettled([
-    getRelayStats("shortTtl"),
+    getRelayStats("shortTtl", window),
     getRelayHealth("shortTtl"),
   ]);
   if (statsResult.status === "fulfilled") {
@@ -67,7 +75,7 @@ export default async function RelayPage({ params }: { params: Params }) {
     errors.push(toUserFacingErrorMessage(healthResult.reason, "Failed to load relay health."));
   }
 
-  const rankedActivity = rankRelayActivity(payload, 200);
+  const rankedActivity = rankRelayActivity(payload, 200, window);
   const relayActivity = rankedActivity.find((entry) => entry.host === normalizedRelayHost) ?? null;
   const relayEntry = relayActivity?.metrics ?? null;
   const neighboringRelays = relayActivity
@@ -84,7 +92,7 @@ export default async function RelayPage({ params }: { params: Params }) {
   const events = relayEntry ? readMetricNumber(relayEntry, "event_count", "events") : null;
   const authors = relayEntry ? readMetricNumber(relayEntry, "unique_authors") : null;
 
-  const healthRows = extractRelayHealthRows(healthPayload, RELAY_HEALTH_EXTRACT_LIMIT);
+  const healthRows = extractRelayHealthRows(healthPayload);
   const nowMs = getRequestNowMs();
   const selectedHealth = selectRelayHealthForHost(healthRows, normalizedRelayHost, nowMs);
   const relayHealth = selectedHealth.row;
@@ -92,7 +100,10 @@ export default async function RelayPage({ params }: { params: Params }) {
     relayHealth?.healthy === true ? true : relayHealth?.healthy === false ? false : null;
   const semantics = extractNativeApiSemantics(payload, healthPayload);
   const metricItems = relayEntry
-    ? Object.entries(relayEntry).map(([label, value]) => ({ label, value }))
+    ? Object.entries(relayEntry).map(([label, value]) => ({
+        label: formatRelayMetricLabel(label),
+        value,
+      }))
     : [];
 
   return (
@@ -100,7 +111,7 @@ export default async function RelayPage({ params }: { params: Params }) {
       <PageHero
         eyebrow="Relay"
         title={normalizedRelayHost}
-        subtitle="Indexed event volume for this host, plus the latest ingest checkpoint. The volume is not split into a 24-hour or 7-day window."
+        subtitle={`Indexed event volume for this host over ${formatStatsWindowLabel(window).toLowerCase()}, plus the latest ingest checkpoint.`}
       />
       <NetworkNav />
 
@@ -124,7 +135,7 @@ export default async function RelayPage({ params }: { params: Params }) {
         description="Figures stored for this host. They describe volume in the relay stats, not whether the relay is reachable right now."
       >
         {metricItems.length > 0 ? (
-          <MetadataList items={metricItems} columns={2} />
+          <MetadataList items={metricItems} columns={2} normalizeLabels={false} />
         ) : (
           <EmptyState
             title="Relay-level row not found"
@@ -145,7 +156,7 @@ export default async function RelayPage({ params }: { params: Params }) {
           <ul className="divide-edge/70 divide-y">
             {neighboringRelays.map((entry) => (
               <li key={entry.host} className="py-2">
-                <RelayLink host={entry.host} rank={entry.rank} />
+                <RelayLink host={entry.host} rank={entry.rank} window={window} />
                 <p className="text-ink-faint text-xs">
                   {entry.activityScore.toLocaleString()} events
                   {activityTotal > 0
@@ -170,9 +181,10 @@ export default async function RelayPage({ params }: { params: Params }) {
       </p>
 
       <DebugDisclosure title="Debug payload: relay stats aggregate" data={payload ?? {}} />
-      <AboutThisData semantics={semantics}>
-        Activity rank uses indexed event volume. Health is the ingest checkpoint for this host, when
-        the health response includes it.
+      <AboutThisData semantics={semantics} sections={readStatsSections(payload)}>
+        Activity rank uses indexed event volume for {formatStatsWindowLabel(window).toLowerCase()}.
+        This page is the hostname, so every URL on that host is listed here. Health is the ingest
+        checkpoint the health page lists first.
       </AboutThisData>
       <DebugDisclosure title="Debug payload: relay health" data={healthPayload ?? {}} />
     </div>

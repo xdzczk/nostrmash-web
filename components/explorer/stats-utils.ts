@@ -3,10 +3,7 @@ import type { StatsWindow } from "@/lib/search-params/window";
 import { preferredMetricKeysForWindow } from "@/lib/search-params/window";
 import { parseTimestamp } from "@/lib/time/freshness";
 
-/** Read every health row the payload actually contains, instead of a page-specific cap. */
-export const RELAY_HEALTH_EXTRACT_LIMIT = 500;
-
-/** A checkpoint older than this is not treated as current. */
+/** Used only when a health row omits the API `stale` flag. */
 export const RELAY_CHECKPOINT_STALE_MS = 24 * 60 * 60 * 1000;
 
 export function classifyStats(value: unknown): {
@@ -205,10 +202,33 @@ function parseRelayHealthyFlag(entry: Record<string, unknown>): boolean | undefi
   return undefined;
 }
 
-export function extractRelayRows(payload: unknown, limit = 20): RelayRowSummary[] {
-  const rows: RelayRowSummary[] = [];
+/**
+ * The leaderboard for `window` when the payload has `top_24h` / `top_7d`.
+ * Otherwise `top`, which follows the window query on the relay stats endpoint.
+ */
+function relayLeaderboard(payload: unknown, window?: StatsWindow): unknown[] | null {
+  if (!isRecord(payload)) return null;
+  const nested = isRecord(payload.relays) ? payload.relays : null;
+  if (window && nested) {
+    const keyed = nested[`top_${window}`];
+    if (Array.isArray(keyed)) return keyed;
+  }
+  if (nested && Array.isArray(nested.top)) return nested.top;
+  if (Array.isArray(payload.relays)) return payload.relays;
+  if (Array.isArray(payload.top)) return payload.top;
+  return null;
+}
 
-  for (const group of collectRelayStatRowArrays(payload)) {
+export function extractRelayRows(
+  payload: unknown,
+  limit = 20,
+  window?: StatsWindow
+): RelayRowSummary[] {
+  const rows: RelayRowSummary[] = [];
+  const preferred = relayLeaderboard(payload, window);
+  const groups = preferred ? [preferred] : collectRelayStatRowArrays(payload);
+
+  for (const group of groups) {
     for (const row of group) {
       if (!isRecord(row)) continue;
       const summary = relayRowFromRecord(row);
@@ -235,6 +255,8 @@ export interface RelayHealthSummary {
   latestCheckpointAt?: string | number;
   eoseSeenAt?: string | number;
   lastSeenAt?: string | number;
+  /** Set by the API when the checkpoint is older than 24 hours. */
+  stale?: boolean;
   details: Record<string, unknown>;
 }
 
@@ -243,7 +265,7 @@ function asTimestamp(value: unknown): string | number | undefined {
   return undefined;
 }
 
-export function extractRelayHealthRows(payload: unknown, limit = 50): RelayHealthSummary[] {
+export function extractRelayHealthRows(payload: unknown, limit?: number): RelayHealthSummary[] {
   if (!isRecord(payload)) return [];
   const candidates = [
     payload.relays,
@@ -279,10 +301,11 @@ export function extractRelayHealthRows(payload: unknown, limit = 50): RelayHealt
         latestCheckpointAt,
         eoseSeenAt: asTimestamp(entry.eose_seen_at),
         lastSeenAt,
+        stale: typeof entry.stale === "boolean" ? entry.stale : undefined,
         details: entry,
       });
     }
-    if (rows.length >= limit) break;
+    if (typeof limit === "number" && rows.length >= limit) break;
   }
 
   return rows;
@@ -296,8 +319,12 @@ export interface RelayActivitySummary {
   rank: number;
 }
 
-export function rankRelayActivity(payload: unknown, limit = 50): RelayActivitySummary[] {
-  const rows = extractRelayRows(payload, Math.max(limit * 3, limit));
+export function rankRelayActivity(
+  payload: unknown,
+  limit = 50,
+  window?: StatsWindow
+): RelayActivitySummary[] {
+  const rows = extractRelayRows(payload, Math.max(limit * 3, limit), window);
   const byHost = new Map<string, RelayActivitySummary>();
 
   for (const row of rows) {
@@ -333,6 +360,13 @@ export function readMetricNumber(
   return null;
 }
 
+function checkpointIsStale(row: RelayHealthSummary, nowMs: number): boolean {
+  if (typeof row.stale === "boolean") return row.stale;
+  const checkedAt = parseTimestamp(row.latestCheckpointAt ?? row.lastSeenAt)?.getTime();
+  if (checkedAt === undefined) return true;
+  return nowMs - checkedAt > RELAY_CHECKPOINT_STALE_MS;
+}
+
 /**
  * Split health rows into relays that need a look and relays that checked in
  * healthy within the last day. Attention is ordered unhealthy, then unknown,
@@ -346,12 +380,7 @@ export function partitionRelayHealth(
   const current: RelayHealthSummary[] = [];
 
   for (const row of rows) {
-    const checkpoint = row.latestCheckpointAt ?? row.lastSeenAt;
-    const checkedAt = parseTimestamp(checkpoint)?.getTime();
-    const currentHealthy =
-      row.healthy === true &&
-      checkedAt !== undefined &&
-      nowMs - checkedAt <= RELAY_CHECKPOINT_STALE_MS;
+    const currentHealthy = row.healthy === true && !checkpointIsStale(row, nowMs);
     if (currentHealthy) current.push(row);
     else attention.push(row);
   }
@@ -397,12 +426,16 @@ export function relayHealthSummary(rows: RelayHealthSummary[], nowMs: number) {
 }
 
 /** One sentence both the overview and the health page can share. */
-export function formatRelayHealthSummary(rows: RelayHealthSummary[], nowMs: number): string {
+export function formatRelayHealthSummary(
+  rows: RelayHealthSummary[],
+  nowMs: number,
+  total = rows.length
+): string {
   const summary = relayHealthSummary(rows, nowMs);
-  if (summary.checks === 0) return "";
+  if (total === 0) return "";
   const unhealthyVerb = summary.posture.unhealthy === 1 ? "is" : "are";
   const parts = [
-    `${summary.posture.unhealthy.toLocaleString()} of ${summary.checks.toLocaleString()} checks ${unhealthyVerb} unhealthy.`,
+    `${summary.posture.unhealthy.toLocaleString()} of ${total.toLocaleString()} checks ${unhealthyVerb} unhealthy.`,
   ];
   if (summary.stale > 0) {
     parts.push(`${summary.stale.toLocaleString()} healthy checkpoints are older than a day.`);
@@ -456,6 +489,12 @@ const STATS_METADATA_KEYS = new Set([
   "updated_at",
   "as_of",
   "computed_at",
+  "result_scope",
+  "trust_applied",
+  "trust_mode",
+  "point_meaning",
+  "sections",
+  "window",
 ]);
 
 const ISO_TIMESTAMP_PATTERN =

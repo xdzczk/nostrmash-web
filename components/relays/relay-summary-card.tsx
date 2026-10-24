@@ -43,7 +43,7 @@ export function RelaySummaryCard({
       )}
       <p className="text-ink-faint text-sm">
         {events !== null ? `${events.toLocaleString()} events` : "Event count unavailable"}
-        {authors !== null ? ` · ${authors.toLocaleString()} authors` : ""}
+        {authors !== null ? ` · ${authors.toLocaleString()} pubkeys seen on relays` : ""}
       </p>
       {hasHealth ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -64,8 +64,8 @@ export function RelaySummaryCard({
       )}
       {observationCount > 1 ? (
         <p className="text-ink-muted text-sm">
-          {observationCount.toLocaleString()} URLs on this host were checked. This is the checkpoint
-          listed first on the health page.
+          {observationCount.toLocaleString()} URLs on this host share this page. This is the
+          checkpoint listed first on the health page.
         </p>
       ) : null}
       {lastError ? <p className="text-danger-ink text-sm">{lastError}</p> : null}

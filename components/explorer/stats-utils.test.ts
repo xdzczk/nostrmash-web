@@ -33,6 +33,35 @@ describe("extractRelayRows", () => {
     expect(rows[0]?.metrics.event_count).toBe(307943);
   });
 
+  it("reads the windowed leaderboard when both lists are present", () => {
+    const payload = {
+      relays: {
+        top: [{ relay_url: "wss://week.example", event_count: 1 }],
+        top_24h: [{ relay_url: "wss://day.example", event_count: 9 }],
+        top_7d: [{ relay_url: "wss://seven.example", event_count: 3 }],
+      },
+    };
+
+    expect(extractRelayRows(payload, 10, "24h").map((row) => row.relay)).toEqual([
+      "wss://day.example",
+    ]);
+    expect(extractRelayRows(payload, 10, "7d").map((row) => row.relay)).toEqual([
+      "wss://seven.example",
+    ]);
+  });
+
+  it("falls back to relays.top when the windowed list is absent", () => {
+    const payload = {
+      relays: {
+        top: [{ relay_url: "wss://week.example", event_count: 1 }],
+      },
+    };
+
+    expect(extractRelayRows(payload, 10, "24h").map((row) => row.relay)).toEqual([
+      "wss://week.example",
+    ]);
+  });
+
   it("still reads top-level relay arrays", () => {
     const payload = {
       relays: [{ relay_url: "wss://relay.damus.io", event_count: 42 }],
@@ -207,6 +236,18 @@ describe("flattenPrimitiveStats", () => {
     );
   });
 
+  it("leaves section descriptions out of the metric cards", () => {
+    const labels = flattenPrimitiveStats({
+      note_volume: { "24h": 10 },
+      sections: {
+        note_volume: { scope: "indexed_notes", summary: "Distinct notes." },
+      },
+    }).map((stat) => stat.label);
+
+    expect(labels).toContain("note_volume_24h");
+    expect(labels.some((label) => label.startsWith("sections"))).toBe(false);
+  });
+
   it("collapses the same relay leaf emitted under several prefixes", () => {
     // Mirrors /discovery/stats/network: relays.active_24h is flattened as
     // `network_relays_active_24h`, `relays_active_24h` and bare `active_24h`.
@@ -339,6 +380,39 @@ describe("partitionRelayHealth", () => {
       count: 2,
       row: { relay: "wss://relay.example/alpha" },
     });
+  });
+
+  it("trusts the API stale flag over the checkpoint timestamp", () => {
+    const rows = extractRelayHealthRows({
+      relays: [
+        {
+          relay_url: "wss://flagged.example",
+          status: "healthy",
+          stale: true,
+          latest_checkpoint_at: "2026-10-24T11:30:00.000Z",
+        },
+        {
+          relay_url: "wss://kept.example",
+          status: "healthy",
+          stale: false,
+          latest_checkpoint_at: "2026-08-30T07:00:00.000Z",
+        },
+      ],
+    });
+    const { attention, current } = partitionRelayHealth(rows, nowMs);
+
+    expect(attention.map((row) => row.host)).toEqual(["flagged.example"]);
+    expect(current.map((row) => row.host)).toEqual(["kept.example"]);
+  });
+
+  it("uses the reported total when the page is a subset of the checks", () => {
+    const rows = extractRelayHealthRows({
+      relays: [{ relay_url: "wss://relay.example", status: "errored" }],
+    });
+
+    expect(formatRelayHealthSummary(rows, nowMs, 439)).toBe(
+      "1 of 439 checks is unhealthy. 0 checked in healthy within the last day."
+    );
   });
 });
 

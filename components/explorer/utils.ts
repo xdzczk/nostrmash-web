@@ -12,18 +12,18 @@ const LABEL_ALIASES: Record<string, string> = {
   profiles_count: "Profiles",
   relay_count: "Relays",
   relay_url: "Relay",
-  unique_authors: "Authors seen on relays",
-  unique_authors_24h: "Authors seen on relays (24h)",
-  unique_authors_7d: "Authors seen on relays (7d)",
+  unique_authors: "Authors",
+  unique_authors_24h: "Pubkeys seen on relays (24h)",
+  unique_authors_7d: "Pubkeys seen on relays (7d)",
   unique_relays: "Unique relays",
   unique_notes: "Unique notes",
   unique_profiles: "Unique profiles",
   // "Relays indexed", not "active relays": the figure counts relays this
   // index reads from, not relays alive on the network (which is far larger).
   active_relays: "Relays indexed",
-  active_authors: "Active authors",
-  active_authors_24h: "Active authors (24h)",
-  active_authors_7d: "Active authors (7d)",
+  active_authors: "Note authors",
+  active_authors_24h: "Note authors (24h)",
+  active_authors_7d: "Note authors (7d)",
   note_volume_24h: "Note volume (24h)",
   note_volume_7d: "Note volume (7d)",
   active_24h: "Relays indexed (24h)",
@@ -71,6 +71,12 @@ const LABEL_ALIASES: Record<string, string> = {
   mention_count: "Mentions",
   mentions_count: "Mentions",
 };
+
+/** Relay-row `unique_authors` counts pubkeys seen on that relay, not note authors. */
+export function formatRelayMetricLabel(label: string): string {
+  if (label === "unique_authors") return "Pubkeys seen on relays";
+  return formatMetricLabel(label);
+}
 
 export const ENGAGEMENT_STAT_KEYS = [
   "reply_count",

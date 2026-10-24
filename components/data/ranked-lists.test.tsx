@@ -14,7 +14,7 @@ import { HashtagsList } from "@/components/data/renderers";
 import { RankedListPage } from "@/components/explorer/ranked-list-page";
 
 describe("HashtagsList", () => {
-  it("drops sub-floor tags and shows sources instead of a second event count", () => {
+  it("drops sub-floor tags and shows authors instead of the event-count score", () => {
     render(
       <HashtagsList
         ranked
@@ -32,7 +32,7 @@ describe("HashtagsList", () => {
 
     expect(screen.getByRole("link", { name: "#php" })).toBeInTheDocument();
     expect(screen.getByText("69")).toBeInTheDocument();
-    expect(screen.getByText("sources")).toBeInTheDocument();
+    expect(screen.getByText("authors")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "#122" })).not.toBeInTheDocument();
     expect(screen.queryByText("90")).not.toBeInTheDocument();
   });

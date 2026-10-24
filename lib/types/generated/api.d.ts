@@ -1224,11 +1224,18 @@ export interface paths {
           content: {
             "application/json": {
               consistency?: string;
+              /** @description ingest_checkpoints. Each row is one relay URL, mode, and filter group. total is that row count, not a relay population. */
+              scope?: string;
+              total?: number;
               relays?: {
                 relay_url?: string;
+                /** @description Subscription kind (live or backfill), not a liveness flag. */
                 mode?: string;
                 filter_group?: string;
+                /** @description Stored checkpoint status. Not rewritten when the row is old. */
                 status?: string;
+                /** @description True when latest_checkpoint_at is older than 24h. mode remains the subscription kind. */
+                stale?: boolean;
                 last_error?: string | null;
                 /** Format: date-time */
                 latest_checkpoint_at?: string;
@@ -1267,7 +1274,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Popular relays ranked by distinct user count */
+        /** @description Popular relays ranked by distinct user count. total is the full ranked population; relays is capped by limit. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -1303,7 +1310,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Relay probe health summaries */
+        /** @description Relay probe health summaries. total is the number of registry relays that have been probed; relays is the score-ordered page after limit, skipping rows that have never been probed. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -2156,7 +2163,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Public network stats snapshot for product surfaces */
+        /** @description Public network stats snapshot. Network and content stats are rendered from one shared snapshot. sections describes each count (scope, trust_applied, summary, computed_at). result_scope is mixed because note volume is all indexed notes while hashtags are trust-graph scoped. relays.top is the 7-day leaderboard; relays.top_24h and relays.top_7d are both present. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -2190,7 +2197,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Public content stats snapshot for product surfaces */
+        /** @description Public content stats from the same snapshot as network stats. sections carries per-count scope and computed_at. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -2217,20 +2224,24 @@ export interface paths {
     /** Public relay summary stats */
     get: {
       parameters: {
-        query?: never;
+        query?: {
+          /** @description Selects which leaderboard is returned as relays.top. Both windows are also returned as relays.top_24h and relays.top_7d. */
+          window?: "24h" | "7d";
+        };
         header?: never;
         path?: never;
         cookie?: never;
       };
       requestBody?: never;
       responses: {
-        /** @description Public relay count snapshot */
+        /** @description Relay activity snapshot. total is distinct relay URLs that have delivered events. unique_authors counts every pubkey seen on a relay. relays.top follows window and is ranked by event count. */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
+        400: components["responses"]["Error"];
       };
     };
     put?: never;
@@ -2253,7 +2264,8 @@ export interface paths {
       parameters: {
         query: {
           metric: "note_volume" | "active_authors" | "relay_events";
-          window?: "7d" | "30d";
+          /** @description How much hourly history to return. Each point is a rolling 24-hour total sampled once per UTC hour, not an hourly increment. */
+          window?: "24h" | "7d" | "30d";
         };
         header?: never;
         path?: never;
@@ -2261,7 +2273,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Eventual-consistency series with Unix-second points (`{ metric, window, computed_at, points: [{ t, v }], consistency }`) */
+        /** @description Eventual-consistency series of rolling 24-hour totals sampled hourly (`{ metric, window, computed_at, points: [{ t, v }], consistency, trust_applied, result_scope, point_meaning, summary }`) */
         200: {
           headers: {
             [name: string]: unknown;

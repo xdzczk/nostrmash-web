@@ -11,11 +11,16 @@ import {
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { MetadataList } from "@/components/explorer/metadata-list";
-import { AboutThisData } from "@/components/explorer/about-this-data";
+import { AboutThisData, readStatsSections } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
 import { NetworkNav } from "@/components/explorer/network-nav";
 import { StatCard } from "@/components/explorer/stat-card";
-import { formatMetricLabel, formatValue, isRecord } from "@/components/explorer/utils";
+import {
+  formatMetricLabel,
+  formatRelayMetricLabel,
+  formatValue,
+  isRecord,
+} from "@/components/explorer/utils";
 import { RelayLink, relaySearchHref } from "@/components/relays/relay-link";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
@@ -29,7 +34,6 @@ import {
   getRelayStats,
   getStatsSeries,
   normalizeSeriesPoints,
-  sliceSeriesToHours,
 } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
@@ -83,6 +87,14 @@ function dedupeDisplayedStats(
     seen.add(label);
     return true;
   });
+}
+
+function statFieldLabel(groupLabel: string, field: string): string {
+  if (/hashtag/i.test(groupLabel)) {
+    if (field === "unique_authors") return "Authors";
+    if (field === "score" || field === "ranking_score") return "Events";
+  }
+  return formatMetricLabel(field);
 }
 
 function restatesSelectedStat(
@@ -183,8 +195,12 @@ function StatsGroup({
                             typeof value === "boolean"
                         )
                         .slice(0, 4)
-                        .map(([label, value]) => ({ label, value }))}
+                        .map(([label, value]) => ({
+                          label: statFieldLabel(group.label, label),
+                          value,
+                        }))}
                       columns={2}
+                      normalizeLabels={false}
                     />
                   ) : (
                     <p className="text-ink-dim text-sm">{String(entry)}</p>
@@ -216,10 +232,7 @@ export default async function StatsPage({
   let activeAuthorsSeries: Array<{ t: number; v: number }> = [];
   let relayEventsSeries: Array<{ t: number; v: number }> = [];
   let computedAt: string | null = null;
-  // Series history is published as 7-day or 30-day blocks. The 24h control
-  // slices the 7-day series down to the last day.
-  const seriesWindow = "7d" as const;
-  const seriesHours = window === "24h" ? 24 : 24 * 7;
+  const seriesWindow = window;
 
   try {
     const [
@@ -232,7 +245,7 @@ export default async function StatsPage({
     ] = await Promise.all([
       getNetworkStats("shortTtl"),
       getContentStats("shortTtl"),
-      getRelayStats("shortTtl"),
+      getRelayStats("shortTtl", window),
       getStatsSeries("note_volume", seriesWindow, "shortTtl"),
       getStatsSeries("active_authors", seriesWindow, "shortTtl"),
       getStatsSeries("relay_events", seriesWindow, "shortTtl"),
@@ -240,9 +253,9 @@ export default async function StatsPage({
     network = networkResult;
     content = contentResult;
     relays = relaysResult;
-    noteVolumeSeries = sliceSeriesToHours(normalizeSeriesPoints(volumeResult), seriesHours);
-    activeAuthorsSeries = sliceSeriesToHours(normalizeSeriesPoints(authorsResult), seriesHours);
-    relayEventsSeries = sliceSeriesToHours(normalizeSeriesPoints(relaySeriesResult), seriesHours);
+    noteVolumeSeries = normalizeSeriesPoints(volumeResult);
+    activeAuthorsSeries = normalizeSeriesPoints(authorsResult);
+    relayEventsSeries = normalizeSeriesPoints(relaySeriesResult);
     computedAt =
       (typeof volumeResult.computed_at === "string" && volumeResult.computed_at) ||
       (isRecord(networkResult) &&
@@ -283,8 +296,8 @@ export default async function StatsPage({
         title="Time series"
         description={
           window === "24h"
-            ? "The last 24 hours of hourly history. That history is stored in 7-day blocks, and this view is the latest day of the block."
-            : "Hourly history for the last 7 days. Peak and the latest point are labeled under each chart."
+            ? "Hourly samples from the last 24 hours. Each bar is a rolling 24-hour total, not the notes from that hour alone."
+            : "Hourly samples from the last 7 days. Each bar is a rolling 24-hour total, not the notes from that hour alone."
         }
       >
         <div className="grid gap-6 lg:grid-cols-3">
@@ -293,8 +306,8 @@ export default async function StatsPage({
             <BarChart points={noteVolumeSeries} label="Note volume" height={140} />
           </div>
           <div>
-            <p className="text-ink-faint mb-2 text-xs">Active authors</p>
-            <BarChart points={activeAuthorsSeries} label="Active authors" height={140} />
+            <p className="text-ink-faint mb-2 text-xs">Note authors</p>
+            <BarChart points={activeAuthorsSeries} label="Note authors" height={140} />
           </div>
           <div>
             <p className="text-ink-faint mb-2 text-xs">Relay events</p>
@@ -305,7 +318,7 @@ export default async function StatsPage({
 
       <StatsGroup
         title="Network"
-        description="Authors and notes from the network stats, for the selected window."
+        description="Note authors and notes from the network stats, for the selected window."
         payload={network ?? {}}
         preferredKeys={NETWORK_PRIORITY_KEYS}
         window={window}
@@ -322,19 +335,19 @@ export default async function StatsPage({
       />
       <StatsGroup
         title="Relays"
-        description="Relays this index reads, and the total the relay stats report. Authors seen on relays are not the same count as active authors above."
+        description="Relays this index reads, and the total the relay stats report. Pubkeys seen on relays are not the same count as note authors above."
         payload={relays ?? {}}
         preferredKeys={RELAY_PRIORITY_KEYS}
         window={window}
-        skipArrayLabels={["top"]}
+        skipArrayLabels={["top", "top_24h", "top_7d"]}
       />
       <SectionCard
         title="Relay leaderboard"
-        description="Indexed event volume. This ranking is not split into 24-hour and 7-day views, so the window control above does not reorder it."
+        description={`Indexed event volume for ${formatStatsWindowLabel(window).toLowerCase()}.`}
       >
-        {extractRelayRows(relays, 12).length > 0 ? (
+        {extractRelayRows(relays, 12, window).length > 0 ? (
           <ul className="divide-edge/70 divide-y">
-            {extractRelayRows(relays, 12).map((row, index) => {
+            {extractRelayRows(relays, 12, window).map((row, index) => {
               const host = normalizeRelayHost(row.relay);
               return (
                 <li
@@ -343,7 +356,7 @@ export default async function StatsPage({
                 >
                   <div className="min-w-0">
                     {host ? (
-                      <RelayLink host={host} rank={index + 1} />
+                      <RelayLink host={host} rank={index + 1} window={window} />
                     ) : (
                       <p className="text-ink text-sm">
                         #{index + 1} {row.relay}
@@ -353,7 +366,8 @@ export default async function StatsPage({
                       {Object.entries(row.metrics)
                         .slice(0, 3)
                         .map(
-                          ([label, value]) => `${formatMetricLabel(label)}: ${formatValue(value)}`
+                          ([label, value]) =>
+                            `${formatRelayMetricLabel(label)}: ${formatValue(value)}`
                         )
                         .join(" · ")}
                     </p>
@@ -375,7 +389,10 @@ export default async function StatsPage({
       <div className="space-y-3">
         <DebugDisclosure title="Debug payload: network stats" data={network ?? {}} />
         <DebugDisclosure title="Debug payload: content stats" data={content ?? {}} />
-        <AboutThisData semantics={semantics} />
+        <AboutThisData
+          semantics={semantics}
+          sections={readStatsSections(network, content, relays)}
+        />
         <DebugDisclosure title="Debug payload: relay stats" data={relays ?? {}} />
       </div>
     </div>

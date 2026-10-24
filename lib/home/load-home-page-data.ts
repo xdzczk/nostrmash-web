@@ -131,7 +131,7 @@ export async function loadHomePageData(
   const stageOne = await Promise.allSettled([
     getDiscoveryHome("shortTtl", { window }),
     getNetworkStats("shortTtl"),
-    getRelayStats("shortTtl"),
+    getRelayStats("shortTtl", window),
     getStatsSeries("note_volume", "7d", "shortTtl"),
     getStatsSeries("active_authors", "7d", "shortTtl"),
     getStatsSeries("relay_events", "7d", "shortTtl"),
@@ -317,9 +317,9 @@ export async function loadHomePageData(
     activeAuthors: activeAuthorsSeries,
     relayEvents: relayEventsSeries,
   });
-  let relayLeaders = extractRelayRows(networkSummary ?? payload, 1);
+  let relayLeaders = extractRelayRows(networkSummary ?? payload, 1, window);
   if (relayLeaders.length === 0) {
-    relayLeaders = extractRelayRows(relayStats, 1);
+    relayLeaders = extractRelayRows(relayStats, 1, window);
   }
 
   // Prefer discovery/home computed_at: that tracks the live homepage

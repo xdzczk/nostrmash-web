@@ -409,6 +409,7 @@ type IndexRow = {
   reasons: WhyNowReason[];
   ranking?: DiscoveryItemRanking;
   extra?: Array<string | null>;
+  figureNoun?: string;
 };
 
 /**
@@ -434,7 +435,7 @@ function RankedIndex({ rows }: { rows: IndexRow[] }) {
                 </Link>
                 <RankMovement ranking={row.ranking} />
               </div>
-              <SourceFigure ranking={row.ranking} className="ml-auto" />
+              <SourceFigure ranking={row.ranking} noun={row.figureNoun} className="ml-auto" />
             </div>
             <EvidenceLine
               reasons={row.reasons}
@@ -489,6 +490,7 @@ function TopicsIndex({
         reasons,
         ranking: entry.ranking,
         extra: [authorsQualifier(entry.unique_authors, reasons, entry.ranking)],
+        figureNoun: "authors",
       };
     })
     .filter((row): row is IndexRow => row !== null);

@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import {
-  RELAY_HEALTH_EXTRACT_LIMIT,
   extractRelayHealthRows,
   formatRelayHealthSummary,
 } from "@/components/explorer/stats-utils";
@@ -50,9 +49,10 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
     payload?.next_cursor
   );
 
-  const rows = extractRelayHealthRows(payload, RELAY_HEALTH_EXTRACT_LIMIT);
+  const rows = extractRelayHealthRows(payload);
   const nowMs = getRequestNowMs();
-  const healthSummary = formatRelayHealthSummary(rows, nowMs);
+  const healthTotal = typeof payload?.total === "number" ? payload.total : rows.length;
+  const healthSummary = formatRelayHealthSummary(rows, nowMs, healthTotal);
   const semantics = extractNativeApiSemantics(payload);
 
   return (
@@ -72,7 +72,7 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
 
       <SectionCard
         title="Ingest checkpoints"
-        description="A checkpoint older than a day is listed with the failures. Ingest mode is how the index reads the relay, not whether the checkpoint is current."
+        description="A stale checkpoint is listed with the failures. Ingest mode is how the index reads the relay, not whether the checkpoint is current."
       >
         {rows.length > 0 ? (
           <HealthRows rows={rows} nowMs={nowMs} />
