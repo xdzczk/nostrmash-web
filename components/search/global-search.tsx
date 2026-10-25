@@ -1,11 +1,13 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { SearchForm } from "@/components/search/search-form";
 
 export function GlobalSearch() {
+  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -34,6 +36,11 @@ export function GlobalSearch() {
       if (!opensSearch) return;
       event.preventDefault();
 
+      if (pathname === "/search") {
+        document.getElementById("search-page-input")?.focus();
+        return;
+      }
+
       if (window.matchMedia("(min-width: 768px)").matches) {
         document.getElementById("global-search-input")?.focus();
       } else {
@@ -43,16 +50,14 @@ export function GlobalSearch() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [pathname]);
+
+  if (pathname === "/search") return null;
 
   return (
     <>
       <div className="hidden min-w-0 flex-1 md:block">
-        <SearchForm
-          inputId="global-search-input"
-          variant="global"
-          placeholder="Search notes, people, topics, or relays"
-        />
+        <SearchForm inputId="global-search-input" variant="global" enableRecents />
       </div>
 
       <button
@@ -88,8 +93,8 @@ export function GlobalSearch() {
                 <SearchForm
                   variant="global"
                   autoFocus
+                  enableRecents
                   onNavigate={() => setMobileOpen(false)}
-                  placeholder="Search notes, people, topics, or relays"
                   className="min-w-0 flex-1"
                 />
                 <button

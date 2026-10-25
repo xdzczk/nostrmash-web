@@ -6,6 +6,8 @@ export type TabItem = {
   href: string;
   active: boolean;
   count?: number;
+  /** Shown instead of `count` when the number is a page length, e.g. "20+". */
+  countLabel?: string;
 };
 
 export type TabBarOverflow = {

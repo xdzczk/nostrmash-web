@@ -74,6 +74,7 @@ export function NoteCard({
   connectAbove = false,
   connectBelow = false,
   bridgeToNote = false,
+  highlightTerms,
 }: {
   note: EventRecord;
   author?: Profile;
@@ -106,6 +107,8 @@ export function NoteCard({
   connectBelow?: boolean;
   /** Carry that line across the gap to the open note's avatar. */
   bridgeToNote?: boolean;
+  /** Query terms to mark inside the note text. */
+  highlightTerms?: string[];
 }) {
   if (isRepostEvent(note)) {
     return (
@@ -140,6 +143,7 @@ export function NoteCard({
       connectAbove={connectAbove}
       connectBelow={connectBelow}
       bridgeToNote={bridgeToNote}
+      highlightTerms={highlightTerms}
     />
   );
 }
@@ -164,6 +168,7 @@ function NoteCardBody({
   connectAbove,
   connectBelow,
   bridgeToNote,
+  highlightTerms,
 }: {
   note: EventRecord;
   author?: Profile;
@@ -184,6 +189,7 @@ function NoteCardBody({
   connectAbove: boolean;
   connectBelow: boolean;
   bridgeToNote: boolean;
+  highlightTerms?: string[];
 }) {
   const isReply = density === "reply";
   const isDetail = density === "detail";
@@ -403,6 +409,7 @@ function NoteCardBody({
                 resolution={contentResolution}
                 hideLinkPreviewUrls={linkPreviewUrls}
                 size={contentSize}
+                highlightTerms={highlightTerms}
               />
               {suppressEmbeds ? null : (
                 <NoteLinkPreviews content={note.content ?? ""} limit={linkPreviewLimit} />
@@ -429,6 +436,7 @@ function NoteCardBody({
               resolution={contentResolution}
               hideLinkPreviewUrls={linkPreviewUrls}
               size={contentSize}
+              highlightTerms={highlightTerms}
             />
             {!preview.prefersMediaFirst &&
             typeof note.content === "string" &&

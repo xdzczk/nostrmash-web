@@ -11,6 +11,7 @@ import {
 import { isNoteMediaUrl, stripNoteMediaUrls } from "@/lib/notes/media";
 import { hexToNpub } from "@/lib/nostr/nip19";
 import { tokenizeNoteContent, type NoteToken } from "@/lib/notes/tokenize";
+import { HighlightedText } from "@/components/search/highlighted-text";
 import { buildProfileActivityTabHref } from "@/lib/profile/activity-tabs";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
@@ -94,6 +95,7 @@ export function NoteContent({
   hideLinkPreviewUrls = [],
   as: Tag = "div",
   size = "list",
+  highlightTerms,
 }: {
   tokens: NoteToken[];
   className?: string;
@@ -104,6 +106,7 @@ export function NoteContent({
   as?: "div" | "span";
   /** Type scale: list cards stay compact; the detail page reads at prose size. */
   size?: NoteContentSize;
+  highlightTerms?: string[];
 }) {
   const hiddenLinks = new Set(hideLinkPreviewUrls);
   return (
@@ -112,7 +115,7 @@ export function NoteContent({
         const key = `${token.type}-${index}`;
         switch (token.type) {
           case "text":
-            return <span key={key}>{token.value}</span>;
+            return <HighlightedText key={key} value={token.value} terms={highlightTerms} />;
           case "url": {
             // Media and card-preview URLs are rendered elsewhere.
             if (isNoteMediaUrl(token.href) || hiddenLinks.has(token.href)) return null;
@@ -138,7 +141,8 @@ export function NoteContent({
                 href={`/hashtags/${encodeURIComponent(token.tag)}`}
                 className="text-link hover:text-link-hover font-medium"
               >
-                #{token.tag}
+                #
+                <HighlightedText value={token.tag} terms={highlightTerms} />
               </Link>
             );
           case "mention": {

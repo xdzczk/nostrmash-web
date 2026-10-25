@@ -149,18 +149,13 @@ export default async function HashtagNotesPage({
       <PageHero
         eyebrow="Hashtag notes"
         title={`${hashtagTitle(normalizedHashtag)} notes`}
-        subtitle="All available notes returned by the hashtag notes endpoint."
+        subtitle={`Notes using ${hashtagTitle(normalizedHashtag)}, newest first.`}
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <IdBadge id={hashtagTitle(normalizedHashtag)} label="hashtag" />
             {typeof hashtagNotesPayload?.total === "number" ? (
               <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
                 total: {hashtagNotesPayload.total.toLocaleString()}
-              </span>
-            ) : null}
-            {typeof notesNextCursor === "string" && notesNextCursor.length > 0 ? (
-              <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
-                cursor: available
               </span>
             ) : null}
           </div>

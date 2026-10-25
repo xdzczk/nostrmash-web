@@ -60,4 +60,15 @@ describe("SearchForm", () => {
     expect(push).toHaveBeenCalledWith("/search?q=nostr&tab=all");
     expect(input).toHaveValue("nostr");
   });
+
+  it("opens a hashtag query on the hashtag notes page", () => {
+    pathname.current = "/";
+    render(<SearchForm variant="global" />);
+    const input = screen.getByRole("combobox");
+
+    fireEvent.change(input, { target: { value: "#bitcoin" } });
+    fireEvent.submit(input.closest("form")!);
+
+    expect(push).toHaveBeenCalledWith("/hashtags/bitcoin/notes");
+  });
 });

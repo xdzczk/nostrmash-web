@@ -3,15 +3,27 @@ import { ApiError, isApiTimeoutError } from "@/lib/api/http";
 import { normalizeEventRecord, normalizeEventRecords } from "@/lib/api/normalize";
 import { npubToHex } from "@/lib/nostr/npub";
 
+export type SearchTab = "all" | "notes" | "profiles" | "hashtags" | "relays";
+export type SearchWindow = "24h" | "7d" | "30d" | "all";
+export type SearchSort = "relevant" | "latest";
+
 export interface SearchQuery {
   q: string;
-  tab?: "all" | "notes" | "profiles";
+  tab?: SearchTab;
   limit?: number;
   offset?: number;
   /** Opaque continuation token from a prior response's next_cursor. */
   cursor?: string;
   /** Opt-in search bundle extras, e.g. "suggest". */
   include?: string;
+  /** "0" asks the index not to replace the query with a spelling correction. */
+  correction?: "0";
+  /** ISO 639-1/2 code. Omitted means every language. */
+  lang?: string;
+  /** Omitted means the index default, all time. */
+  window?: Exclude<SearchWindow, "all">;
+  /** Omitted means the index default, relevant. */
+  sort?: Exclude<SearchSort, "relevant">;
 }
 
 export const nativeApiV1Routes = {
@@ -177,8 +189,22 @@ export function toSearchCursor(value: unknown): string | undefined {
   return undefined;
 }
 
+export function searchFilterParams(
+  query: Pick<SearchQuery, "correction" | "lang" | "window" | "sort">
+): Record<string, string | undefined> {
+  return {
+    ...(query.correction === "0" ? { correction: "0" } : {}),
+    ...(query.lang ? { lang: query.lang } : {}),
+    ...(query.window ? { window: query.window } : {}),
+    ...(query.sort ? { sort: query.sort } : {}),
+  };
+}
+
 export function buildSearchQuery(
-  query: Pick<SearchQuery, "q" | "limit" | "offset" | "cursor">
+  query: Pick<
+    SearchQuery,
+    "q" | "limit" | "offset" | "cursor" | "correction" | "lang" | "window" | "sort"
+  >
 ): Record<string, string | number | undefined> {
   // cursor and offset are mutually exclusive on the backend; the cursor
   // already encodes the continuation position.
@@ -187,6 +213,7 @@ export function buildSearchQuery(
     limit: query.limit,
     offset: query.cursor ? undefined : query.offset,
     cursor: query.cursor,
+    ...searchFilterParams(query),
   };
 }
 

@@ -40,6 +40,12 @@ const LANGUAGE_NAMES: Record<string, string> = {
   lv: "Latviešu",
 };
 
+/** Languages the search filter can select when the page has no corpus histogram. */
+export const KNOWN_LANGUAGE_OPTIONS = Object.keys(LANGUAGE_NAMES).map((language) => ({
+  language,
+  count: 0,
+}));
+
 export function languageDisplayName(code: string): string {
   return LANGUAGE_NAMES[code] ?? code.toUpperCase();
 }

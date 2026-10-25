@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import {
   profileIdentifier,
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSearchSuggest } from "@/hooks/use-search-suggest";
 import { isValidHashtag } from "@/lib/hashtags";
+import { resolveSearchIntent } from "@/lib/search/intent";
 import { belowVolumeFloor, listedVolume } from "@/lib/discover/reasons";
 import type { HashtagEntry, Profile } from "@/lib/types/api";
 
@@ -24,6 +25,75 @@ type SearchShortcut = {
   query?: string;
   href?: string;
 };
+
+const SEARCH_PLACEHOLDER = "Search notes, people, topics, or relays";
+const RECENT_SEARCHES_KEY = "nm_recent_searches";
+const RECENT_SEARCHES_EVENT = "nm-recent-searches";
+const MAX_RECENT_SEARCHES = 8;
+const EMPTY_RECENTS: string[] = [];
+const RECENT_RAW_UNSET = Symbol("recent-raw-unset");
+
+let recentSnapshot: string[] = EMPTY_RECENTS;
+let recentRaw: string | null | typeof RECENT_RAW_UNSET = RECENT_RAW_UNSET;
+
+function parseRecentSearches(raw: string | null): string[] {
+  try {
+    const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((entry): entry is string => typeof entry === "string")
+      .slice(0, MAX_RECENT_SEARCHES);
+  } catch {
+    return [];
+  }
+}
+
+function recentSearchesSnapshot(): string[] {
+  if (typeof window === "undefined") return recentSnapshot;
+  let raw: string | null = null;
+  try {
+    raw = window.localStorage.getItem(RECENT_SEARCHES_KEY);
+  } catch {
+    raw = null;
+  }
+  if (raw === recentRaw) return recentSnapshot;
+  recentRaw = raw;
+  recentSnapshot = parseRecentSearches(raw);
+  return recentSnapshot;
+}
+
+function subscribeRecentSearches(onStoreChange: () => void) {
+  window.addEventListener(RECENT_SEARCHES_EVENT, onStoreChange);
+  window.addEventListener("storage", onStoreChange);
+  return () => {
+    window.removeEventListener(RECENT_SEARCHES_EVENT, onStoreChange);
+    window.removeEventListener("storage", onStoreChange);
+  };
+}
+
+function publishRecentSearches() {
+  recentRaw = RECENT_RAW_UNSET;
+  window.dispatchEvent(new Event(RECENT_SEARCHES_EVENT));
+}
+
+function readRecentSearches(): string[] {
+  return recentSearchesSnapshot();
+}
+
+function rememberSearch(query: string) {
+  const trimmed = query.trim();
+  if (!trimmed) return;
+  const next = [
+    trimmed,
+    ...readRecentSearches().filter((entry) => entry.toLowerCase() !== trimmed.toLowerCase()),
+  ].slice(0, MAX_RECENT_SEARCHES);
+  try {
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next));
+    publishRecentSearches();
+  } catch {
+    // Private mode and full storage still leave the navigation working.
+  }
+}
 
 export function SearchForm({
   initialQuery = "",
@@ -35,6 +105,7 @@ export function SearchForm({
   inputId,
   autoFocus = false,
   onNavigate,
+  enableRecents = false,
 }: {
   initialQuery?: string;
   className?: string;
@@ -45,12 +116,19 @@ export function SearchForm({
   inputId?: string;
   autoFocus?: boolean;
   onNavigate?: () => void;
+  /** Remember submitted queries and offer them when the field is empty. */
+  enableRecents?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const [query, setQuery] = useState(initialQuery);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const recents = useSyncExternalStore(
+    subscribeRecentSearches,
+    recentSearchesSnapshot,
+    () => EMPTY_RECENTS
+  );
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const heroVariant = variant === "hero";
@@ -66,24 +144,20 @@ export function SearchForm({
     setActiveIndex(-1);
   }
 
-  const inputPlaceholder =
-    placeholder ??
-    (heroVariant
-      ? "Search notes, profiles, hashtags, relays, or event IDs"
-      : globalVariant
-        ? "Search NostrMash"
-        : "Search notes, profiles, hashtags...");
+  const inputPlaceholder = placeholder ?? SEARCH_PLACEHOLDER;
 
   const {
     profiles: suggestedProfiles,
     hashtags: suggestedHashtags,
+    loading: suggestLoading,
     clear: clearSuggest,
   } = useSearchSuggest(query);
   const profiles = useMemo(() => dedupeSuggestProfiles(suggestedProfiles), [suggestedProfiles]);
   const hashtags = useMemo(() => filterSuggestHashtags(suggestedHashtags), [suggestedHashtags]);
   const actions = useMemo(() => stableSearchActions(query, hashtags), [query, hashtags]);
   const totalItems = actions.length + profiles.length + hashtags.length;
-  const showDropdown = open && query.trim().length >= 2 && totalItems > 0;
+  const showDropdown = open && query.trim().length >= 2 && (suggestLoading || totalItems > 0);
+  const showRecents = enableRecents && open && query.trim().length === 0 && recents.length > 0;
 
   const dismiss = useCallback(() => {
     setOpen(false);
@@ -97,15 +171,12 @@ export function SearchForm({
     (text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
+      rememberSearch(trimmed);
       dismiss();
-      // Hashtag queries go straight to the browsable hashtag notes list
-      // (with Show more / Continue) instead of a text-search results page.
-      if (trimmed.startsWith("#")) {
-        const normalized = trimmed.slice(1).trim().toLowerCase();
-        if (isValidHashtag(normalized)) {
-          router.push(`/hashtags/${encodeURIComponent(normalized)}/notes`);
-          return;
-        }
+      const intent = resolveSearchIntent(trimmed);
+      if (intent.href) {
+        router.push(intent.href);
+        return;
       }
       router.push(`/search?q=${encodeURIComponent(trimmed)}&tab=all`);
     },
@@ -137,10 +208,11 @@ export function SearchForm({
 
   const handleSelectAction = useCallback(
     (action: SearchSuggestionAction) => {
+      rememberSearch(query);
       dismiss();
       router.push(action.href);
     },
-    [router, dismiss]
+    [router, dismiss, query]
   );
 
   const commitActiveItem = useCallback(() => {
@@ -223,17 +295,30 @@ export function SearchForm({
             }}
             onFocus={() => setOpen(true)}
             onBlur={() => {
-              setTimeout(() => setOpen(false), 150);
+              window.setTimeout(() => {
+                const active = document.activeElement;
+                if (active instanceof Node && inputRef.current?.form?.contains(active)) return;
+                setOpen(false);
+                setActiveIndex(-1);
+              }, 150);
             }}
             onKeyDown={handleKeyDown}
             placeholder={inputPlaceholder}
             role="combobox"
             aria-expanded={showDropdown}
             aria-controls="search-suggest-listbox"
+            aria-activedescendant={
+              showDropdown && activeIndex >= 0 ? `search-suggest-option-${activeIndex}` : undefined
+            }
             aria-haspopup="listbox"
             aria-autocomplete="list"
             aria-label="Search notes, profiles, hashtags, relays, and event IDs"
           />
+          {globalVariant ? (
+            <kbd className="border-edge text-ink-faint pointer-events-none absolute top-1/2 right-12 hidden -translate-y-1/2 rounded border px-1.5 py-0.5 text-[10px] leading-none [@media(hover:hover)]:inline">
+              /
+            </kbd>
+          ) : null}
           {showDropdown && (
             <SuggestionDropdown
               ref={dropdownRef}
@@ -241,11 +326,50 @@ export function SearchForm({
               profiles={profiles}
               hashtags={hashtags}
               activeIndex={activeIndex}
+              query={query}
+              loading={suggestLoading}
               onSelectAction={handleSelectAction}
               onSelectProfile={handleSelectProfile}
               onSelectHashtag={handleSelectHashtag}
             />
           )}
+          {showRecents ? (
+            <div className="border-edge-strong bg-surface absolute inset-x-0 top-full z-50 mt-1 rounded-lg border">
+              <div className="flex items-center justify-between px-3 pt-2.5 pb-1">
+                <p className="text-ink-faint text-[10px] font-semibold tracking-wider uppercase">
+                  Recent
+                </p>
+                <button
+                  type="button"
+                  className="text-ink-faint hover:text-ink text-xs"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    try {
+                      localStorage.removeItem(RECENT_SEARCHES_KEY);
+                      publishRecentSearches();
+                    } catch {
+                      // Ignore storage failures; the list still closes.
+                    }
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+              {recents.map((recent) => (
+                <button
+                  key={recent}
+                  type="button"
+                  className="hover:bg-edge/60 text-ink-dim flex min-h-11 w-full items-center px-3 py-2 text-left text-sm"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    navigateToSearch(recent);
+                  }}
+                >
+                  <span className="truncate">{recent}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
         <Button
           type="submit"
@@ -358,6 +482,11 @@ function stableSearchActions(
     id: "search-notes",
     label: `Search notes for ${trimmed}`,
     href: `/search?q=${encodeURIComponent(trimmed)}&tab=notes`,
+  });
+  actions.push({
+    id: "search-profiles",
+    label: `Search profiles for ${trimmed}`,
+    href: `/search?q=${encodeURIComponent(trimmed)}&tab=profiles`,
   });
   return actions;
 }

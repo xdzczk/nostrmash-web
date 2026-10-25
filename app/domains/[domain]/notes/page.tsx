@@ -89,18 +89,13 @@ export default async function DomainNotesPage({
       <PageHero
         eyebrow="Domain notes"
         title={`${domainTitle(normalizedDomain)} notes`}
-        subtitle="All available notes returned by the domain notes endpoint."
+        subtitle={`Notes that mention ${domainTitle(normalizedDomain)}, newest first.`}
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <IdBadge id={domainTitle(normalizedDomain)} label="domain" />
             {typeof domainNotesPayload?.total === "number" ? (
               <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
                 total: {domainNotesPayload.total.toLocaleString()}
-              </span>
-            ) : null}
-            {typeof notesNextCursor === "string" && notesNextCursor.length > 0 ? (
-              <span className="border-edge-strong text-ink-dim rounded-full border px-2 py-1">
-                cursor: available
               </span>
             ) : null}
           </div>

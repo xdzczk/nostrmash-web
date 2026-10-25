@@ -10,6 +10,38 @@ describe("parseSearchQuery", () => {
       limit: 20,
       offset: 0,
       cursor: undefined,
+      correction: undefined,
+      lang: undefined,
+      window: undefined,
+      sort: undefined,
+    });
+  });
+
+  it("reads language, window, and sort, and ignores unknown values", () => {
+    expect(
+      parseSearchQuery({
+        q: "bitcoin",
+        tab: "hashtags",
+        lang: "de",
+        window: "30d",
+        sort: "latest",
+      })
+    ).toMatchObject({
+      tab: "hashtags",
+      lang: "de",
+      window: "30d",
+      sort: "latest",
+    });
+    expect(
+      parseSearchQuery({ q: "bitcoin", lang: "english", window: "90d", sort: "popular" })
+    ).toMatchObject({
+      lang: undefined,
+      window: undefined,
+      sort: undefined,
+    });
+    expect(parseSearchQuery({ q: "bitcoin", window: "all", sort: "relevant" })).toMatchObject({
+      window: undefined,
+      sort: undefined,
     });
   });
 

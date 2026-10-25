@@ -2,11 +2,11 @@ import type { SearchResponse } from "@/lib/types/api";
 import { extractNativeApiSemantics, normalizeEventRecords } from "@/lib/api/normalize";
 import type { CacheClass } from "@/lib/caching/policies";
 import {
-  buildSearchSectionTotals,
   looksLikeEventIdentifier,
   toSearchCursor,
   type SearchQuery,
 } from "@/lib/api/endpoints/shared";
+import { resolveReportedTotals } from "@/lib/search/totals";
 import {
   lookupNoteWithEngagement,
   withSearchEngagementCounts,
@@ -23,7 +23,14 @@ export async function searchNotesTab(
     limit: query.limit,
     offset: query.offset,
     cursor: query.cursor,
-  } satisfies Pick<SearchQuery, "q" | "limit" | "offset" | "cursor">;
+    correction: query.correction,
+    lang: query.lang,
+    window: query.window,
+    sort: query.sort,
+  } satisfies Pick<
+    SearchQuery,
+    "q" | "limit" | "offset" | "cursor" | "correction" | "lang" | "window" | "sort"
+  >;
 
   const notesResponse = await fetchSearchNotes(searchQuery, cacheClass);
   const notes = await withSearchEngagementCounts(
@@ -46,9 +53,20 @@ export async function searchNotesTab(
   const mergedNotes = Array.from(
     new Map([...notes, ...directNoteMatch].map((note) => [note.id, note])).values()
   );
-  const sectionTotals = buildSearchSectionTotals(mergedNotes.length, 0, 0, 0, 0);
   const semantics = extractNativeApiSemantics(notesResponse);
   const notesCursor = toSearchCursor(notesResponse);
+  const reported = resolveReportedTotals({
+    apiTotal: notesResponse.total,
+    apiSectionTotals: notesResponse.section_totals,
+    page: {
+      notes: mergedNotes.length,
+      profiles: 0,
+      profile_suggestions: 0,
+      hashtags: 0,
+      relays: 0,
+    },
+    limit: query.limit,
+  });
 
   return {
     ...semantics,
@@ -62,10 +80,8 @@ export async function searchNotesTab(
     next_offset: nextOffset,
     next_cursor: notesCursor ?? semantics.next_cursor,
     surface_cursors: notesCursor ? { notes: notesCursor } : undefined,
-    total: typeof notesResponse.total === "number" ? notesResponse.total : mergedNotes.length,
-    section_totals: {
-      ...sectionTotals,
-      ...(notesResponse.section_totals ?? {}),
-    },
+    total: reported.total,
+    totals_source: reported.totals_source,
+    section_totals: reported.section_totals,
   } satisfies SearchResponse;
 }

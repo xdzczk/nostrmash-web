@@ -15,7 +15,9 @@ export function TabLinkContent({ tab }: { tab: TabItem }) {
   return (
     <>
       {tab.label}
-      {typeof tab.count === "number" ? (
+      {tab.countLabel ? (
+        <span className="ml-2 text-xs opacity-80">{tab.countLabel}</span>
+      ) : typeof tab.count === "number" ? (
         <span className="ml-2 text-xs opacity-80">{tab.count.toLocaleString()}</span>
       ) : null}
     </>

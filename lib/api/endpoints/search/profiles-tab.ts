@@ -3,11 +3,11 @@ import { extractNativeApiSemantics, normalizeProfiles } from "@/lib/api/normaliz
 import type { CacheClass } from "@/lib/caching/policies";
 import { getProfile } from "@/lib/api/endpoints/profiles";
 import {
-  buildSearchSectionTotals,
   looksLikeProfileIdentifier,
   toSearchCursor,
   type SearchQuery,
 } from "@/lib/api/endpoints/shared";
+import { resolveReportedTotals } from "@/lib/search/totals";
 import { fetchSearchProfiles } from "@/lib/api/endpoints/search/fetchers";
 import { dedupeProfiles } from "@/lib/api/endpoints/search/helpers";
 
@@ -21,7 +21,14 @@ export async function searchProfilesTab(
     limit: query.limit,
     offset: query.offset,
     cursor: query.cursor,
-  } satisfies Pick<SearchQuery, "q" | "limit" | "offset" | "cursor">;
+    correction: query.correction,
+    lang: query.lang,
+    window: query.window,
+    sort: query.sort,
+  } satisfies Pick<
+    SearchQuery,
+    "q" | "limit" | "offset" | "cursor" | "correction" | "lang" | "window" | "sort"
+  >;
 
   const profilesResponse = await fetchSearchProfiles(profileSearchQuery, cacheClass);
   const profiles = normalizeProfiles(profilesResponse.profiles);
@@ -43,9 +50,20 @@ export async function searchProfilesTab(
   }
 
   const mergedProfiles = dedupeProfiles([...profiles, ...directProfileMatch]);
-  const sectionTotals = buildSearchSectionTotals(0, mergedProfiles.length, 0, 0, 0);
   const semantics = extractNativeApiSemantics(profilesResponse);
   const profilesCursor = toSearchCursor(profilesResponse);
+  const reported = resolveReportedTotals({
+    apiTotal: profilesResponse.total,
+    apiSectionTotals: profilesResponse.section_totals,
+    page: {
+      notes: 0,
+      profiles: mergedProfiles.length,
+      profile_suggestions: 0,
+      hashtags: 0,
+      relays: 0,
+    },
+    limit: query.limit,
+  });
 
   return {
     ...semantics,
@@ -59,11 +77,8 @@ export async function searchProfilesTab(
     next_offset: nextOffset,
     next_cursor: profilesCursor ?? semantics.next_cursor,
     surface_cursors: profilesCursor ? { profiles: profilesCursor } : undefined,
-    total:
-      typeof profilesResponse.total === "number" ? profilesResponse.total : mergedProfiles.length,
-    section_totals: {
-      ...sectionTotals,
-      ...(profilesResponse.section_totals ?? {}),
-    },
+    total: reported.total,
+    totals_source: reported.totals_source,
+    section_totals: reported.section_totals,
   } satisfies SearchResponse;
 }

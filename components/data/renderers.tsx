@@ -49,6 +49,7 @@ export async function NotesList({
   compactMedia = false,
   mediaVariant,
   suppressEmbeds,
+  highlightTerms,
 }: {
   notes: EventRecord[];
   authorsByPubkey?: Record<string, Profile>;
@@ -66,6 +67,8 @@ export async function NotesList({
   mediaVariant?: NoteMediaVariant;
   /** Hide link-unfurl cards. Defaults on for compact thumbnail lists. */
   suppressEmbeds?: boolean;
+  /** Query terms marked inside note text. */
+  highlightTerms?: string[];
 }) {
   const contentResolution = await resolveContentReferences(notes).catch(() => undefined);
   if (contentResolution && authorsByPubkey) {
@@ -108,6 +111,7 @@ export async function NotesList({
               omitZeroStats={omitZeroStats}
               mediaVariant={mediaVariant ?? (compactMedia ? "compact" : undefined)}
               suppressEmbeds={suppressEmbeds ?? compactMedia}
+              highlightTerms={highlightTerms}
             />
           )}
         </li>
@@ -167,6 +171,7 @@ export function ProfilesList({
   discoverySignals = false,
   maxReasons,
   compact = false,
+  searchContext = false,
 }: {
   profiles: Profile[];
   ranked?: boolean;
@@ -174,6 +179,8 @@ export function ProfilesList({
   maxReasons?: number;
   /** One-line bio, no action row. Used for conversation participants. */
   compact?: boolean;
+  /** Followers, recent notes, and nip05 under each search hit. */
+  searchContext?: boolean;
 }) {
   return (
     <ul>
@@ -185,6 +192,7 @@ export function ProfilesList({
             discoverySignals={discoverySignals}
             maxReasons={maxReasons}
             compact={compact}
+            searchContext={searchContext}
           />
         </li>
       ))}

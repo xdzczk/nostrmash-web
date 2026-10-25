@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/api/http", () => ({
-  fetchApiJson: vi.fn(),
-}));
+vi.mock("@/lib/api/http", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...(actual as Record<string, unknown>),
+    fetchApiJson: vi.fn(),
+  };
+});
 
 vi.mock("@/lib/api/endpoints/notes", () => ({
   getNoteSummary: vi.fn(),
@@ -170,6 +174,52 @@ describe("getSearch", () => {
     expect(result.profiles?.some((profile) => profile.display_name === "Ada")).toBe(true);
     expect(result.hashtags?.[0]?.hashtag).toBe("bitcoin");
     expect(mockedFetch).toHaveBeenCalledTimes(1);
+    expect(result.totals_source).toBe("api");
+    expect(result.total).toBe(1);
+    expect(result.section_totals?.notes).toBe(1);
+    expect(
+      result.profile_suggestions?.some((profile) => profile.display_name === "Suggested")
+    ).toBe(true);
+  });
+
+  it("does not invent a corpus total or repeat profiles as suggestions", async () => {
+    mockedFetch.mockResolvedValueOnce({
+      notes: [{ id: noteId, pubkey, kind: 1, content: "bundled", created_at: 1 }],
+      profiles: [{ pubkey, display_name: "Ada" }],
+      suggested_profiles: [{ pubkey, display_name: "Ada" }],
+      include: ["suggest"],
+    });
+
+    const result = await getSearch({ q: "bitcoin", limit: 20 });
+
+    expect(result.total).toBeUndefined();
+    expect(result.totals_source).toBe("page");
+    expect(result.section_totals?.notes).toBe(1);
+    expect(result.profile_suggestions).toEqual([]);
+  });
+
+  it("ignores section totals that only echo a full page", async () => {
+    mockedFetch.mockResolvedValueOnce({
+      notes: [{ id: noteId, pubkey, kind: 1, content: "bundled", created_at: 1 }],
+      include: ["suggest"],
+      section_totals: { notes: 1 },
+    });
+
+    const result = await getSearch({ q: "bitcoin", limit: 1 });
+
+    expect(result.totals_source).toBe("page");
+    expect(result.total).toBeUndefined();
+    expect(result.section_totals?.notes).toBe(1);
+  });
+
+  it("does not fan out after the search bundle times out", async () => {
+    mockedFetch.mockRejectedValueOnce(new Error("Search timed out"));
+
+    const result = await getSearch({ q: "bitcoin", limit: 20 });
+
+    expect(mockedFetch).toHaveBeenCalledTimes(1);
+    expect(result.surface_errors?.search).toBe("Search failed.");
+    expect(result.notes).toEqual([]);
   });
 
   it("throws when every all-tab surface fails", async () => {

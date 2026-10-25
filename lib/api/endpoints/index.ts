@@ -1,4 +1,11 @@
-export type { SearchQuery, CursorQuery, OffsetQuery } from "@/lib/api/endpoints/shared";
+export type {
+  SearchQuery,
+  SearchSort,
+  SearchTab,
+  SearchWindow,
+  CursorQuery,
+  OffsetQuery,
+} from "@/lib/api/endpoints/shared";
 
 export {
   HOME_INDEX_LIMIT,

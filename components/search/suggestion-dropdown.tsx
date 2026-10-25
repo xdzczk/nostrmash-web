@@ -9,6 +9,7 @@ import {
   profileSecondaryLabel,
   truncateProfileLabel,
 } from "@/components/explorer/utils";
+import { HighlightedText } from "@/components/search/highlighted-text";
 import type { HashtagEntry, Profile } from "@/lib/types/api";
 
 export type SearchSuggestionAction = {
@@ -25,6 +26,8 @@ interface SuggestionDropdownProps {
   onSelectAction?: (action: SearchSuggestionAction) => void;
   onSelectProfile: (profile: Profile) => void;
   onSelectHashtag: (hashtag: string) => void;
+  query?: string;
+  loading?: boolean;
 }
 
 export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownProps>(
@@ -37,6 +40,8 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
       onSelectAction,
       onSelectProfile,
       onSelectHashtag,
+      query = "",
+      loading = false,
     },
     ref
   ) {
@@ -50,6 +55,9 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
         role="listbox"
         className="nm-pop-in border-edge-strong bg-surface absolute inset-x-0 top-full z-50 mt-1 max-h-[min(26rem,60vh)] overflow-y-auto rounded-lg border shadow-xl"
       >
+        {loading && actions.length + profiles.length + hashtags.length === 0 ? (
+          <p className="text-ink-faint px-3 py-3 text-sm">Searching…</p>
+        ) : null}
         {actions.length > 0 && (
           <div>
             <p className="text-ink-faint px-3 pt-2.5 pb-1 text-[10px] font-semibold tracking-wider uppercase">
@@ -62,6 +70,7 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                   key={action.id}
                   type="button"
                   role="option"
+                  id={`search-suggest-option-${index}`}
                   aria-selected={active}
                   className={`flex min-h-11 w-full items-center px-3 py-2 text-left text-sm transition ${
                     active ? "bg-accent/15 text-ink" : "hover:bg-edge/60 text-ink-dim"
@@ -71,7 +80,9 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                     onSelectAction?.(action);
                   }}
                 >
-                  <span className="truncate font-medium">{action.label}</span>
+                  <span className="truncate font-medium">
+                    <HighlightedText value={action.label} terms={[query]} />
+                  </span>
                 </button>
               );
             })}
@@ -94,6 +105,7 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                   key={profile.pubkey}
                   type="button"
                   role="option"
+                  id={`search-suggest-option-${profileOffset + index}`}
                   aria-selected={active}
                   className={`flex min-h-11 w-full items-center gap-2.5 px-3 py-2 text-left transition ${
                     active ? "bg-accent/15 text-ink" : "hover:bg-edge/60 text-ink-dim"
@@ -110,7 +122,7 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium" title={label}>
-                      {truncateProfileLabel(label)}
+                      <HighlightedText value={truncateProfileLabel(label)} terms={[query]} />
                     </p>
                     {secondary ? (
                       <p
@@ -143,6 +155,7 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                   key={tag}
                   type="button"
                   role="option"
+                  id={`search-suggest-option-${hashtagOffset + index}`}
                   aria-selected={active}
                   className={`flex min-h-11 w-full items-center justify-between px-3 py-2 text-left text-sm transition ${
                     active ? "bg-accent/15 text-ink" : "hover:bg-edge/60 text-ink-dim"
@@ -152,7 +165,10 @@ export const SuggestionDropdown = forwardRef<HTMLDivElement, SuggestionDropdownP
                     onSelectHashtag(tag);
                   }}
                 >
-                  <span className="truncate font-medium">#{tag}</span>
+                  <span className="truncate font-medium">
+                    #
+                    <HighlightedText value={tag} terms={[query.replace(/^#/, "")]} />
+                  </span>
                   {typeof count === "number" && (
                     <span className="text-ink-faint ml-2 shrink-0 text-xs">
                       {count.toLocaleString()} {count === 1 ? "note" : "notes"}

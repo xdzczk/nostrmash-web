@@ -183,6 +183,14 @@ export interface SearchResponse extends NativeApiSemantics {
   offset?: number;
   next_offset?: number;
   total?: number;
+  /** `api` when total or section totals came from the index; `page` when they are slice lengths. */
+  totals_source?: "api" | "page";
+  /** Set when the index searched a spelling correction instead of the raw query. */
+  corrected_query?: string;
+  /** Direct note lookup for an identifier query, separate from ranked hits. */
+  direct_note?: EventRecord;
+  /** Direct profile lookup for an identifier query, separate from ranked hits. */
+  direct_profile?: Profile;
   errors?: string[];
   [key: string]: unknown;
 }

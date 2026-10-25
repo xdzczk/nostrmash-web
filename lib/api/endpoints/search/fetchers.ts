@@ -6,7 +6,12 @@ import type {
 } from "@/lib/types/api";
 import { fetchApiJson } from "@/lib/api/http";
 import type { CacheClass } from "@/lib/caching/policies";
-import { buildSearchQuery, nativeApiV1Routes, type SearchQuery } from "@/lib/api/endpoints/shared";
+import {
+  buildSearchQuery,
+  nativeApiV1Routes,
+  searchFilterParams,
+  type SearchQuery,
+} from "@/lib/api/endpoints/shared";
 import {
   eventListResponseSchema,
   profileListResponseSchema,
@@ -26,7 +31,10 @@ const searchResponseSchema = eventListResponseSchema
   .passthrough();
 
 export async function fetchSearchNotes(
-  query: Pick<SearchQuery, "q" | "limit" | "offset" | "cursor">,
+  query: Pick<
+    SearchQuery,
+    "q" | "limit" | "offset" | "cursor" | "correction" | "lang" | "window" | "sort"
+  >,
   cacheClass: CacheClass
 ) {
   return fetchApiJson<SearchNotesApiResponse>(nativeApiV1Routes.searchNotes, {
@@ -37,7 +45,10 @@ export async function fetchSearchNotes(
 }
 
 export async function fetchSearchProfiles(
-  query: Pick<SearchQuery, "q" | "limit" | "offset" | "cursor">,
+  query: Pick<
+    SearchQuery,
+    "q" | "limit" | "offset" | "cursor" | "correction" | "lang" | "window" | "sort"
+  >,
   cacheClass: CacheClass
 ) {
   return fetchApiJson<SearchProfilesApiResponse>(nativeApiV1Routes.searchProfiles, {
@@ -48,18 +59,18 @@ export async function fetchSearchProfiles(
 }
 
 export async function fetchSearchSuggest(
-  query: Pick<SearchQuery, "q" | "limit">,
+  query: Pick<SearchQuery, "q" | "limit" | "correction" | "lang" | "window" | "sort">,
   cacheClass: CacheClass
 ) {
   return fetchApiJson<SearchSuggestApiResponse>(nativeApiV1Routes.searchSuggest, {
     cacheClass,
-    query,
+    query: buildSearchQuery(query),
     schema: searchSuggestResponseSchema,
   });
 }
 
 export async function fetchSearch(
-  query: Pick<SearchQuery, "q" | "limit" | "include">,
+  query: Pick<SearchQuery, "q" | "limit" | "include" | "correction" | "lang" | "window" | "sort">,
   cacheClass: CacheClass
 ) {
   return fetchApiJson<SearchApiResponse>(nativeApiV1Routes.search, {
@@ -68,6 +79,7 @@ export async function fetchSearch(
       q: query.q,
       limit: query.limit,
       include: query.include,
+      ...searchFilterParams(query),
     },
     schema: searchResponseSchema,
   });

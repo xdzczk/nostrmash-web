@@ -18,6 +18,7 @@ import {
   profileSecondaryLabel,
   truncateProfileLabel,
 } from "@/components/explorer/utils";
+import { searchProfileContextLine } from "@/lib/search/display";
 import type { Profile } from "@/lib/types/api";
 
 export function ProfileCard({
@@ -27,6 +28,7 @@ export function ProfileCard({
   discoverySignals = false,
   maxReasons = 1,
   compact = false,
+  searchContext = false,
 }: {
   profile: Profile;
   rank?: number;
@@ -36,6 +38,8 @@ export function ProfileCard({
   maxReasons?: number;
   /** One-line bio and no action links, without a rank number. */
   compact?: boolean;
+  /** Followers, recent notes, and nip05 for a search hit. */
+  searchContext?: boolean;
 }) {
   const label = profileLabel(profile);
   const secondaryLabel = profileSecondaryLabel(profile);
@@ -72,6 +76,10 @@ export function ProfileCard({
   const isTopRank = typeof rank === "number" && rank <= 3;
   const rankLabel = rankedRow ? String(rank).padStart(2, "0") : null;
   const profileReasons = mapProfileWhyNow(profile);
+  const nip05 = typeof profile.nip05 === "string" ? profile.nip05.trim() : "";
+  const contextLine = searchContext
+    ? searchProfileContextLine(profile, { omitNip05: Boolean(nip05) && secondaryLabel === nip05 })
+    : undefined;
 
   return (
     <article
@@ -121,6 +129,7 @@ export function ProfileCard({
               {secondaryText}
             </p>
           ) : null}
+          {contextLine ? <p className="text-ink-muted truncate text-xs">{contextLine}</p> : null}
           {about.length > 0 ? (
             quietRow ? (
               <p className="text-ink-dim line-clamp-1 text-sm [overflow-wrap:anywhere]">{about}</p>
@@ -143,7 +152,9 @@ export function ProfileCard({
         />
       ) : null}
 
-      {quietRow ? null : <DiscoveryStatPills stats={metrics} className="mt-2.5 sm:mt-3" />}
+      {quietRow || searchContext ? null : (
+        <DiscoveryStatPills stats={metrics} className="mt-2.5 sm:mt-3" />
+      )}
 
       {href && !quietRow ? (
         <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">

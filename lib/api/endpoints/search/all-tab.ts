@@ -6,15 +6,16 @@ import {
   normalizeProfiles,
 } from "@/lib/api/normalize";
 import type { CacheClass } from "@/lib/caching/policies";
+import { isApiTimeoutError } from "@/lib/api/http";
 import { getProfile } from "@/lib/api/endpoints/profiles";
 import {
-  buildSearchSectionTotals,
   looksLikeEventIdentifier,
   looksLikeProfileIdentifier,
   normalizeRelayHints,
   toSearchCursor,
   type SearchQuery,
 } from "@/lib/api/endpoints/shared";
+import { resolveReportedTotals } from "@/lib/search/totals";
 import {
   lookupNoteWithEngagement,
   withSearchEngagementCounts,
@@ -26,6 +27,15 @@ import {
   fetchSearchSuggest,
 } from "@/lib/api/endpoints/search/fetchers";
 import { dedupeProfiles } from "@/lib/api/endpoints/search/helpers";
+
+function carriedFilters(query: SearchQuery) {
+  return {
+    correction: query.correction,
+    lang: query.lang,
+    window: query.window,
+    sort: query.sort,
+  };
+}
 
 function hasSuggestBundle(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
@@ -58,6 +68,7 @@ async function searchAllTabLegacy(
       {
         q: normalizedQueryText,
         limit: query.limit,
+        ...carriedFilters(query),
       },
       cacheClass
     ),
@@ -66,6 +77,7 @@ async function searchAllTabLegacy(
         q: normalizedQueryText,
         limit: query.limit,
         offset: 0,
+        ...carriedFilters(query),
       },
       cacheClass
     ),
@@ -74,6 +86,7 @@ async function searchAllTabLegacy(
         q: normalizedProfileQueryText,
         limit: query.limit,
         offset: 0,
+        ...carriedFilters(query),
       },
       cacheClass
     ),
@@ -81,6 +94,7 @@ async function searchAllTabLegacy(
       {
         q: normalizedProfileQueryText,
         limit: Math.min(query.limit ?? 20, 20),
+        ...carriedFilters(query),
       },
       cacheClass
     ),
@@ -189,12 +203,9 @@ async function mergeAllTabResults(args: {
   const promotedSuggestions =
     mergedProfiles.length === 0 && directProfileMatch.length === 0 ? uniqueSuggestions : [];
   const effectiveProfiles = dedupeProfiles([...mergedProfiles, ...promotedSuggestions]);
-  const remainingSuggestions =
-    promotedSuggestions.length === 0
-      ? uniqueSuggestions
-      : uniqueSuggestions.filter(
-          (profile) => !effectiveProfiles.some((candidate) => candidate.pubkey === profile.pubkey)
-        );
+  const remainingSuggestions = uniqueSuggestions.filter(
+    (profile) => !effectiveProfiles.some((candidate) => candidate.pubkey === profile.pubkey)
+  );
 
   const surfaceErrors: NonNullable<SearchResponse["surface_errors"]> = {};
   if (searchResult.status === "rejected") {
@@ -257,13 +268,6 @@ async function mergeAllTabResults(args: {
         ? profilesFromProfilesSurface.length
         : undefined,
   } satisfies NonNullable<SearchResponse["surface_offsets"]>;
-  const sectionTotals = buildSearchSectionTotals(
-    notes.length,
-    effectiveProfiles.length,
-    remainingSuggestions.length,
-    hashtags.length,
-    relays.length
-  );
   const errors = Object.values(surfaceErrors).filter(
     (value): value is string => typeof value === "string" && value.length > 0
   );
@@ -273,6 +277,28 @@ async function mergeAllTabResults(args: {
     surfaceCursors.profiles ??
     surfaceCursors.suggest ??
     semantics.next_cursor;
+  const apiTotal =
+    (searchResult.status === "fulfilled" ? searchResult.value.total : undefined) ??
+    (notesResult?.status === "fulfilled" ? notesResult.value.total : undefined) ??
+    (profilesResult?.status === "fulfilled" ? profilesResult.value.total : undefined);
+  const reported = resolveReportedTotals({
+    apiTotal,
+    apiSectionTotals: sourceSectionTotals,
+    page: {
+      notes: notes.length,
+      profiles: effectiveProfiles.length,
+      profile_suggestions: remainingSuggestions.length,
+      hashtags: hashtags.length,
+      relays: relays.length,
+    },
+    limit: query.limit,
+  });
+  const correctedQuery =
+    searchResult.status === "fulfilled" &&
+    typeof searchResult.value.corrected_query === "string" &&
+    searchResult.value.corrected_query.trim().length > 0
+      ? searchResult.value.corrected_query.trim()
+      : undefined;
 
   return {
     ...semantics,
@@ -289,14 +315,12 @@ async function mergeAllTabResults(args: {
     surface_offsets: Object.values(surfaceOffsets).some((value) => typeof value === "number")
       ? surfaceOffsets
       : undefined,
-    total:
-      searchResult.status === "fulfilled" && typeof searchResult.value.total === "number"
-        ? searchResult.value.total
-        : notes.length + effectiveProfiles.length + hashtags.length + relays.length,
-    section_totals: {
-      ...(sourceSectionTotals ?? {}),
-      ...sectionTotals,
-    },
+    total: reported.total,
+    totals_source: reported.totals_source,
+    section_totals: reported.section_totals,
+    corrected_query: correctedQuery,
+    direct_note: directNoteMatch[0],
+    direct_profile: directProfileMatch[0],
     errors: errors.length > 0 ? errors : undefined,
   } satisfies SearchResponse;
 }
@@ -313,6 +337,7 @@ export async function searchAllTab(
         q: normalizedQueryText,
         limit: query.limit,
         include: "suggest",
+        ...carriedFilters(query),
       },
       cacheClass
     ),
@@ -325,6 +350,17 @@ export async function searchAllTab(
   ]);
 
   if (bundleResult.status === "fulfilled" && hasSuggestBundle(bundleResult.value)) {
+    return mergeAllTabResults({
+      query,
+      cacheClass,
+      searchResult: bundleResult,
+      directProfileResult,
+      directNoteResult,
+    });
+  }
+
+  // A timed-out bundle must not fan out into four more calls; that doubles the wait.
+  if (bundleResult.status === "rejected" && isApiTimeoutError(bundleResult.reason)) {
     return mergeAllTabResults({
       query,
       cacheClass,

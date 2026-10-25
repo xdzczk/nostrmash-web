@@ -1,14 +1,18 @@
 "use server";
 
 import type { LoadMoreChunk } from "@/components/data/load-more-list";
-import { NotesList, ProfilesList } from "@/components/data/renderers";
+import { ProfilesList } from "@/components/data/renderers";
+import { SearchHitList } from "@/components/search/search-hit-list";
 import { getSearch } from "@/lib/api/endpoints";
 import {
   extractEventAuthorPubkeys,
   fetchProfilesByPubkey,
   hydrateProfiles,
 } from "@/lib/api/profile-hydration";
+import { decodeContinuation, encodeOffsetToken } from "@/lib/search/display";
+import { highlightTermsForQuery } from "@/lib/search/highlight";
 import { MAX_LIST_LIMIT } from "@/lib/search-params/pagination";
+import { decodeSearchFilters } from "@/lib/search-params/search";
 import type { Profile } from "@/lib/types/api";
 
 const MAX_QUERY_LENGTH = 256;
@@ -43,13 +47,24 @@ function normalizeLoadMoreArgs(
 export async function loadMoreSearchNotes(
   q: string,
   limit: number,
-  cursor: string
+  filters: string,
+  highlightQuery: string,
+  token: string
 ): Promise<LoadMoreChunk> {
-  const args = normalizeLoadMoreArgs(q, limit, cursor);
+  const args = normalizeLoadMoreArgs(q, limit, token);
   if (!args) return { content: null };
+  const continuation = decodeContinuation(args.cursor);
+  const searchFilters = decodeSearchFilters(filters);
 
   const payload = await getSearch(
-    { q: args.q, tab: "notes", limit: args.limit, offset: 0, cursor: args.cursor },
+    {
+      q: args.q,
+      tab: "notes",
+      limit: args.limit,
+      offset: continuation.offset ?? 0,
+      cursor: continuation.cursor,
+      ...searchFilters,
+    },
     "requestTime"
   );
   const notes = payload.notes ?? [];
@@ -61,13 +76,28 @@ export async function loadMoreSearchNotes(
       authorsByPubkey = {};
     }
   }
+  const nextCursor =
+    payload.surface_cursors?.notes ??
+    (typeof payload.next_cursor === "string" && payload.next_cursor.length > 0
+      ? payload.next_cursor
+      : typeof payload.next_offset === "number"
+        ? encodeOffsetToken(payload.next_offset)
+        : continuation.cursor
+          ? undefined
+          : notes.length >= args.limit
+            ? encodeOffsetToken((continuation.offset ?? 0) + notes.length)
+            : undefined);
 
   return {
     content:
-      notes.length > 0 ? <NotesList notes={notes} authorsByPubkey={authorsByPubkey} /> : null,
-    nextCursor:
-      payload.surface_cursors?.notes ??
-      (typeof payload.next_cursor === "string" ? payload.next_cursor : undefined),
+      notes.length > 0 ? (
+        <SearchHitList
+          notes={notes}
+          authorsByPubkey={authorsByPubkey}
+          highlightTerms={highlightTermsForQuery(highlightQuery || args.q)}
+        />
+      ) : null,
+    nextCursor,
   };
 }
 
@@ -75,13 +105,23 @@ export async function loadMoreSearchNotes(
 export async function loadMoreSearchProfiles(
   q: string,
   limit: number,
-  cursor: string
+  filters: string,
+  token: string
 ): Promise<LoadMoreChunk> {
-  const args = normalizeLoadMoreArgs(q, limit, cursor);
+  const args = normalizeLoadMoreArgs(q, limit, token);
   if (!args) return { content: null };
+  const continuation = decodeContinuation(args.cursor);
+  const searchFilters = decodeSearchFilters(filters);
 
   const payload = await getSearch(
-    { q: args.q, tab: "profiles", limit: args.limit, offset: 0, cursor: args.cursor },
+    {
+      q: args.q,
+      tab: "profiles",
+      limit: args.limit,
+      offset: continuation.offset ?? 0,
+      cursor: continuation.cursor,
+      ...searchFilters,
+    },
     "requestTime"
   );
   let profiles = payload.profiles ?? [];
@@ -92,11 +132,20 @@ export async function loadMoreSearchProfiles(
       // keep raw search profile rows
     }
   }
+  const nextCursor =
+    payload.surface_cursors?.profiles ??
+    (typeof payload.next_cursor === "string" && payload.next_cursor.length > 0
+      ? payload.next_cursor
+      : typeof payload.next_offset === "number"
+        ? encodeOffsetToken(payload.next_offset)
+        : continuation.cursor
+          ? undefined
+          : profiles.length >= args.limit
+            ? encodeOffsetToken((continuation.offset ?? 0) + profiles.length)
+            : undefined);
 
   return {
-    content: profiles.length > 0 ? <ProfilesList profiles={profiles} /> : null,
-    nextCursor:
-      payload.surface_cursors?.profiles ??
-      (typeof payload.next_cursor === "string" ? payload.next_cursor : undefined),
+    content: profiles.length > 0 ? <ProfilesList profiles={profiles} searchContext /> : null,
+    nextCursor,
   };
 }

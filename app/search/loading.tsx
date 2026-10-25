@@ -1,4 +1,4 @@
-import { NotesListSkeleton, PageHeroSkeleton } from "@/components/ui/skeleton";
+import { NotesListSkeleton } from "@/components/ui/skeleton";
 
 export default function SearchLoading() {
   return (
@@ -6,7 +6,6 @@ export default function SearchLoading() {
       <span className="sr-only" role="status">
         Loading search results
       </span>
-      <PageHeroSkeleton />
       <NotesListSkeleton count={5} />
     </div>
   );

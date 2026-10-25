@@ -85,7 +85,9 @@ export function TabOverflowMenu({
                 className={tabMenuItemClassName(tab.active)}
               >
                 {tab.label}
-                {typeof tab.count === "number" ? (
+                {tab.countLabel ? (
+                  <span className="text-ink-faint text-xs tabular-nums">{tab.countLabel}</span>
+                ) : typeof tab.count === "number" ? (
                   <span className="text-ink-faint text-xs tabular-nums">
                     {tab.count.toLocaleString()}
                   </span>
