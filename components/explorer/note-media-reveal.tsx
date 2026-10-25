@@ -15,6 +15,11 @@ export function videoPreviewSrc(url: string): string {
   return `${base}#t=0.001`;
 }
 
+function listen(target: EventTarget, type: string, handler: () => void) {
+  target.addEventListener(type, handler);
+  return () => target.removeEventListener(type, handler);
+}
+
 function NoteVideo({ url, className }: { url: string; className: string }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const primedUrlRef = useRef<string | null>(null);
@@ -45,6 +50,28 @@ function NoteVideo({ url, className }: { url: string; className: string }) {
     };
   }, [url]);
 
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const syncFullscreen = () => {
+      const webkitVideo = video as HTMLVideoElement & { webkitDisplayingFullscreen?: boolean };
+      const active =
+        document.fullscreenElement === video || webkitVideo.webkitDisplayingFullscreen === true;
+      video.toggleAttribute("data-native-fullscreen", active);
+    };
+
+    const unsubscribers = [
+      listen(document, "fullscreenchange", syncFullscreen),
+      listen(video, "webkitbeginfullscreen", syncFullscreen),
+      listen(video, "webkitendfullscreen", syncFullscreen),
+    ];
+    return () => {
+      for (const unsubscribe of unsubscribers) unsubscribe();
+      video.removeAttribute("data-native-fullscreen");
+    };
+  }, [url]);
+
   return (
     <video
       ref={videoRef}
@@ -66,7 +93,7 @@ export function NoteMediaReveal({
 }: {
   url: string;
   kind: MediaKind;
-  variant?: "full" | "lead" | "compact" | "detail" | "thread";
+  variant?: "full" | "lead" | "compact" | "feed" | "detail" | "thread";
   /** Eager-load with high fetch priority (lead/LCP image). */
   priority?: boolean;
   /** Number of further attachments not rendered; shown as a `+N` badge. */
@@ -77,22 +104,23 @@ export function NoteMediaReveal({
   const fixedRatio =
     variant === "compact" ? "aspect-square" : variant === "lead" ? "aspect-[16/10]" : "";
   const fill = fixedRatio.length > 0;
-  // Focal notes stay tall enough to read, short enough that the sentence
-  // still starts on the first screen. Replies stay at conversation scale.
-  const framedClass = fill
-    ? "h-full w-full object-cover"
-    : variant === "thread"
-      ? "max-h-48 w-full object-contain"
-      : variant === "detail"
-        ? "max-h-[min(28rem,52vh)] w-full object-contain"
-        : "max-h-[40rem] w-full object-contain";
+  // Other variants keep the file's aspect ratio. A full-width box plus a short
+  // max-height letterboxes portrait photos down to a thin strip.
+  const limitClass =
+    variant === "feed"
+      ? "max-h-[28rem]"
+      : variant === "thread"
+        ? "max-h-48"
+        : variant === "detail"
+          ? "max-h-[min(44rem,78vh)]"
+          : "max-h-[min(40rem,75vh)]";
+  const intrinsicClass = `${limitClass} h-auto w-auto max-w-full object-contain`;
+  const framedClass = fill ? "h-full w-full object-cover" : intrinsicClass;
+  // Videos always contain the frame. Cover on a fixed card survives native
+  // fullscreen and cuts off portrait video.
   const videoClass = fill
-    ? "h-full w-full bg-black object-cover"
-    : variant === "thread"
-      ? "max-h-48 w-full bg-black object-contain"
-      : variant === "detail"
-        ? "max-h-[min(28rem,52vh)] w-full bg-black object-contain"
-        : "max-h-[28rem] w-full bg-black";
+    ? "nm-media-video h-full w-full bg-black object-contain"
+    : `nm-media-video ${intrinsicClass} bg-black`;
   const badge =
     hiddenCount > 0 ? (
       <span
@@ -103,15 +131,17 @@ export function NoteMediaReveal({
       </span>
     ) : null;
 
+  const frameWidthClass = fill ? fixedRatio : kind === "audio" ? "w-full" : "w-fit max-w-full";
+
   return (
     <div
-      className={`border-edge bg-surface-sunken/60 relative overflow-hidden rounded-[var(--radius-control)] border ${fixedRatio}`}
+      className={`nm-media-frame border-edge bg-surface-sunken/60 relative overflow-hidden rounded-[var(--radius-control)] border ${frameWidthClass}`}
     >
       {kind === "image" ? (
         <EnlargeableImage
           src={url}
           alt="Image attached to note"
-          className={`block w-full cursor-zoom-in ${fill ? "h-full" : ""}`}
+          className={`block max-w-full cursor-zoom-in ${fill ? "h-full w-full" : "w-fit"}`}
         >
           <img
             src={url}

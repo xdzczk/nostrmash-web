@@ -1,12 +1,11 @@
 import { TabBar } from "@/components/ui/tabs";
 
-export type NetworkView = "overview" | "relays" | "health" | "probes" | "stats";
+export type NetworkView = "overview" | "relays" | "health" | "stats";
 
 const NETWORK_VIEWS = [
   { key: "overview", label: "Overview", href: "/relays" },
   { key: "relays", label: "Popular relays", href: "/relays/popular" },
-  { key: "health", label: "Health", href: "/relays/health" },
-  { key: "probes", label: "Probes", href: "/relays/probe-health" },
+  { key: "health", label: "Status", href: "/relays/health" },
   { key: "stats", label: "Statistics", href: "/stats" },
 ] as const;
 

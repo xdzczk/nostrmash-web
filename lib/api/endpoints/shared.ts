@@ -81,6 +81,8 @@ export interface CursorQuery {
   limit?: number;
   offset?: number;
   window?: string;
+  /** Lowercase ISO 639-1/639-2 code. Omitted means all languages. */
+  lang?: string;
   /** Optional Nostr kind filter (e.g. 1 for short text notes). */
   kind?: number;
 }
@@ -89,6 +91,8 @@ export interface OffsetQuery {
   limit?: number;
   offset?: number;
   window?: string;
+  /** Lowercase ISO 639-1/639-2 code. Omitted means all languages. */
+  lang?: string;
 }
 
 export function buildOffsetQuery(
@@ -99,6 +103,7 @@ export function buildOffsetQuery(
     limit: query.limit,
     offset: query.offset,
     window: query.window,
+    ...(query.lang ? { lang: query.lang } : {}),
   };
 }
 
@@ -289,5 +294,6 @@ export function buildCursorQuery(
     offset: query.offset,
     window: query.window,
     kind: query.kind,
+    ...(query.lang ? { lang: query.lang } : {}),
   };
 }

@@ -425,8 +425,7 @@ export default async function ProfilePage({
       ) : null}
 
       <section className="nm-signal-rule relative pt-6 pb-1 sm:pt-8 sm:pb-2">
-        <div className="mb-5 flex items-center justify-between gap-4">
-          <p className="nm-kicker">Profile intelligence</p>
+        <div className="mb-5 flex justify-end">
           <EntityContextNav view="people" compact />
         </div>
         {bannerSrc ? <ProfileCover src={bannerSrc} /> : null}
@@ -612,19 +611,19 @@ export default async function ProfilePage({
         }}
       />
 
-      <Suspense fallback={<Skeleton className="h-28 w-full rounded-xl" />}>
-        <DeferredProfileDiscovery
+      <Suspense fallback={<Skeleton className="h-48 w-full rounded-xl" />}>
+        <DeferredProfileActivity
           lookupKey={lookupKey}
+          profile={profile}
           profileRoute={profileRoute}
           summaryRecord={summaryRecord}
           searchParams={resolvedSearchParams}
         />
       </Suspense>
 
-      <Suspense fallback={<Skeleton className="h-48 w-full rounded-xl" />}>
-        <DeferredProfileActivity
+      <Suspense fallback={<Skeleton className="h-28 w-full rounded-xl" />}>
+        <DeferredProfileDiscovery
           lookupKey={lookupKey}
-          profile={profile}
           profileRoute={profileRoute}
           summaryRecord={summaryRecord}
           searchParams={resolvedSearchParams}

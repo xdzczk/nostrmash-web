@@ -17,6 +17,33 @@ function useIsClient(): boolean {
   );
 }
 
+/** Scale a picture so it fills the stage on its longer side, including upscaling. */
+export function fittedMediaSize(
+  naturalWidth: number,
+  naturalHeight: number,
+  maxWidth: number,
+  maxHeight: number
+): { width: number; height: number } | null {
+  if (
+    !(naturalWidth > 0) ||
+    !(naturalHeight > 0) ||
+    !(maxWidth > 0) ||
+    !(maxHeight > 0) ||
+    !Number.isFinite(naturalWidth) ||
+    !Number.isFinite(naturalHeight) ||
+    !Number.isFinite(maxWidth) ||
+    !Number.isFinite(maxHeight)
+  ) {
+    return null;
+  }
+
+  const scale = Math.min(maxWidth / naturalWidth, maxHeight / naturalHeight);
+  return {
+    width: Math.max(1, Math.floor(naturalWidth * scale)),
+    height: Math.max(1, Math.floor(naturalHeight * scale)),
+  };
+}
+
 export function ImageLightbox({
   src,
   alt,
@@ -29,9 +56,47 @@ export function ImageLightbox({
   onClose: () => void;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const isClient = useIsClient();
   const title = alt.trim() || "Enlarged image";
+  const [fitted, setFitted] = useState<{ width: number; height: number } | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const frame = frameRef.current;
+    if (!frame) return;
+
+    const measure = () => {
+      const img = imgRef.current;
+      if (!img || img.naturalWidth <= 0 || img.naturalHeight <= 0) return;
+      const bounds = frame.getBoundingClientRect();
+      const next = fittedMediaSize(
+        img.naturalWidth,
+        img.naturalHeight,
+        bounds.width,
+        bounds.height
+      );
+      setFitted((current) =>
+        current && next && current.width === next.width && current.height === next.height
+          ? current
+          : next
+      );
+    };
+
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(frame);
+    // A cached file can finish loading before React attaches onLoad.
+    const img = imgRef.current;
+    const frameId =
+      img?.complete && img.naturalWidth > 0 ? window.requestAnimationFrame(measure) : null;
+    return () => {
+      if (frameId !== null) window.cancelAnimationFrame(frameId);
+      observer?.disconnect();
+    };
+  }, [open, src]);
 
   useEffect(() => {
     if (!open) return;
@@ -87,16 +152,40 @@ export function ImageLightbox({
         </svg>
       </button>
       <div
+        ref={frameRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="pointer-events-none relative flex h-full items-center justify-center p-4 sm:p-8"
+        className="pointer-events-none absolute inset-3 sm:inset-8"
       >
         <img
+          ref={imgRef}
           src={src}
           alt={alt}
           referrerPolicy="no-referrer"
-          className="pointer-events-auto max-h-[min(90vh,56rem)] max-w-[min(96vw,72rem)] rounded-lg object-contain"
+          onLoad={() => {
+            const frame = frameRef.current;
+            const img = imgRef.current;
+            if (!frame || !img) return;
+            const bounds = frame.getBoundingClientRect();
+            setFitted(
+              fittedMediaSize(img.naturalWidth, img.naturalHeight, bounds.width, bounds.height)
+            );
+          }}
+          onError={() => setFailed(true)}
+          style={
+            fitted
+              ? {
+                  width: fitted.width,
+                  height: fitted.height,
+                  maxWidth: "none",
+                  maxHeight: "none",
+                }
+              : undefined
+          }
+          className={`absolute top-1/2 left-1/2 max-w-none -translate-x-1/2 -translate-y-1/2 rounded-lg ${
+            fitted || failed ? "pointer-events-auto" : "pointer-events-none opacity-0"
+          }`}
         />
       </div>
     </div>,
@@ -129,7 +218,7 @@ export function EnlargeableImage({
       >
         {children}
       </button>
-      <ImageLightbox src={src} alt={alt} open={open} onClose={() => setOpen(false)} />
+      <ImageLightbox key={src} src={src} alt={alt} open={open} onClose={() => setOpen(false)} />
     </>
   );
 }

@@ -11,6 +11,7 @@ test.describe("profile page", () => {
 
     const hero = page.locator("section").first();
     await expect(hero.getByRole("heading", { level: 1, name: "Mock Author" })).toBeVisible();
+    await expect(hero.getByText("Profile intelligence")).toHaveCount(0);
     // `_@domain` NIP-05 renders as the bare domain.
     await expect(hero.getByText("mockauthor.example", { exact: true })).toBeVisible();
     await expect(hero.getByText("_@mockauthor.example")).toHaveCount(0);
@@ -48,7 +49,14 @@ test.describe("profile page", () => {
   test("related discovery explains why each profile is related", async ({ page }) => {
     await page.goto(`/profiles/${AUTHOR_PK}`);
     const related = page.locator("#related-profiles");
+    const activity = page.locator("#profile-activity");
+    await expect(activity.getByRole("heading", { name: "Recent activity" })).toBeVisible();
     await expect(related.getByRole("heading", { name: "Related discovery" })).toBeVisible();
+    const activityBox = await activity.boundingBox();
+    const relatedBox = await related.boundingBox();
+    expect(activityBox).not.toBeNull();
+    expect(relatedBox).not.toBeNull();
+    expect(activityBox!.y).toBeLessThan(relatedBox!.y);
     await expect(related.getByTestId("profile-related-rail")).toBeVisible();
     await expect(related.locator("p", { hasText: /^Related profiles$/ })).toBeVisible();
     await expect(related.getByText("6 interactions · 5 replies")).toBeVisible();

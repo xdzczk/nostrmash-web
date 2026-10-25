@@ -9,6 +9,7 @@ import type { DomainEntry, EventRecord, HashtagEntry, Profile } from "@/lib/type
 export type WhyNowReason = {
   text: string;
   support?: string;
+  code?: string;
 };
 
 type WhyNowTone = "default" | "highlight";
@@ -224,6 +225,13 @@ export function mapHashtagWhyNow(entry: HashtagEntry): WhyNowReason[] {
       : null;
 
   const reasons: WhyNowReason[] = [];
+  if (authorCount !== null && authorCount > 1) {
+    reasons.push({
+      code: "author_breadth",
+      text: "breadth of authors",
+      support: readableCount(authorCount, "author", "authors"),
+    });
+  }
   if (noteCount !== null && noteCount >= MOMENTUM_FLOOR) {
     reasons.push({
       text: "topic lift",
@@ -234,12 +242,6 @@ export function mapHashtagWhyNow(entry: HashtagEntry): WhyNowReason[] {
     reasons.push({
       text: "mention acceleration",
       support: readableCount(mentionCount, "mention", "mentions"),
-    });
-  }
-  if (authorCount !== null && authorCount > 1) {
-    reasons.push({
-      text: "breadth of authors",
-      support: readableCount(authorCount, "author", "authors"),
     });
   }
 
@@ -255,20 +257,21 @@ export function mapDomainWhyNow(entry: DomainEntry): WhyNowReason[] {
   const appearanceCount = positiveNumber(entry.count);
   const authorCount = positiveNumber(entry.unique_authors);
 
-  // Order mirrors what the ranking weighs: circulation first, then breadth.
-  // `count` is a legacy appearance tally that can be far below `link_count`
-  // for the same domain, so it is only a last resort.
+  // Author breadth is the list order. Volume is a secondary fact. `count`
+  // is a legacy appearance tally that can be far below `link_count` for the
+  // same domain, so it is only a last resort.
   const reasons: WhyNowReason[] = [];
+  if (authorCount !== null && authorCount > 1) {
+    reasons.push({
+      code: "author_breadth",
+      text: "author breadth",
+      support: readableCount(authorCount, "author", "authors"),
+    });
+  }
   if (linkCount !== null && linkCount >= MOMENTUM_FLOOR) {
     reasons.push({
       text: "link circulation",
       support: readableCount(linkCount, "link", "links"),
-    });
-  }
-  if (authorCount !== null && authorCount > 1) {
-    reasons.push({
-      text: "author breadth",
-      support: readableCount(authorCount, "author", "authors"),
     });
   }
   if (linkedNotes !== null && linkedNotes >= MOMENTUM_FLOOR) {

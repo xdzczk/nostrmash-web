@@ -6,26 +6,40 @@ import { RankedListPage } from "@/components/explorer/ranked-list-page";
 import { getTrendingNotes } from "@/lib/api/endpoints";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
-import { buildEntityMetadata } from "@/lib/seo/metadata";
+import { buildLanguageHref, readLanguage } from "@/lib/search-params/language";
+import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
+import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
-
-export const metadata: Metadata = buildEntityMetadata({
-  title: "Notes",
-  description: "Explore the notes leading the network.",
-  path: "/trending/notes",
-  rss: { url: "/feeds/trending-notes.xml", title: "Trending notes" },
-});
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}): Promise<Metadata> {
+  return withLanguageVariantMetadata(
+    buildEntityMetadata({
+      title: "Notes",
+      description: "Explore the notes leading the network.",
+      path: "/trending/notes",
+      rss: { url: "/feeds/trending-notes.xml", title: "Trending notes" },
+    }),
+    readLanguage(await searchParams),
+    "/trending/notes"
+  );
+}
+
 export default async function TrendingNotesPage({ searchParams }: { searchParams: SearchParams }) {
   const path = "/trending/notes";
+  const resolvedSearchParams = await searchParams;
+  const language = await applyDiscoverLanguage(path, resolvedSearchParams);
   const { cursor, window, currentSearchParams, buildCursorContinuation } = readRankedListContext(
-    await searchParams,
+    resolvedSearchParams,
     path
   );
   const { payload, errorMessage, semantics } = await loadRankedListPayload(
-    () => getTrendingNotes("shortTtl", { cursor, window }),
+    () => getTrendingNotes("shortTtl", { cursor, window, ...(language ? { lang: language } : {}) }),
     "Failed to load trending notes."
   );
   const notes = payload?.notes ?? [];
@@ -59,6 +73,8 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
       path={path}
       searchParams={currentSearchParams}
       window={window}
+      language={language}
+      topLanguages={payload?.top_languages}
       semantics={semantics}
       errorMessage={errorMessage}
       emptyTitle="No ranked notes yet"
@@ -74,13 +90,17 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
       footer={
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
           <Link
-            href="/discovery/conversations/hot"
+            href={buildLanguageHref(
+              "/discovery/conversations/hot",
+              new URLSearchParams(),
+              language
+            )}
             className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
           >
             Open hot conversations
           </Link>
           <Link
-            href="/trending/long-form"
+            href={buildLanguageHref("/trending/long-form", new URLSearchParams(), language)}
             className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
           >
             Open trending long-form

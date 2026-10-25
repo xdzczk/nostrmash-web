@@ -25,6 +25,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // The dev server is opened at 127.0.0.1 while Next advertises localhost.
+  allowedDevOrigins: ["127.0.0.1"],
   // @sentry/nextjs (node entry) pulls Orchestrion / APM packages that load
   // es-module-lexer's inline WASM. Cloudflare Workers reject WebAssembly.compile()
   // from buffers ("Wasm code generation disallowed by embedder"). Stub them —
@@ -59,6 +61,15 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: securityHeaders,
+      },
+    ];
+  },
+  async redirects() {
+    return [
+      {
+        source: "/relays/probe-health",
+        destination: "/relays/health#connect",
+        permanent: true,
       },
     ];
   },

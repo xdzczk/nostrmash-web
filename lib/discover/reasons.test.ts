@@ -6,6 +6,7 @@ import {
   listedVolume,
   mapServerRankingReasons,
   rankMovement,
+  reasonsBesideSourceFigure,
   sourceCount,
 } from "./reasons";
 
@@ -38,8 +39,12 @@ describe("mapServerRankingReasons", () => {
         ],
       })
     ).toEqual([
-      { text: "follower growth", support: "+4 followers" },
-      { text: "engagement per post", support: "8.2 interactions per note" },
+      { text: "follower growth", support: "+4 followers", code: "follower_growth" },
+      {
+        text: "engagement per post",
+        support: "8.2 interactions per note",
+        code: "engagement_quality",
+      },
     ]);
   });
 
@@ -56,7 +61,9 @@ describe("mapServerRankingReasons", () => {
           },
         ],
       })
-    ).toEqual([{ text: "engagement received", support: "40 interactions" }]);
+    ).toEqual([
+      { text: "engagement received", support: "40 interactions", code: "engagement_received" },
+    ]);
   });
 
   it("drops ratio reasons below one and keeps the ones worth reading", () => {
@@ -80,15 +87,79 @@ describe("mapServerRankingReasons", () => {
         ],
       })
     ).toEqual([
-      { text: "engagement per post", support: "6.8 interactions per note" },
-      { text: "engagement vs. audience size", support: "10 interactions per follower" },
+      {
+        text: "engagement per post",
+        support: "6.8 interactions per note",
+        code: "engagement_quality",
+      },
+      {
+        text: "engagement vs. audience size",
+        support: "10 interactions per follower",
+        code: "relative_engagement_growth",
+      },
     ]);
   });
 
   it("humanises unknown codes instead of discarding the server's rationale", () => {
     expect(
       mapServerRankingReasons({ rank: 1, score: 1, reasons: [{ code: "zap_velocity" }] })
-    ).toEqual([{ text: "zap velocity", support: undefined }]);
+    ).toEqual([{ text: "zap velocity", support: undefined, code: "zap_velocity" }]);
+  });
+
+  it("names a combined score and a newer row without inventing a count", () => {
+    expect(
+      mapServerRankingReasons({
+        rank: 1,
+        score: 1,
+        reasons: [{ code: "combined_engagement" }, { code: "recency" }],
+      })
+    ).toEqual([
+      { text: "combined engagement", support: undefined, code: "combined_engagement" },
+      { text: "newer in this window", support: undefined, code: "recency" },
+    ]);
+  });
+});
+
+describe("reasonsBesideSourceFigure", () => {
+  it("drops the why-now line when author breadth is already the source figure", () => {
+    const ranking = {
+      rank: 1,
+      score: 455,
+      source_breadth: 455,
+      reasons: [
+        {
+          code: "author_breadth",
+          evidence: [{ metric: "unique_authors", value: 455, unit: "authors" }],
+        },
+        {
+          code: "mention_volume",
+          evidence: [{ metric: "event_count", value: 1576, unit: "events" }],
+        },
+      ],
+    };
+    const presented = mapServerRankingReasons(ranking);
+    expect(presented.map((reason) => reason.code)).toEqual(["author_breadth", "mention_volume"]);
+    expect(reasonsBesideSourceFigure(ranking, presented)).toEqual([]);
+  });
+
+  it("does not fall through to volume when one author is below the display floor", () => {
+    const ranking = {
+      rank: 1,
+      score: 1,
+      reasons: [
+        {
+          code: "author_breadth",
+          evidence: [{ metric: "unique_authors", value: 1, unit: "authors" }],
+        },
+        {
+          code: "mention_volume",
+          evidence: [{ metric: "event_count", value: 40, unit: "events" }],
+        },
+      ],
+    };
+    const presented = mapServerRankingReasons(ranking);
+    expect(presented.map((reason) => reason.code)).toEqual(["mention_volume"]);
+    expect(reasonsBesideSourceFigure(ranking, presented)).toEqual([]);
   });
 });
 

@@ -542,6 +542,31 @@
   --show-light: block;
 }
 
+/* Native fullscreen must show the whole video frame. Card previews used to
+   keep object-fit: cover and a max-height into fullscreen, which cropped
+   portrait video. Overflow on the frame also clips fullscreen video in Safari. */
+video:fullscreen,
+video:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+  border-radius: 0;
+  background: #000;
+}
+
+video[data-native-fullscreen] {
+  object-fit: contain;
+}
+
+.nm-media-frame:has(video:fullscreen),
+.nm-media-frame:has(video:-webkit-full-screen),
+.nm-media-frame:has(video[data-native-fullscreen]) {
+  overflow: visible;
+  border-radius: 0;
+}
+
 /* Windows High Contrast / forced-colors: box-shadow focus rings are dropped,
    so guarantee a visible outline on keyboard focus. */
 @media (forced-colors: active) {

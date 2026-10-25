@@ -7,16 +7,28 @@ import { getTrendingProfiles } from "@/lib/api/endpoints";
 import { hydrateProfiles } from "@/lib/api/profile-hydration";
 import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
 import { hexToNpub } from "@/lib/nostr/nip19";
-import { buildEntityMetadata } from "@/lib/seo/metadata";
+import { buildLanguageHref, readLanguage } from "@/lib/search-params/language";
+import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
+import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
 
-export const metadata: Metadata = buildEntityMetadata({
-  title: "People",
-  description: "Explore the profiles with the strongest momentum.",
-  path: "/trending/profiles",
-});
-
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}): Promise<Metadata> {
+  return withLanguageVariantMetadata(
+    buildEntityMetadata({
+      title: "People",
+      description: "Explore the profiles with the strongest momentum.",
+      path: "/trending/profiles",
+    }),
+    readLanguage(await searchParams),
+    "/trending/profiles"
+  );
+}
 
 export default async function TrendingProfilesPage({
   searchParams,
@@ -24,12 +36,15 @@ export default async function TrendingProfilesPage({
   searchParams: SearchParams;
 }) {
   const path = "/trending/profiles";
+  const resolvedSearchParams = await searchParams;
+  const language = await applyDiscoverLanguage(path, resolvedSearchParams);
   const { cursor, window, currentSearchParams, buildCursorContinuation } = readRankedListContext(
-    await searchParams,
+    resolvedSearchParams,
     path
   );
   const { payload, errorMessage, semantics } = await loadRankedListPayload(
-    () => getTrendingProfiles("shortTtl", { cursor, window }),
+    () =>
+      getTrendingProfiles("shortTtl", { cursor, window, ...(language ? { lang: language } : {}) }),
     "Failed to load trending profiles."
   );
   const sourceProfiles = payload?.profiles ?? [];
@@ -63,6 +78,8 @@ export default async function TrendingProfilesPage({
       path={path}
       searchParams={currentSearchParams}
       window={window}
+      language={language}
+      topLanguages={payload?.top_languages}
       semantics={semantics}
       errorMessage={errorMessage}
       emptyTitle="No ranked profiles yet"
@@ -78,7 +95,7 @@ export default async function TrendingProfilesPage({
       footer={
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
           <Link
-            href="/discovery/profiles/rising"
+            href={buildLanguageHref("/discovery/profiles/rising", new URLSearchParams(), language)}
             className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
           >
             Open up and coming

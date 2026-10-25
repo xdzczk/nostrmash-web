@@ -10,15 +10,22 @@ export function DiscoverTelemetry({
   view,
   mode,
   window,
+  language,
 }: {
   view: DiscoverView;
   mode?: DiscoverMode;
   window: StatsWindow;
+  language?: string;
 }) {
   useEffect(() => {
-    recordDiscoverEvent({ name: "navigation", view, mode });
+    recordDiscoverEvent({
+      name: "navigation",
+      view,
+      mode,
+      ...(language ? { language } : {}),
+    });
     recordDiscoverEvent({ name: "window_change", view, window });
-  }, [mode, view, window]);
+  }, [language, mode, view, window]);
 
   return null;
 }

@@ -7,6 +7,7 @@ import type {
 export type DiscoveryReasonPresentation = {
   text: string;
   support?: string;
+  code?: string;
 };
 
 const REASON_LABELS: Record<string, string> = {
@@ -22,6 +23,8 @@ const REASON_LABELS: Record<string, string> = {
   mention_volume: "topic lift",
   author_breadth: "breadth of authors",
   link_circulation: "link circulation",
+  combined_engagement: "combined engagement",
+  recency: "newer in this window",
   conversation_velocity: "conversation velocity",
   participant_breadth: "participant breadth",
 };
@@ -144,7 +147,24 @@ function presentReason(reason: DiscoveryRankingReason): DiscoveryReasonPresentat
   return {
     text,
     support: formatEvidence(reason.evidence?.[0], reason.code),
+    code: reason.code,
   };
+}
+
+/**
+ * Topic and link rows already print unique authors as the source figure.
+ * That count is the sort key, so the why-now line must not repeat it or
+ * fall through to volume, which is not the order.
+ */
+export function reasonsBesideSourceFigure<T extends { code?: string }>(
+  ranking: DiscoveryItemRanking | undefined,
+  reasons: T[]
+): T[] {
+  if (ranking?.reasons?.some((reason) => reason.code === "author_breadth")) return [];
+  if (sourceCount(ranking) != null && reasons.some((reason) => reason.code === "author_breadth")) {
+    return [];
+  }
+  return reasons;
 }
 
 export function mapServerRankingReasons(

@@ -12,10 +12,12 @@ import {
 } from "@/lib/api/endpoints";
 import type { SeriesPoint } from "@/components/charts/sparkline";
 import { isApiTimeoutError } from "@/lib/api/http";
+import { normalizeTopLanguages } from "@/lib/api/normalize";
 import { fetchProfilesByPubkey, mergeHydratedProfile } from "@/lib/api/profile-hydration";
 import { extractRelayRows, pickTopPrimitiveStats } from "@/components/explorer/stats-utils";
 import { isRecord } from "@/components/explorer/utils";
 import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
+import { readLanguage } from "@/lib/search-params/language";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import {
   NETWORK_PULSE_TILE_LIMIT,
@@ -24,7 +26,13 @@ import {
   type StatsWindow,
 } from "@/lib/search-params/window";
 import { traceHomeFanOut } from "@/lib/telemetry/trace";
-import type { DomainEntry, EventRecord, HashtagEntry, Profile } from "@/lib/types/api";
+import type {
+  DomainEntry,
+  EventRecord,
+  HashtagEntry,
+  Profile,
+  TopLanguages,
+} from "@/lib/types/api";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return isRecord(value) ? value : null;
@@ -80,6 +88,8 @@ export type HomeSectionFailures = {
 
 export type HomePageData = {
   window: StatsWindow;
+  language?: string;
+  topLanguages?: TopLanguages;
   currentSearchParams: URLSearchParams;
   errorMessage: string;
   homeTimedOut: boolean;
@@ -106,6 +116,8 @@ export async function loadHomePageData(
 ): Promise<HomePageData> {
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   const window = readStatsWindow(resolvedSearchParams);
+  const lang = readLanguage(resolvedSearchParams);
+  const scopedQuery = lang ? { window, lang } : { window };
   const failedMessages: string[] = [];
   let upstreamCallCount = 0;
   let homeTimedOut = false;
@@ -129,7 +141,7 @@ export async function loadHomePageData(
   upstreamCallCount += 3;
 
   const stageOne = await Promise.allSettled([
-    getDiscoveryHome("shortTtl", { window }),
+    getDiscoveryHome("shortTtl", scopedQuery),
     getNetworkStats("shortTtl"),
     getRelayStats("shortTtl", window),
     getStatsSeries("note_volume", "7d", "shortTtl"),
@@ -175,31 +187,31 @@ export async function loadHomePageData(
     if (homeNotes.length === 0) {
       fallbackRequests.push({
         key: "notes",
-        promise: getTrendingNotes("shortTtl", { window }),
+        promise: getTrendingNotes("shortTtl", scopedQuery),
       });
     }
     if (homeProfiles.length === 0) {
       fallbackRequests.push({
         key: "profiles",
-        promise: getTrendingProfiles("shortTtl", { window }),
+        promise: getTrendingProfiles("shortTtl", scopedQuery),
       });
     }
     if (homeRisingProfiles.length === 0) {
       fallbackRequests.push({
         key: "risingProfiles",
-        promise: getRisingProfiles("shortTtl", { window }),
+        promise: getRisingProfiles("shortTtl", scopedQuery),
       });
     }
     if (homeHashtags.length === 0) {
       fallbackRequests.push({
         key: "hashtags",
-        promise: getTrendingHashtags("shortTtl", { window }),
+        promise: getTrendingHashtags("shortTtl", scopedQuery),
       });
     }
     if (homeDomains.length === 0) {
       fallbackRequests.push({
         key: "domains",
-        promise: getTrendingDomains("shortTtl", { window }),
+        promise: getTrendingDomains("shortTtl", scopedQuery),
       });
     }
     if (fallbackRequests.length > 0) {
@@ -292,8 +304,18 @@ export async function loadHomePageData(
   const sections = asRecord(payload?.sections);
   const networkSummary = asRecord(sections?.network_summary);
   const homeStats = isRecord(payload?.stats) ? payload.stats : {};
+  // Unscoped network stats would overwrite language-scoped note volume and
+  // active authors. Relay stats stay on the unscoped call below.
+  const pulseSource =
+    lang && networkSummary
+      ? {
+          ...homeStats,
+          activity: asRecord(networkSummary.activity) ?? undefined,
+          relays: asRecord(networkSummary.relays) ?? undefined,
+        }
+      : { ...homeStats, ...(networkStats ?? {}) };
   const basePulseStats = pickTopPrimitiveStats(
-    { ...homeStats, ...(networkStats ?? {}) },
+    pulseSource,
     networkPulsePreferredKeys(window),
     NETWORK_PULSE_TILE_LIMIT,
     window
@@ -313,8 +335,8 @@ export async function loadHomePageData(
   // Attach each history series to its own metric only; a tile must never
   // borrow another metric's trend.
   const pulseStats = attachPulseSeries(basePulseStats, {
-    noteVolume: noteVolumeSeries,
-    activeAuthors: activeAuthorsSeries,
+    noteVolume: lang ? [] : noteVolumeSeries,
+    activeAuthors: lang ? [] : activeAuthorsSeries,
     relayEvents: relayEventsSeries,
   });
   let relayLeaders = extractRelayRows(networkSummary ?? payload, 1, window);
@@ -345,6 +367,10 @@ export async function loadHomePageData(
 
   return {
     window,
+    language: lang,
+    topLanguages:
+      normalizeTopLanguages(payload?.top_languages) ??
+      normalizeTopLanguages(networkSummary?.top_languages),
     currentSearchParams,
     errorMessage: summarizeLoadErrors(failedMessages) ?? "",
     homeTimedOut,

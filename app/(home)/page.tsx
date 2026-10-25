@@ -2,33 +2,53 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { DiscoverShell } from "@/components/discover/discover-shell";
-import { HomeFreshness, HomeOverviewBody } from "@/components/home/home-overview-stream";
+import {
+  HomeFreshness,
+  HomeLanguageSelector,
+  HomeOverviewBody,
+} from "@/components/home/home-overview-stream";
+import { LanguageSelector } from "@/components/explorer/language-selector";
 import { JsonLd } from "@/components/seo/json-ld";
 import { DiscoverOverviewBodySkeleton } from "@/components/ui/skeleton";
 import { loadHomePageData } from "@/lib/home/load-home-page-data";
+import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
+import { readLanguage } from "@/lib/search-params/language";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import { readStatsWindow } from "@/lib/search-params/window";
-import { absoluteUrl } from "@/lib/seo/metadata";
-
-export const metadata: Metadata = {
-  title: { absolute: "NostrMash" },
-  description:
-    "Explore Nostr notes, profiles, relays, and live trends through a public discovery index.",
-  alternates: {
-    types: {
-      "application/rss+xml": [{ url: "/feeds/trending-notes.xml", title: "Trending notes" }],
-    },
-  },
-};
-
-export const revalidate = 60;
+import { absoluteUrl, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}): Promise<Metadata> {
+  const lang = readLanguage(await searchParams);
+  return withLanguageVariantMetadata(
+    {
+      title: { absolute: "NostrMash" },
+      description:
+        "Explore Nostr notes, profiles, relays, and live trends through a public discovery index.",
+      alternates: {
+        types: {
+          "application/rss+xml": [{ url: "/feeds/trending-notes.xml", title: "Trending notes" }],
+        },
+      },
+    },
+    lang,
+    "/"
+  );
+}
+
+export const revalidate = 60;
+
 export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
   const resolvedSearchParams = await searchParams;
+  const language = await applyDiscoverLanguage("/", resolvedSearchParams);
   const window = readStatsWindow(resolvedSearchParams);
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
+  const query = currentSearchParams.toString();
   // Kick off the fan-out without awaiting: the hero and tabs render in the
   // first flush and the data-dependent parts stream in behind Suspense.
   const home = loadHomePageData(resolvedSearchParams);
@@ -56,6 +76,22 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         path="/"
         searchParams={currentSearchParams}
         window={window}
+        language={language}
+        languageControl={
+          <Suspense
+            fallback={
+              <LanguageSelector path="/" query={query} activeLanguage={language} options={[]} />
+            }
+          >
+            <HomeLanguageSelector
+              data={home}
+              path="/"
+              query={query}
+              language={language}
+              window={window}
+            />
+          </Suspense>
+        }
         freshness={
           <Suspense fallback={null}>
             <HomeFreshness data={home} />

@@ -25,6 +25,8 @@ export {
   normalizeDomainDetailResponse,
   normalizeDomainNotesResponse,
   normalizeDiscoveryHomeResponse,
+  normalizeDiscoveryLanguageFields,
+  normalizeTopLanguages,
 } from "@/lib/api/normalize/discovery";
 
 export {

@@ -3,12 +3,16 @@ import type { ReactNode } from "react";
 
 import { DiscoverTelemetry } from "@/components/discover/discover-telemetry";
 import { DiscoverNav } from "@/components/explorer/discover-nav";
+import { LanguageSelector } from "@/components/explorer/language-selector";
 import { PageHero } from "@/components/explorer/page-hero";
 import { WindowSelector } from "@/components/explorer/window-selector";
 import { LiveRefresh } from "@/components/freshness/live-refresh";
 import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
 import { DISCOVER_MODE_LINKS, type DiscoverMode, type DiscoverView } from "@/lib/discover/views";
+import { formatDiscoverEyebrow } from "@/lib/i18n/language-names";
+import { buildDiscoverHref } from "@/lib/search-params/language";
 import type { StatsWindow } from "@/lib/search-params/window";
+import type { TopLanguages } from "@/lib/types/api";
 
 export function FreshnessBadge({ label }: { label: string }) {
   return (
@@ -28,6 +32,9 @@ export function DiscoverShell({
   path,
   searchParams,
   window,
+  language,
+  topLanguages,
+  languageControl,
   freshnessLabel,
   freshness,
   staleMessage,
@@ -44,6 +51,10 @@ export function DiscoverShell({
   path: string;
   searchParams: URLSearchParams;
   window: StatsWindow;
+  language?: string;
+  topLanguages?: TopLanguages;
+  /** Streamed selector. When omitted, options come from `topLanguages`. */
+  languageControl?: ReactNode;
   freshnessLabel?: string | null;
   /**
    * Streamed alternative to `freshnessLabel`: a node (typically wrapped in
@@ -62,16 +73,24 @@ export function DiscoverShell({
 
   return (
     <div className="min-w-0 space-y-6 sm:space-y-7">
-      <DiscoverTelemetry view={view} mode={mode} window={window} />
+      <DiscoverTelemetry view={view} mode={mode} window={window} language={language} />
       <LiveRefresh />
       <PageHero
-        eyebrow={eyebrow}
+        eyebrow={formatDiscoverEyebrow(eyebrow, language)}
         title={title}
         subtitle={subtitle}
         subtitleFromSm
         badges={
           <div className="nm-meta flex flex-wrap items-center gap-x-3 gap-y-2">
             <WindowSelector path={path} searchParams={searchParams} activeWindow={window} />
+            {languageControl ?? (
+              <LanguageSelector
+                path={path}
+                query={searchParams.toString()}
+                activeLanguage={language}
+                options={topLanguages?.[window] ?? []}
+              />
+            )}
             {freshness ?? (freshnessLabel ? <FreshnessBadge label={freshnessLabel} /> : null)}
           </div>
         }
@@ -79,13 +98,13 @@ export function DiscoverShell({
       />
 
       <div className="space-y-2.5">
-        <DiscoverNav active={view} window={window} />
+        <DiscoverNav active={view} window={window} lang={language} />
         {modeLinks.length > 1 ? (
           <nav aria-label={`${view} modes`} className="flex flex-wrap items-center gap-4">
             {modeLinks.map((item) => (
               <Link
                 key={item.mode}
-                href={`${item.href}?window=${window}`}
+                href={buildDiscoverHref(item.href, { window, lang: language })}
                 aria-current={item.mode === mode ? "page" : undefined}
                 className={`nm-meta inline-flex min-h-6 items-center py-0.5 text-[13px] font-medium transition ${
                   item.mode === mode

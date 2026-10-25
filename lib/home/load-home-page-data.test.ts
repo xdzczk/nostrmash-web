@@ -195,4 +195,29 @@ describe("loadHomePageData", () => {
       domains: true,
     });
   });
+
+  it("passes lang to discovery rankings and leaves relay stats unscoped", async () => {
+    vi.mocked(getDiscoveryHome).mockResolvedValue({
+      notes: [{ id: "d".repeat(64), content: "hallo" }],
+      profiles: [{ pubkey: "e".repeat(64), display_name: "Ada" }],
+      rising_profiles: [{ pubkey: "f".repeat(64) }],
+      hashtags: [{ hashtag: "nostr" }],
+      domains: [{ domain: "example.com" }],
+      top_languages: { "24h": [{ language: "de", count: 12 }] },
+    } as never);
+    vi.mocked(getNetworkStats).mockResolvedValue({} as never);
+    vi.mocked(getRelayStats).mockResolvedValue({} as never);
+    vi.mocked(getStatsSeries).mockResolvedValue({ points: [] } as never);
+
+    const data = await loadHomePageData({ lang: "de" });
+
+    expect(data.language).toBe("de");
+    expect(data.topLanguages).toEqual({ "24h": [{ language: "de", count: 12 }] });
+    expect(getDiscoveryHome).toHaveBeenCalledWith("shortTtl", { window: "24h", lang: "de" });
+    expect(getTrendingNotes).not.toHaveBeenCalled();
+    expect(getRelayStats).toHaveBeenCalledWith("shortTtl", "24h");
+    expect(getNetworkStats).toHaveBeenCalledWith("shortTtl");
+    const relayArgs = vi.mocked(getRelayStats).mock.calls[0] ?? [];
+    expect(relayArgs).toHaveLength(2);
+  });
 });

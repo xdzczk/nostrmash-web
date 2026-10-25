@@ -4,18 +4,29 @@ import { HashtagsList } from "@/components/data/renderers";
 import { RankedListPage } from "@/components/explorer/ranked-list-page";
 import { getDiscoveryHome, HOME_INDEX_LIMIT } from "@/lib/api/endpoints";
 import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
-import { buildEntityMetadata } from "@/lib/seo/metadata";
+import { readLanguage } from "@/lib/search-params/language";
+import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
+import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 
-const TOPICS_SUBTITLE =
-  "The topics on the overview, ranked by how many authors use them. The event count is a separate figure.";
-
-export const metadata: Metadata = buildEntityMetadata({
-  title: "Topics",
-  description: TOPICS_SUBTITLE,
-  path: "/trending/hashtags",
-});
+const TOPICS_SUBTITLE = "The topics on the overview, ranked by how many authors use them.";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}): Promise<Metadata> {
+  return withLanguageVariantMetadata(
+    buildEntityMetadata({
+      title: "Topics",
+      description: TOPICS_SUBTITLE,
+      path: "/trending/hashtags",
+    }),
+    readLanguage(await searchParams),
+    "/trending/hashtags"
+  );
+}
 
 export default async function TrendingHashtagsPage({
   searchParams,
@@ -23,9 +34,16 @@ export default async function TrendingHashtagsPage({
   searchParams: SearchParams;
 }) {
   const path = "/trending/hashtags";
-  const { window, currentSearchParams } = readRankedListContext(await searchParams, path);
+  const resolvedSearchParams = await searchParams;
+  const language = await applyDiscoverLanguage(path, resolvedSearchParams);
+  const { window, currentSearchParams } = readRankedListContext(resolvedSearchParams, path);
   const { payload, errorMessage, semantics } = await loadRankedListPayload(
-    () => getDiscoveryHome("shortTtl", { window, hashtags_limit: HOME_INDEX_LIMIT }),
+    () =>
+      getDiscoveryHome("shortTtl", {
+        window,
+        hashtags_limit: HOME_INDEX_LIMIT,
+        ...(language ? { lang: language } : {}),
+      }),
     "Failed to load topics."
   );
   const hashtags = payload?.hashtags ?? [];
@@ -46,6 +64,8 @@ export default async function TrendingHashtagsPage({
       path={path}
       searchParams={currentSearchParams}
       window={window}
+      language={language}
+      topLanguages={payload?.top_languages}
       semantics={semantics}
       errorMessage={errorMessage}
       emptyTitle="No ranked hashtags yet"

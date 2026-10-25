@@ -25,6 +25,14 @@ describe("buildWindowHref", () => {
     const current = new URLSearchParams({ window: "7d", cursor: "abc" });
     expect(buildWindowHref("/trending", current, "24h")).toBe("/trending");
   });
+
+  it("preserves an existing lang param", () => {
+    const current = new URLSearchParams({ lang: "de", cursor: "abc" });
+    expect(buildWindowHref("/trending/notes", current, "7d")).toBe(
+      "/trending/notes?lang=de&window=7d"
+    );
+    expect(buildWindowHref("/trending/notes", current, "24h")).toBe("/trending/notes?lang=de");
+  });
 });
 
 describe("window-aware stats helpers", () => {

@@ -4,12 +4,11 @@ import { normalizeRelayHost } from "@/components/explorer/stats-utils";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { PageHero } from "@/components/explorer/page-hero";
 import { NetworkNav } from "@/components/explorer/network-nav";
-import { RelayLink } from "@/components/relays/relay-link";
-import { ShareBar } from "@/components/relays/share-bar";
-import { StatusPill } from "@/components/relays/status-pill";
+import { RelayRankRow } from "@/components/relays/relay-rank-row";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { getPopularRelays } from "@/lib/api/endpoints";
+import { indexMembershipNote } from "@/lib/relays/index-membership";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
@@ -17,13 +16,6 @@ export const metadata: Metadata = {
   description:
     "The most popular Nostr relays ranked by how many users include them in their relay lists.",
 };
-
-function admissionTone(state: string | undefined): "ok" | "bad" | "warn" | "neutral" {
-  if (state === "active" || state === "pinned") return "ok";
-  if (state === "blocked") return "bad";
-  if (state === "probation" || state === "draining") return "warn";
-  return "neutral";
-}
 
 export default async function PopularRelaysPage() {
   let errorMessage = "";
@@ -37,7 +29,6 @@ export default async function PopularRelaysPage() {
 
   const relays = data?.relays ?? [];
   const total = typeof data?.total === "number" ? data.total : relays.length;
-  const inRegistry = relays.filter((relay) => relay.in_registry).length;
   const leaderUsers = relays.reduce((max, relay) => Math.max(max, relay.distinct_users), 0);
 
   return (
@@ -52,12 +43,12 @@ export default async function PopularRelaysPage() {
       {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
 
       <SectionCard
-        title="Most popular relays"
+        title="Most listed"
         description={
           relays.length > 0
             ? total === relays.length
-              ? `${total.toLocaleString()} relays, ${inRegistry.toLocaleString()} in the registry. Bars are scaled to the leader.`
-              : `${total.toLocaleString()} relays in this ranking. ${relays.length.toLocaleString()} shown, ${inRegistry.toLocaleString()} of them in the registry. Bars are scaled to the leader.`
+              ? `${total.toLocaleString()} relays people list. Bars match the most listed relay.`
+              : `${total.toLocaleString()} relays people list. ${relays.length.toLocaleString()} shown. Bars match the most listed relay.`
             : "Ranked by how many people list each relay."
         }
       >
@@ -65,31 +56,29 @@ export default async function PopularRelaysPage() {
           <ul className="divide-edge/70 divide-y">
             {relays.map((relay, index) => {
               const host = normalizeRelayHost(relay.normalized_url);
+              const membership = indexMembershipNote(relay.admission_state, relay.in_registry);
+              const detail = ["people list this relay", membership].filter(Boolean).join(" · ");
+              if (!host) {
+                return (
+                  <li key={relay.normalized_url} className="py-3">
+                    <p className="text-ink text-sm">{relay.normalized_url}</p>
+                    <p className="text-ink-muted text-sm">{detail}</p>
+                  </li>
+                );
+              }
               return (
-                <li key={relay.normalized_url} className="py-3">
-                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                    {host ? (
-                      <RelayLink host={host} rank={index + 1} />
-                    ) : (
-                      <p className="text-ink text-sm">{relay.normalized_url}</p>
-                    )}
-                    {relay.in_registry ? (
-                      <StatusPill tone={admissionTone(relay.admission_state)}>
-                        Admission {relay.admission_state ?? "tracked"}
-                      </StatusPill>
-                    ) : (
-                      <StatusPill tone="neutral">Not in registry</StatusPill>
-                    )}
-                  </div>
-                  <p className="text-ink-faint text-xs">
-                    {relay.distinct_users.toLocaleString()} people list this relay
-                  </p>
-                  <ShareBar
-                    value={relay.distinct_users}
-                    max={leaderUsers}
-                    label={`${host || relay.normalized_url} compared with the most listed relay`}
-                  />
-                </li>
+                <RelayRankRow
+                  key={relay.normalized_url}
+                  host={host}
+                  rank={index + 1}
+                  value={relay.distinct_users.toLocaleString()}
+                  detail={detail}
+                  bar={{
+                    value: relay.distinct_users,
+                    max: leaderUsers,
+                    label: `${host} compared with the most listed relay`,
+                  }}
+                />
               );
             })}
           </ul>

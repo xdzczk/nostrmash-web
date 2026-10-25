@@ -2,14 +2,15 @@ import { NoteMediaReveal } from "@/components/explorer/note-media-reveal";
 import { extractNoteMediaAttachments } from "@/lib/notes/media";
 
 /**
- * - `full`: every attachment at natural ratio, capped so a tall image can still be enlarged.
- * - `detail`: the focal note. Same as full, but short enough that the sentence starts on screen.
+ * - `full`: every attachment at its own aspect ratio, capped so a tall image can still be enlarged.
+ * - `detail`: the focal note. Same shape as full, with room for a phone photo to stay readable.
  * - `thread`: a reply. At most two attachments, each at conversation height.
  * - `lead`: max two attachments side by side in fixed boxes (homepage lead;
  *   no CLS, and the card never grows by more than one image's height).
  * - `compact`: one attachment with a `+N` badge, always a square thumbnail.
+ * - `feed`: profile activity. One attachment, letterboxed, large enough to read.
  */
-export type NoteMediaVariant = "full" | "lead" | "compact" | "detail" | "thread";
+export type NoteMediaVariant = "full" | "lead" | "compact" | "feed" | "detail" | "thread";
 
 export function NoteMedia({
   content,
@@ -31,7 +32,11 @@ export function NoteMedia({
   }
 
   const defaultLimit =
-    variant === "compact" ? 1 : variant === "lead" || variant === "thread" ? 2 : attachments.length;
+    variant === "compact" || variant === "feed"
+      ? 1
+      : variant === "lead" || variant === "thread"
+        ? 2
+        : attachments.length;
   const limit = maxAttachments ?? defaultLimit;
   const visible = attachments.slice(0, Math.max(1, limit));
   const hidden = attachments.length - visible.length;
@@ -39,13 +44,15 @@ export function NoteMedia({
   const wrapperClassName =
     variant === "compact"
       ? "w-[5.5rem]"
-      : variant === "lead"
-        ? // Two lead images share a row instead of stacking.
-          `mt-4 grid gap-3 ${visible.length > 1 ? "grid-cols-2" : "grid-cols-1"}`
-        : variant === "thread"
-          ? // Reply images stay in the conversation: at most two, side by side.
-            `mt-2 grid gap-2 ${visible.length > 1 ? "grid-cols-2" : "grid-cols-1"}`
-          : "mt-3 space-y-3";
+      : variant === "feed"
+        ? "mt-3 w-full max-w-xl"
+        : variant === "lead"
+          ? // Two lead images share a row instead of stacking.
+            `mt-4 grid gap-3 ${visible.length > 1 ? "grid-cols-2" : "grid-cols-1"}`
+          : variant === "thread"
+            ? // Reply images stay in the conversation: at most two, side by side.
+              `mt-2 grid gap-2 ${visible.length > 1 ? "grid-cols-2" : "grid-cols-1"}`
+            : "mt-3 space-y-3";
 
   return (
     <div className={wrapperClassName}>

@@ -61,7 +61,9 @@ describe("discovery ranking normalization", () => {
     });
 
     expect(note).not.toBeNull();
-    expect(mapNoteWhyNow(note!)).toEqual([{ text: "repost lift", support: "7 reposts" }]);
+    expect(mapNoteWhyNow(note!)).toEqual([
+      { text: "repost lift", support: "7 reposts", code: "repost_lift" },
+    ]);
   });
 
   it("normalizes list metadata independently from item data", () => {

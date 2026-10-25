@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { displayProbeStatus, recordedProbeStatus } from "@/lib/relays/probe-status";
+import {
+  displayProbeStatus,
+  probeStatusLabel,
+  recordedProbeStatus,
+} from "@/lib/relays/probe-status";
 import type { RelayProbeHealthEntry } from "@/lib/types/api";
 
 function relay(overrides: Partial<RelayProbeHealthEntry>): RelayProbeHealthEntry {
@@ -35,5 +39,11 @@ describe("probe status", () => {
 
     expect(displayProbeStatus(entry)).toBe("end of events failed");
     expect(recordedProbeStatus(entry)).toBeNull();
+  });
+
+  it("names the latest check in reader language", () => {
+    expect(probeStatusLabel("ok")).toBe("Connected");
+    expect(probeStatusLabel("connect failed")).toBe("Could not connect");
+    expect(probeStatusLabel("end of events failed")).toBe("Did not finish reading");
   });
 });

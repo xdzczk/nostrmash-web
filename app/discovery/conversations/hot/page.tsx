@@ -11,29 +11,48 @@ import { getHotConversations } from "@/lib/api/endpoints";
 import { presentConversations } from "@/lib/discover/conversation-order";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
+import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
+import {
+  buildLanguageHref,
+  LANGUAGE_EMPTY_MESSAGE,
+  readLanguage,
+} from "@/lib/search-params/language";
+import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import {
   buildContinuationHref,
   readSearchParam,
   toUrlSearchParams,
 } from "@/lib/search-params/pagination";
 import { readStatsWindow } from "@/lib/search-params/window";
+import { withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import { formatUpdatedRelative } from "@/lib/time/freshness";
 import type { Profile } from "@/lib/types/api";
-import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
-
-export const metadata: Metadata = {
-  title: "Conversations",
-  description: "Notes driving active conversation right now.",
-};
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}): Promise<Metadata> {
+  return withLanguageVariantMetadata(
+    {
+      title: "Conversations",
+      description: "Notes driving active conversation right now.",
+    },
+    readLanguage(await searchParams),
+    "/discovery/conversations/hot"
+  );
+}
 
 export default async function HotConversationsPage({
   searchParams,
 }: {
   searchParams: SearchParams;
 }) {
+  const path = "/discovery/conversations/hot";
   const resolvedSearchParams = await searchParams;
+  const language = await applyDiscoverLanguage(path, resolvedSearchParams);
   const cursor = readSearchParam(resolvedSearchParams, "cursor");
   const window = readStatsWindow(resolvedSearchParams);
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
@@ -43,7 +62,11 @@ export default async function HotConversationsPage({
   let activeProfiles: Profile[] = [];
 
   try {
-    payload = await getHotConversations("shortTtl", { cursor, window });
+    payload = await getHotConversations("shortTtl", {
+      cursor,
+      window,
+      ...(language ? { lang: language } : {}),
+    });
   } catch (error) {
     errorMessage = toUserFacingErrorMessage(error, "Failed to load hot conversations.");
   }
@@ -51,7 +74,7 @@ export default async function HotConversationsPage({
   const notes = presentConversations(payload?.notes ?? []);
   const semantics = extractNativeApiSemantics(payload);
   const continuationHref = buildContinuationHref(
-    "/discovery/conversations/hot",
+    path,
     currentSearchParams,
     "cursor",
     payload?.next_cursor
@@ -73,9 +96,11 @@ export default async function HotConversationsPage({
     <DiscoverShell
       view="conversations"
       mode="hot"
-      path="/discovery/conversations/hot"
+      path={path}
       searchParams={currentSearchParams}
       window={window}
+      language={language}
+      topLanguages={payload?.top_languages}
       freshnessLabel={formatUpdatedRelative(
         (payload as { computed_at?: string | number | null } | null)?.computed_at
       )}
@@ -90,8 +115,12 @@ export default async function HotConversationsPage({
           <NotesList notes={notes} authorsByPubkey={authorsByPubkey} ranked conversation />
         ) : !errorMessage ? (
           <EmptyState
-            title="No hot conversations available"
-            message="The API did not return conversation entries for this window."
+            title={language ? undefined : "No hot conversations available"}
+            message={
+              language
+                ? LANGUAGE_EMPTY_MESSAGE
+                : "The API did not return conversation entries for this window."
+            }
           />
         ) : null}
         {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
@@ -101,7 +130,7 @@ export default async function HotConversationsPage({
         ) : null}
       </div>
 
-      {!errorMessage ? (
+      {!errorMessage && (notes.length > 0 || !language) ? (
         <SectionCard
           title="Conversation participants"
           description="Profiles active in these conversations."
@@ -113,13 +142,17 @@ export default async function HotConversationsPage({
           )}
           <div className="mt-4 flex flex-wrap gap-2 text-xs">
             <Link
-              href="/discovery/profiles/rising"
+              href={buildLanguageHref(
+                "/discovery/profiles/rising",
+                new URLSearchParams(),
+                language
+              )}
               className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
             >
               Open up and coming
             </Link>
             <Link
-              href="/trending/notes"
+              href={buildLanguageHref("/trending/notes", new URLSearchParams(), language)}
               className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
             >
               See trending notes

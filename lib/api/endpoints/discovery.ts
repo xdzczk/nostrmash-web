@@ -13,6 +13,7 @@ import type {
 import { fetchApiJson } from "@/lib/api/http";
 import {
   normalizeDiscoveryHomeResponse,
+  normalizeDiscoveryLanguageFields,
   normalizeDomainEntries,
   normalizeEventRecords,
   normalizeHashtagEntries,
@@ -38,6 +39,7 @@ export type DiscoveryHomeQuery = {
   hashtags_limit?: number;
   domains_limit?: number;
   notes_limit?: number;
+  lang?: string;
 };
 
 export async function getDiscoveryHome(
@@ -52,6 +54,7 @@ export async function getDiscoveryHome(
           hashtags_limit: query.hashtags_limit,
           domains_limit: query.domains_limit,
           notes_limit: query.notes_limit,
+          ...(query.lang ? { lang: query.lang } : {}),
         }
       : undefined,
   });
@@ -63,10 +66,10 @@ export async function getTrendingNotes(cacheClass: CacheClass = "shortTtl", quer
     query: buildCursorQuery(query),
     schema: eventListResponseSchema,
   });
-  return {
+  return normalizeDiscoveryLanguageFields({
     ...response,
     notes: normalizeEventRecords(response.notes),
-  };
+  });
 }
 
 export async function getTrendingLongForm(
@@ -95,10 +98,10 @@ export async function getTrendingProfiles(
       schema: profileListResponseSchema,
     }
   );
-  return {
+  return normalizeDiscoveryLanguageFields({
     ...response,
     profiles: normalizeProfiles(response.profiles),
-  };
+  });
 }
 
 export async function getHotConversations(
@@ -121,10 +124,10 @@ export async function getHotConversations(
       responseRecord.items ??
       responseRecord.data
   );
-  return {
+  return normalizeDiscoveryLanguageFields({
     ...response,
     notes,
-  } satisfies HotConversationsResponse;
+  }) satisfies HotConversationsResponse;
 }
 
 export async function getRisingProfiles(cacheClass: CacheClass = "shortTtl", query?: CursorQuery) {
@@ -133,7 +136,7 @@ export async function getRisingProfiles(cacheClass: CacheClass = "shortTtl", que
     query: buildCursorQuery(query),
   });
   const responseRecord = response as Record<string, unknown>;
-  return {
+  return normalizeDiscoveryLanguageFields({
     ...response,
     profiles: normalizeProfiles(
       response.profiles ??
@@ -142,7 +145,7 @@ export async function getRisingProfiles(cacheClass: CacheClass = "shortTtl", que
         responseRecord.items ??
         responseRecord.data
     ),
-  } satisfies RisingProfilesResponse;
+  }) satisfies RisingProfilesResponse;
 }
 
 export async function getTrendingHashtags(
@@ -156,10 +159,10 @@ export async function getTrendingHashtags(
       query: buildCursorQuery(query),
     }
   );
-  return {
+  return normalizeDiscoveryLanguageFields({
     ...response,
     hashtags: normalizeHashtagEntries(response.hashtags),
-  };
+  });
 }
 
 export async function getTrendingDomains(cacheClass: CacheClass = "shortTtl", query?: CursorQuery) {
@@ -170,12 +173,12 @@ export async function getTrendingDomains(cacheClass: CacheClass = "shortTtl", qu
       query: buildCursorQuery(query),
     }
   );
-  return {
+  return normalizeDiscoveryLanguageFields({
     ...response,
     domains: normalizeDomainEntries(
       response.domains ??
         (response as Record<string, unknown>).items ??
         (response as Record<string, unknown>).data
     ),
-  } satisfies TrendingDomainsResponse;
+  }) satisfies TrendingDomainsResponse;
 }

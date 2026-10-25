@@ -3,9 +3,10 @@ import type { Metadata } from "next";
 
 import {
   extractRelayHealthRows,
-  formatRelayHealthSummary,
+  normalizeRelayHost,
   rankRelayActivity,
   readMetricNumber,
+  relayHealthSummary,
 } from "@/components/explorer/stats-utils";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
@@ -14,22 +15,23 @@ import { PageHero } from "@/components/explorer/page-hero";
 import { NetworkNav } from "@/components/explorer/network-nav";
 import { WindowSelector } from "@/components/explorer/window-selector";
 import { IndexedAt } from "@/components/freshness/indexed-at";
-import { RelayLink, relaySearchHref } from "@/components/relays/relay-link";
-import { ShareBar } from "@/components/relays/share-bar";
-import { StatusPill } from "@/components/relays/status-pill";
+import { CheckComposition } from "@/components/relays/check-composition";
+import { RelayRankRow } from "@/components/relays/relay-rank-row";
 import { SectionCard } from "@/components/ui/section-card";
 import { LoadErrors, SoftRefreshNote } from "@/components/ui/status-panels";
-import { getRelayHealth, getRelayStats } from "@/lib/api/endpoints";
+import { getPopularRelays, getRelayHealth, getRelayStats } from "@/lib/api/endpoints";
 import { getStaleDataNotice } from "@/lib/api/http";
 import { getRequestNowMs } from "@/lib/time/request-now";
 import { readSearchParam, toUrlSearchParams } from "@/lib/search-params/pagination";
 import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
+import { concentrationTitle } from "@/lib/relays/concentration";
+import { indexMembershipNote } from "@/lib/relays/index-membership";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
   title: "Network",
-  description: "Understand Nostr relay activity, reach, and current network health.",
+  description: "Where indexed Nostr events concentrate, and which relays are current.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -42,10 +44,12 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
   const errors: string[] = [];
   let relayStats: Awaited<ReturnType<typeof getRelayStats>> | null = null;
   let relayHealth: Awaited<ReturnType<typeof getRelayHealth>> | null = null;
+  let popular: Awaited<ReturnType<typeof getPopularRelays>> | null = null;
 
-  const [statsResult, healthResult] = await Promise.allSettled([
+  const [statsResult, healthResult, popularResult] = await Promise.allSettled([
     getRelayStats("shortTtl", window),
     getRelayHealth("shortTtl", { cursor: healthCursor }),
+    getPopularRelays("shortTtl", { limit: 100 }),
   ]);
   if (statsResult.status === "fulfilled") {
     relayStats = statsResult.value;
@@ -57,21 +61,17 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
   } else {
     errors.push(toUserFacingErrorMessage(healthResult.reason, "Relay health failed."));
   }
+  if (popularResult.status === "fulfilled") {
+    popular = popularResult.value;
+  } else {
+    errors.push(toUserFacingErrorMessage(popularResult.reason, "Popular relays failed."));
+  }
   const staleNotice = getStaleDataNotice();
 
   const rankedRelays = rankRelayActivity(relayStats, 40, window);
-  const healthRows = extractRelayHealthRows(relayHealth);
   const nowMs = getRequestNowMs();
-  const healthTotal =
-    typeof relayHealth?.total === "number" ? relayHealth.total : healthRows.length;
-  const healthSummary = formatRelayHealthSummary(healthRows, nowMs, healthTotal);
-  const healthByHost = new Map<string, (typeof healthRows)[number]>();
-  for (const row of healthRows) {
-    const existing = healthByHost.get(row.host);
-    if (!existing || (existing.healthy !== false && row.healthy === false)) {
-      healthByHost.set(row.host, row);
-    }
-  }
+  const healthRows = extractRelayHealthRows(relayHealth);
+  const health = relayHealthSummary(healthRows, nowMs);
   const semantics = extractNativeApiSemantics(relayStats, relayHealth);
   const totalActivity = rankedRelays.reduce((sum, row) => sum + row.activityScore, 0);
   const headCount = Math.min(3, rankedRelays.length);
@@ -80,17 +80,26 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
     .reduce((sum, row) => sum + row.activityScore, 0);
   const headShare = totalActivity > 0 ? Math.round((headActivity / totalActivity) * 100) : 0;
   const leaderScore = rankedRelays[0]?.activityScore ?? 0;
-  const healthSampleNote =
-    typeof relayHealth?.next_cursor === "string" && relayHealth.next_cursor.length > 0
-      ? " This is the latest page of health results, not every relay."
-      : "";
+  const healthIsPartial =
+    typeof relayHealth?.next_cursor === "string" && relayHealth.next_cursor.length > 0;
+
+  const listed = (popular?.relays ?? [])
+    .map((relay, index) => ({
+      relay,
+      host: normalizeRelayHost(relay.normalized_url),
+      rank: index + 1,
+    }))
+    .filter((entry) => entry.host.length > 0);
+  const listedByHost = new Map(listed.map((entry) => [entry.host, entry]));
+  const indexedByHost = new Map(rankedRelays.map((row) => [row.host, row]));
+  const listedTotal = typeof popular?.total === "number" ? popular.total : listed.length;
 
   return (
     <div className="space-y-8">
       <PageHero
-        eyebrow="Network intelligence"
-        title="The network behind the conversation."
-        subtitle="Where indexed events concentrate, and which relays are failing their checks."
+        eyebrow="Network"
+        title={concentrationTitle(headCount, headShare, window)}
+        subtitle="Indexed volume beside the relays people list, and whether those checks are current."
         badges={
           <WindowSelector path="/relays" searchParams={currentSearchParams} activeWindow={window} />
         }
@@ -101,70 +110,123 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
       {staleNotice ? <SoftRefreshNote message={staleNotice} /> : null}
       <LoadErrors errors={errors} />
 
-      {healthRows.length === 0 ? (
+      {health.checks > 0 ? (
+        <section className="space-y-3">
+          <CheckComposition
+            fresh={health.current.length}
+            stale={health.stale}
+            failing={health.posture.unhealthy}
+            unknown={health.posture.unknown}
+            hosts={health.hosts}
+          />
+          <p className="text-ink-muted text-sm">
+            {healthIsPartial ? "This is the latest page of health results, not every relay. " : ""}
+            <Link href="/relays/health" className="nm-action-link">
+              Open status
+            </Link>
+          </p>
+        </section>
+      ) : (
         <p className="text-ink-muted text-sm">
           Health checks are unavailable right now. The ranking below still shows where indexed
           events concentrate.
         </p>
-      ) : (
-        <p className="text-ink-muted max-w-3xl text-sm leading-6">
-          {healthSummary}
-          {healthSampleNote}{" "}
-          <Link href="/relays/health" className="nm-action-link">
-            Open health
-          </Link>
-        </p>
       )}
 
-      <SectionCard
-        title="Dominant relay activity"
-        description={
-          rankedRelays.length > 0
-            ? `The top ${headCount} carry ${headShare}% of indexed events in this ${formatStatsWindowLabel(window).toLowerCase()} ranking. Bar length is compared with the leader.`
-            : "Relays carrying the most indexed events."
-        }
-      >
-        {rankedRelays.length > 0 ? (
-          <ul className="divide-edge/70 divide-y">
-            {rankedRelays.slice(0, 20).map((row) => {
-              const health = healthByHost.get(row.host);
-              const share =
-                totalActivity > 0 ? ((row.activityScore / totalActivity) * 100).toFixed(1) : "0.0";
-              const events =
-                readMetricNumber(row.metrics, "event_count", "events") ?? row.activityScore;
-              const authors = readMetricNumber(row.metrics, "unique_authors");
-              return (
-                <li key={row.host} className="py-3">
-                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                    <RelayLink host={row.host} rank={row.rank} window={window} />
-                    <div className="flex items-center gap-3">
-                      {health?.healthy === false ? (
-                        <StatusPill tone="bad">Unhealthy</StatusPill>
-                      ) : null}
-                      <Link href={relaySearchHref(row.host)} className="nm-action-link">
-                        Search mentions
-                      </Link>
-                    </div>
-                  </div>
-                  <p className="text-ink-faint text-xs">
-                    {share}% of this ranking · {events.toLocaleString()} events
-                    {authors !== null
-                      ? ` · ${authors.toLocaleString()} pubkeys seen on relays`
-                      : ""}
-                  </p>
-                  <ShareBar
-                    value={row.activityScore}
-                    max={leaderScore}
-                    label={`${row.host} compared with the leading relay`}
+      <div className="grid gap-x-12 lg:grid-cols-2">
+        <SectionCard
+          title="Indexed"
+          description={
+            rankedRelays.length > 0
+              ? `Share of indexed events in this ${formatStatsWindowLabel(window).toLowerCase()} ranking. The bar matches the leader.`
+              : "Relays carrying the most indexed events."
+          }
+        >
+          {rankedRelays.length > 0 ? (
+            <ul className="divide-edge/70 divide-y">
+              {rankedRelays.slice(0, 10).map((row) => {
+                const share =
+                  totalActivity > 0
+                    ? ((row.activityScore / totalActivity) * 100).toFixed(1)
+                    : "0.0";
+                const events =
+                  readMetricNumber(row.metrics, "event_count", "events") ?? row.activityScore;
+                const authors = readMetricNumber(row.metrics, "unique_authors");
+                const listedRank = listedByHost.get(row.host)?.rank ?? null;
+                const detail = [
+                  `${events.toLocaleString()} events`,
+                  authors !== null ? `${authors.toLocaleString()} authors` : null,
+                  listedRank !== null ? `Listed #${listedRank}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                return (
+                  <RelayRankRow
+                    key={row.host}
+                    host={row.host}
+                    rank={row.rank}
+                    window={window}
+                    value={`${share}%`}
+                    detail={detail}
+                    bar={{
+                      value: row.activityScore,
+                      max: leaderScore,
+                      label: `${row.host} compared with the leading relay`,
+                    }}
                   />
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <EmptyState message="Relay activity rankings will appear here once the index has gathered enough relay stats to rank." />
-        )}
-      </SectionCard>
+                );
+              })}
+            </ul>
+          ) : (
+            <EmptyState message="Relay activity rankings will appear here once the index has gathered enough relay stats to rank." />
+          )}
+        </SectionCard>
+
+        <SectionCard
+          title="Listed by people"
+          description={
+            listed.length > 0
+              ? `${listedTotal.toLocaleString()} relays appear in a public relay list. Someone who lists several is counted on each one.`
+              : "Relays ranked by how many people include them in a public relay list."
+          }
+        >
+          {listed.length > 0 ? (
+            <ul className="divide-edge/70 divide-y">
+              {listed.slice(0, 8).map((entry) => {
+                const indexed = indexedByHost.get(entry.host);
+                const membership = indexMembershipNote(
+                  entry.relay.admission_state,
+                  entry.relay.in_registry
+                );
+                const detail = [
+                  "people list this relay",
+                  indexed ? `Indexed #${indexed.rank}` : "Not in this indexed ranking",
+                  membership,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                return (
+                  <RelayRankRow
+                    key={entry.relay.normalized_url}
+                    host={entry.host}
+                    rank={entry.rank}
+                    window={window}
+                    value={entry.relay.distinct_users.toLocaleString()}
+                    detail={detail}
+                    bar={{
+                      value: entry.relay.distinct_users,
+                      max: listed[0]?.relay.distinct_users ?? entry.relay.distinct_users,
+                      label: `${entry.host} compared with the most listed relay`,
+                    }}
+                  />
+                );
+              })}
+            </ul>
+          ) : (
+            <EmptyState message="Listed relays will appear here once public relay lists have been counted." />
+          )}
+        </SectionCard>
+      </div>
 
       <DebugDisclosure title="Debug payload: relay stats" data={relayStats ?? {}} />
       <AboutThisData semantics={semantics} sections={readStatsSections(relayStats)}>

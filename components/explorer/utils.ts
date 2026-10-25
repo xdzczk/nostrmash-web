@@ -13,8 +13,8 @@ const LABEL_ALIASES: Record<string, string> = {
   relay_count: "Relays",
   relay_url: "Relay",
   unique_authors: "Authors",
-  unique_authors_24h: "Pubkeys seen on relays (24h)",
-  unique_authors_7d: "Pubkeys seen on relays (7d)",
+  unique_authors_24h: "Authors on relays (24h)",
+  unique_authors_7d: "Authors on relays (7d)",
   unique_relays: "Unique relays",
   unique_notes: "Unique notes",
   unique_profiles: "Unique profiles",
@@ -72,9 +72,9 @@ const LABEL_ALIASES: Record<string, string> = {
   mentions_count: "Mentions",
 };
 
-/** Relay-row `unique_authors` counts pubkeys seen on that relay, not note authors. */
+/** Relay-row `unique_authors` counts authors seen on that relay, any event kind. */
 export function formatRelayMetricLabel(label: string): string {
-  if (label === "unique_authors") return "Pubkeys seen on relays";
+  if (label === "unique_authors") return "Authors";
   return formatMetricLabel(label);
 }
 

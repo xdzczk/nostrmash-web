@@ -36,11 +36,25 @@ describe("NoteMediaReveal", () => {
     expect(image).toHaveAttribute("fetchpriority", "high");
   });
 
-  it("letterboxes focal and reply images at conversation scale", () => {
+  it("keeps profile feed photos at their own aspect ratio", () => {
+    const { container } = render(
+      <NoteMediaReveal url="https://media.example/image.jpg" kind="image" variant="feed" />
+    );
+    const image = container.querySelector("img");
+    expect(image).toHaveClass("max-h-[28rem]");
+    expect(image).toHaveClass("max-w-full");
+    expect(image).toHaveClass("w-auto");
+    expect(image).toHaveClass("object-contain");
+    expect(image).not.toHaveClass("w-full");
+    expect(image).not.toHaveClass("aspect-square");
+  });
+
+  it("keeps focal and reply photos at their own aspect ratio", () => {
     const { container, rerender } = render(
       <NoteMediaReveal url="https://media.example/image.jpg" kind="image" variant="detail" />
     );
-    expect(container.querySelector("img")).toHaveClass("max-h-[min(28rem,52vh)]");
+    expect(container.querySelector("img")).toHaveClass("max-h-[min(44rem,78vh)]");
+    expect(container.querySelector("img")).toHaveClass("w-auto");
     expect(container.querySelector("img")).toHaveClass("object-contain");
 
     rerender(
@@ -48,6 +62,7 @@ describe("NoteMediaReveal", () => {
     );
     expect(container.querySelector("img")).toHaveClass("max-h-48");
     expect(container.querySelector("img")).toHaveClass("object-contain");
+    expect(container.querySelector("img")).not.toHaveClass("w-full");
   });
 
   it("shows a +N badge for attachments hidden by the compact variant", () => {
@@ -69,7 +84,17 @@ describe("NoteMediaReveal", () => {
     const video = container.querySelector("video");
     expect(video).toHaveAttribute("src", "https://media.example/clip.mp4#t=0.001");
     expect(video).toHaveAttribute("preload", "metadata");
+    expect(video).toHaveClass("object-contain");
     expect(videoPreviewSrc(url)).toBe("https://media.example/clip.mp4#t=0.001");
     expect(videoPreviewSrc(`${url}#other`)).toBe("https://media.example/clip.mp4#t=0.001");
+  });
+
+  it("letterboxes lead videos instead of cropping the frame", () => {
+    const { container } = render(
+      <NoteMediaReveal url="https://media.example/clip.mp4" kind="video" variant="lead" />
+    );
+    const video = container.querySelector("video");
+    expect(video).toHaveClass("object-contain");
+    expect(video).not.toHaveClass("object-cover");
   });
 });

@@ -9,6 +9,7 @@ import {
   partitionRelayHealth,
   pickTopPrimitiveStats,
   rankRelayActivity,
+  readStatNumber,
   relayDisplayLabel,
   relayHealthPosture,
   selectRelayHealthForHost,
@@ -413,6 +414,21 @@ describe("partitionRelayHealth", () => {
     expect(formatRelayHealthSummary(rows, nowMs, 439)).toBe(
       "1 of 439 checks is unhealthy. 0 checked in healthy within the last day."
     );
+  });
+});
+
+describe("readStatNumber", () => {
+  it("prefers an exact label, then a prefixed one", () => {
+    const payload = {
+      relays: { active_24h: 11, total: 216 },
+      totals: { events_ingested: 50 },
+      note_volume: { "24h": 100, "7d": 700 },
+    };
+
+    expect(readStatNumber(payload, ["active_24h"])).toBe(11);
+    expect(readStatNumber(payload, ["events_ingested"])).toBe(50);
+    expect(readStatNumber(payload, ["note_volume_24h"])).toBe(100);
+    expect(readStatNumber(payload, ["missing"])).toBeNull();
   });
 });
 

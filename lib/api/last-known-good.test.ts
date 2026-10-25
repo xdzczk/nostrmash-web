@@ -36,6 +36,17 @@ describe("last-known-good store", () => {
     expect(isLkgCacheClass("requestTime")).toBe(false);
   });
 
+  it("does not share a cache entry across languages", async () => {
+    const path = "/api/v1/discovery/notes/trending";
+    const english = buildLkgKey(path, new URLSearchParams("lang=en&window=24h"));
+    const german = buildLkgKey(path, new URLSearchParams("window=24h&lang=de"));
+    expect(english).not.toBe(german);
+    await storeLastKnownGood(english, { notes: [{ id: "en" }] });
+    await storeLastKnownGood(german, { notes: [{ id: "de" }] });
+    expect((await readLastKnownGood(english))?.payload).toEqual({ notes: [{ id: "en" }] });
+    expect((await readLastKnownGood(german))?.payload).toEqual({ notes: [{ id: "de" }] });
+  });
+
   it("stores and reads payloads by stable key", async () => {
     const key = buildLkgKey("/api/v1/discovery/home", new URLSearchParams("window=24h"));
     await storeLastKnownGood(key, { notes: [] });

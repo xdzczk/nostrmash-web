@@ -6,24 +6,40 @@ import { RankedListPage } from "@/components/explorer/ranked-list-page";
 import { getRisingProfiles } from "@/lib/api/endpoints";
 import { hydrateProfiles } from "@/lib/api/profile-hydration";
 import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
+import { buildLanguageHref, readLanguage } from "@/lib/search-params/language";
+import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
+import { withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
-
-export const metadata: Metadata = {
-  title: "Up and coming",
-  description:
-    "Small accounts gaining followers fast or earning outsized engagement relative to their audience.",
-};
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}): Promise<Metadata> {
+  return withLanguageVariantMetadata(
+    {
+      title: "Up and coming",
+      description:
+        "Small accounts gaining followers fast or earning outsized engagement relative to their audience.",
+    },
+    readLanguage(await searchParams),
+    "/discovery/profiles/rising"
+  );
+}
+
 export default async function RisingProfilesPage({ searchParams }: { searchParams: SearchParams }) {
   const path = "/discovery/profiles/rising";
+  const resolvedSearchParams = await searchParams;
+  const language = await applyDiscoverLanguage(path, resolvedSearchParams);
   const { cursor, window, currentSearchParams, buildCursorContinuation } = readRankedListContext(
-    await searchParams,
+    resolvedSearchParams,
     path
   );
   const { payload, errorMessage, semantics } = await loadRankedListPayload(
-    () => getRisingProfiles("shortTtl", { cursor, window }),
+    () =>
+      getRisingProfiles("shortTtl", { cursor, window, ...(language ? { lang: language } : {}) }),
     "Failed to load rising profiles."
   );
   const sourceProfiles = payload?.profiles ?? [];
@@ -48,6 +64,8 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
       path={path}
       searchParams={currentSearchParams}
       window={window}
+      language={language}
+      topLanguages={payload?.top_languages}
       semantics={semantics}
       errorMessage={errorMessage}
       emptyTitle="No up-and-coming profiles available"
@@ -62,13 +80,17 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
       footer={
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
           <Link
-            href="/discovery/conversations/hot"
+            href={buildLanguageHref(
+              "/discovery/conversations/hot",
+              new URLSearchParams(),
+              language
+            )}
             className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
           >
             Open hot conversations
           </Link>
           <Link
-            href="/trending/profiles"
+            href={buildLanguageHref("/trending/profiles", new URLSearchParams(), language)}
             className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
           >
             See trending profiles

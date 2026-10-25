@@ -12,6 +12,7 @@ export type DiscoverTelemetryEvent =
       name: "navigation";
       view: DiscoverView;
       mode?: DiscoverMode;
+      language?: string;
     }
   | {
       name: "continuation";

@@ -14,4 +14,14 @@ describe("Discover telemetry", () => {
     });
     expect(JSON.stringify(sink.mock.calls)).not.toMatch(/content|pubkey|event_id|hashtag|domain/);
   });
+
+  it("includes the active language on the view event", () => {
+    const sink = vi.fn();
+    recordDiscoverEvent({ name: "navigation", view: "overview", language: "de" }, sink);
+    expect(sink).toHaveBeenCalledWith({
+      name: "navigation",
+      view: "overview",
+      language: "de",
+    });
+  });
 });

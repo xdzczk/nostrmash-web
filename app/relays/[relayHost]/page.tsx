@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -11,31 +10,42 @@ import {
 } from "@/components/explorer/stats-utils";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
-import { MetadataList } from "@/components/explorer/metadata-list";
 import { AboutThisData, readStatsSections } from "@/components/explorer/about-this-data";
 import { PageHero } from "@/components/explorer/page-hero";
 import { NetworkNav } from "@/components/explorer/network-nav";
-import { formatRelayMetricLabel } from "@/components/explorer/utils";
+import { WindowSelector } from "@/components/explorer/window-selector";
 import { RelayLink } from "@/components/relays/relay-link";
 import { RelaySummaryCard } from "@/components/relays/relay-summary-card";
 import { SectionCard } from "@/components/ui/section-card";
 import { LoadErrors } from "@/components/ui/status-panels";
-import { getRelayHealth, getRelayStats } from "@/lib/api/endpoints";
+import {
+  getPopularRelays,
+  getRelayHealth,
+  getRelayProbeHealth,
+  getRelayStats,
+} from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
+import { displayProbeStatus, probeStatusLabel } from "@/lib/relays/probe-status";
 import { getRequestNowMs } from "@/lib/time/request-now";
 import { isValidRelayHostParam, normalizeValidatedRelayHost } from "@/lib/routing/params";
+import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
 import { buildEntityMetadata } from "@/lib/seo/metadata";
 
 type Params = Promise<{ relayHost: string }>;
+
+function relayWebsocketUrl(relay: string | undefined, host: string): string {
+  if (relay && /^wss?:\/\//i.test(relay.trim())) return relay.trim();
+  return `wss://${host}`;
+}
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { relayHost } = await params;
   const label = normalizeValidatedRelayHost(relayHost) ?? relayHost;
   return buildEntityMetadata({
     title: label,
-    description: `Indexed activity and health for the Nostr relay ${label}.`,
+    description: `Indexed rank, listed rank, and current status for the Nostr relay ${label}.`,
     path: `/relays/${encodeURIComponent(label)}`,
   });
 }
@@ -48,7 +58,9 @@ export default async function RelayPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { relayHost } = await params;
-  const window = readStatsWindow(await searchParams);
+  const resolvedSearchParams = await searchParams;
+  const window = readStatsWindow(resolvedSearchParams);
+  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   if (!isValidRelayHostParam(relayHost)) {
     notFound();
   }
@@ -59,10 +71,14 @@ export default async function RelayPage({
   const errors: string[] = [];
   let payload: Awaited<ReturnType<typeof getRelayStats>> | null = null;
   let healthPayload: Awaited<ReturnType<typeof getRelayHealth>> | null = null;
+  let popular: Awaited<ReturnType<typeof getPopularRelays>> | null = null;
+  let probes: Awaited<ReturnType<typeof getRelayProbeHealth>> | null = null;
 
-  const [statsResult, healthResult] = await Promise.allSettled([
+  const [statsResult, healthResult, popularResult, probeResult] = await Promise.allSettled([
     getRelayStats("shortTtl", window),
     getRelayHealth("shortTtl"),
+    getPopularRelays("shortTtl", { limit: 100 }),
+    getRelayProbeHealth("shortTtl", { limit: 200 }),
   ]);
   if (statsResult.status === "fulfilled") {
     payload = statsResult.value;
@@ -73,6 +89,16 @@ export default async function RelayPage({
     healthPayload = healthResult.value;
   } else {
     errors.push(toUserFacingErrorMessage(healthResult.reason, "Failed to load relay health."));
+  }
+  if (popularResult.status === "fulfilled") {
+    popular = popularResult.value;
+  } else {
+    errors.push(toUserFacingErrorMessage(popularResult.reason, "Failed to load listed relays."));
+  }
+  if (probeResult.status === "fulfilled") {
+    probes = probeResult.value;
+  } else {
+    errors.push(toUserFacingErrorMessage(probeResult.reason, "Failed to load connection checks."));
   }
 
   const rankedActivity = rankRelayActivity(payload, 200, window);
@@ -99,19 +125,30 @@ export default async function RelayPage({
   const healthy =
     relayHealth?.healthy === true ? true : relayHealth?.healthy === false ? false : null;
   const semantics = extractNativeApiSemantics(payload, healthPayload);
-  const metricItems = relayEntry
-    ? Object.entries(relayEntry).map(([label, value]) => ({
-        label: formatRelayMetricLabel(label),
-        value,
-      }))
-    : [];
+
+  const listedIndex =
+    popular?.relays.findIndex(
+      (relay) => normalizeRelayHost(relay.normalized_url) === normalizedRelayHost
+    ) ?? -1;
+  const listed = listedIndex >= 0 ? popular?.relays[listedIndex] : undefined;
+  const probe =
+    probes?.relays.find(
+      (relay) => normalizeRelayHost(relay.normalized_url) === normalizedRelayHost
+    ) ?? null;
 
   return (
     <div className="space-y-8">
       <PageHero
         eyebrow="Relay"
         title={normalizedRelayHost}
-        subtitle={`Indexed event volume for this host over ${formatStatsWindowLabel(window).toLowerCase()}, plus the latest ingest checkpoint.`}
+        subtitle={`Indexed rank, who lists it, and whether we could read it over ${formatStatsWindowLabel(window).toLowerCase()}.`}
+        badges={
+          <WindowSelector
+            path={`/relays/${encodeURIComponent(normalizedRelayHost)}`}
+            searchParams={currentSearchParams}
+            activeWindow={window}
+          />
+        }
       />
       <NetworkNav />
 
@@ -123,26 +160,18 @@ export default async function RelayPage({
         sharePercent={activityShare}
         events={events ?? relayActivity?.activityScore ?? null}
         authors={authors}
+        listedRank={listed ? listedIndex + 1 : null}
+        listedUsers={listed?.distinct_users ?? null}
+        listedKnown={popular !== null}
         healthy={relayHealth ? healthy : null}
-        status={relayHealth?.status}
         checkpointAt={relayHealth?.latestCheckpointAt ?? relayHealth?.lastSeenAt}
         lastError={relayHealth?.lastError}
         observationCount={selectedHealth.count}
+        connectLabel={probe ? probeStatusLabel(displayProbeStatus(probe)) : null}
+        connectLatencyMs={probe?.avg_connect_latency_ms}
+        relayUrl={relayWebsocketUrl(relayHealth?.relay, normalizedRelayHost)}
+        window={window}
       />
-
-      <SectionCard
-        title="Indexed counts"
-        description="Figures stored for this host. They describe volume in the relay stats, not whether the relay is reachable right now."
-      >
-        {metricItems.length > 0 ? (
-          <MetadataList items={metricItems} columns={2} normalizeLabels={false} />
-        ) : (
-          <EmptyState
-            title="Relay-level row not found"
-            message="No direct relay row was found in the relay stats for this host."
-          />
-        )}
-      </SectionCard>
 
       <SectionCard
         title={relayActivity ? "Adjacent in this ranking" : "Highest volume relays"}
@@ -157,7 +186,7 @@ export default async function RelayPage({
             {neighboringRelays.map((entry) => (
               <li key={entry.host} className="py-2">
                 <RelayLink host={entry.host} rank={entry.rank} window={window} />
-                <p className="text-ink-faint text-xs">
+                <p className="text-ink-muted text-sm">
                   {entry.activityScore.toLocaleString()} events
                   {activityTotal > 0
                     ? ` · ${((entry.activityScore / activityTotal) * 100).toFixed(1)}% of this ranking`
@@ -171,20 +200,12 @@ export default async function RelayPage({
         )}
       </SectionCard>
 
-      <p className="text-ink-muted text-sm">
-        <Link
-          href={`/search?q=${encodeURIComponent(normalizedRelayHost)}&tab=notes`}
-          className="nm-action-link"
-        >
-          Notes that mention this relay
-        </Link>
-      </p>
-
       <DebugDisclosure title="Debug payload: relay stats aggregate" data={payload ?? {}} />
       <AboutThisData semantics={semantics} sections={readStatsSections(payload)}>
         Activity rank uses indexed event volume for {formatStatsWindowLabel(window).toLowerCase()}.
-        This page is the hostname, so every URL on that host is listed here. Health is the ingest
-        checkpoint the health page lists first.
+        This page is the hostname, so every URL on that host is listed here. Ingest is the
+        checkpoint the status page lists first. The connection check is the latest probe for this
+        host.
       </AboutThisData>
       <DebugDisclosure title="Debug payload: relay health" data={healthPayload ?? {}} />
     </div>

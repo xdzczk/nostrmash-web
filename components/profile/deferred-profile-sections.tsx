@@ -123,7 +123,8 @@ export async function DeferredProfileActivity({
             showAuthor={false}
             showUtilityLinks={false}
             omitZeroStats
-            compactMedia
+            mediaVariant="feed"
+            suppressEmbeds
           />
         ) : (
           empty("notes")
@@ -193,7 +194,8 @@ export async function DeferredProfileActivity({
             authorsByPubkey={{ ...data.notesAuthorMap, ...data.eventListAuthorsByPubkey }}
             showUtilityLinks={false}
             omitZeroStats
-            compactMedia
+            mediaVariant="feed"
+            suppressEmbeds
           />
         ) : (
           empty("bookmarks")

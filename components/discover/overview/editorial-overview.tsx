@@ -17,6 +17,7 @@ import {
   type WhyNowReason,
 } from "@/components/explorer/why-now";
 import { selectSupportingNotes } from "@/lib/discover/lead-notes";
+import { buildDiscoverHref, LANGUAGE_EMPTY_MESSAGE } from "@/lib/search-params/language";
 import { SourceFigure } from "@/components/explorer/source-figure";
 import {
   extractEngagementStats,
@@ -34,7 +35,12 @@ import { NoteLinkPreviews } from "@/components/explorer/note-link-previews";
 import { NoteMedia } from "@/components/explorer/note-media";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { getEditorialNoteText } from "@/components/explorer/note-preview";
-import { belowVolumeFloor, listedVolume, rankMovement } from "@/lib/discover/reasons";
+import {
+  belowVolumeFloor,
+  listedVolume,
+  rankMovement,
+  reasonsBesideSourceFigure,
+} from "@/lib/discover/reasons";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import { collapsePreviewWhitespace } from "@/lib/notes/summary-text";
 import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
@@ -303,10 +309,15 @@ function EditorialNote({
   );
 }
 
+function scopedEmpty(lang: string | undefined, fallback: string): string {
+  return lang ? LANGUAGE_EMPTY_MESSAGE : fallback;
+}
+
 function ProfileRanking({
   profiles,
   degraded,
   window,
+  lang,
   headingId = "profiles-in-motion",
   kicker = "People",
   title = "Profiles in motion",
@@ -317,6 +328,7 @@ function ProfileRanking({
   profiles: Profile[];
   degraded?: boolean;
   window: StatsWindow;
+  lang?: string;
   headingId?: string;
   kicker?: string;
   title?: string;
@@ -331,7 +343,7 @@ function ProfileRanking({
         title={title}
         headingId={headingId}
         action={{
-          href: fullRankingHref ?? `/trending/profiles?window=${window}`,
+          href: fullRankingHref ?? buildDiscoverHref("/trending/profiles", { window, lang }),
           label: "People index",
         }}
       />
@@ -396,7 +408,7 @@ function ProfileRanking({
           })}
         </ol>
       ) : (
-        <EmptyRow>{degraded ? degradedMessage : emptyMessage}</EmptyRow>
+        <EmptyRow>{degraded ? degradedMessage : scopedEmpty(lang, emptyMessage)}</EmptyRow>
       )}
     </section>
   );
@@ -414,7 +426,9 @@ type IndexRow = {
 
 /**
  * Ranked index shared by Topics and Links. Server order follows source
- * breadth, so the right-hand figure is sources. Volume stays in the reason.
+ * breadth, so the right-hand figure is that count. The why-now line is
+ * omitted: it would only repeat the figure or cite volume, which is not
+ * the order.
  */
 function RankedIndex({ rows }: { rows: IndexRow[] }) {
   return (
@@ -438,7 +452,7 @@ function RankedIndex({ rows }: { rows: IndexRow[] }) {
               <SourceFigure ranking={row.ranking} noun={row.figureNoun} className="ml-auto" />
             </div>
             <EvidenceLine
-              reasons={row.reasons}
+              reasons={reasonsBesideSourceFigure(row.ranking, row.reasons)}
               ranking={row.ranking}
               extra={row.extra}
               className="mt-1"
@@ -470,10 +484,12 @@ function authorsQualifier(
 function TopicsIndex({
   hashtags,
   window,
+  lang,
   headingId = "ideas-gaining-ground",
 }: {
   hashtags: HashtagEntry[];
   window: StatsWindow;
+  lang?: string;
   headingId?: string;
 }) {
   const rows = hashtags
@@ -500,12 +516,15 @@ function TopicsIndex({
         kicker="Ideas"
         title="Gaining ground"
         headingId={headingId}
-        action={{ href: `/trending/hashtags?window=${window}`, label: "Topic index" }}
+        action={{
+          href: buildDiscoverHref("/trending/hashtags", { window, lang }),
+          label: "Topic index",
+        }}
       />
       {rows.length > 0 ? (
         <RankedIndex rows={rows} />
       ) : (
-        <EmptyRow>No topics gaining ground in this window.</EmptyRow>
+        <EmptyRow>{scopedEmpty(lang, "No topics gaining ground in this window.")}</EmptyRow>
       )}
     </section>
   );
@@ -514,10 +533,12 @@ function TopicsIndex({
 function LinksIndex({
   domains,
   window,
+  lang,
   headingId = "links-circulating",
 }: {
   domains: DomainEntry[];
   window: StatsWindow;
+  lang?: string;
   headingId?: string;
 }) {
   const rows = domains
@@ -548,12 +569,15 @@ function LinksIndex({
         kicker="Links"
         title="Links circulating"
         headingId={headingId}
-        action={{ href: `/trending/domains?window=${window}`, label: "Link index" }}
+        action={{
+          href: buildDiscoverHref("/trending/domains", { window, lang }),
+          label: "Link index",
+        }}
       />
       {rows.length > 0 ? (
         <RankedIndex rows={rows} />
       ) : (
-        <EmptyRow>No links circulating in this window.</EmptyRow>
+        <EmptyRow>{scopedEmpty(lang, "No links circulating in this window.")}</EmptyRow>
       )}
     </section>
   );
@@ -563,12 +587,14 @@ function LeadSection({
   lead,
   authorsByPubkey,
   sectionFailed,
+  lang,
   headingId,
   contentResolution,
 }: {
   lead?: EventRecord;
   authorsByPubkey: Record<string, Profile>;
   sectionFailed: boolean;
+  lang?: string;
   headingId: string;
   contentResolution?: NoteContentResolution;
 }) {
@@ -596,7 +622,7 @@ function LeadSection({
         <div className="border-edge/70 text-ink-muted border-y py-12 text-sm">
           {sectionFailed
             ? "The note ranking is temporarily unavailable."
-            : "No clear note movement in this window."}
+            : scopedEmpty(lang, "No clear note movement in this window.")}
         </div>
       )}
     </section>
@@ -607,12 +633,14 @@ function SupportingNotes({
   notes,
   authorsByPubkey,
   window,
+  lang,
   headingId,
   contentResolution,
 }: {
   notes: EventRecord[];
   authorsByPubkey: Record<string, Profile>;
   window: StatsWindow;
+  lang?: string;
   headingId: string;
   contentResolution?: NoteContentResolution;
 }) {
@@ -623,7 +651,10 @@ function SupportingNotes({
           kicker="Notes"
           title="Also moving"
           headingId={headingId}
-          action={{ href: `/trending/notes?window=${window}`, label: "All notes" }}
+          action={{
+            href: buildDiscoverHref("/trending/notes", { window, lang }),
+            label: "All notes",
+          }}
         />
       </div>
       {notes.map((note, index) => (
@@ -649,6 +680,7 @@ export async function EditorialOverview({
   pulseStats,
   sectionFailures,
   window,
+  lang,
 }: {
   notes: EventRecord[];
   profiles: Profile[];
@@ -665,6 +697,7 @@ export async function EditorialOverview({
     domains: boolean;
   };
   window: StatsWindow;
+  lang?: string;
 }) {
   const lead = notes[0];
   const followups = selectSupportingNotes(notes);
@@ -690,6 +723,7 @@ export async function EditorialOverview({
           lead={lead}
           authorsByPubkey={authorsByPubkey}
           sectionFailed={sectionFailures.notes}
+          lang={lang}
           headingId="leading-signal"
           contentResolution={contentResolution}
         />
@@ -697,6 +731,7 @@ export async function EditorialOverview({
           notes={followups}
           authorsByPubkey={authorsByPubkey}
           window={window}
+          lang={lang}
           headingId="supporting-notes"
           contentResolution={contentResolution}
         />
@@ -707,23 +742,35 @@ export async function EditorialOverview({
           profiles={profiles}
           degraded={sectionFailures.profiles}
           window={window}
+          lang={lang}
           headingId="profiles-in-motion"
         />
         <ProfileRanking
           profiles={risingProfiles}
           degraded={sectionFailures.risingProfiles}
           window={window}
+          lang={lang}
           headingId="up-and-coming"
           title="Up and coming"
-          fullRankingHref={`/discovery/profiles/rising?window=${window}`}
+          fullRankingHref={buildDiscoverHref("/discovery/profiles/rising", { window, lang })}
           emptyMessage="No small accounts gaining ground yet."
           degradedMessage="Up-and-coming profiles are temporarily unavailable."
         />
       </div>
 
       <div className="grid items-start gap-14 lg:grid-cols-2 lg:gap-16 xl:gap-20">
-        <TopicsIndex hashtags={visibleHashtags} window={window} headingId="ideas-gaining-ground" />
-        <LinksIndex domains={visibleDomains} window={window} headingId="links-circulating" />
+        <TopicsIndex
+          hashtags={visibleHashtags}
+          window={window}
+          lang={lang}
+          headingId="ideas-gaining-ground"
+        />
+        <LinksIndex
+          domains={visibleDomains}
+          window={window}
+          lang={lang}
+          headingId="links-circulating"
+        />
       </div>
 
       <NetworkPulseStrip title="Network pulse" stats={pulseStats} />

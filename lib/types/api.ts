@@ -32,6 +32,17 @@ export interface DiscoveryListMeta {
   confidence?: DiscoveryConfidence;
 }
 
+export interface LanguageCount {
+  language: string;
+  count: number;
+}
+
+/** Global note counts by language. Present on every discovery response. */
+export interface TopLanguages {
+  "24h"?: LanguageCount[];
+  "7d"?: LanguageCount[];
+}
+
 export interface NativeApiSemantics {
   consistency?: Consistency | string;
   trust_mode?: TrustMode;
@@ -42,6 +53,10 @@ export interface NativeApiSemantics {
   degraded_reason?: string;
   next_cursor?: string;
   window?: string;
+  /** Echoed when the request included `lang`. */
+  language?: string;
+  /** Selector source. On discovery/home this is also under sections.network_summary. */
+  top_languages?: TopLanguages;
   computed_at?: string;
   ranking_version?: string;
   meta?: DiscoveryListMeta;

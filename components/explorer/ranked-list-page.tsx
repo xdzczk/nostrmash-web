@@ -9,8 +9,9 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { SectionCard } from "@/components/ui/section-card";
 import type { DiscoverMode, DiscoverView } from "@/lib/discover/views";
 import { absoluteUrl } from "@/lib/seo/metadata";
+import { LANGUAGE_EMPTY_MESSAGE } from "@/lib/search-params/language";
 import type { StatsWindow } from "@/lib/search-params/window";
-import type { NativeApiSemantics } from "@/lib/types/api";
+import type { NativeApiSemantics, TopLanguages } from "@/lib/types/api";
 
 export function RankedListPage({
   discoverView,
@@ -21,6 +22,8 @@ export function RankedListPage({
   path,
   searchParams,
   window,
+  language,
+  topLanguages,
   semantics,
   heroExtraBadges,
   sectionTitle,
@@ -44,6 +47,8 @@ export function RankedListPage({
   path: string;
   searchParams: URLSearchParams;
   window: StatsWindow;
+  language?: string;
+  topLanguages?: TopLanguages;
   semantics: NativeApiSemantics;
   heroExtraBadges?: ReactNode;
   sectionTitle?: string;
@@ -59,6 +64,8 @@ export function RankedListPage({
   debugPayload: unknown;
   itemListUrls?: string[];
 }) {
+  const resolvedEmptyTitle = language ? "" : emptyTitle;
+  const resolvedEmptyMessage = language ? LANGUAGE_EMPTY_MESSAGE : emptyMessage;
   return (
     <DiscoverShell
       view={discoverView}
@@ -69,6 +76,8 @@ export function RankedListPage({
       path={path}
       searchParams={searchParams}
       window={window}
+      language={language}
+      topLanguages={topLanguages}
       errorMessage={errorMessage}
       hasContent={hasItems}
       heroSupport={heroExtraBadges}
@@ -92,8 +101,8 @@ export function RankedListPage({
           <RankedListBody
             hasItems={hasItems}
             errorMessage={errorMessage}
-            emptyTitle={emptyTitle}
-            emptyMessage={emptyMessage}
+            emptyTitle={resolvedEmptyTitle}
+            emptyMessage={resolvedEmptyMessage}
             continuationHref={continuationHref}
             continuationLabel={continuationLabel}
             footer={footer}
@@ -105,8 +114,8 @@ export function RankedListPage({
         <RankedListBody
           hasItems={hasItems}
           errorMessage={errorMessage}
-          emptyTitle={emptyTitle}
-          emptyMessage={emptyMessage}
+          emptyTitle={resolvedEmptyTitle}
+          emptyMessage={resolvedEmptyMessage}
           continuationHref={continuationHref}
           continuationLabel={continuationLabel}
           footer={footer}

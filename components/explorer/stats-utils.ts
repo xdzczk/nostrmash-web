@@ -349,6 +349,22 @@ export function rankRelayActivity(
     .map((entry, index) => ({ ...entry, rank: index + 1 }));
 }
 
+/** First numeric stat whose flattened label is the key, or ends with `_${key}`. */
+export function readStatNumber(payload: unknown, keys: string[]): number | null {
+  const stats = flattenPrimitiveStats(payload);
+  for (const key of keys) {
+    const exact = stats.find((stat) => stat.label === key && typeof stat.value === "number");
+    if (exact && typeof exact.value === "number") return exact.value;
+  }
+  for (const key of keys) {
+    const suffixed = stats.find(
+      (stat) => stat.label.endsWith(`_${key}`) && typeof stat.value === "number"
+    );
+    if (suffixed && typeof suffixed.value === "number") return suffixed.value;
+  }
+  return null;
+}
+
 export function readMetricNumber(
   metrics: Record<string, string | number | boolean>,
   ...keys: string[]

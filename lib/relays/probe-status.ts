@@ -46,3 +46,19 @@ export function recordedProbeStatus(relay: RelayProbeHealthEntry): string | null
 export function probeNeedsAttention(relay: RelayProbeHealthEntry): boolean {
   return displayProbeStatus(relay) !== "ok";
 }
+
+/** Reader-facing label for a probe status. */
+export function probeStatusLabel(status: string): string {
+  switch (status) {
+    case "ok":
+      return "Connected";
+    case "connect failed":
+      return "Could not connect";
+    case "subscribe failed":
+      return "Could not subscribe";
+    case "end of events failed":
+      return "Did not finish reading";
+    default:
+      return status;
+  }
+}

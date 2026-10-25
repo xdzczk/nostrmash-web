@@ -5,6 +5,7 @@ import { DomainChip } from "@/components/explorer/domain-chip";
 import { pickPrimaryDomainSupportingSignal } from "@/components/explorer/domain-supporting-signal";
 import { HashtagChip } from "@/components/explorer/hashtag-chip";
 import { NoteCard } from "@/components/explorer/note-card";
+import type { NoteMediaVariant } from "@/components/explorer/note-media";
 import { SourceFigure } from "@/components/explorer/source-figure";
 import { mapDomainWhyNow, mapHashtagWhyNow, WhyNow } from "@/components/explorer/why-now";
 import {
@@ -14,7 +15,7 @@ import {
 } from "@/components/explorer/utils";
 import { ProfileCard } from "@/components/explorer/profile-card";
 import { isLongFormEvent } from "@/components/explorer/article-meta";
-import { belowVolumeFloor, listedVolume } from "@/lib/discover/reasons";
+import { belowVolumeFloor, listedVolume, reasonsBesideSourceFigure } from "@/lib/discover/reasons";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import {
   type DomainEntry,
@@ -46,6 +47,8 @@ export async function NotesList({
   showUtilityLinks = true,
   omitZeroStats = false,
   compactMedia = false,
+  mediaVariant,
+  suppressEmbeds,
 }: {
   notes: EventRecord[];
   authorsByPubkey?: Record<string, Profile>;
@@ -59,6 +62,10 @@ export async function NotesList({
   omitZeroStats?: boolean;
   /** Square thumbnail instead of full-bleed media. */
   compactMedia?: boolean;
+  /** Overrides the list thumbnail. Profile notes use `feed`. */
+  mediaVariant?: NoteMediaVariant;
+  /** Hide link-unfurl cards. Defaults on for compact thumbnail lists. */
+  suppressEmbeds?: boolean;
 }) {
   const contentResolution = await resolveContentReferences(notes).catch(() => undefined);
   if (contentResolution && authorsByPubkey) {
@@ -99,8 +106,8 @@ export async function NotesList({
               showAuthor={showAuthor}
               showUtilityLinks={showUtilityLinks}
               omitZeroStats={omitZeroStats}
-              mediaVariant={compactMedia ? "compact" : undefined}
-              suppressEmbeds={compactMedia}
+              mediaVariant={mediaVariant ?? (compactMedia ? "compact" : undefined)}
+              suppressEmbeds={suppressEmbeds ?? compactMedia}
             />
           )}
         </li>
@@ -256,7 +263,12 @@ export function HashtagsList({
               ) : (
                 <span className="text-ink text-base font-medium">#{entry.hashtag}</span>
               )}
-              <WhyNow reasons={entry.whyNow} maxReasons={1} showLabel={false} className="mt-1.5" />
+              <WhyNow
+                reasons={reasonsBesideSourceFigure(entry.ranking, entry.whyNow)}
+                maxReasons={1}
+                showLabel={false}
+                className="mt-1.5"
+              />
             </div>
             <SourceFigure ranking={entry.ranking} noun="authors" className="pt-0.5" />
           </li>
@@ -370,7 +382,12 @@ export function DomainsList({
               ) : (
                 <span className="text-ink text-base font-medium">{entry.domain}</span>
               )}
-              <WhyNow reasons={entry.whyNow} maxReasons={1} showLabel={false} className="mt-1.5" />
+              <WhyNow
+                reasons={reasonsBesideSourceFigure(entry.ranking, entry.whyNow)}
+                maxReasons={1}
+                showLabel={false}
+                className="mt-1.5"
+              />
             </div>
             <SourceFigure ranking={entry.ranking} className="pt-0.5" />
           </li>

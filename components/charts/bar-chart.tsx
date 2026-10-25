@@ -64,9 +64,7 @@ export function BarChart({
               rx={1.5}
               className="fill-accent/70"
             >
-              <title>
-                {formatSeriesTick(point.t)} — {point.v.toLocaleString()}
-              </title>
+              <title>{`${formatSeriesTick(point.t)} — ${point.v.toLocaleString()}`}</title>
             </rect>
           );
         })}

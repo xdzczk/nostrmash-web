@@ -2,7 +2,16 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import { EnlargeableImage } from "@/components/ui/image-lightbox";
+import { EnlargeableImage, fittedMediaSize } from "@/components/ui/image-lightbox";
+
+describe("fittedMediaSize", () => {
+  it("fills the stage on the limiting side and scales small pictures up", () => {
+    expect(fittedMediaSize(2000, 1000, 1000, 800)).toEqual({ width: 1000, height: 500 });
+    expect(fittedMediaSize(739, 1600, 1200, 800)).toEqual({ width: 369, height: 800 });
+    expect(fittedMediaSize(240, 180, 1000, 800)).toEqual({ width: 1000, height: 750 });
+    expect(fittedMediaSize(0, 100, 100, 100)).toBeNull();
+  });
+});
 
 describe("EnlargeableImage", () => {
   it("opens a dialog on click and closes on Escape", async () => {

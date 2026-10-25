@@ -8,6 +8,23 @@ export function absoluteUrl(pathname: string): string {
   return `${base}${path}`;
 }
 
+/** Point a language-filtered Discover URL at the unfiltered page and keep it out of the index. */
+export function withLanguageVariantMetadata(
+  metadata: Metadata,
+  lang: string | undefined,
+  path: string
+): Metadata {
+  if (!lang) return metadata;
+  return {
+    ...metadata,
+    robots: { index: false },
+    alternates: {
+      ...metadata.alternates,
+      canonical: absoluteUrl(path),
+    },
+  };
+}
+
 export function buildEntityMetadata(input: {
   title: string;
   description: string;
