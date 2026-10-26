@@ -3,7 +3,14 @@ import type { Metadata } from "next";
 import { DomainsList } from "@/components/data/renderers";
 import { RankedListPage } from "@/components/explorer/ranked-list-page";
 import { getTrendingDomains } from "@/lib/api/endpoints";
+import { loadMoreRanking } from "@/lib/explorer/load-more-ranking";
+import {
+  rankedListRequest,
+  rankedPageContinuation,
+  readRankedOffset,
+} from "@/lib/explorer/ranked-pagination";
 import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
+import { buildContinuationHref } from "@/lib/search-params/pagination";
 import { readLanguage } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
@@ -34,17 +41,14 @@ export default async function TrendingDomainsPage({
   const path = "/trending/domains";
   const resolvedSearchParams = await searchParams;
   const language = await applyDiscoverLanguage(path, resolvedSearchParams);
-  const { cursor, window, currentSearchParams, buildCursorContinuation } = readRankedListContext(
-    resolvedSearchParams,
-    path
-  );
+  const { window, currentSearchParams } = readRankedListContext(resolvedSearchParams, path);
+  const offset = readRankedOffset(resolvedSearchParams);
   const { payload, errorMessage, semantics } = await loadRankedListPayload(
-    () =>
-      getTrendingDomains("shortTtl", { cursor, window, ...(language ? { lang: language } : {}) }),
+    () => getTrendingDomains("shortTtl", rankedListRequest(window, language, offset)),
     "Failed to load trending domains."
   );
   const domains = payload?.domains ?? [];
-  const nextCursor = payload?.next_cursor;
+  const continuation = rankedPageContinuation("domains", domains, offset);
   const itemListUrls = domains
     .map((entry) => {
       const domain =
@@ -69,16 +73,23 @@ export default async function TrendingDomainsPage({
       emptyTitle="No ranked domains yet"
       emptyMessage="Ranked domains have not populated for this window."
       hasItems={domains.length > 0}
+      loadMore={loadMoreRanking.bind(null, "domains", window, language ?? "")}
+      loadMoreCursor={continuation.token}
       continuationHref={
-        typeof nextCursor === "string" && nextCursor.length > 0
-          ? buildCursorContinuation(nextCursor)
+        continuation.nextOffset != null
+          ? buildContinuationHref(
+              path,
+              currentSearchParams,
+              "offset",
+              String(continuation.nextOffset)
+            )
           : undefined
       }
       continuationLabel="Load more domains"
       itemListUrls={itemListUrls}
       debugPayload={payload ?? {}}
     >
-      <DomainsList domains={domains} ranked searchable />
+      <DomainsList domains={domains} ranked searchable rankOffset={offset} />
     </RankedListPage>
   );
 }

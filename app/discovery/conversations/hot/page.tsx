@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import { DiscoverShell } from "@/components/discover/discover-shell";
+import { LoadMoreList } from "@/components/data/load-more-list";
 import { NotesList, ProfilesList } from "@/components/data/renderers";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
@@ -9,6 +10,12 @@ import { AboutThisData } from "@/components/explorer/about-this-data";
 import { SectionCard } from "@/components/ui/section-card";
 import { getHotConversations } from "@/lib/api/endpoints";
 import { presentConversations } from "@/lib/discover/conversation-order";
+import { loadMoreRanking } from "@/lib/explorer/load-more-ranking";
+import {
+  rankedListRequest,
+  rankedPageContinuation,
+  readRankedOffset,
+} from "@/lib/explorer/ranked-pagination";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
@@ -18,11 +25,7 @@ import {
   readLanguage,
 } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
-import {
-  buildContinuationHref,
-  readSearchParam,
-  toUrlSearchParams,
-} from "@/lib/search-params/pagination";
+import { buildContinuationHref, toUrlSearchParams } from "@/lib/search-params/pagination";
 import { readStatsWindow } from "@/lib/search-params/window";
 import { withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import { formatUpdatedRelative } from "@/lib/time/freshness";
@@ -53,7 +56,7 @@ export default async function HotConversationsPage({
   const path = "/discovery/conversations/hot";
   const resolvedSearchParams = await searchParams;
   const language = await applyDiscoverLanguage(path, resolvedSearchParams);
-  const cursor = readSearchParam(resolvedSearchParams, "cursor");
+  const offset = readRankedOffset(resolvedSearchParams);
   const window = readStatsWindow(resolvedSearchParams);
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   let errorMessage = "";
@@ -62,23 +65,19 @@ export default async function HotConversationsPage({
   let activeProfiles: Profile[] = [];
 
   try {
-    payload = await getHotConversations("shortTtl", {
-      cursor,
-      window,
-      ...(language ? { lang: language } : {}),
-    });
+    payload = await getHotConversations("shortTtl", rankedListRequest(window, language, offset));
   } catch (error) {
     errorMessage = toUserFacingErrorMessage(error, "Failed to load hot conversations.");
   }
 
-  const notes = presentConversations(payload?.notes ?? []);
+  const rawNotes = payload?.notes ?? [];
+  const notes = presentConversations(rawNotes);
   const semantics = extractNativeApiSemantics(payload);
-  const continuationHref = buildContinuationHref(
-    path,
-    currentSearchParams,
-    "cursor",
-    payload?.next_cursor
-  );
+  const continuation = rankedPageContinuation("conversations", rawNotes, offset);
+  const continuationHref =
+    continuation.nextOffset != null
+      ? buildContinuationHref(path, currentSearchParams, "offset", String(continuation.nextOffset))
+      : undefined;
   if (notes.length > 0) {
     const authorPubkeys = extractEventAuthorPubkeys(notes);
     if (authorPubkeys.length > 0) {
@@ -112,7 +111,13 @@ export default async function HotConversationsPage({
     >
       <div>
         {notes.length > 0 ? (
-          <NotesList notes={notes} authorsByPubkey={authorsByPubkey} ranked conversation />
+          <NotesList
+            notes={notes}
+            authorsByPubkey={authorsByPubkey}
+            ranked
+            conversation
+            rankOffset={offset}
+          />
         ) : !errorMessage ? (
           <EmptyState
             title={language ? undefined : "No hot conversations available"}
@@ -123,10 +128,23 @@ export default async function HotConversationsPage({
             }
           />
         ) : null}
-        {typeof payload?.next_cursor === "string" && payload.next_cursor.length > 0 ? (
-          <Link href={continuationHref} className="text-link mt-3 inline-block text-sm">
-            Load more conversations
-          </Link>
+        {continuation.token ? (
+          <>
+            <LoadMoreList
+              key={continuation.token}
+              auto
+              initialCursor={continuation.token}
+              loadMore={loadMoreRanking.bind(null, "conversations", window, language ?? "")}
+              label="Load more conversations"
+            />
+            {continuationHref ? (
+              <noscript>
+                <Link href={continuationHref} className="text-link mt-3 inline-block text-sm">
+                  Load more conversations
+                </Link>
+              </noscript>
+            ) : null}
+          </>
         ) : null}
       </div>
 

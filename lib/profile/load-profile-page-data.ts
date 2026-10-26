@@ -193,9 +193,11 @@ export async function loadProfileActivityData(
     profileRoute: string;
     summaryRecord: Record<string, unknown> | null;
   },
-  resolvedSearchParams: Record<string, string | string[] | undefined>
+  resolvedSearchParams: Record<string, string | string[] | undefined>,
+  options?: { focused?: boolean }
 ) {
   const params = readActivitySearchParams(resolvedSearchParams);
+  const shouldLoadNotes = options?.focused !== true || params.activityTab === "notes";
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   const errors: string[] = [];
 
@@ -222,7 +224,9 @@ export async function loadProfileActivityData(
   ] = await Promise.allSettled([
     // kind=1 keeps reposts/reactions/long-form from consuming the notes-tab
     // budget; filterAuthoredNotes below still removes kind-1 replies.
-    getAuthorEvents(lookupKey, "shortTtl", { cursor: params.notesCursor, kind: 1 }),
+    shouldLoadNotes
+      ? getAuthorEvents(lookupKey, "shortTtl", { cursor: params.notesCursor, kind: 1 })
+      : Promise.resolve(null),
     params.shouldLoadReplies
       ? getAuthorReplies(lookupKey, "shortTtl", { cursor: params.repliesCursor })
       : Promise.resolve(null),

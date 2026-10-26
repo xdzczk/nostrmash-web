@@ -5,8 +5,15 @@ import { ProfilesList } from "@/components/data/renderers";
 import { RankedListPage } from "@/components/explorer/ranked-list-page";
 import { getRisingProfiles } from "@/lib/api/endpoints";
 import { hydrateProfiles } from "@/lib/api/profile-hydration";
+import { loadMoreRanking } from "@/lib/explorer/load-more-ranking";
+import {
+  rankedListRequest,
+  rankedPageContinuation,
+  readRankedOffset,
+} from "@/lib/explorer/ranked-pagination";
 import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
 import { buildLanguageHref, readLanguage } from "@/lib/search-params/language";
+import { buildContinuationHref } from "@/lib/search-params/pagination";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
@@ -33,17 +40,14 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
   const path = "/discovery/profiles/rising";
   const resolvedSearchParams = await searchParams;
   const language = await applyDiscoverLanguage(path, resolvedSearchParams);
-  const { cursor, window, currentSearchParams, buildCursorContinuation } = readRankedListContext(
-    resolvedSearchParams,
-    path
-  );
+  const { window, currentSearchParams } = readRankedListContext(resolvedSearchParams, path);
+  const offset = readRankedOffset(resolvedSearchParams);
   const { payload, errorMessage, semantics } = await loadRankedListPayload(
-    () =>
-      getRisingProfiles("shortTtl", { cursor, window, ...(language ? { lang: language } : {}) }),
+    () => getRisingProfiles("shortTtl", rankedListRequest(window, language, offset)),
     "Failed to load rising profiles."
   );
   const sourceProfiles = payload?.profiles ?? [];
-  const nextCursor = payload?.next_cursor;
+  const continuation = rankedPageContinuation("rising", sourceProfiles, offset);
 
   let hydratedProfiles: Profile[] = [];
   if (sourceProfiles.length > 0) {
@@ -71,9 +75,16 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
       emptyTitle="No up-and-coming profiles available"
       emptyMessage="The API did not return up-and-coming profiles for this window."
       hasItems={hydratedProfiles.length > 0}
+      loadMore={loadMoreRanking.bind(null, "rising", window, language ?? "")}
+      loadMoreCursor={continuation.token}
       continuationHref={
-        typeof nextCursor === "string" && nextCursor.length > 0
-          ? buildCursorContinuation(nextCursor)
+        continuation.nextOffset != null
+          ? buildContinuationHref(
+              path,
+              currentSearchParams,
+              "offset",
+              String(continuation.nextOffset)
+            )
           : undefined
       }
       continuationLabel="Load more up-and-coming profiles"
@@ -99,7 +110,7 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
       }
       debugPayload={payload ?? {}}
     >
-      <ProfilesList profiles={hydratedProfiles} ranked discoverySignals />
+      <ProfilesList profiles={hydratedProfiles} ranked discoverySignals rankOffset={offset} />
     </RankedListPage>
   );
 }

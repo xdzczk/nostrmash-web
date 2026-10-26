@@ -2,8 +2,15 @@ import type { Metadata } from "next";
 
 import { HashtagsList } from "@/components/data/renderers";
 import { RankedListPage } from "@/components/explorer/ranked-list-page";
-import { getDiscoveryHome, HOME_INDEX_LIMIT } from "@/lib/api/endpoints";
+import { getTrendingHashtags } from "@/lib/api/endpoints";
+import { loadMoreRanking } from "@/lib/explorer/load-more-ranking";
+import {
+  rankedListRequest,
+  rankedPageContinuation,
+  readRankedOffset,
+} from "@/lib/explorer/ranked-pagination";
 import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
+import { buildContinuationHref } from "@/lib/search-params/pagination";
 import { readLanguage } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
@@ -37,16 +44,13 @@ export default async function TrendingHashtagsPage({
   const resolvedSearchParams = await searchParams;
   const language = await applyDiscoverLanguage(path, resolvedSearchParams);
   const { window, currentSearchParams } = readRankedListContext(resolvedSearchParams, path);
+  const offset = readRankedOffset(resolvedSearchParams);
   const { payload, errorMessage, semantics } = await loadRankedListPayload(
-    () =>
-      getDiscoveryHome("shortTtl", {
-        window,
-        hashtags_limit: HOME_INDEX_LIMIT,
-        ...(language ? { lang: language } : {}),
-      }),
+    () => getTrendingHashtags("shortTtl", rankedListRequest(window, language, offset)),
     "Failed to load topics."
   );
   const hashtags = payload?.hashtags ?? [];
+  const continuation = rankedPageContinuation("hashtags", hashtags, offset);
   const itemListUrls = hashtags
     .map((entry) => {
       const tag =
@@ -71,10 +75,23 @@ export default async function TrendingHashtagsPage({
       emptyTitle="No ranked hashtags yet"
       emptyMessage="Ranked hashtags have not populated for this window."
       hasItems={hashtags.length > 0}
+      loadMore={loadMoreRanking.bind(null, "hashtags", window, language ?? "")}
+      loadMoreCursor={continuation.token}
+      continuationHref={
+        continuation.nextOffset != null
+          ? buildContinuationHref(
+              path,
+              currentSearchParams,
+              "offset",
+              String(continuation.nextOffset)
+            )
+          : undefined
+      }
+      continuationLabel="Load more topics"
       itemListUrls={itemListUrls}
       debugPayload={payload ?? {}}
     >
-      <HashtagsList hashtags={hashtags} ranked searchable />
+      <HashtagsList hashtags={hashtags} ranked searchable rankOffset={offset} />
     </RankedListPage>
   );
 }

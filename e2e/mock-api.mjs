@@ -434,7 +434,37 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (path === "/api/v1/discovery/notes/trending") {
-    return json(res, 200, { notes: trendingNotes, consistency: "eventual" });
+    const offset = Number.parseInt(url.searchParams.get("offset") ?? "0", 10);
+    if (Number.isFinite(offset) && offset >= 20) {
+      return json(res, 200, {
+        notes:
+          offset >= 40
+            ? []
+            : [
+                {
+                  id: "21".padStart(64, "0"),
+                  pubkey: AUTHOR_PK,
+                  kind: 1,
+                  created_at: 1_698_000_000,
+                  content: "Mock ranking page 2",
+                  ranking: { rank: 1, score: 1, confidence: "low" },
+                },
+              ],
+        consistency: "eventual",
+      });
+    }
+    const filler = [];
+    for (let index = trendingNotes.length; index < 20; index += 1) {
+      filler.push({
+        id: String(index + 1).padStart(64, "0"),
+        pubkey: AUTHOR_PK,
+        kind: 1,
+        created_at: 1_700_000_000 - index,
+        content: `Mock ranking filler ${index}`,
+        ranking: { rank: index + 1, score: 1, confidence: "low" },
+      });
+    }
+    return json(res, 200, { notes: [...trendingNotes, ...filler], consistency: "eventual" });
   }
 
   if (path === "/api/v1/discovery/profiles/trending") {
@@ -544,6 +574,28 @@ const server = http.createServer(async (req, res) => {
 
   if (path.startsWith("/api/v1/relays")) {
     return json(res, 200, { relays: [{ host: "relay.example.com", event_count: 10 }] });
+  }
+
+  if (path.startsWith("/api/v1/authors/") && path.endsWith("/events")) {
+    if (url.searchParams.get("cursor") === "mock_author_notes_2") {
+      return json(res, 200, {
+        events: [
+          {
+            id: "9".repeat(64),
+            pubkey: AUTHOR_PK,
+            kind: 1,
+            created_at: 1_699_000_000,
+            content: "Mock profile notes page 2",
+          },
+        ],
+        consistency: "eventual",
+      });
+    }
+    return json(res, 200, {
+      events: trendingNotes,
+      next_cursor: "mock_author_notes_2",
+      consistency: "eventual",
+    });
   }
 
   if (path.startsWith("/api/v1/authors/") && path.endsWith("/replies")) {

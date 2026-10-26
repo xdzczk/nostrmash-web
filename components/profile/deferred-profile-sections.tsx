@@ -1,23 +1,21 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 
-import { ArticlesList, NotesList, ProfilesList } from "@/components/data/renderers";
+import { LoadMoreList } from "@/components/data/load-more-list";
 import { ProfileRelatedRail } from "@/components/profile/profile-related-rail";
+import { ProfileActivityFeed } from "@/components/profile/profile-activity-feed";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { isRecord } from "@/components/explorer/utils";
-import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { mapRelatedProfileReasons } from "@/components/explorer/why-now";
 import { ProfileActivityTabs } from "@/components/profile/profile-activity-tabs";
-import {
-  ProfileReactionsActivityList,
-  ProfileZapsActivityList,
-} from "@/components/profile/profile-engagement-activity-list";
-import { ProfileHighlightsList } from "@/components/profile/profile-highlights-list";
-import { ProfileRepliesList } from "@/components/profile/profile-replies-list";
 import { Pill } from "@/components/ui/pill";
 import { SectionCard } from "@/components/ui/section-card";
-import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
+import { loadMoreProfileActivity } from "@/app/profiles/[pubkeyOrNpub]/actions";
+import {
+  encodeProfileContinuation,
+  profileActivityAnchor,
+  profileActivityHasItems,
+} from "@/lib/profile/activity-continuation";
 import { activityEmptyCopy, suggestActivityTab } from "@/lib/profile/activity-empty-state";
 import { PROFILE_ACTIVITY_TABS, type ProfileActivityTab } from "@/lib/profile/activity-tabs";
 import {
@@ -68,27 +66,6 @@ function readSummaryStats(
   };
 }
 
-async function engagementLineResolution(
-  data: Awaited<ReturnType<typeof loadProfileActivityData>>
-): Promise<NoteContentResolution | undefined> {
-  const inputs =
-    data.activityTab === "replies"
-      ? [...data.replies, ...Object.values(data.replyParentsById)]
-      : data.activityTab === "reactions" || data.activityTab === "zaps"
-        ? Object.values(data.targetNotesById)
-        : [];
-  if (inputs.length === 0) return undefined;
-  const resolution = await resolveContentReferences(inputs).catch(() => undefined);
-  if (!resolution) return undefined;
-  resolution.profilesByPubkey = {
-    ...resolution.profilesByPubkey,
-    ...data.notesAuthorMap,
-    ...data.replyParentAuthorsByPubkey,
-    ...data.targetNoteAuthorsByPubkey,
-  };
-  return resolution;
-}
-
 export async function DeferredProfileActivity({
   lookupKey,
   profile,
@@ -107,125 +84,12 @@ export async function DeferredProfileActivity({
     searchParams
   );
   const stats = readSummaryStats(summaryRecord);
-  const engagementResolution = await engagementLineResolution(data);
-  const empty = (tab: ProfileActivityTab) => (
-    <ActivityEmpty tab={tab} tabs={data.activityTabs} stats={stats} />
-  );
-
-  let panel: ReactNode = null;
-  switch (data.activityTab) {
-    case "notes":
-      panel =
-        data.notes.length > 0 ? (
-          <NotesList
-            notes={data.notes}
-            authorsByPubkey={data.notesAuthorMap}
-            showAuthor={false}
-            showUtilityLinks={false}
-            omitZeroStats
-            mediaVariant="feed"
-            suppressEmbeds
-          />
-        ) : (
-          empty("notes")
-        );
-      break;
-    case "replies":
-      panel =
-        data.replies.length > 0 ? (
-          <ProfileRepliesList
-            replies={data.replies}
-            parentsById={data.replyParentsById}
-            authorsByPubkey={{
-              ...data.notesAuthorMap,
-              ...data.replyParentAuthorsByPubkey,
-            }}
-            resolution={engagementResolution}
-          />
-        ) : (
-          empty("replies")
-        );
-      break;
-    case "reactions":
-      panel =
-        data.reactions.length > 0 ? (
-          <ProfileReactionsActivityList
-            reactions={data.reactions}
-            targetNotesById={data.targetNotesById}
-            authorsByPubkey={{ ...data.notesAuthorMap, ...data.targetNoteAuthorsByPubkey }}
-            resolution={engagementResolution}
-          />
-        ) : (
-          empty("reactions")
-        );
-      break;
-    case "zaps":
-      panel =
-        data.zaps.length > 0 ? (
-          <ProfileZapsActivityList
-            zaps={data.zaps}
-            targetNotesById={data.targetNotesById}
-            authorsByPubkey={{ ...data.notesAuthorMap, ...data.targetNoteAuthorsByPubkey }}
-            resolution={engagementResolution}
-          />
-        ) : (
-          empty("zaps")
-        );
-      break;
-    case "long_form":
-      panel =
-        data.longFormArticles.length > 0 ? (
-          <ArticlesList
-            articles={data.longFormArticles}
-            authorsByPubkey={{ ...data.notesAuthorMap, ...data.eventListAuthorsByPubkey }}
-            showAuthor={false}
-            showUtilityLinks={false}
-            omitZeroStats
-          />
-        ) : (
-          empty("long_form")
-        );
-      break;
-    case "bookmarks":
-      panel =
-        data.bookmarks.length > 0 ? (
-          <NotesList
-            notes={data.bookmarks}
-            authorsByPubkey={{ ...data.notesAuthorMap, ...data.eventListAuthorsByPubkey }}
-            showUtilityLinks={false}
-            omitZeroStats
-            mediaVariant="feed"
-            suppressEmbeds
-          />
-        ) : (
-          empty("bookmarks")
-        );
-      break;
-    case "highlights":
-      panel =
-        data.highlights.length > 0 ? (
-          <ProfileHighlightsList highlights={data.highlights} />
-        ) : (
-          empty("highlights")
-        );
-      break;
-    case "mute_list":
-      panel =
-        data.mutedProfiles.length > 0 ? (
-          <ProfilesList profiles={data.mutedProfiles} />
-        ) : (
-          empty("mute_list")
-        );
-      break;
-    case "muted_by":
-      panel =
-        data.mutedByProfiles.length > 0 ? (
-          <ProfilesList profiles={data.mutedByProfiles} />
-        ) : (
-          empty("muted_by")
-        );
-      break;
-  }
+  const hasItems = profileActivityHasItems(data);
+  const continuationToken =
+    hasItems && typeof data.activeNextCursor === "string" && data.activeNextCursor.length > 0
+      ? encodeProfileContinuation(data.activeNextCursor, profileActivityAnchor(data))
+      : undefined;
+  const tabLabel = data.activeTabMeta?.label.toLowerCase() ?? "activity";
 
   return (
     <div id="profile-activity">
@@ -233,19 +97,29 @@ export async function DeferredProfileActivity({
         <div className="space-y-4">
           <ProfileActivityTabs activeTab={data.activityTab} tabs={data.activityTabs}>
             <div className="space-y-4">
-              {panel}
-              {typeof data.activeNextCursor === "string" && data.activeNextCursor.length > 0 ? (
-                <div className="border-accent/30 bg-accent/10 rounded-md border p-3">
-                  <p className="text-accent-ink text-xs">
-                    More {data.activeTabMeta?.label.toLowerCase() ?? "activity"} are available.
-                  </p>
-                  <Link
-                    href={data.activeContinuationHref}
-                    className="border-accent/40 text-link-hover hover:text-accent-ink mt-2 inline-block rounded-full border px-3 py-1 text-xs"
-                  >
-                    Continue {data.activeTabMeta?.label.toLowerCase() ?? "activity"}
-                  </Link>
-                </div>
+              {hasItems ? (
+                <ProfileActivityFeed data={data} />
+              ) : (
+                <ActivityEmpty tab={data.activityTab} tabs={data.activityTabs} stats={stats} />
+              )}
+              {continuationToken ? (
+                <>
+                  <LoadMoreList
+                    key={`${data.activityTab}:${continuationToken}`}
+                    auto
+                    initialCursor={continuationToken}
+                    loadMore={loadMoreProfileActivity.bind(null, lookupKey, data.activityTab)}
+                    label={`Load more ${tabLabel}`}
+                  />
+                  <noscript>
+                    <Link
+                      href={data.activeContinuationHref}
+                      className="border-accent/40 text-link-hover hover:text-accent-ink mt-2 inline-block rounded-full border px-3 py-1 text-xs"
+                    >
+                      Continue {tabLabel}
+                    </Link>
+                  </noscript>
+                </>
               ) : null}
             </div>
           </ProfileActivityTabs>

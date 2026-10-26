@@ -43,7 +43,7 @@ import {
   getUserMuteList,
   getUserMutedBy,
 } from "@/lib/api/endpoints";
-import { loadProfilePageData } from "@/lib/profile/load-profile-page-data";
+import { loadProfileActivityData, loadProfilePageData } from "@/lib/profile/load-profile-page-data";
 
 const mocked = {
   getProfileSummary: vi.mocked(getProfileSummary),
@@ -111,6 +111,34 @@ describe("loadProfilePageData", () => {
       "shortTtl",
       expect.objectContaining({ kind: 1 })
     );
+  });
+
+  it("loads only the requested tab when fetching another activity page", async () => {
+    const pubkey = "a".repeat(64);
+    mocked.getAuthorReplies.mockResolvedValue({
+      replies: [{ id: "1".repeat(64), pubkey, kind: 1, content: "a reply" }],
+      next_cursor: "cursor-3",
+    });
+
+    const data = await loadProfileActivityData(
+      {
+        lookupKey: pubkey,
+        profile: { pubkey },
+        profileRoute: `/profiles/${pubkey}`,
+        summaryRecord: null,
+      },
+      { activity: "replies", replies_cursor: "cursor-2" },
+      { focused: true }
+    );
+
+    expect(mocked.getAuthorEvents).not.toHaveBeenCalled();
+    expect(mocked.getAuthorReactions).not.toHaveBeenCalled();
+    expect(mocked.getAuthorReplies).toHaveBeenCalledWith(pubkey, "shortTtl", {
+      cursor: "cursor-2",
+    });
+    expect(data.activityTab).toBe("replies");
+    expect(data.replies).toHaveLength(1);
+    expect(data.activeNextCursor).toBe("cursor-3");
   });
 
   it("captures summary failures as a user-facing error message", async () => {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { LoadMoreList, type LoadMoreChunk } from "@/components/data/load-more-list";
 import { DiscoverShell } from "@/components/discover/discover-shell";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
@@ -35,6 +36,8 @@ export function RankedListPage({
   children,
   continuationHref,
   continuationLabel = "Load more",
+  loadMore,
+  loadMoreCursor,
   footer,
   debugPayload,
   itemListUrls,
@@ -60,6 +63,9 @@ export function RankedListPage({
   children: ReactNode;
   continuationHref?: string;
   continuationLabel?: string;
+  /** Appends the next offset page in place as the reader scrolls. */
+  loadMore?: (cursor: string) => Promise<LoadMoreChunk>;
+  loadMoreCursor?: string;
   footer?: ReactNode;
   debugPayload: unknown;
   itemListUrls?: string[];
@@ -105,6 +111,8 @@ export function RankedListPage({
             emptyMessage={resolvedEmptyMessage}
             continuationHref={continuationHref}
             continuationLabel={continuationLabel}
+            loadMore={loadMore}
+            loadMoreCursor={loadMoreCursor}
             footer={footer}
           >
             {children}
@@ -118,6 +126,8 @@ export function RankedListPage({
           emptyMessage={resolvedEmptyMessage}
           continuationHref={continuationHref}
           continuationLabel={continuationLabel}
+          loadMore={loadMore}
+          loadMoreCursor={loadMoreCursor}
           footer={footer}
         >
           {children}
@@ -136,6 +146,8 @@ function RankedListBody({
   emptyMessage,
   continuationHref,
   continuationLabel,
+  loadMore,
+  loadMoreCursor,
   footer,
   children,
 }: {
@@ -145,9 +157,13 @@ function RankedListBody({
   emptyMessage: string;
   continuationHref?: string;
   continuationLabel: string;
+  loadMore?: (cursor: string) => Promise<LoadMoreChunk>;
+  loadMoreCursor?: string;
   footer?: ReactNode;
   children: ReactNode;
 }) {
+  const linkClass =
+    "border-edge/80 text-ink hover:text-accent-ink mt-6 inline-flex min-h-11 items-center gap-2 border-t pt-4 text-sm font-medium";
   return (
     <>
       {hasItems ? (
@@ -155,11 +171,26 @@ function RankedListBody({
       ) : errorMessage ? null : (
         <EmptyState title={emptyTitle} message={emptyMessage} />
       )}
-      {continuationHref ? (
-        <Link
-          href={continuationHref}
-          className="border-edge/80 text-ink hover:text-accent-ink mt-6 inline-flex min-h-11 items-center gap-2 border-t pt-4 text-sm font-medium"
-        >
+      {loadMore && loadMoreCursor ? (
+        <>
+          <LoadMoreList
+            key={loadMoreCursor}
+            auto
+            initialCursor={loadMoreCursor}
+            loadMore={loadMore}
+            label={continuationLabel}
+          />
+          {continuationHref ? (
+            <noscript>
+              <Link href={continuationHref} className={linkClass}>
+                {continuationLabel}
+                <span aria-hidden>→</span>
+              </Link>
+            </noscript>
+          ) : null}
+        </>
+      ) : continuationHref ? (
+        <Link href={continuationHref} className={linkClass}>
           {continuationLabel}
           <span aria-hidden>→</span>
         </Link>

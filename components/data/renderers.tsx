@@ -50,6 +50,7 @@ export async function NotesList({
   mediaVariant,
   suppressEmbeds,
   highlightTerms,
+  rankOffset = 0,
 }: {
   notes: EventRecord[];
   authorsByPubkey?: Record<string, Profile>;
@@ -69,6 +70,11 @@ export async function NotesList({
   suppressEmbeds?: boolean;
   /** Query terms marked inside note text. */
   highlightTerms?: string[];
+  /**
+   * Items skipped before this page. Discovery ranks restart at 1 on every
+   * offset page, so the displayed place is the page rank plus this offset.
+   */
+  rankOffset?: number;
 }) {
   const contentResolution = await resolveContentReferences(notes).catch(() => undefined);
   if (contentResolution && authorsByPubkey) {
@@ -87,7 +93,11 @@ export async function NotesList({
               article={note}
               author={getAuthorByPubkey(authorsByPubkey, note)}
               rank={
-                ranked ? (conversation ? index + 1 : (note.ranking?.rank ?? index + 1)) : undefined
+                ranked
+                  ? conversation
+                    ? rankOffset + index + 1
+                    : rankOffset + (note.ranking?.rank ?? index + 1)
+                  : undefined
               }
               discoverySignals={discoverySignals}
               contentResolution={contentResolution}
@@ -100,7 +110,11 @@ export async function NotesList({
               note={note}
               author={getAuthorByPubkey(authorsByPubkey, note)}
               rank={
-                ranked ? (conversation ? index + 1 : (note.ranking?.rank ?? index + 1)) : undefined
+                ranked
+                  ? conversation
+                    ? rankOffset + index + 1
+                    : rankOffset + (note.ranking?.rank ?? index + 1)
+                  : undefined
               }
               showFullContent={showFullContent}
               discoverySignals={discoverySignals}
@@ -128,6 +142,7 @@ export async function ArticlesList({
   showAuthor = true,
   showUtilityLinks = true,
   omitZeroStats = false,
+  rankOffset = 0,
 }: {
   articles: EventRecord[];
   authorsByPubkey?: Record<string, Profile>;
@@ -136,6 +151,8 @@ export async function ArticlesList({
   showAuthor?: boolean;
   showUtilityLinks?: boolean;
   omitZeroStats?: boolean;
+  /** Items skipped before this page. See `NotesList`. */
+  rankOffset?: number;
 }) {
   const contentResolution = await resolveContentReferences(articles).catch(() => undefined);
   if (contentResolution && authorsByPubkey) {
@@ -152,7 +169,7 @@ export async function ArticlesList({
           <ArticleCard
             article={article}
             author={getAuthorByPubkey(authorsByPubkey, article)}
-            rank={ranked ? (article.ranking?.rank ?? index + 1) : undefined}
+            rank={ranked ? rankOffset + (article.ranking?.rank ?? index + 1) : undefined}
             discoverySignals={discoverySignals}
             contentResolution={contentResolution}
             showAuthor={showAuthor}
@@ -172,6 +189,7 @@ export function ProfilesList({
   maxReasons,
   compact = false,
   searchContext = false,
+  rankOffset = 0,
 }: {
   profiles: Profile[];
   ranked?: boolean;
@@ -181,6 +199,8 @@ export function ProfilesList({
   compact?: boolean;
   /** Followers, recent notes, and nip05 under each search hit. */
   searchContext?: boolean;
+  /** Items skipped before this page. See `NotesList`. */
+  rankOffset?: number;
 }) {
   return (
     <ul>
@@ -188,7 +208,7 @@ export function ProfilesList({
         <li key={profile.pubkey ?? profile.npub ?? `profile-${index}`}>
           <ProfileCard
             profile={profile}
-            rank={ranked ? (profile.ranking?.rank ?? index + 1) : undefined}
+            rank={ranked ? rankOffset + (profile.ranking?.rank ?? index + 1) : undefined}
             discoverySignals={discoverySignals}
             maxReasons={maxReasons}
             compact={compact}
@@ -205,11 +225,17 @@ export function HashtagsList({
   ranked = false,
   searchable = false,
   linkMode = "explorer",
+  rankOffset = 0,
+  continued = false,
 }: {
   hashtags: Array<string | HashtagEntry>;
   ranked?: boolean;
   searchable?: boolean;
   linkMode?: "explorer" | "search";
+  /** Items skipped before this page. See `NotesList`. */
+  rankOffset?: number;
+  /** Drop the top rule so an appended page continues the same list. */
+  continued?: boolean;
 }) {
   const normalized: Array<{
     hashtag: string;
@@ -238,9 +264,7 @@ export function HashtagsList({
       count,
       href,
       rank: ranked
-        ? typeof entry === "string"
-          ? index + 1
-          : (entry.ranking?.rank ?? index + 1)
+        ? rankOffset + (typeof entry === "string" ? index + 1 : (entry.ranking?.rank ?? index + 1))
         : undefined,
       ranking: typeof entry === "string" ? undefined : entry.ranking,
       whyNow: typeof entry === "string" ? [] : mapHashtagWhyNow(entry),
@@ -251,7 +275,9 @@ export function HashtagsList({
 
   if (ranked) {
     return (
-      <ol className="border-edge/70 divide-edge/70 divide-y border-y">
+      <ol
+        className={`border-edge/70 divide-edge/70 divide-y ${continued ? "border-b" : "border-y"}`}
+      >
         {normalized.map((entry, index) => (
           <li
             key={`${entry.hashtag}-${index}`}
@@ -323,10 +349,16 @@ export function DomainsList({
   domains,
   ranked = false,
   searchable = false,
+  rankOffset = 0,
+  continued = false,
 }: {
   domains: Array<string | DomainEntry>;
   ranked?: boolean;
   searchable?: boolean;
+  /** Items skipped before this page. See `NotesList`. */
+  rankOffset?: number;
+  /** Drop the top rule so an appended page continues the same list. */
+  continued?: boolean;
 }) {
   const normalized: Array<{
     domain: string;
@@ -357,9 +389,7 @@ export function DomainsList({
       count: typeof entry === "string" ? undefined : domainHeadlineCount(entry),
       href,
       rank: ranked
-        ? typeof entry === "string"
-          ? index + 1
-          : (entry.ranking?.rank ?? index + 1)
+        ? rankOffset + (typeof entry === "string" ? index + 1 : (entry.ranking?.rank ?? index + 1))
         : undefined,
       ranking: typeof entry === "string" ? undefined : entry.ranking,
       whyNow: typeof entry === "string" ? [] : mapDomainWhyNow(entry),
@@ -370,7 +400,9 @@ export function DomainsList({
 
   if (ranked) {
     return (
-      <ol className="border-edge/70 divide-edge/70 divide-y border-y">
+      <ol
+        className={`border-edge/70 divide-edge/70 divide-y ${continued ? "border-b" : "border-y"}`}
+      >
         {normalized.map((entry, index) => (
           <li
             key={`${entry.domain}-${index}`}

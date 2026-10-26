@@ -5,10 +5,16 @@ import { ArticlesList } from "@/components/data/renderers";
 import { RankedListPage } from "@/components/explorer/ranked-list-page";
 import { getTrendingLongForm } from "@/lib/api/endpoints";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
+import { loadMoreRanking } from "@/lib/explorer/load-more-ranking";
+import {
+  rankedListRequest,
+  rankedPageContinuation,
+  readRankedOffset,
+} from "@/lib/explorer/ranked-pagination";
 import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
 import { buildLanguageHref, readLanguage } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
-import { buildContinuationHref, readSearchParam } from "@/lib/search-params/pagination";
+import { buildContinuationHref } from "@/lib/search-params/pagination";
 import { withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
 
@@ -29,15 +35,6 @@ export async function generateMetadata({
   );
 }
 
-const DEFAULT_LIMIT = 20;
-
-function parseOffset(value: string | undefined): number {
-  if (typeof value !== "string") return 0;
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed < 0) return 0;
-  return Math.min(parsed, 5000);
-}
-
 export default async function TrendingLongFormPage({
   searchParams,
 }: {
@@ -47,16 +44,10 @@ export default async function TrendingLongFormPage({
   const resolvedSearchParams = await searchParams;
   const language = await applyDiscoverLanguage(path, resolvedSearchParams);
   const { window, currentSearchParams } = readRankedListContext(resolvedSearchParams, path);
-  const offset = parseOffset(readSearchParam(resolvedSearchParams, "offset"));
+  const offset = readRankedOffset(resolvedSearchParams);
 
   const { payload, errorMessage, semantics } = await loadRankedListPayload(
-    () =>
-      getTrendingLongForm("shortTtl", {
-        window,
-        offset,
-        limit: DEFAULT_LIMIT,
-        ...(language ? { lang: language } : {}),
-      }),
+    () => getTrendingLongForm("shortTtl", rankedListRequest(window, language, offset)),
     "Failed to load trending long-form."
   );
 
@@ -73,14 +64,11 @@ export default async function TrendingLongFormPage({
     }
   }
 
-  const hasMore = articles.length >= DEFAULT_LIMIT;
-  const nextOffset = hasMore ? offset + articles.length : undefined;
-  const continuationHref = buildContinuationHref(
-    path,
-    currentSearchParams,
-    "offset",
-    typeof nextOffset === "number" ? String(nextOffset) : undefined
-  );
+  const continuation = rankedPageContinuation("long-form", articles, offset);
+  const continuationHref =
+    continuation.nextOffset != null
+      ? buildContinuationHref(path, currentSearchParams, "offset", String(continuation.nextOffset))
+      : undefined;
 
   return (
     <RankedListPage
@@ -106,7 +94,9 @@ export default async function TrendingLongFormPage({
       emptyTitle="No ranked articles yet"
       emptyMessage="Ranked long-form articles have not populated for this window."
       hasItems={articles.length > 0}
-      continuationHref={typeof nextOffset === "number" ? continuationHref : undefined}
+      loadMore={loadMoreRanking.bind(null, "long-form", window, language ?? "")}
+      loadMoreCursor={continuation.token}
+      continuationHref={continuationHref}
       continuationLabel="Load more articles"
       footer={
         <div className="mt-4 flex flex-wrap gap-2 text-xs">
@@ -125,6 +115,7 @@ export default async function TrendingLongFormPage({
         authorsByPubkey={authorsByPubkey}
         ranked
         showUtilityLinks={false}
+        rankOffset={offset}
       />
     </RankedListPage>
   );
