@@ -63,6 +63,20 @@ describe("normalizeProfile hero metadata", () => {
     expect(profile?.fields?.some(([label]) => label === "too")).toBe(false);
   });
 
+  it("lifts a picture stored on the nested profile record", () => {
+    const profile = normalizeProfile({
+      pubkey: PUBKEY,
+      name: "bitcoin",
+      profile: {
+        display_name: "Bitcoin",
+        picture: "https://cdn.example/bitcoin.jpg",
+      },
+    });
+
+    expect(profile?.picture).toBe("https://cdn.example/bitcoin.jpg");
+    expect(profile?.display_name).toBe("Bitcoin");
+  });
+
   it("leaves banner/bot/fields undefined when absent", () => {
     const profile = normalizeProfile({ pubkey: PUBKEY });
     expect(profile?.banner).toBeUndefined();
