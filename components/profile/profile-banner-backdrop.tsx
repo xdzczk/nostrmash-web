@@ -14,7 +14,7 @@ export function ProfileCover({ src }: { src: string }) {
     <div
       aria-hidden
       data-testid="profile-cover"
-      className="border-edge relative h-32 overflow-hidden rounded-xl border sm:h-40"
+      className="border-edge relative h-20 overflow-hidden rounded-xl border sm:h-28"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img

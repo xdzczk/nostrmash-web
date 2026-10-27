@@ -20,8 +20,8 @@ export function activityEmptyCopy(tab: ProfileActivityTab): ActivityEmptyCopy {
       };
     case "zaps":
       return {
-        message: "No recent zaps from this profile are in the index yet.",
-        hint: "Zaps are Lightning payments sent to a note or profile as a tip.",
+        message: "No recent zaps sent by this profile are in the index yet.",
+        hint: "Zaps sent are Lightning tips this account paid. A note’s Zaps count is tips that note received.",
       };
     case "long_form":
       return {

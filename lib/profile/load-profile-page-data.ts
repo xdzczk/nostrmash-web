@@ -451,6 +451,44 @@ export async function loadProfileActivityData(
   const activeTabMeta = PROFILE_ACTIVITY_TABS.find((tab) => tab.id === params.activityTab);
   const activeNextCursor = activityNextCursorByTab[params.activityTab];
   const activeContinuationHref = activityContinuationByTab[params.activityTab];
+  const activeTabError = (() => {
+    const failure = (result: PromiseSettledResult<unknown>, loaded: boolean, fallback: string) => {
+      if (!loaded || result.status !== "rejected" || isNotFoundReason(result.reason)) return null;
+      return toUserFacingErrorMessage(result.reason, fallback);
+    };
+    switch (params.activityTab) {
+      case "notes":
+        return failure(notesResult, shouldLoadNotes, "Failed to load recent notes.");
+      case "replies":
+        return failure(repliesResult, params.shouldLoadReplies, "Failed to load recent replies.");
+      case "reactions":
+        return failure(
+          reactionsResult,
+          params.shouldLoadReactions,
+          "Failed to load recent reactions."
+        );
+      case "zaps":
+        return failure(zapsResult, params.shouldLoadZaps, "Failed to load recent zaps.");
+      case "long_form":
+        return failure(
+          longFormResult,
+          params.shouldLoadLongForm,
+          "Failed to load long-form articles."
+        );
+      case "bookmarks":
+        return failure(bookmarksResult, params.shouldLoadBookmarks, "Failed to load bookmarks.");
+      case "highlights":
+        return failure(highlightsResult, params.shouldLoadHighlights, "Failed to load highlights.");
+      case "mute_list":
+        return failure(muteListResult, params.shouldLoadMuteList, "Failed to load mute list.");
+      case "muted_by":
+        return failure(
+          mutedByResult,
+          params.shouldLoadMutedBy,
+          "Failed to load muted-by accounts."
+        );
+    }
+  })();
 
   return {
     activityTab: params.activityTab,
@@ -464,6 +502,7 @@ export async function loadProfileActivityData(
     authoredZapsPayload,
     bookmarks,
     bookmarksPayload,
+    activeTabError,
     errorMessage: summarizeLoadErrors(errors) ?? "",
     eventListAuthorsByPubkey,
     highlights,

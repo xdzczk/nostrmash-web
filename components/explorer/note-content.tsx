@@ -7,6 +7,8 @@ import {
   lookupProfileByHandle,
   lookupProfileByPubkey,
   sanitizeExternalHref,
+  stripEmojiShortcodes,
+  truncateIdentifier,
 } from "@/components/explorer/utils";
 import { isNoteMediaUrl, stripNoteMediaUrls } from "@/lib/notes/media";
 import { hexToNpub } from "@/lib/nostr/nip19";
@@ -66,12 +68,12 @@ function QuoteCard({
       {cleaned.length > 0 ? (
         <NoteContent
           tokens={tokenizeNoteContent(cleaned, { tags: event.tags })}
-          className="text-ink-dim mt-1 line-clamp-3 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap"
+          className="text-ink-dim mt-1 line-clamp-3 text-sm break-words whitespace-pre-wrap"
           showQuotes={false}
           resolution={resolution}
         />
       ) : (
-        <p className="text-ink-dim mt-1 line-clamp-3 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap">
+        <p className="text-ink-dim mt-1 line-clamp-3 text-sm break-words whitespace-pre-wrap">
           (no content)
         </p>
       )}
@@ -79,13 +81,47 @@ function QuoteCard({
   );
 }
 
-export type NoteContentSize = "list" | "reply" | "detail";
+export type NoteContentSize = "list" | "reply" | "detail" | "profile";
 
 const SIZE_CLASS: Record<NoteContentSize, string> = {
   list: "text-sm leading-5 sm:leading-6",
   reply: "nm-reply-body",
   detail: "nm-note-body",
+  profile: "max-w-[65ch] text-base leading-7",
 };
+
+function omitUnresolvedShortcodes(value: string): string {
+  return value.replace(/:[a-z0-9_+-]{2,}:/gi, "");
+}
+
+function quoteExcerpt(content: string | undefined): string {
+  if (typeof content !== "string") return "";
+  const trimmed = content.trim();
+  if (!trimmed || trimmed.startsWith("{") || trimmed.startsWith("[")) return "";
+  const stripped = stripEmojiShortcodes(stripNoteMediaUrls(trimmed));
+  if (!stripped) return "";
+  const units = [...stripped];
+  if (units.length <= 72) return stripped;
+  return `${units.slice(0, 71).join("").trimEnd()}…`;
+}
+
+function eventLinkLabel(value: string, id: string, quoted?: EventRecord): string {
+  const excerpt = quoted ? quoteExcerpt(quoted.content) : "";
+  if (excerpt) return excerpt;
+  const raw = value.replace(/^nostr:/i, "").trim();
+  return truncateIdentifier(raw || id, "note", "primary");
+}
+
+function relayLink(href: string): { host: string } | null {
+  if (!/^wss?:\/\//i.test(href)) return null;
+  try {
+    const host = new URL(href).hostname.replace(/\.$/, "");
+    return host ? { host } : null;
+  } catch {
+    const host = href.replace(/^wss?:\/\//i, "").split("/")[0] ?? "";
+    return host ? { host } : null;
+  }
+}
 
 export function NoteContent({
   tokens,
@@ -110,13 +146,29 @@ export function NoteContent({
 }) {
   const hiddenLinks = new Set(hideLinkPreviewUrls);
   return (
-    <Tag className={`text-ink [overflow-wrap:anywhere] ${SIZE_CLASS[size]} ${className}`}>
+    <Tag className={`text-ink break-words ${SIZE_CLASS[size]} ${className}`}>
       {tokens.map((token, index) => {
         const key = `${token.type}-${index}`;
         switch (token.type) {
-          case "text":
-            return <HighlightedText key={key} value={token.value} terms={highlightTerms} />;
+          case "text": {
+            const value = omitUnresolvedShortcodes(token.value);
+            if (value.length === 0) return null;
+            return <HighlightedText key={key} value={value} terms={highlightTerms} />;
+          }
           case "url": {
+            const relay = relayLink(token.href);
+            if (relay) {
+              return (
+                <Link
+                  key={key}
+                  href={`/relays/${encodeURIComponent(relay.host)}`}
+                  title={token.href}
+                  className="text-link hover:text-link-hover whitespace-nowrap underline-offset-2 hover:underline"
+                >
+                  {relay.host}
+                </Link>
+              );
+            }
             // Media and card-preview URLs are rendered elsewhere.
             if (isNoteMediaUrl(token.href) || hiddenLinks.has(token.href)) return null;
             const href = sanitizeExternalHref(token.href);
@@ -139,10 +191,9 @@ export function NoteContent({
               <Link
                 key={key}
                 href={`/hashtags/${encodeURIComponent(token.tag)}`}
-                className="text-link hover:text-link-hover font-medium"
+                className="text-link hover:text-link-hover font-medium whitespace-nowrap"
               >
-                #
-                <HighlightedText value={token.tag} terms={highlightTerms} />
+                <HighlightedText value={`#${token.tag}`} terms={highlightTerms} />
               </Link>
             );
           case "mention": {
@@ -190,7 +241,7 @@ export function NoteContent({
                   className="text-link hover:text-link-hover font-medium"
                   title={token.id}
                 >
-                  note
+                  {eventLinkLabel(token.value, token.id, showQuotes ? undefined : quoted)}
                 </Link>
                 {showQuotes && quoted ? (
                   <QuoteCard event={quoted} author={author} resolution={resolution} />

@@ -25,9 +25,11 @@ export function HashtagChip({
           className={`min-w-0 truncate text-sm font-medium ${isTopRank ? "text-ink" : "text-ink-soft"}`}
         >
           {typeof rank === "number" ? (
-            <span className={isTopRank ? "text-link mr-1" : "text-ink-faint mr-1"}>#{rank}</span>
+            <span className={isTopRank ? "text-link mr-1" : "text-ink-faint mr-1"}>
+              {`#${rank}`}
+            </span>
           ) : null}
-          #{hashtag}
+          {`#${hashtag}`}
         </p>
         <span className="text-ink-faint shrink-0 text-[11px]">{countLabel}</span>
       </div>

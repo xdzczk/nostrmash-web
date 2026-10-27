@@ -8,6 +8,7 @@ export function Disclosure({
   defaultOpen = false,
   id,
   className = "",
+  descriptionClassName = "",
 }: {
   title: string;
   description?: string;
@@ -15,6 +16,7 @@ export function Disclosure({
   defaultOpen?: boolean;
   id?: string;
   className?: string;
+  descriptionClassName?: string;
 }) {
   return (
     <details
@@ -26,7 +28,11 @@ export function Disclosure({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm">{title}</p>
-            {description ? <p className="text-ink-faint mt-0.5 text-xs">{description}</p> : null}
+            {description ? (
+              <p className={`text-ink-faint mt-0.5 text-xs ${descriptionClassName}`.trim()}>
+                {description}
+              </p>
+            ) : null}
           </div>
           <span className="text-ink-faint text-xs transition group-open:rotate-180">▾</span>
         </div>

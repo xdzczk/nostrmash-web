@@ -9,6 +9,7 @@ import { isRecord } from "@/components/explorer/utils";
 import { mapRelatedProfileReasons } from "@/components/explorer/why-now";
 import { ProfileActivityTabs } from "@/components/profile/profile-activity-tabs";
 import { Pill } from "@/components/ui/pill";
+import { ErrorPanel } from "@/components/ui/status-panels";
 import { SectionCard } from "@/components/ui/section-card";
 import { loadMoreProfileActivity } from "@/app/profiles/[pubkeyOrNpub]/actions";
 import {
@@ -97,7 +98,13 @@ export async function DeferredProfileActivity({
         <div className="space-y-4">
           <ProfileActivityTabs activeTab={data.activityTab} tabs={data.activityTabs}>
             <div className="space-y-4">
-              {hasItems ? (
+              {data.activeTabError && !hasItems ? (
+                <ErrorPanel
+                  message={data.activeTabError}
+                  title="Couldn't load this activity"
+                  retryHref={profileRoute}
+                />
+              ) : hasItems ? (
                 <ProfileActivityFeed data={data} />
               ) : (
                 <ActivityEmpty tab={data.activityTab} tabs={data.activityTabs} stats={stats} />

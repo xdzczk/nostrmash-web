@@ -2,6 +2,7 @@ import { decodeNip19, type Nip19Decoded } from "@/lib/nostr/nip19";
 import {
   BARE_HOST_PATTERN,
   HASHTAG_PATTERN,
+  RELAY_URL_PATTERN,
   toAbsoluteHttpUrl,
   trimUrlTrailingPunctuation,
   URL_PATTERN,
@@ -137,6 +138,21 @@ function collectMatches(content: string, tags: string[][]): Match[] {
     matches.push({
       start,
       end: start + href.length,
+      token: { type: "url", value: href, href },
+    });
+  }
+
+  for (const match of content.matchAll(
+    new RegExp(RELAY_URL_PATTERN.source, RELAY_URL_PATTERN.flags)
+  )) {
+    const start = match.index ?? 0;
+    const { href } = trimUrlTrailingPunctuation(match[0]);
+    if (!href) continue;
+    const end = start + href.length;
+    if (overlaps(matches, start, end)) continue;
+    matches.push({
+      start,
+      end,
       token: { type: "url", value: href, href },
     });
   }

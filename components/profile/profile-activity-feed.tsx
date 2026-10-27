@@ -47,6 +47,7 @@ export async function ProfileActivityFeed({ data }: { data: ActivityData }) {
           omitZeroStats
           mediaVariant="feed"
           suppressEmbeds
+          contentSize="profile"
         />
       ) : null;
     case "replies":
@@ -98,6 +99,7 @@ export async function ProfileActivityFeed({ data }: { data: ActivityData }) {
           omitZeroStats
           mediaVariant="feed"
           suppressEmbeds
+          contentSize="profile"
         />
       ) : null;
     case "highlights":

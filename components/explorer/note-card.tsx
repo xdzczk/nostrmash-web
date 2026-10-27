@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
-import { NoteContent, type NoteContentResolution } from "@/components/explorer/note-content";
+import {
+  NoteContent,
+  type NoteContentResolution,
+  type NoteContentSize,
+} from "@/components/explorer/note-content";
 import { NoteLinkPreviews } from "@/components/explorer/note-link-previews";
 import { NoteMedia, type NoteMediaVariant } from "@/components/explorer/note-media";
 import { extractNoteMediaAttachments } from "@/lib/notes/media";
@@ -75,6 +79,7 @@ export function NoteCard({
   connectBelow = false,
   bridgeToNote = false,
   highlightTerms,
+  contentSize,
 }: {
   note: EventRecord;
   author?: Profile;
@@ -109,6 +114,8 @@ export function NoteCard({
   bridgeToNote?: boolean;
   /** Query terms to mark inside the note text. */
   highlightTerms?: string[];
+  /** Profile lists read at 16px. Discover cards keep the compact list size. */
+  contentSize?: NoteContentSize;
 }) {
   if (isRepostEvent(note)) {
     return (
@@ -144,6 +151,7 @@ export function NoteCard({
       connectBelow={connectBelow}
       bridgeToNote={bridgeToNote}
       highlightTerms={highlightTerms}
+      contentSize={contentSize}
     />
   );
 }
@@ -169,6 +177,7 @@ function NoteCardBody({
   connectBelow,
   bridgeToNote,
   highlightTerms,
+  contentSize: contentSizeProp,
 }: {
   note: EventRecord;
   author?: Profile;
@@ -190,6 +199,7 @@ function NoteCardBody({
   connectBelow: boolean;
   bridgeToNote: boolean;
   highlightTerms?: string[];
+  contentSize?: NoteContentSize;
 }) {
   const isReply = density === "reply";
   const isDetail = density === "detail";
@@ -268,7 +278,7 @@ function NoteCardBody({
     mediaVariant === "compact" &&
     extractNoteMediaAttachments(rawContent).length > 0;
   const rankLabel = typeof rank === "number" ? String(rank).padStart(2, "0") : null;
-  const contentSize = isDetail ? "detail" : isReply ? "reply" : "list";
+  const contentSize = contentSizeProp ?? (isDetail ? "detail" : isReply ? "reply" : "list");
   const metaTextClass = density === "list" ? "text-xs" : "text-[13px]";
   const chipRowClass = `text-ink-muted mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 ${metaTextClass}`;
   const chipLinkClass = "inline-flex min-h-6 items-center";
@@ -481,9 +491,9 @@ function NoteCardBody({
                 </span>
                 <Link
                   href={`/hashtags/${encodeURIComponent(hashtag)}`}
-                  className={`text-ink-dim hover:text-ink transition ${chipLinkClass}`}
+                  className={`text-ink-dim hover:text-ink whitespace-nowrap transition ${chipLinkClass}`}
                 >
-                  #{hashtag}
+                  {`#${hashtag}`}
                 </Link>
               </span>
             ))}
@@ -501,7 +511,7 @@ function NoteCardBody({
                 <Link
                   href={`/relays/${encodeURIComponent(relayHost.raw)}`}
                   title={relayHost.raw}
-                  className={`hover:text-link-hover text-ink-dim transition ${chipLinkClass}`}
+                  className={`hover:text-link-hover text-ink-dim whitespace-nowrap transition ${chipLinkClass}`}
                 >
                   {relayHost.label}
                 </Link>

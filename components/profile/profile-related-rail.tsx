@@ -6,7 +6,7 @@ import { relatedRailReasonLine } from "@/components/explorer/why-now";
 import { TabOverflow } from "@/components/ui/tab-overflow";
 import type { Profile } from "@/lib/types/api";
 
-const RAIL_LIMIT = 8;
+const RAIL_LIMIT = 5;
 
 /**
  * One row of people this account actually interacts with. Profiles with no
@@ -38,7 +38,7 @@ export function ProfileRelatedRail({
           const name = profileLabel(profile);
           const secondary = profileSecondaryLabel(profile);
           return (
-            <li key={profile.pubkey} className="w-40 shrink-0">
+            <li key={profile.pubkey} className="w-56 shrink-0">
               <Link
                 href={href!}
                 title={reason ?? name}
@@ -57,7 +57,9 @@ export function ProfileRelatedRail({
                   ) : null}
                 </span>
                 {reason ? (
-                  <span className="text-ink-muted mt-auto block truncate text-xs">{reason}</span>
+                  <span className="text-ink-muted mt-auto line-clamp-2 text-xs leading-4">
+                    {reason}
+                  </span>
                 ) : null}
               </Link>
             </li>

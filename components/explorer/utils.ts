@@ -569,6 +569,19 @@ export function readableProfileName(value: string | undefined): string | undefin
   return normalized;
 }
 
+/** Local part of a NIP-05, when it can stand in as a name. Root `_@` and bridged handles do not. */
+function nip05LocalPart(profile: Profile): string | undefined {
+  const nip05 = readProfileText(profile, ["nip05", "nip_05"]);
+  if (!nip05 || nip05.length > 128 || /\s|[\u0000-\u001f\u007f-\u009f\ufffd]/u.test(nip05)) {
+    return undefined;
+  }
+  const at = nip05.lastIndexOf("@");
+  if (at <= 0) return undefined;
+  const local = nip05.slice(0, at);
+  if (local === "_" || local.includes("_at_")) return undefined;
+  return readableProfileName(local);
+}
+
 export function profileLabel(profile: Profile): string {
   const displayName = readableProfileName(
     readProfileText(profile, ["display_name", "displayName", "display", "displayname"])
@@ -592,10 +605,12 @@ export function profileLabel(profile: Profile): string {
 
   const cleanedDisplay = displayName ? stripEmojiShortcodes(displayName) : "";
   const cleanedName = name ? stripEmojiShortcodes(name) : "";
+  const nip05Local = nip05LocalPart(profile);
 
   return (
     (cleanedDisplay.length > 0 ? cleanedDisplay : undefined) ??
     (cleanedName.length > 0 ? cleanedName : undefined) ??
+    (nip05Local ? truncateProfileLabel(nip05Local) : undefined) ??
     (fallbackNpub ? truncateIdentifier(fallbackNpub, "npub", "primary") : undefined) ??
     (pubkey ? truncateIdentifier(pubkey, "pubkey", "primary") : undefined) ??
     "Profile"

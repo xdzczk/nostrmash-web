@@ -8,7 +8,7 @@ describe("PROFILE_ACTIVITY_TABS", () => {
       ["notes", "Notes", false],
       ["replies", "Replies", false],
       ["reactions", "Reactions", false],
-      ["zaps", "Zaps", false],
+      ["zaps", "Zaps sent", false],
       ["long_form", "Articles", false],
       ["bookmarks", "Bookmarks", true],
       ["highlights", "Highlights", true],

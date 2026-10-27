@@ -30,7 +30,7 @@ export function RelayLink({
       className="nm-pressable text-ink hover:text-link focus-visible:ring-accent-soft/70 inline-flex min-h-11 max-w-full items-center gap-2 rounded-sm text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
     >
       {typeof rank === "number" ? (
-        <span className="text-ink-faint w-8 shrink-0 font-normal tabular-nums">#{rank}</span>
+        <span className="text-ink-faint w-8 shrink-0 font-normal tabular-nums">{`#${rank}`}</span>
       ) : null}
       <span className="truncate">{label && label.length > 0 ? label : host}</span>
     </Link>

@@ -70,6 +70,7 @@ export function ProfileRepliesList({
               omitZeroStats
               mediaVariant="compact"
               suppressEmbeds
+              contentSize="profile"
             />
           </li>
         );

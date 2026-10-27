@@ -135,7 +135,7 @@ export function ArticleReader({
               href={`/hashtags/${encodeURIComponent(hashtag)}`}
               className="text-ink-dim hover:text-ink"
             >
-              #{hashtag}
+              {`#${hashtag}`}
             </Link>
           ))}
         </div>

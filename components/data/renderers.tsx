@@ -5,6 +5,7 @@ import { DomainChip } from "@/components/explorer/domain-chip";
 import { pickPrimaryDomainSupportingSignal } from "@/components/explorer/domain-supporting-signal";
 import { HashtagChip } from "@/components/explorer/hashtag-chip";
 import { NoteCard } from "@/components/explorer/note-card";
+import type { NoteContentSize } from "@/components/explorer/note-content";
 import type { NoteMediaVariant } from "@/components/explorer/note-media";
 import { SourceFigure } from "@/components/explorer/source-figure";
 import { mapDomainWhyNow, mapHashtagWhyNow, WhyNow } from "@/components/explorer/why-now";
@@ -51,6 +52,7 @@ export async function NotesList({
   suppressEmbeds,
   highlightTerms,
   rankOffset = 0,
+  contentSize,
 }: {
   notes: EventRecord[];
   authorsByPubkey?: Record<string, Profile>;
@@ -75,6 +77,8 @@ export async function NotesList({
    * offset page, so the displayed place is the page rank plus this offset.
    */
   rankOffset?: number;
+  /** Profile lists read at 16px. Omitted on Discover, which stays compact. */
+  contentSize?: NoteContentSize;
 }) {
   const contentResolution = await resolveContentReferences(notes).catch(() => undefined);
   if (contentResolution && authorsByPubkey) {
@@ -126,6 +130,7 @@ export async function NotesList({
               mediaVariant={mediaVariant ?? (compactMedia ? "compact" : undefined)}
               suppressEmbeds={suppressEmbeds ?? compactMedia}
               highlightTerms={highlightTerms}
+              contentSize={contentSize}
             />
           )}
         </li>
@@ -292,10 +297,10 @@ export function HashtagsList({
                   href={entry.href}
                   className="text-ink hover:text-accent-ink text-base font-medium"
                 >
-                  #{entry.hashtag}
+                  {`#${entry.hashtag}`}
                 </Link>
               ) : (
-                <span className="text-ink text-base font-medium">#{entry.hashtag}</span>
+                <span className="text-ink text-base font-medium">{`#${entry.hashtag}`}</span>
               )}
               <WhyNow
                 reasons={reasonsBesideSourceFigure(entry.ranking, entry.whyNow)}

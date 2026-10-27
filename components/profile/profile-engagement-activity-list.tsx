@@ -5,6 +5,7 @@ import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { activitySnippet } from "@/components/explorer/note-preview";
 import { Timestamp } from "@/components/explorer/timestamp";
 import { profileLabel } from "@/components/explorer/utils";
+import { extractNoteMediaAttachments } from "@/lib/notes/media";
 import { presentReactionContent } from "@/lib/profile/reaction-display";
 import type { AuthorReactionRecord, AuthorZapRecord, EventRecord, Profile } from "@/lib/types/api";
 
@@ -94,6 +95,10 @@ function EngagementRow({
   const author = targetAuthorLabel(note, authorsByPubkey);
   const line = note ? activitySnippet(note, resolution) : "";
   const href = targetHref(note, fallbackId);
+  const thumb =
+    !line && typeof note?.content === "string"
+      ? extractNoteMediaAttachments(note.content, 1)[0]
+      : undefined;
   const body = (
     <span className="flex min-w-0 items-start gap-3">
       <span className="flex shrink-0 items-center justify-center text-lg leading-none">
@@ -104,8 +109,12 @@ function EngagementRow({
           {author ? <span className="font-medium">{author}</span> : null}
           {author && line ? <span className="text-ink-faint"> · </span> : null}
           {line ? <span className="text-ink-dim">{line}</span> : null}
-          {!author && !line ? <span className="text-ink-muted">Note</span> : null}
+          {!author && !line && !thumb ? <span className="text-ink-muted">Note</span> : null}
         </span>
+        {thumb ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={thumb.url} alt="" className="mt-1.5 h-14 w-14 rounded-md object-cover" />
+        ) : null}
         <Timestamp unixSeconds={createdAt} />
       </span>
     </span>

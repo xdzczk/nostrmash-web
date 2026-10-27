@@ -59,9 +59,32 @@ describe("NoteContent", () => {
 
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("Quoted body")).toBeInTheDocument();
-    const noteLink = screen.getByRole("link", { name: "note" });
+    const noteLink = screen.getByRole("link", {
+      name: truncateIdentifier(NOTE, "note", "primary"),
+    });
     expect(noteLink).toHaveAttribute("href", `/notes/${encodeURIComponent(EVENT_ID)}`);
     expect(noteLink).toHaveAttribute("title", EVENT_ID);
+    expect(screen.queryByRole("link", { name: "note" })).not.toBeInTheDocument();
+  });
+
+  it("uses the quote as the link when the quote card is hidden", () => {
+    const tokens = tokenizeNoteContent(`see ${NOTE}`);
+    render(
+      <NoteContent
+        tokens={tokens}
+        showQuotes={false}
+        resolution={{
+          eventsById: {
+            [EVENT_ID]: { id: EVENT_ID, content: "Quoted body", kind: 1 },
+          },
+        }}
+      />
+    );
+    expect(screen.getByRole("link", { name: "Quoted body" })).toHaveAttribute(
+      "href",
+      `/notes/${encodeURIComponent(EVENT_ID)}`
+    );
+    expect(screen.queryByRole("link", { name: "note" })).not.toBeInTheDocument();
   });
 
   it("redacts nsec secrets", () => {

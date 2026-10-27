@@ -8,7 +8,7 @@ export const PROFILE_ACTIVITY_TABS = [
   { id: "notes", label: "Notes", secondary: false },
   { id: "replies", label: "Replies", secondary: false },
   { id: "reactions", label: "Reactions", secondary: false },
-  { id: "zaps", label: "Zaps", secondary: false },
+  { id: "zaps", label: "Zaps sent", secondary: false },
   { id: "long_form", label: "Articles", secondary: false },
   { id: "bookmarks", label: "Bookmarks", secondary: true },
   { id: "highlights", label: "Highlights", secondary: true },

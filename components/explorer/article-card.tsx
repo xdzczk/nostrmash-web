@@ -307,7 +307,7 @@ export function ArticleCard({
                 href={`/hashtags/${encodeURIComponent(hashtag)}`}
                 className="text-ink-dim hover:text-ink transition"
               >
-                #{hashtag}
+                {`#${hashtag}`}
               </Link>
             </span>
           ))}
