@@ -77,6 +77,15 @@ describe("RankedListPage", () => {
       "href",
       "/trending/domains?window=7d"
     );
+    expect(screen.getByRole("link", { name: "30d" })).toHaveAttribute(
+      "href",
+      "/trending/domains?window=30d"
+    );
+    expect(screen.getByRole("link", { name: "24h" })).toHaveAttribute("href", "/trending/domains");
+    expect(screen.getByRole("link", { name: "7d" })).toHaveAttribute(
+      "href",
+      "/trending/domains?window=7d"
+    );
     expect(
       screen.queryByText("Ranked domains have not populated for this window.")
     ).not.toBeInTheDocument();

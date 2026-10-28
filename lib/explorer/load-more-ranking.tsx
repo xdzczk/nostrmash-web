@@ -1,5 +1,7 @@
 "use server";
 
+import { cookies } from "next/headers";
+
 import type { LoadMoreChunk } from "@/components/data/load-more-list";
 import {
   ArticlesList,
@@ -17,12 +19,15 @@ import {
   getTrendingNotes,
   getTrendingProfiles,
 } from "@/lib/api/endpoints";
+import { isApiError } from "@/lib/api/errors";
 import {
   extractEventAuthorPubkeys,
   fetchProfilesByPubkey,
   hydrateProfiles,
 } from "@/lib/api/profile-hydration";
 import { presentConversations } from "@/lib/discover/conversation-order";
+import { DISCOVERY_30D_HIDDEN_COOKIE } from "@/lib/discover/discovery-window-session";
+import { lastDiscoveryWindow } from "@/lib/discover/window-fallback";
 import {
   isRankingSurface,
   parseRankedContinuation,
@@ -32,7 +37,7 @@ import {
   type RankingSurface,
 } from "@/lib/explorer/ranked-pagination";
 import { parseLanguage } from "@/lib/search-params/language";
-import type { StatsWindow } from "@/lib/search-params/window";
+import { fallbackAfterRejected30d, isStatsWindow } from "@/lib/search-params/window";
 import type { DomainEntry, EventRecord, HashtagEntry, Profile } from "@/lib/types/api";
 
 async function authorMap(events: EventRecord[]): Promise<Record<string, Profile>> {
@@ -55,13 +60,26 @@ export async function loadMoreRanking(
   token: string
 ): Promise<LoadMoreChunk> {
   if (!isRankingSurface(surface)) return { content: null };
-  if (window !== "24h" && window !== "7d") return { content: null };
+  if (!isStatsWindow(window)) return { content: null };
   const parsed = parseRankedContinuation(token);
   if (!parsed) return { content: null };
   const language = parseLanguage(lang);
-  const query = rankedListRequest(window as StatsWindow, language, parsed.offset);
 
-  const loaded = await loadSurface(surface, query);
+  let loaded: Awaited<ReturnType<typeof loadSurface>>;
+  try {
+    loaded = await loadSurface(surface, rankedListRequest(window, language, parsed.offset));
+  } catch (error) {
+    const status = isApiError(error) ? error.status : null;
+    if (!fallbackAfterRejected30d(window, "24h", status).hide30d) throw error;
+    const jar = await cookies();
+    jar.set(DISCOVERY_30D_HIDDEN_COOKIE, "1", {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+    });
+    const previous = await lastDiscoveryWindow();
+    loaded = await loadSurface(surface, rankedListRequest(previous, language, parsed.offset));
+  }
   const first = rankingItemAnchor(surface, loaded.items[0]);
   if (loaded.items.length === 0 || !first || first === parsed.anchor) {
     return { content: null };

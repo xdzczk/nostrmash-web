@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { unstable_rethrow } from "next/navigation";
 
 import { DiscoverShell } from "@/components/discover/discover-shell";
 import { LoadMoreList } from "@/components/data/load-more-list";
@@ -10,6 +11,11 @@ import { AboutThisData } from "@/components/explorer/about-this-data";
 import { SectionCard } from "@/components/ui/section-card";
 import { getHotConversations } from "@/lib/api/endpoints";
 import { presentConversations } from "@/lib/discover/conversation-order";
+import {
+  isDiscovery30dHidden,
+  requestDiscovery,
+  syncDiscoveryWindow,
+} from "@/lib/discover/window-fallback";
 import { loadMoreRanking } from "@/lib/explorer/load-more-ranking";
 import {
   rankedListRequest,
@@ -26,7 +32,7 @@ import {
 } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { buildContinuationHref, toUrlSearchParams } from "@/lib/search-params/pagination";
-import { readStatsWindow } from "@/lib/search-params/window";
+import { readStatsWindow, selectableStatsWindows } from "@/lib/search-params/window";
 import { withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import { formatUpdatedRelative } from "@/lib/time/freshness";
 import type { Profile } from "@/lib/types/api";
@@ -57,7 +63,9 @@ export default async function HotConversationsPage({
   const resolvedSearchParams = await searchParams;
   const language = await applyDiscoverLanguage(path, resolvedSearchParams);
   const offset = readRankedOffset(resolvedSearchParams);
+  await syncDiscoveryWindow(path, resolvedSearchParams);
   const window = readStatsWindow(resolvedSearchParams);
+  const windows = selectableStatsWindows(!(await isDiscovery30dHidden()));
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   let errorMessage = "";
   let payload: Awaited<ReturnType<typeof getHotConversations>> | null = null;
@@ -65,8 +73,11 @@ export default async function HotConversationsPage({
   let activeProfiles: Profile[] = [];
 
   try {
-    payload = await getHotConversations("shortTtl", rankedListRequest(window, language, offset));
+    payload = await requestDiscovery(window, path, currentSearchParams, (activeWindow) =>
+      getHotConversations("shortTtl", rankedListRequest(activeWindow, language, offset))
+    );
   } catch (error) {
+    unstable_rethrow(error);
     errorMessage = toUserFacingErrorMessage(error, "Failed to load hot conversations.");
   }
 
@@ -98,6 +109,7 @@ export default async function HotConversationsPage({
       path={path}
       searchParams={currentSearchParams}
       window={window}
+      windows={windows}
       language={language}
       topLanguages={payload?.top_languages}
       freshnessLabel={formatUpdatedRelative(

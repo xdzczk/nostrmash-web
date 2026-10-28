@@ -23,6 +23,7 @@ export function RankedListPage({
   path,
   searchParams,
   window,
+  windows,
   language,
   topLanguages,
   semantics,
@@ -50,6 +51,7 @@ export function RankedListPage({
   path: string;
   searchParams: URLSearchParams;
   window: StatsWindow;
+  windows?: readonly StatsWindow[];
   language?: string;
   topLanguages?: TopLanguages;
   semantics: NativeApiSemantics;
@@ -82,6 +84,7 @@ export function RankedListPage({
       path={path}
       searchParams={searchParams}
       window={window}
+      windows={windows}
       language={language}
       topLanguages={topLanguages}
       errorMessage={errorMessage}

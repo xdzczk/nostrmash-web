@@ -43,11 +43,15 @@ export default async function TrendingHashtagsPage({
   const path = "/trending/hashtags";
   const resolvedSearchParams = await searchParams;
   const language = await applyDiscoverLanguage(path, resolvedSearchParams);
-  const { window, currentSearchParams } = readRankedListContext(resolvedSearchParams, path);
+  const { window, windows, currentSearchParams } = await readRankedListContext(
+    resolvedSearchParams,
+    path
+  );
   const offset = readRankedOffset(resolvedSearchParams);
   const { payload, errorMessage, semantics } = await loadRankedListPayload(
     () => getTrendingHashtags("shortTtl", rankedListRequest(window, language, offset)),
-    "Failed to load topics."
+    "Failed to load topics.",
+    { window, path, params: currentSearchParams }
   );
   const hashtags = payload?.hashtags ?? [];
   const continuation = rankedPageContinuation("hashtags", hashtags, offset);
@@ -68,6 +72,7 @@ export default async function TrendingHashtagsPage({
       path={path}
       searchParams={currentSearchParams}
       window={window}
+      windows={windows}
       language={language}
       topLanguages={payload?.top_languages}
       semantics={semantics}

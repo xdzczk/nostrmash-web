@@ -10,6 +10,9 @@ describe("concentrationTitle", () => {
     expect(concentrationTitle(3, 76.2, "7d")).toBe(
       "Three relays carried 76% of what we indexed in the last 7 days."
     );
+    expect(concentrationTitle(3, 80, "30d")).toBe(
+      "Three relays carried 80% of what we indexed in the last 30 days."
+    );
   });
 
   it("uses a singular relay and digits past ten", () => {

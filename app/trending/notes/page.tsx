@@ -41,11 +41,15 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
   const path = "/trending/notes";
   const resolvedSearchParams = await searchParams;
   const language = await applyDiscoverLanguage(path, resolvedSearchParams);
-  const { window, currentSearchParams } = readRankedListContext(resolvedSearchParams, path);
+  const { window, windows, currentSearchParams } = await readRankedListContext(
+    resolvedSearchParams,
+    path
+  );
   const offset = readRankedOffset(resolvedSearchParams);
   const { payload, errorMessage, semantics } = await loadRankedListPayload(
     () => getTrendingNotes("shortTtl", rankedListRequest(window, language, offset)),
-    "Failed to load trending notes."
+    "Failed to load trending notes.",
+    { window, path, params: currentSearchParams }
   );
   const notes = payload?.notes ?? [];
   const continuation = rankedPageContinuation("notes", notes, offset);
@@ -78,6 +82,7 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
       path={path}
       searchParams={currentSearchParams}
       window={window}
+      windows={windows}
       language={language}
       topLanguages={payload?.top_languages}
       semantics={semantics}

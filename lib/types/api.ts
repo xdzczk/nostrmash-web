@@ -26,7 +26,7 @@ export interface DiscoveryItemRanking {
 }
 
 export interface DiscoveryListMeta {
-  window?: "24h" | "7d" | string;
+  window?: "24h" | "7d" | "30d" | string;
   computed_at?: string;
   ranking_version?: string;
   confidence?: DiscoveryConfidence;
@@ -41,6 +41,7 @@ export interface LanguageCount {
 export interface TopLanguages {
   "24h"?: LanguageCount[];
   "7d"?: LanguageCount[];
+  "30d"?: LanguageCount[];
 }
 
 export interface NativeApiSemantics {
@@ -216,6 +217,12 @@ export interface HashtagEntry {
   [key: string]: unknown;
 }
 
+export interface DomainTrendWindow {
+  link_count?: number;
+  note_count?: number;
+  unique_authors?: number;
+}
+
 export interface DomainEntry {
   domain?: string;
   count?: number;
@@ -225,6 +232,12 @@ export interface DomainEntry {
   /** Distinct notes linking to this domain in the window. */
   note_count?: number;
   unique_authors?: number;
+  /** Per-range counts. `30d` is optional until every payload includes it. */
+  trend_windows?: {
+    "24h"?: DomainTrendWindow;
+    "7d"?: DomainTrendWindow;
+    "30d"?: DomainTrendWindow;
+  };
   ranking?: DiscoveryItemRanking;
   [key: string]: unknown;
 }
@@ -311,6 +324,7 @@ export interface ConversationHotspot extends EventRecord {
   last_activity_at?: number;
   replies_24h?: number;
   replies_7d?: number;
+  replies_30d?: number;
   velocity_score?: number;
   reply_count?: number;
   repost_count?: number;
@@ -320,6 +334,7 @@ export interface ConversationHotspot extends EventRecord {
   activity?: {
     replies_24h?: number;
     replies_7d?: number;
+    replies_30d?: number;
     [key: string]: unknown;
   };
 }

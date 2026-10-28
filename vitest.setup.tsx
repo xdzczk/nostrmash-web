@@ -32,6 +32,22 @@ vi.mock("next/navigation", () => ({
   }),
   usePathname: () => "/",
   useSearchParams: () => new URLSearchParams(),
+  redirect: (url: string) => {
+    const error = new Error(`NEXT_REDIRECT:${url}`);
+    (error as Error & { digest: string }).digest = `NEXT_REDIRECT;replace;${url};307;`;
+    throw error;
+  },
+  unstable_rethrow: (error: unknown) => {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "digest" in error &&
+      typeof (error as { digest?: unknown }).digest === "string" &&
+      (error as { digest: string }).digest.startsWith("NEXT_")
+    ) {
+      throw error;
+    }
+  },
 }));
 
 vi.mock("next/image", () => ({

@@ -1575,7 +1575,7 @@ export interface paths {
     get: {
       parameters: {
         query?: {
-          window?: "24h" | "7d";
+          window?: "24h" | "7d" | "30d";
           limit?: number;
           offset?: number;
         };
@@ -1616,7 +1616,7 @@ export interface paths {
     get: {
       parameters: {
         query?: {
-          window?: "24h" | "7d";
+          window?: "24h" | "7d" | "30d";
           limit?: number;
           offset?: number;
         };
@@ -1658,7 +1658,7 @@ export interface paths {
     get: {
       parameters: {
         query?: {
-          window?: "24h" | "7d";
+          window?: "24h" | "7d" | "30d";
           limit?: number;
           offset?: number;
         };
@@ -1668,7 +1668,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Active conversation hotspots ranked by velocity score and recency. Each conversation includes thread reply totals (`reply_count`, `activity.replies_24h` / `replies_7d`) from `thread_summaries` plus root-note engagement (`repost_count`, `reaction_count`, `zap_count`, `zap_msats`) from `note_discovery_stats`. */
+        /** @description Active conversation hotspots ranked by velocity score and recency. Each conversation includes thread reply totals (`reply_count`, `activity.replies_24h` / `replies_7d` / `replies_30d`) from `thread_summaries` plus root-note engagement (`repost_count`, `reaction_count`, `zap_count`, `zap_msats`) from `note_discovery_stats`. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -1699,7 +1699,7 @@ export interface paths {
     get: {
       parameters: {
         query?: {
-          window?: "24h" | "7d";
+          window?: "24h" | "7d" | "30d";
           notes_limit?: number;
           hashtags_limit?: number;
           profiles_limit?: number;
@@ -1747,7 +1747,7 @@ export interface paths {
     get: {
       parameters: {
         query?: {
-          window?: "24h" | "7d";
+          window?: "24h" | "7d" | "30d";
           limit?: number;
           offset?: number;
         };
@@ -1791,7 +1791,7 @@ export interface paths {
     get: {
       parameters: {
         query?: {
-          window?: "24h" | "7d";
+          window?: "24h" | "7d" | "30d";
           limit?: number;
           offset?: number;
         };
@@ -1872,7 +1872,7 @@ export interface paths {
     get: {
       parameters: {
         query?: {
-          window?: "24h" | "7d";
+          window?: "24h" | "7d" | "30d";
           limit?: number;
           offset?: number;
         };
@@ -2035,7 +2035,7 @@ export interface paths {
     get: {
       parameters: {
         query?: {
-          window?: "24h" | "7d";
+          window?: "24h" | "7d" | "30d";
           limit?: number;
           offset?: number;
         };
@@ -4157,7 +4157,7 @@ export interface components {
     };
     DiscoveryListMeta: {
       /** @enum {string} */
-      window: "24h" | "7d";
+      window: "24h" | "7d" | "30d";
       /** Format: date-time */
       computed_at?: string;
       ranking_version: string;
@@ -4172,7 +4172,7 @@ export interface components {
     DiscoveryListResponse: {
       surface?: string;
       /** @enum {string} */
-      window?: "24h" | "7d";
+      window?: "24h" | "7d" | "30d";
       /** Format: date-time */
       computed_at?: string;
       ranking_version?: string;
@@ -4190,7 +4190,7 @@ export interface components {
       /** @constant */
       surface?: "home";
       /** @enum {string} */
-      window?: "24h" | "7d";
+      window?: "24h" | "7d" | "30d";
       /** Format: date-time */
       computed_at?: string;
       ranking_version?: string;

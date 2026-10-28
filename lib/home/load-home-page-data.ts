@@ -11,7 +11,7 @@ import {
   normalizeSeriesPoints,
 } from "@/lib/api/endpoints";
 import type { SeriesPoint } from "@/components/charts/sparkline";
-import { isApiTimeoutError } from "@/lib/api/http";
+import { isApiError, isApiTimeoutError } from "@/lib/api/http";
 import { normalizeTopLanguages } from "@/lib/api/normalize";
 import { fetchProfilesByPubkey, mergeHydratedProfile } from "@/lib/api/profile-hydration";
 import { extractRelayRows, pickTopPrimitiveStats } from "@/components/explorer/stats-utils";
@@ -20,9 +20,16 @@ import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user
 import { readLanguage } from "@/lib/search-params/language";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import {
+  lastDiscoveryWindow,
+  unsupportedDiscoveryWindowHref,
+} from "@/lib/discover/window-fallback";
+import {
   NETWORK_PULSE_TILE_LIMIT,
+  buildWindowHref,
+  fallbackAfterRejected30d,
   networkPulsePreferredKeys,
   readStatsWindow,
+  relayStatsWindow,
   type StatsWindow,
 } from "@/lib/search-params/window";
 import { traceHomeFanOut } from "@/lib/telemetry/trace";
@@ -104,6 +111,8 @@ export type HomePageData = {
   upstreamCallCount: number;
   computedAt?: string | null;
   sectionFailures: HomeSectionFailures;
+  /** Set when `window=30d` was rejected. The shell redirects through the session cookie. */
+  discoveryWindowRedirect: string | null;
 };
 
 /**
@@ -143,7 +152,7 @@ export async function loadHomePageData(
   const stageOne = await Promise.allSettled([
     getDiscoveryHome("shortTtl", scopedQuery),
     getNetworkStats("shortTtl"),
-    getRelayStats("shortTtl", window),
+    getRelayStats("shortTtl", relayStatsWindow(window)),
     getStatsSeries("note_volume", "7d", "shortTtl"),
     getStatsSeries("active_authors", "7d", "shortTtl"),
     getStatsSeries("relay_events", "7d", "shortTtl"),
@@ -158,6 +167,35 @@ export async function loadHomePageData(
     activeAuthorsSeriesResult,
     relayEventsSeriesResult,
   ] = stageOne;
+
+  if (homeResult.status === "rejected") {
+    const status = isApiError(homeResult.reason) ? homeResult.reason.status : null;
+    if (fallbackAfterRejected30d(window, "24h", status).hide30d) {
+      const previous = await lastDiscoveryWindow();
+      return {
+        window,
+        language: lang,
+        topLanguages: undefined,
+        currentSearchParams,
+        errorMessage: "",
+        homeTimedOut: false,
+        homeNotes: [],
+        hydratedHomeProfiles: [],
+        hydratedHomeRisingProfiles: [],
+        homeHashtags: [],
+        homeDomains: [],
+        noteAuthorsByPubkey: {},
+        pulseStats: [],
+        relayLeaders: [],
+        upstreamCallCount,
+        computedAt: null,
+        sectionFailures,
+        discoveryWindowRedirect: unsupportedDiscoveryWindowHref(
+          buildWindowHref("/", currentSearchParams, previous)
+        ),
+      };
+    }
+  }
 
   if (homeResult.status === "fulfilled") {
     payload = homeResult.value;
@@ -339,9 +377,10 @@ export async function loadHomePageData(
     activeAuthors: lang ? [] : activeAuthorsSeries,
     relayEvents: relayEventsSeries,
   });
-  let relayLeaders = extractRelayRows(networkSummary ?? payload, 1, window);
+  const relayWindow = relayStatsWindow(window);
+  let relayLeaders = extractRelayRows(networkSummary ?? payload, 1, relayWindow);
   if (relayLeaders.length === 0) {
-    relayLeaders = extractRelayRows(relayStats, 1, window);
+    relayLeaders = extractRelayRows(relayStats, 1, relayWindow);
   }
 
   // Prefer discovery/home computed_at: that tracks the live homepage
@@ -359,7 +398,7 @@ export async function loadHomePageData(
     null;
 
   traceHomeFanOut(upstreamCallCount, {
-    window: window === "7d" ? 7 : 1,
+    window: window === "30d" ? 30 : window === "7d" ? 7 : 1,
     homeTimedOut: homeTimedOut ? 1 : 0,
     hydratedPubkeys: pubkeysToHydrate.length,
     failedMessages: failedMessages.length,
@@ -385,5 +424,6 @@ export async function loadHomePageData(
     upstreamCallCount,
     computedAt,
     sectionFailures,
+    discoveryWindowRedirect: null,
   };
 }

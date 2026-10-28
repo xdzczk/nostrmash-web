@@ -12,6 +12,7 @@ import type {
 } from "@/lib/types/api";
 import { fetchApiJson } from "@/lib/api/http";
 import {
+  applyDomainTrendWindows,
   normalizeDiscoveryHomeResponse,
   normalizeDiscoveryLanguageFields,
   normalizeDomainEntries,
@@ -22,6 +23,7 @@ import {
 } from "@/lib/api/normalize";
 import type { CacheClass } from "@/lib/caching/policies";
 import {
+  applyConversationReplyWindow,
   buildCursorQuery,
   buildOffsetQuery,
   type CursorQuery,
@@ -116,13 +118,16 @@ export async function getHotConversations(
     }
   );
   const responseRecord = response as Record<string, unknown>;
-  const notes = normalizeHotConversationNotes(
-    response.notes ??
-      responseRecord.conversations ??
-      responseRecord.events ??
-      responseRecord.notes ??
-      responseRecord.items ??
-      responseRecord.data
+  const notes = applyConversationReplyWindow(
+    normalizeHotConversationNotes(
+      response.notes ??
+        responseRecord.conversations ??
+        responseRecord.events ??
+        responseRecord.notes ??
+        responseRecord.items ??
+        responseRecord.data
+    ),
+    query?.window
   );
   return normalizeDiscoveryLanguageFields({
     ...response,
@@ -175,10 +180,13 @@ export async function getTrendingDomains(cacheClass: CacheClass = "shortTtl", qu
   );
   return normalizeDiscoveryLanguageFields({
     ...response,
-    domains: normalizeDomainEntries(
-      response.domains ??
-        (response as Record<string, unknown>).items ??
-        (response as Record<string, unknown>).data
+    domains: applyDomainTrendWindows(
+      normalizeDomainEntries(
+        response.domains ??
+          (response as Record<string, unknown>).items ??
+          (response as Record<string, unknown>).data
+      ),
+      typeof response.window === "string" ? response.window : undefined
     ),
   }) satisfies TrendingDomainsResponse;
 }

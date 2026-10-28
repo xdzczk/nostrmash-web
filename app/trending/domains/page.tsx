@@ -41,11 +41,15 @@ export default async function TrendingDomainsPage({
   const path = "/trending/domains";
   const resolvedSearchParams = await searchParams;
   const language = await applyDiscoverLanguage(path, resolvedSearchParams);
-  const { window, currentSearchParams } = readRankedListContext(resolvedSearchParams, path);
+  const { window, windows, currentSearchParams } = await readRankedListContext(
+    resolvedSearchParams,
+    path
+  );
   const offset = readRankedOffset(resolvedSearchParams);
   const { payload, errorMessage, semantics } = await loadRankedListPayload(
     () => getTrendingDomains("shortTtl", rankedListRequest(window, language, offset)),
-    "Failed to load trending domains."
+    "Failed to load trending domains.",
+    { window, path, params: currentSearchParams }
   );
   const domains = payload?.domains ?? [];
   const continuation = rankedPageContinuation("domains", domains, offset);
@@ -66,6 +70,7 @@ export default async function TrendingDomainsPage({
       path={path}
       searchParams={currentSearchParams}
       window={window}
+      windows={windows}
       language={language}
       topLanguages={payload?.top_languages}
       semantics={semantics}

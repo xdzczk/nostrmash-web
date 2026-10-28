@@ -2,6 +2,7 @@ import type { SearchResponse } from "@/lib/types/api";
 import { ApiError, isApiTimeoutError } from "@/lib/api/http";
 import { normalizeEventRecord, normalizeEventRecords } from "@/lib/api/normalize";
 import { npubToHex } from "@/lib/nostr/npub";
+import { isStatsWindow } from "@/lib/search-params/window";
 
 export type SearchTab = "all" | "notes" | "profiles" | "hashtags" | "relays";
 export type SearchWindow = "24h" | "7d" | "30d" | "all";
@@ -269,6 +270,22 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/** Replies shown on a hot-conversation row follow the selected range. */
+export function applyConversationReplyWindow<T extends Record<string, unknown>>(
+  notes: T[],
+  window: string | undefined
+): T[] {
+  if (!isStatsWindow(window)) return notes;
+  const key = `replies_${window}`;
+  return notes.map((note) => {
+    const activity = note.activity;
+    if (!isRecord(activity)) return note;
+    const value = activity[key];
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return note;
+    return { ...note, reply_count: Math.round(value) };
+  });
+}
+
 export function normalizeHotConversationNotes(
   value: unknown
 ): ReturnType<typeof normalizeEventRecords> {
@@ -296,6 +313,7 @@ export function normalizeHotConversationNotes(
           id: candidate.id ?? entry.root_event_id ?? entry.event_id ?? entry.id,
           event_id: candidate.event_id ?? entry.root_event_id ?? entry.event_id,
           pubkey: candidate.pubkey ?? entry.pubkey ?? entry.author_pubkey,
+          activity: isRecord(candidate.activity) ? candidate.activity : entry.activity,
           reply_count: candidate.reply_count ?? entry.reply_count,
           repost_count: candidate.repost_count ?? entry.repost_count,
           reaction_count: candidate.reaction_count ?? entry.reaction_count,

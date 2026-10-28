@@ -43,12 +43,16 @@ export default async function TrendingLongFormPage({
   const path = "/trending/long-form";
   const resolvedSearchParams = await searchParams;
   const language = await applyDiscoverLanguage(path, resolvedSearchParams);
-  const { window, currentSearchParams } = readRankedListContext(resolvedSearchParams, path);
+  const { window, windows, currentSearchParams } = await readRankedListContext(
+    resolvedSearchParams,
+    path
+  );
   const offset = readRankedOffset(resolvedSearchParams);
 
   const { payload, errorMessage, semantics } = await loadRankedListPayload(
     () => getTrendingLongForm("shortTtl", rankedListRequest(window, language, offset)),
-    "Failed to load trending long-form."
+    "Failed to load trending long-form.",
+    { window, path, params: currentSearchParams }
   );
 
   const articles = payload?.articles ?? [];
@@ -80,6 +84,7 @@ export default async function TrendingLongFormPage({
       path={path}
       searchParams={currentSearchParams}
       window={window}
+      windows={windows}
       language={language}
       topLanguages={payload?.top_languages}
       semantics={semantics}

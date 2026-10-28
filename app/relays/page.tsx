@@ -23,7 +23,11 @@ import { getPopularRelays, getRelayHealth, getRelayStats } from "@/lib/api/endpo
 import { getStaleDataNotice } from "@/lib/api/http";
 import { getRequestNowMs } from "@/lib/time/request-now";
 import { readSearchParam, toUrlSearchParams } from "@/lib/search-params/pagination";
-import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
+import {
+  RELAY_STATS_WINDOWS,
+  formatStatsWindowLabel,
+  readRelayStatsWindow,
+} from "@/lib/search-params/window";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { concentrationTitle } from "@/lib/relays/concentration";
 import { indexMembershipNote } from "@/lib/relays/index-membership";
@@ -39,7 +43,7 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 export default async function RelaysPage({ searchParams }: { searchParams: SearchParams }) {
   const resolvedSearchParams = await searchParams;
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
-  const window = readStatsWindow(resolvedSearchParams);
+  const window = readRelayStatsWindow(resolvedSearchParams);
   const healthCursor = readSearchParam(resolvedSearchParams, "health_cursor");
   const errors: string[] = [];
   let relayStats: Awaited<ReturnType<typeof getRelayStats>> | null = null;
@@ -101,7 +105,12 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
         title={concentrationTitle(headCount, headShare, window)}
         subtitle="Indexed volume beside the relays people list, and whether those checks are current."
         badges={
-          <WindowSelector path="/relays" searchParams={currentSearchParams} activeWindow={window} />
+          <WindowSelector
+            path="/relays"
+            searchParams={currentSearchParams}
+            activeWindow={window}
+            windows={RELAY_STATS_WINDOWS}
+          />
         }
       />
       <NetworkNav active="overview" />

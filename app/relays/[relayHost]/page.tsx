@@ -31,7 +31,11 @@ import { displayProbeStatus, probeStatusLabel } from "@/lib/relays/probe-status"
 import { getRequestNowMs } from "@/lib/time/request-now";
 import { isValidRelayHostParam, normalizeValidatedRelayHost } from "@/lib/routing/params";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
-import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
+import {
+  RELAY_STATS_WINDOWS,
+  formatStatsWindowLabel,
+  readRelayStatsWindow,
+} from "@/lib/search-params/window";
 import { buildEntityMetadata } from "@/lib/seo/metadata";
 
 type Params = Promise<{ relayHost: string }>;
@@ -60,7 +64,7 @@ export default async function RelayPage({
 }) {
   const { relayHost } = await params;
   const resolvedSearchParams = await searchParams;
-  const window = readStatsWindow(resolvedSearchParams);
+  const window = readRelayStatsWindow(resolvedSearchParams);
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   if (!isValidRelayHostParam(relayHost)) {
     notFound();
@@ -148,6 +152,7 @@ export default async function RelayPage({
             path={`/relays/${encodeURIComponent(normalizedRelayHost)}`}
             searchParams={currentSearchParams}
             activeWindow={window}
+            windows={RELAY_STATS_WINDOWS}
           />
         }
       />

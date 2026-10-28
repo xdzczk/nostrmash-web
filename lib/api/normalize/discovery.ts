@@ -6,11 +6,13 @@ import type {
   HashtagNotesResponse,
   LanguageCount,
   RelatedHashtagsResponse,
+  DomainEntry,
   TopLanguages,
   TrendingLongFormResponse,
 } from "@/lib/types/api";
 import { asArray, asNumber, asRecord, asString, compactDefined } from "@/lib/api/normalize/helpers";
 import { parseLanguage } from "@/lib/search-params/language";
+import { isStatsWindow, STATS_WINDOWS, type StatsWindow } from "@/lib/search-params/window";
 import {
   normalizeArticleRecords,
   normalizeDomainEntries,
@@ -39,11 +41,34 @@ export function normalizeTopLanguages(value: unknown): TopLanguages | undefined 
   const record = asRecord(value);
   if (!record) return undefined;
   const result: TopLanguages = {};
-  for (const window of ["24h", "7d"] as const) {
+  for (const window of STATS_WINDOWS) {
     const rows = normalizeLanguageCounts(record[window]);
     if (rows) result[window] = rows;
   }
-  return result["24h"] || result["7d"] ? result : undefined;
+  return STATS_WINDOWS.some((window) => result[window]) ? result : undefined;
+}
+
+/** Prefer `trend_windows[window]` so a 30d selection reads that bucket. */
+export function applyDomainTrendWindow(entry: DomainEntry, window: StatsWindow): DomainEntry {
+  const bucket = asRecord(asRecord(entry.trend_windows)?.[window]);
+  if (!bucket) return entry;
+  const linkCount = asNumber(bucket.link_count);
+  const noteCount = asNumber(bucket.note_count);
+  const uniqueAuthors = asNumber(bucket.unique_authors);
+  return {
+    ...entry,
+    ...(linkCount !== undefined ? { link_count: linkCount } : {}),
+    ...(noteCount !== undefined ? { note_count: noteCount, event_count: noteCount } : {}),
+    ...(uniqueAuthors !== undefined ? { unique_authors: uniqueAuthors } : {}),
+  };
+}
+
+export function applyDomainTrendWindows(
+  entries: DomainEntry[],
+  window: string | undefined
+): DomainEntry[] {
+  if (!isStatsWindow(window)) return entries;
+  return entries.map((entry) => applyDomainTrendWindow(entry, window));
 }
 
 type DiscoveryLanguageFields = {
@@ -249,32 +274,55 @@ export function normalizeDiscoveryHomeResponse(
   const totals = asRecord(networkSummary?.totals);
   const sectionProfiles = asRecord(sections?.profiles);
 
-  const stats = compactDefined({
-    events_ingested: asNumber(totals?.events_ingested),
-    projected_profiles: asNumber(totals?.projected_profiles),
-    active_authors_24h: asNumber(activeAuthors?.["24h"]),
-    note_volume_24h: asNumber(noteVolume?.["24h"]),
-    relays_active_24h: asNumber(relays?.active_24h),
-    unique_authors_24h: asNumber(uniqueAuthors?.["24h"]),
-  });
+  const stats: Record<string, unknown> = {};
+  const eventsIngested = asNumber(totals?.events_ingested);
+  const projectedProfiles = asNumber(totals?.projected_profiles);
+  if (eventsIngested !== undefined) stats.events_ingested = eventsIngested;
+  if (projectedProfiles !== undefined) stats.projected_profiles = projectedProfiles;
+  for (const statsWindow of STATS_WINDOWS) {
+    const authors = asNumber(activeAuthors?.[statsWindow]);
+    const notes = asNumber(noteVolume?.[statsWindow]);
+    if (authors !== undefined) stats[`active_authors_${statsWindow}`] = authors;
+    if (notes !== undefined) stats[`note_volume_${statsWindow}`] = notes;
+  }
+  // Relays stay on 24h/7d. There is no 30d relay field.
+  const relaysActive24h = asNumber(relays?.active_24h);
+  const relaysActive7d = asNumber(relays?.active_7d);
+  const uniqueAuthors24h = asNumber(uniqueAuthors?.["24h"]);
+  const uniqueAuthors7d = asNumber(uniqueAuthors?.["7d"]);
+  if (relaysActive24h !== undefined) stats.relays_active_24h = relaysActive24h;
+  if (relaysActive7d !== undefined) stats.relays_active_7d = relaysActive7d;
+  if (uniqueAuthors24h !== undefined) stats.unique_authors_24h = uniqueAuthors24h;
+  if (uniqueAuthors7d !== undefined) stats.unique_authors_7d = uniqueAuthors7d;
+
+  const echoedWindow = asString(record.window);
+  const listedHashtags = sections?.trending_hashtags ?? record.trending_hashtags ?? record.hashtags;
+  const summaryHashtags = asRecord(networkSummary?.top_hashtags);
+  const hashtagSource =
+    asArray(listedHashtags).length > 0
+      ? listedHashtags
+      : isStatsWindow(echoedWindow)
+        ? summaryHashtags?.[echoedWindow]
+        : listedHashtags;
 
   return normalizeDiscoveryLanguageFields({
     ...record,
     meta: normalizeDiscoveryListMeta(record.meta),
     computed_at: asString(record.computed_at),
     ranking_version: asString(record.ranking_version),
-    window: asString(record.window),
+    window: echoedWindow,
     top_languages: record.top_languages ?? networkSummary?.top_languages,
     notes: normalizeEventRecords(sections?.trending_notes ?? record.trending_notes ?? record.notes),
     profiles: normalizeProfiles(
       sectionProfiles?.trending ?? record.trending_profiles ?? record.profiles
     ),
     rising_profiles: normalizeProfiles(sectionProfiles?.rising ?? record.rising_profiles),
-    hashtags: normalizeHashtagEntries(
-      sections?.trending_hashtags ?? record.trending_hashtags ?? record.hashtags
-    ),
-    domains: normalizeDomainEntries(
-      sections?.trending_domains ?? sections?.domains ?? record.trending_domains ?? record.domains
+    hashtags: normalizeHashtagEntries(hashtagSource),
+    domains: applyDomainTrendWindows(
+      normalizeDomainEntries(
+        sections?.trending_domains ?? sections?.domains ?? record.trending_domains ?? record.domains
+      ),
+      asString(record.window)
     ),
     stats,
   });

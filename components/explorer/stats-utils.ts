@@ -1,6 +1,10 @@
 import { isRecord } from "@/components/explorer/utils";
-import type { StatsWindow } from "@/lib/search-params/window";
-import { preferredMetricKeysForWindow } from "@/lib/search-params/window";
+import {
+  isRelayWindowStatLabel,
+  preferredMetricKeysForWindow,
+  relayStatsWindow,
+  type StatsWindow,
+} from "@/lib/search-params/window";
 import { parseTimestamp } from "@/lib/time/freshness";
 
 /** Used only when a health row omits the API `stale` flag. */
@@ -659,12 +663,16 @@ export function filterPrimitiveStatsForWindow(
   stats: Array<{ label: string; value: string | number | boolean }>,
   window: StatsWindow
 ): Array<{ label: string; value: string | number | boolean }> {
+  const relayWindow = relayStatsWindow(window);
   return stats.filter((stat) => {
-    if (stat.label.endsWith(`_${window}`)) return true;
-    if (stat.label.endsWith("_24h") || stat.label.endsWith("_7d")) return false;
-    if (stat.label === "active_24h") return window === "24h";
-    if (stat.label === "active_7d") return window === "7d";
-    return true;
+    const suffix = stat.label.match(/_(24h|7d|30d)$/)?.[1];
+    if (!suffix) return true;
+    if (suffix === window) return true;
+    // Relay stats have no 30d bucket. Keep the 24h figures instead of blanking the tile.
+    if (window === "30d" && isRelayWindowStatLabel(stat.label) && suffix === relayWindow) {
+      return true;
+    }
+    return false;
   });
 }
 

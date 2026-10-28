@@ -4,6 +4,7 @@ import {
   DEFAULT_STATS_WINDOW,
   STATS_WINDOWS,
   formatStatsWindowLabel,
+  isStatsWindow,
 } from "@/lib/search-params/window";
 
 export function WindowSelector({
@@ -42,7 +43,7 @@ export function WindowSelector({
           >
             {labelFor
               ? labelFor(window)
-              : window === "24h" || window === "7d"
+              : isStatsWindow(window)
                 ? formatStatsWindowLabel(window, "short")
                 : window}
           </Link>

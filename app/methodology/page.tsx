@@ -81,7 +81,7 @@ export default function MethodologyPage() {
       <PageHero
         eyebrow="Methodology"
         title="How rankings work."
-        subtitle="Every list asks one question over the last 24 hours or the last 7 days. The sentence beside each name is the order. Any other number on the row is context, and a larger context number does not mean a higher rank."
+        subtitle="Every list asks one question over the last 24 hours, the last 7 days, or the last 30 days. The sentence beside each name is the order. Any other number on the row is context, and a larger context number does not mean a higher rank."
       />
 
       <section aria-labelledby="ranking-orders">
@@ -115,9 +115,9 @@ export default function MethodologyPage() {
         <section className="space-y-3">
           <h2 className="nm-title text-ink">The window</h2>
           <p className="text-ink-muted text-[1.02rem] leading-7">
-            24h is the last day. 7d is the last week. Both keep rolling, so the same list read an
-            hour later can have moved. Switching the window changes who qualifies. It does not
-            change the question that list is asking.
+            24h is the last day. 7d is the last week. 30d is the last 30 days. All three keep
+            rolling, so the same list read an hour later can have moved. Switching the window
+            changes who qualifies. It does not change the question that list is asking.
           </p>
         </section>
 

@@ -45,11 +45,15 @@ export default async function TrendingProfilesPage({
   const path = "/trending/profiles";
   const resolvedSearchParams = await searchParams;
   const language = await applyDiscoverLanguage(path, resolvedSearchParams);
-  const { window, currentSearchParams } = readRankedListContext(resolvedSearchParams, path);
+  const { window, windows, currentSearchParams } = await readRankedListContext(
+    resolvedSearchParams,
+    path
+  );
   const offset = readRankedOffset(resolvedSearchParams);
   const { payload, errorMessage, semantics } = await loadRankedListPayload(
     () => getTrendingProfiles("shortTtl", rankedListRequest(window, language, offset)),
-    "Failed to load trending profiles."
+    "Failed to load trending profiles.",
+    { window, path, params: currentSearchParams }
   );
   const sourceProfiles = payload?.profiles ?? [];
   const continuation = rankedPageContinuation("profiles", sourceProfiles, offset);
@@ -82,6 +86,7 @@ export default async function TrendingProfilesPage({
       path={path}
       searchParams={currentSearchParams}
       window={window}
+      windows={windows}
       language={language}
       topLanguages={payload?.top_languages}
       semantics={semantics}

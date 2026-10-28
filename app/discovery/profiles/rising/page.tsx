@@ -40,11 +40,15 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
   const path = "/discovery/profiles/rising";
   const resolvedSearchParams = await searchParams;
   const language = await applyDiscoverLanguage(path, resolvedSearchParams);
-  const { window, currentSearchParams } = readRankedListContext(resolvedSearchParams, path);
+  const { window, windows, currentSearchParams } = await readRankedListContext(
+    resolvedSearchParams,
+    path
+  );
   const offset = readRankedOffset(resolvedSearchParams);
   const { payload, errorMessage, semantics } = await loadRankedListPayload(
     () => getRisingProfiles("shortTtl", rankedListRequest(window, language, offset)),
-    "Failed to load rising profiles."
+    "Failed to load rising profiles.",
+    { window, path, params: currentSearchParams }
   );
   const sourceProfiles = payload?.profiles ?? [];
   const continuation = rankedPageContinuation("rising", sourceProfiles, offset);
@@ -68,6 +72,7 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
       path={path}
       searchParams={currentSearchParams}
       window={window}
+      windows={windows}
       language={language}
       topLanguages={payload?.top_languages}
       semantics={semantics}

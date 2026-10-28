@@ -1,4 +1,4 @@
-import type { StatsWindow } from "@/lib/search-params/window";
+import { formatStatsWindowSpan, type StatsWindow } from "@/lib/search-params/window";
 
 const COUNT_WORDS = [
   "Zero",
@@ -24,6 +24,6 @@ export function concentrationTitle(
   const count = Math.round(relayCount);
   const subject =
     count <= 10 ? `${COUNT_WORDS[count]} ${count === 1 ? "relay" : "relays"}` : `${count} relays`;
-  const when = window === "7d" ? "in the last 7 days" : "in the last day";
+  const when = formatStatsWindowSpan(window);
   return `${subject} carried ${Math.round(sharePercent)}% of what we indexed ${when}.`;
 }

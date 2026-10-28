@@ -24,7 +24,11 @@ import {
 } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
-import { readStatsWindow } from "@/lib/search-params/window";
+import {
+  RELAY_STATS_WINDOWS,
+  formatStatsWindowLength,
+  readRelayStatsWindow,
+} from "@/lib/search-params/window";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import { buildEntityMetadata } from "@/lib/seo/metadata";
 
@@ -71,7 +75,7 @@ export default async function StatsPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
-  const window = readStatsWindow(resolvedSearchParams);
+  const window = readRelayStatsWindow(resolvedSearchParams);
   let errorMessage = "";
   let network: Awaited<ReturnType<typeof getNetworkStats>> | null = null;
   let content: Awaited<ReturnType<typeof getContentStats>> | null = null;
@@ -114,7 +118,7 @@ export default async function StatsPage({
     errorMessage = toUserFacingErrorMessage(error, "Failed to load stats.");
   }
   const semantics = extractNativeApiSemantics(network, content, relays);
-  const windowPhrase = window === "7d" ? "7 days" : "24 hours";
+  const windowPhrase = formatStatsWindowLength(window);
   const authors =
     readStatNumber(network, [`active_authors_${window}`]) ?? latestValue(activeAuthorsSeries);
   const noteVolume =
@@ -136,7 +140,12 @@ export default async function StatsPage({
         title="How the index is moving."
         subtitle={`Note volume and authors over the last ${windowPhrase}, and how those rolling totals change from one sample to the next.`}
         badges={
-          <WindowSelector path="/stats" searchParams={currentSearchParams} activeWindow={window} />
+          <WindowSelector
+            path="/stats"
+            searchParams={currentSearchParams}
+            activeWindow={window}
+            windows={RELAY_STATS_WINDOWS}
+          />
         }
       />
       <NetworkNav active="stats" />

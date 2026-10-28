@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 import { FreshnessBadge } from "@/components/discover/discover-shell";
 import { EditorialOverview } from "@/components/discover/overview/editorial-overview";
 import { EmptyState } from "@/components/explorer/empty-state";
@@ -16,8 +18,13 @@ import { formatUpdatedRelative } from "@/lib/time/freshness";
  * blocks first paint.
  */
 
+function redirectRejectedDiscoveryWindow(href: string | null) {
+  if (href) redirect(href);
+}
+
 export async function HomeFreshness({ data }: { data: Promise<HomePageData> }) {
   const home = await data;
+  redirectRejectedDiscoveryWindow(home.discoveryWindowRedirect);
   const label = formatUpdatedRelative(home.computedAt);
   return label ? <FreshnessBadge label={label} /> : null;
 }
@@ -36,6 +43,7 @@ export async function HomeLanguageSelector({
   window: StatsWindow;
 }) {
   const home = await data;
+  redirectRejectedDiscoveryWindow(home.discoveryWindowRedirect);
   return (
     <LanguageSelector
       path={path}
@@ -48,6 +56,7 @@ export async function HomeLanguageSelector({
 
 export async function HomeOverviewBody({ data }: { data: Promise<HomePageData> }) {
   const home = await data;
+  redirectRejectedDiscoveryWindow(home.discoveryWindowRedirect);
   const hasContent =
     home.homeNotes.length > 0 ||
     home.hydratedHomeProfiles.length > 0 ||

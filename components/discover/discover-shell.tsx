@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { DiscoverTelemetry } from "@/components/discover/discover-telemetry";
+import { RememberDiscoveryWindow } from "@/components/discover/remember-discovery-window";
 import { DiscoverNav } from "@/components/explorer/discover-nav";
 import { LanguageSelector } from "@/components/explorer/language-selector";
 import { PageHero } from "@/components/explorer/page-hero";
@@ -11,7 +12,7 @@ import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
 import { DISCOVER_MODE_LINKS, type DiscoverMode, type DiscoverView } from "@/lib/discover/views";
 import { formatDiscoverEyebrow } from "@/lib/i18n/language-names";
 import { buildDiscoverHref } from "@/lib/search-params/language";
-import type { StatsWindow } from "@/lib/search-params/window";
+import { STATS_WINDOWS, type StatsWindow } from "@/lib/search-params/window";
 import type { TopLanguages } from "@/lib/types/api";
 
 export function FreshnessBadge({ label }: { label: string }) {
@@ -32,6 +33,7 @@ export function DiscoverShell({
   path,
   searchParams,
   window,
+  windows = STATS_WINDOWS,
   language,
   topLanguages,
   languageControl,
@@ -51,6 +53,8 @@ export function DiscoverShell({
   path: string;
   searchParams: URLSearchParams;
   window: StatsWindow;
+  /** Ranges the selector may offer. Hidden after this session's 30d request is rejected. */
+  windows?: readonly StatsWindow[];
   language?: string;
   topLanguages?: TopLanguages;
   /** Streamed selector. When omitted, options come from `topLanguages`. */
@@ -74,6 +78,7 @@ export function DiscoverShell({
   return (
     <div className="min-w-0 space-y-6 sm:space-y-7">
       <DiscoverTelemetry view={view} mode={mode} window={window} language={language} />
+      <RememberDiscoveryWindow window={window} />
       <LiveRefresh />
       <PageHero
         eyebrow={formatDiscoverEyebrow(eyebrow, language)}
@@ -82,7 +87,12 @@ export function DiscoverShell({
         subtitleFromSm
         badges={
           <div className="nm-meta flex flex-wrap items-center gap-x-3 gap-y-2">
-            <WindowSelector path={path} searchParams={searchParams} activeWindow={window} />
+            <WindowSelector
+              path={path}
+              searchParams={searchParams}
+              activeWindow={window}
+              windows={windows}
+            />
             {languageControl ?? (
               <LanguageSelector
                 path={path}

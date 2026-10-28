@@ -24,6 +24,7 @@ export {
   normalizeRelatedHashtagsResponse,
   normalizeDomainDetailResponse,
   normalizeDomainNotesResponse,
+  applyDomainTrendWindows,
   normalizeDiscoveryHomeResponse,
   normalizeDiscoveryLanguageFields,
   normalizeTopLanguages,
