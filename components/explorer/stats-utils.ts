@@ -376,7 +376,7 @@ export function readMetricNumber(
   return null;
 }
 
-function checkpointIsStale(row: RelayHealthSummary, nowMs: number): boolean {
+export function relayCheckpointIsStale(row: RelayHealthSummary, nowMs: number): boolean {
   if (typeof row.stale === "boolean") return row.stale;
   const checkedAt = parseTimestamp(row.latestCheckpointAt ?? row.lastSeenAt)?.getTime();
   if (checkedAt === undefined) return true;
@@ -396,7 +396,7 @@ export function partitionRelayHealth(
   const current: RelayHealthSummary[] = [];
 
   for (const row of rows) {
-    const currentHealthy = row.healthy === true && !checkpointIsStale(row, nowMs);
+    const currentHealthy = row.healthy === true && !relayCheckpointIsStale(row, nowMs);
     if (currentHealthy) current.push(row);
     else attention.push(row);
   }
@@ -435,10 +435,64 @@ export function relayDisplayLabel(relay: string, host: string): string {
 
 export function relayHealthSummary(rows: RelayHealthSummary[], nowMs: number) {
   const { attention, current } = partitionRelayHealth(rows, nowMs);
-  const posture = relayHealthPosture(rows);
-  const stale = attention.filter((row) => row.healthy === true).length;
+  const failingNow = attention.filter(
+    (row) => row.healthy === false && !relayCheckpointIsStale(row, nowMs)
+  );
+  const unknownNow = attention.filter(
+    (row) => row.healthy == null && !relayCheckpointIsStale(row, nowMs)
+  );
+  const earlier = attention.filter((row) => relayCheckpointIsStale(row, nowMs));
   const hosts = new Set(rows.map((row) => row.host)).size;
-  return { attention, current, posture, stale, hosts, checks: rows.length };
+  return {
+    attention,
+    current,
+    failingNow,
+    unknownNow,
+    earlier,
+    posture: relayHealthPosture(rows),
+    hosts,
+    checks: rows.length,
+  };
+}
+
+/** Caption for the current read. Older checks stay in the record sentence. */
+export function formatRelayReadCaption(input: {
+  reading: number;
+  failing: number;
+  unknown: number;
+  earlier: number;
+  hosts?: number;
+  checks?: number;
+  total?: number;
+}): string {
+  const checks = input.checks ?? input.reading + input.failing + input.unknown + input.earlier;
+  const parts = [
+    `${input.reading.toLocaleString()} ${input.reading === 1 ? "relay" : "relays"} checked in today.`,
+  ];
+  if (input.failing > 0) {
+    parts.push(
+      `${input.failing.toLocaleString()} ${input.failing === 1 ? "relay is" : "relays are"} failing now.`
+    );
+  }
+  if (input.unknown > 0) {
+    parts.push(
+      `${input.unknown.toLocaleString()} ${input.unknown === 1 ? "check has" : "checks have"} no status.`
+    );
+  }
+  if (input.earlier > 0) {
+    parts.push(
+      `${input.earlier.toLocaleString()} earlier ${input.earlier === 1 ? "check stays" : "checks stay"} on record.`
+    );
+  }
+  if (input.hosts && input.hosts !== checks && checks > 0) {
+    parts.push(`${checks.toLocaleString()} checks across ${input.hosts.toLocaleString()} hosts.`);
+  }
+  if (input.total !== undefined && input.total !== checks) {
+    parts.push(
+      `This page includes ${checks.toLocaleString()} of ${input.total.toLocaleString()} checks.`
+    );
+  }
+  return parts.join(" ");
 }
 
 /** One sentence both the overview and the health page can share. */
@@ -447,26 +501,27 @@ export function formatRelayHealthSummary(
   nowMs: number,
   total = rows.length
 ): string {
-  const summary = relayHealthSummary(rows, nowMs);
   if (total === 0) return "";
-  const unhealthyVerb = summary.posture.unhealthy === 1 ? "is" : "are";
-  const parts = [
-    `${summary.posture.unhealthy.toLocaleString()} of ${total.toLocaleString()} checks ${unhealthyVerb} unhealthy.`,
-  ];
-  if (summary.stale > 0) {
-    parts.push(`${summary.stale.toLocaleString()} healthy checkpoints are older than a day.`);
-  }
-  if (summary.posture.unknown > 0) {
-    parts.push(`${summary.posture.unknown.toLocaleString()} checks have no status.`);
-  }
-  if (summary.hosts !== summary.checks) {
-    parts.push(`These checks cover ${summary.hosts.toLocaleString()} hosts.`);
-  }
-  parts.push(`${summary.current.length.toLocaleString()} checked in healthy within the last day.`);
-  return parts.join(" ");
+  const summary = relayHealthSummary(rows, nowMs);
+  return formatRelayReadCaption({
+    reading: summary.current.length,
+    failing: summary.failingNow.length,
+    unknown: summary.unknownNow.length,
+    earlier: summary.earlier.length,
+    hosts: summary.hosts,
+    checks: summary.checks,
+    total,
+  });
 }
 
-/** Prefer the checkpoint the health page lists first for this host. */
+/** Short headline for the status page. */
+export function formatCurrentReadHeadline(reading: number, failing: number): string {
+  const checked = `${reading.toLocaleString()} ${reading === 1 ? "relay" : "relays"} checked in today.`;
+  if (failing <= 0) return checked;
+  return `${checked} ${failing.toLocaleString()} ${failing === 1 ? "relay is" : "relays are"} failing now.`;
+}
+
+/** Prefer a checkpoint from the current read. An older row is the fallback. */
 export function selectRelayHealthForHost(
   rows: RelayHealthSummary[],
   host: string,
@@ -474,8 +529,21 @@ export function selectRelayHealthForHost(
 ): { row: RelayHealthSummary | null; count: number } {
   const matches = rows.filter((row) => row.host === host);
   if (matches.length === 0) return { row: null, count: 0 };
-  const { attention } = partitionRelayHealth(matches, nowMs);
-  return { row: attention[0] ?? matches[0] ?? null, count: matches.length };
+  const age = (row: RelayHealthSummary) => {
+    const checkedAt = parseTimestamp(row.latestCheckpointAt ?? row.lastSeenAt)?.getTime();
+    if (checkedAt === undefined) return Number.POSITIVE_INFINITY;
+    return nowMs - checkedAt;
+  };
+  const severity = (row: RelayHealthSummary) =>
+    row.healthy === false ? 0 : row.healthy === undefined ? 1 : 2;
+  const ranked = [...matches].sort((left, right) => {
+    const leftCurrent = relayCheckpointIsStale(left, nowMs) ? 1 : 0;
+    const rightCurrent = relayCheckpointIsStale(right, nowMs) ? 1 : 0;
+    if (leftCurrent !== rightCurrent) return leftCurrent - rightCurrent;
+    if (leftCurrent === 0) return severity(left) - severity(right) || age(left) - age(right);
+    return age(left) - age(right);
+  });
+  return { row: ranked[0] ?? null, count: matches.length };
 }
 
 export function relayHealthPosture(rows: RelayHealthSummary[]): {

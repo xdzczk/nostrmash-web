@@ -113,10 +113,10 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
       {health.checks > 0 ? (
         <section className="space-y-3">
           <CheckComposition
-            fresh={health.current.length}
-            stale={health.stale}
-            failing={health.posture.unhealthy}
-            unknown={health.posture.unknown}
+            reading={health.current.length}
+            failing={health.failingNow.length}
+            unknown={health.unknownNow.length}
+            earlier={health.earlier.length}
             hosts={health.hosts}
           />
           <p className="text-ink-muted text-sm">

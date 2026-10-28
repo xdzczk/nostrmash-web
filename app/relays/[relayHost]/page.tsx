@@ -6,6 +6,7 @@ import {
   normalizeRelayHost,
   rankRelayActivity,
   readMetricNumber,
+  relayCheckpointIsStale,
   selectRelayHealthForHost,
 } from "@/components/explorer/stats-utils";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
@@ -164,6 +165,7 @@ export default async function RelayPage({
         listedUsers={listed?.distinct_users ?? null}
         listedKnown={popular !== null}
         healthy={relayHealth ? healthy : null}
+        inCurrentRead={relayHealth ? !relayCheckpointIsStale(relayHealth, nowMs) : false}
         checkpointAt={relayHealth?.latestCheckpointAt ?? relayHealth?.lastSeenAt}
         lastError={relayHealth?.lastError}
         observationCount={selectedHealth.count}

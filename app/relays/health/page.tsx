@@ -1,7 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-import { extractRelayHealthRows, relayHealthSummary } from "@/components/explorer/stats-utils";
+import {
+  extractRelayHealthRows,
+  formatCurrentReadHeadline,
+  relayHealthSummary,
+} from "@/components/explorer/stats-utils";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { AboutThisData } from "@/components/explorer/about-this-data";
@@ -23,7 +27,7 @@ import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
   title: "Relay status",
-  description: "Which relays the index read recently, and which connection checks are failing.",
+  description: "Which relays the index is reading now, and which connection checks are failing.",
 };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -72,7 +76,7 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
         title="What the index could read."
         subtitle={
           rows.length > 0
-            ? `${health.current.length.toLocaleString()} relays checked in today. ${health.posture.unhealthy.toLocaleString()} checks are failing.`
+            ? formatCurrentReadHeadline(health.current.length, health.failingNow.length)
             : "Ingest checkpoints and connection checks for monitored relays."
         }
       />
@@ -82,10 +86,10 @@ export default async function RelayHealthPage({ searchParams }: { searchParams: 
 
       {rows.length > 0 ? (
         <CheckComposition
-          fresh={health.current.length}
-          stale={health.stale}
-          failing={health.posture.unhealthy}
-          unknown={health.posture.unknown}
+          reading={health.current.length}
+          failing={health.failingNow.length}
+          unknown={health.unknownNow.length}
+          earlier={health.earlier.length}
           hosts={health.hosts}
         />
       ) : null}

@@ -7,6 +7,7 @@ import {
   flattenPrimitiveStats,
   formatRelayHealthSummary,
   partitionRelayHealth,
+  relayHealthSummary,
   pickTopPrimitiveStats,
   rankRelayActivity,
   readStatNumber,
@@ -375,12 +376,39 @@ describe("partitionRelayHealth", () => {
       "relay.example/alpha"
     );
     expect(formatRelayHealthSummary(rows, nowMs)).toBe(
-      "1 of 3 checks is unhealthy. These checks cover 2 hosts. 2 checked in healthy within the last day."
+      "2 relays checked in today. 1 earlier check stays on record. 3 checks across 2 hosts."
     );
     expect(selectRelayHealthForHost(rows, "relay.example", nowMs)).toMatchObject({
       count: 2,
-      row: { relay: "wss://relay.example/alpha" },
+      row: { relay: "wss://relay.example/beta" },
     });
+  });
+
+  it("keeps an old failure in the record and a recent failure in the current read", () => {
+    const rows = extractRelayHealthRows({
+      relays: [
+        {
+          relay_url: "wss://old-down.example",
+          status: "errored",
+          latest_checkpoint_at: "2026-08-01T00:00:00.000Z",
+        },
+        {
+          relay_url: "wss://fresh.example",
+          status: "healthy",
+          latest_checkpoint_at: "2026-10-24T11:00:00.000Z",
+        },
+        {
+          relay_url: "wss://down-now.example",
+          status: "errored",
+          latest_checkpoint_at: "2026-10-24T11:30:00.000Z",
+        },
+      ],
+    });
+    const summary = relayHealthSummary(rows, nowMs);
+
+    expect(summary.current.map((row) => row.host)).toEqual(["fresh.example"]);
+    expect(summary.failingNow.map((row) => row.host)).toEqual(["down-now.example"]);
+    expect(summary.earlier.map((row) => row.host)).toEqual(["old-down.example"]);
   });
 
   it("trusts the API stale flag over the checkpoint timestamp", () => {
@@ -412,7 +440,7 @@ describe("partitionRelayHealth", () => {
     });
 
     expect(formatRelayHealthSummary(rows, nowMs, 439)).toBe(
-      "1 of 439 checks is unhealthy. 0 checked in healthy within the last day."
+      "0 relays checked in today. 1 earlier check stays on record. This page includes 1 of 439 checks."
     );
   });
 });

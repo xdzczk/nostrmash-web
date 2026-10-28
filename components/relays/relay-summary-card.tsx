@@ -27,6 +27,7 @@ export function RelaySummaryCard({
   listedUsers,
   listedKnown,
   healthy,
+  inCurrentRead = false,
   checkpointAt,
   lastError,
   observationCount = 1,
@@ -45,6 +46,8 @@ export function RelaySummaryCard({
   /** True when the popular-relay page we checked is only a prefix of the ranking. */
   listedKnown: boolean;
   healthy: boolean | null;
+  /** False when the checkpoint is older than the current read. */
+  inCurrentRead?: boolean;
   checkpointAt?: string | number;
   lastError?: string;
   observationCount?: number;
@@ -54,9 +57,12 @@ export function RelaySummaryCard({
   window: StatsWindow;
 }) {
   const checkpointAge = formatRelativeAge(checkpointAt);
+  const showEarlier = !inCurrentRead && Boolean(checkpointAt);
   const failure = classifyIngestError(lastError);
   const failureCopy =
-    healthy === false && failure !== "none" ? ingestFailureCopy(failure).summary : null;
+    inCurrentRead && healthy === false && failure !== "none"
+      ? ingestFailureCopy(failure).summary
+      : null;
   const rankingHref = buildWindowHref("/relays", new URLSearchParams(), window);
 
   return (
@@ -92,9 +98,12 @@ export function RelaySummaryCard({
         <div>
           <dt className="text-ink-faint text-xs">Last ingest</dt>
           <dd className="mt-1 flex flex-wrap items-center gap-2">
-            {healthy === true ? <StatusPill tone="ok">Healthy</StatusPill> : null}
-            {healthy === false ? <StatusPill tone="bad">Failing</StatusPill> : null}
-            {healthy === null ? <StatusPill tone="neutral">No checkpoint</StatusPill> : null}
+            {showEarlier ? <StatusPill tone="neutral">Earlier check</StatusPill> : null}
+            {!showEarlier && healthy === true ? <StatusPill tone="ok">Healthy</StatusPill> : null}
+            {!showEarlier && healthy === false ? <StatusPill tone="bad">Failing</StatusPill> : null}
+            {!showEarlier && healthy === null ? (
+              <StatusPill tone="neutral">No checkpoint</StatusPill>
+            ) : null}
             <span className="text-ink-muted text-sm">
               {checkpointAge ? checkpointAge : "No checkpoint time"}
             </span>

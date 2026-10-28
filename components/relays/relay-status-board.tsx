@@ -112,7 +112,7 @@ export function RelayStatusBoard({
   probes: RelayProbeHealthEntry[];
   probeTotal: number;
 }) {
-  const { fresh, groups } = groupRelayAttention(rows, nowMs);
+  const { fresh, groups, earlierGroups } = groupRelayAttention(rows, nowMs);
   const probesByHost = new Map<string, RelayProbeHealthEntry>();
   for (const probe of probes) {
     const host = normalizeRelayHost(probe.normalized_url);
@@ -151,16 +151,16 @@ export function RelayStatusBoard({
         )}
       </section>
 
-      <section id="failing" className="scroll-mt-24 space-y-3">
-        <h2 className="nm-title text-ink">Needs a look</h2>
-        <p className="text-ink-muted max-w-3xl text-sm leading-6">
-          Failures are grouped by what went wrong. The raw check is inside each row.
-        </p>
-        {groups.length > 0 ? (
-          groups.map((group) => (
+      {groups.length > 0 ? (
+        <section id="failing" className="scroll-mt-24 space-y-3">
+          <h2 className="nm-title text-ink">Needs a look</h2>
+          <p className="text-ink-muted max-w-3xl text-sm leading-6">
+            These relays are in the current read, and the latest check failed. The raw check is
+            inside each row.
+          </p>
+          {groups.map((group) => (
             <Disclosure
               key={group.id}
-              id={group.id === "stale" ? "stale" : undefined}
               title={`${group.label} · ${group.rows.length.toLocaleString()}`}
               description={group.summary}
             >
@@ -176,11 +176,43 @@ export function RelayStatusBoard({
                 ))}
               </ul>
             </Disclosure>
-          ))
-        ) : (
-          <p className="text-ink-muted text-sm">Nothing in this response is unhealthy or stale.</p>
-        )}
-      </section>
+          ))}
+        </section>
+      ) : null}
+
+      {earlierGroups.length > 0 ? (
+        <Disclosure
+          id="earlier"
+          title={`Earlier checks · ${earlierGroups.reduce((sum, group) => sum + group.rows.length, 0).toLocaleString()}`}
+          description={
+            fresh.length > 0
+              ? "Older ingest checks kept on record. The current read is the list above."
+              : "Older ingest checks kept on record."
+          }
+        >
+          <div className="space-y-3">
+            {earlierGroups.map((group) => (
+              <Disclosure
+                key={group.id}
+                title={`${group.label} · ${group.rows.length.toLocaleString()}`}
+                description={group.summary}
+              >
+                <ul className="divide-edge/70 divide-y">
+                  {group.rows.map((row) => (
+                    <IngestRow
+                      key={row.relay}
+                      row={row}
+                      nowMs={nowMs}
+                      anchor={rowAnchor(row, seenHosts)}
+                      probe={probesByHost.get(row.host)}
+                    />
+                  ))}
+                </ul>
+              </Disclosure>
+            ))}
+          </div>
+        </Disclosure>
+      ) : null}
 
       <section id="connect" className="border-edge/70 scroll-mt-24 space-y-3 border-t pt-8">
         <h2 className="nm-title text-ink">Connection checks</h2>
