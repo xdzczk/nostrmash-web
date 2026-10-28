@@ -1,8 +1,14 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
+import { resetBlossomImageCache } from "@/hooks/use-blossom-image-src";
+import { BLOSSOM_MIRRORS } from "@/lib/media/blossom";
 import { EnlargeableImage, fittedMediaSize } from "@/components/ui/image-lightbox";
+
+afterEach(() => {
+  resetBlossomImageCache();
+});
 
 describe("fittedMediaSize", () => {
   it("fills the stage on the limiting side and scales small pictures up", () => {
@@ -46,5 +52,22 @@ describe("EnlargeableImage", () => {
     await user.click(screen.getByRole("button", { name: "Enlarge Wide shot" }));
     await user.click(screen.getByRole("button", { name: "Dismiss enlarged image" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("retries a blossom blob when the enlarged photo fails", async () => {
+    const user = userEvent.setup();
+    const hash = "b2".repeat(32);
+    const url = `https://media.21media.to/${hash}.jpg`;
+    render(
+      <EnlargeableImage src={url} alt="Attached photo">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt="" />
+      </EnlargeableImage>
+    );
+
+    await user.click(screen.getByRole("button", { name: "Enlarge Attached photo" }));
+    const photo = screen.getByRole("img", { name: "Attached photo" });
+    fireEvent.error(photo);
+    expect(photo).toHaveAttribute("src", `${BLOSSOM_MIRRORS[0]}/${hash}.jpg`);
   });
 });

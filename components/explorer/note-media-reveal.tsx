@@ -1,9 +1,8 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import { useEffect, useRef } from "react";
 
+import { BlossomImage } from "@/components/ui/blossom-image";
 import { EnlargeableImage } from "@/components/ui/image-lightbox";
 
 type MediaKind = "image" | "video" | "audio";
@@ -143,7 +142,7 @@ export function NoteMediaReveal({
           alt="Image attached to note"
           className={`block max-w-full cursor-zoom-in ${fill ? "h-full w-full" : "w-fit"}`}
         >
-          <img
+          <BlossomImage
             src={url}
             alt="Image attached to note"
             loading={priority ? "eager" : "lazy"}

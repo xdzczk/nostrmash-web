@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { ArticleMarkdown } from "@/components/explorer/article-markdown";
@@ -7,6 +6,7 @@ import { DiscoveryPill, DiscoveryStatPills } from "@/components/explorer/card-gr
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
+import { BlossomNextImage } from "@/components/ui/blossom-image";
 import { EnlargeableImage } from "@/components/ui/image-lightbox";
 import {
   extractEngagementStats,
@@ -116,7 +116,7 @@ export function ArticleReader({
           alt={presentation.title}
           className="mt-6 block w-full cursor-zoom-in"
         >
-          <Image
+          <BlossomNextImage
             src={imageSrc}
             alt={presentation.title}
             width={1200}

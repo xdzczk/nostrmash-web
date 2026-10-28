@@ -2,8 +2,17 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
+
+import { useBlossomImageSrc } from "@/hooks/use-blossom-image-src";
 
 function subscribeNoop() {
   return () => {};
@@ -61,8 +70,29 @@ export function ImageLightbox({
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const isClient = useIsClient();
   const title = alt.trim() || "Enlarged image";
-  const [fitted, setFitted] = useState<{ width: number; height: number } | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [fitted, setFitted] = useState<{
+    src: string;
+    size: { width: number; height: number };
+  } | null>(null);
+  const image = useBlossomImageSrc(src);
+  const shownSrc = image.src ?? src;
+  const fittedSize = fitted?.src === shownSrc ? fitted.size : null;
+  const rememberFit = useCallback(
+    (size: { width: number; height: number } | null) => {
+      setFitted((current) => {
+        if (
+          size &&
+          current?.src === shownSrc &&
+          current.size.width === size.width &&
+          current.size.height === size.height
+        ) {
+          return current;
+        }
+        return size ? { src: shownSrc, size } : null;
+      });
+    },
+    [shownSrc]
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -73,16 +103,8 @@ export function ImageLightbox({
       const img = imgRef.current;
       if (!img || img.naturalWidth <= 0 || img.naturalHeight <= 0) return;
       const bounds = frame.getBoundingClientRect();
-      const next = fittedMediaSize(
-        img.naturalWidth,
-        img.naturalHeight,
-        bounds.width,
-        bounds.height
-      );
-      setFitted((current) =>
-        current && next && current.width === next.width && current.height === next.height
-          ? current
-          : next
+      rememberFit(
+        fittedMediaSize(img.naturalWidth, img.naturalHeight, bounds.width, bounds.height)
       );
     };
 
@@ -96,7 +118,7 @@ export function ImageLightbox({
       if (frameId !== null) window.cancelAnimationFrame(frameId);
       observer?.disconnect();
     };
-  }, [open, src]);
+  }, [open, rememberFit]);
 
   useEffect(() => {
     if (!open) return;
@@ -160,31 +182,32 @@ export function ImageLightbox({
       >
         <img
           ref={imgRef}
-          src={src}
+          src={shownSrc}
           alt={alt}
           referrerPolicy="no-referrer"
           onLoad={() => {
+            image.onLoad();
             const frame = frameRef.current;
             const img = imgRef.current;
             if (!frame || !img) return;
             const bounds = frame.getBoundingClientRect();
-            setFitted(
+            rememberFit(
               fittedMediaSize(img.naturalWidth, img.naturalHeight, bounds.width, bounds.height)
             );
           }}
-          onError={() => setFailed(true)}
+          onError={image.onError}
           style={
-            fitted
+            fittedSize
               ? {
-                  width: fitted.width,
-                  height: fitted.height,
+                  width: fittedSize.width,
+                  height: fittedSize.height,
                   maxWidth: "none",
                   maxHeight: "none",
                 }
               : undefined
           }
           className={`absolute top-1/2 left-1/2 max-w-none -translate-x-1/2 -translate-y-1/2 rounded-lg ${
-            fitted || failed ? "pointer-events-auto" : "pointer-events-none opacity-0"
+            fittedSize || image.failed ? "pointer-events-auto" : "pointer-events-none opacity-0"
           }`}
         />
       </div>

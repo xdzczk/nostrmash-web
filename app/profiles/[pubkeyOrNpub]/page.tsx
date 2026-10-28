@@ -496,6 +496,7 @@ export default async function ProfilePage({
               size={112}
               alt={profile ? profileLabel(profile) : heroDisplayName}
               enlarge
+              priority
               className={`bg-surface h-16 w-16 rounded-full object-cover sm:h-24 sm:w-24 ${
                 bannerSrc ? "ring-background -mt-8 ring-4 sm:-mt-10" : "border-edge border"
               }`}

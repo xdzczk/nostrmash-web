@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -11,6 +10,7 @@ import {
 } from "@/components/explorer/card-grammar";
 import { getArticlePresentation } from "@/components/explorer/article-meta";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
+import { BlossomNextImage } from "@/components/ui/blossom-image";
 import { Timestamp } from "@/components/explorer/timestamp";
 import { RichInlineText, type NoteContentResolution } from "@/components/explorer/note-content";
 import {
@@ -157,7 +157,7 @@ export function ArticleCard({
             </p>
           </div>
           {imageSrc && isNextImageCompatibleSrc(imageSrc) ? (
-            <Image
+            <BlossomNextImage
               src={imageSrc}
               alt=""
               width={88}
@@ -216,7 +216,7 @@ export function ArticleCard({
 
       <div className="mt-2.5 flex items-start gap-3">
         {imageSrc && isNextImageCompatibleSrc(imageSrc) ? (
-          <Image
+          <BlossomNextImage
             src={imageSrc}
             alt={presentation.title}
             width={96}

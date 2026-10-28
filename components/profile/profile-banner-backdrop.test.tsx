@@ -1,21 +1,31 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { ProfileCover } from "@/components/profile/profile-banner-backdrop";
+import { resetBlossomImageCache } from "@/hooks/use-blossom-image-src";
+import { BLOSSOM_MIRRORS, blossomCandidateUrls } from "@/lib/media/blossom";
+
+import { ProfileCover } from "./profile-banner-backdrop";
+
+afterEach(() => {
+  resetBlossomImageCache();
+});
 
 describe("ProfileCover", () => {
-  it("renders a cropped cover", () => {
-    render(<ProfileCover src="https://cdn.example/banner.jpg" />);
-    const cover = screen.getByTestId("profile-cover");
-    expect(cover).toHaveAttribute("aria-hidden", "true");
-    expect(cover.querySelector("img")).toHaveAttribute("src", "https://cdn.example/banner.jpg");
-  });
+  it("tries blossom mirrors and then removes the cover", () => {
+    const hash = "c3".repeat(32);
+    const src = `https://media.21media.to/${hash}.jpg`;
+    render(<ProfileCover src={src} />);
 
-  it("removes itself when the image fails, so a missing banner leaves no cover", () => {
-    render(<ProfileCover src="https://cdn.example/missing.jpg" />);
-    const image = screen.getByTestId("profile-cover").querySelector("img");
-    expect(image).not.toBeNull();
-    fireEvent.error(image!);
+    const image = () => screen.getByTestId("profile-cover").querySelector("img");
+    expect(image()).toHaveAttribute("src", src);
+
+    fireEvent.error(image()!);
+    expect(image()).toHaveAttribute("src", `${BLOSSOM_MIRRORS[0]}/${hash}.jpg`);
+
+    const remaining = blossomCandidateUrls(src).length - 1;
+    for (let attempt = 0; attempt < remaining; attempt += 1) {
+      fireEvent.error(image()!);
+    }
     expect(screen.queryByTestId("profile-cover")).not.toBeInTheDocument();
   });
 });

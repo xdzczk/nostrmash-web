@@ -1,6 +1,8 @@
 import { ImageResponse } from "next/og";
 import type { ReactNode } from "react";
 
+import { blossomCandidateUrls } from "@/lib/media/blossom";
+
 export const ogSize = { width: 1200, height: 630 } as const;
 export const ogContentType = "image/png";
 
@@ -109,28 +111,51 @@ const AVATAR_SIZE = 160;
 const AVATAR_FETCH_TIMEOUT_MS = 2500;
 const AVATAR_MAX_BYTES = 2_000_000;
 
+type OgImageRead = { kind: "ok"; dataUrl: string } | { kind: "missing" } | { kind: "stop" };
+
+/**
+ * One GET inside the shared avatar budget. A missing blob or a dropped
+ * connection can move on to the next mirror. A response that is present but
+ * unusable (wrong type, empty, too large) stops the search.
+ */
+async function readOgImage(url: string, signal: AbortSignal): Promise<OgImageRead> {
+  try {
+    const response = await fetch(url, {
+      signal,
+      headers: { Accept: "image/png,image/jpeg,image/webp,image/*;q=0.8" },
+    });
+    if (!response.ok) return { kind: "missing" };
+    const type = response.headers.get("content-type") ?? "";
+    if (!/^image\/(png|jpe?g|webp|gif)/i.test(type)) return { kind: "stop" };
+    const buffer = await response.arrayBuffer();
+    if (buffer.byteLength === 0 || buffer.byteLength > AVATAR_MAX_BYTES) return { kind: "stop" };
+    const mime = type.split(";")[0]?.trim() || "image/png";
+    return {
+      kind: "ok",
+      dataUrl: `data:${mime};base64,${Buffer.from(buffer).toString("base64")}`,
+    };
+  } catch {
+    return signal.aborted ? { kind: "stop" } : { kind: "missing" };
+  }
+}
+
 /**
  * Fetch a remote avatar and inline it as a data URL so Satori does not have
  * to make its own network request (and so a slow/broken UGC host degrades to
- * the fallback disc instead of failing the whole image).
+ * the fallback disc instead of failing the whole image). A Blossom blob that
+ * 404s is retried on other public servers inside the same time budget.
  */
 export async function loadOgAvatar(url: string | undefined | null): Promise<string | null> {
   if (!url || !/^https:\/\//i.test(url)) return null;
-  try {
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(AVATAR_FETCH_TIMEOUT_MS),
-      headers: { Accept: "image/png,image/jpeg,image/webp,image/*;q=0.8" },
-    });
-    if (!response.ok) return null;
-    const type = response.headers.get("content-type") ?? "";
-    if (!/^image\/(png|jpe?g|webp|gif)/i.test(type)) return null;
-    const buffer = await response.arrayBuffer();
-    if (buffer.byteLength === 0 || buffer.byteLength > AVATAR_MAX_BYTES) return null;
-    const mime = type.split(";")[0]?.trim() ?? "image/png";
-    return `data:${mime};base64,${Buffer.from(buffer).toString("base64")}`;
-  } catch {
-    return null;
+  const signal = AbortSignal.timeout(AVATAR_FETCH_TIMEOUT_MS);
+  for (const candidate of blossomCandidateUrls(url)) {
+    if (signal.aborted) return null;
+    if (!/^https:\/\//i.test(candidate)) continue;
+    const result = await readOgImage(candidate, signal);
+    if (result.kind === "ok") return result.dataUrl;
+    if (result.kind === "stop") return null;
   }
+  return null;
 }
 
 function OgAvatar({ src, initial }: { src: string | null; initial: string }) {
