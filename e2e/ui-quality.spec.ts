@@ -11,8 +11,12 @@ test.describe("global product shell", () => {
     await globalSearch.fill("bitcoin");
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/search\?q=bitcoin&tab=all/);
-    await expect(globalSearch).toHaveValue("");
-    await expect(page.getByRole("main").getByRole("combobox")).toHaveValue("bitcoin");
+    await expect(globalSearch).toHaveCount(0);
+    await expect(
+      page.getByRole("combobox", {
+        name: "Search notes, profiles, hashtags, relays, and event IDs",
+      })
+    ).toHaveValue("bitcoin");
 
     await page
       .getByRole("navigation", { name: "Primary" })
