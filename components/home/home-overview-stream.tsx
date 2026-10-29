@@ -59,6 +59,7 @@ export async function HomeOverviewBody({ data }: { data: Promise<HomePageData> }
   redirectRejectedDiscoveryWindow(home.discoveryWindowRedirect);
   const hasContent =
     home.homeNotes.length > 0 ||
+    Boolean(home.mediaLeaders.pictures || home.mediaLeaders.videos || home.mediaLeaders.shorts) ||
     home.hydratedHomeProfiles.length > 0 ||
     home.hydratedHomeRisingProfiles.length > 0 ||
     home.homeHashtags.length > 0 ||
@@ -79,6 +80,7 @@ export async function HomeOverviewBody({ data }: { data: Promise<HomePageData> }
       {hasContent ? (
         <EditorialOverview
           notes={home.homeNotes}
+          mediaLeaders={home.mediaLeaders}
           profiles={home.hydratedHomeProfiles}
           risingProfiles={home.hydratedHomeRisingProfiles}
           hashtags={home.homeHashtags}

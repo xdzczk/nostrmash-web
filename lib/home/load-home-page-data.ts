@@ -32,6 +32,7 @@ import {
   relayStatsWindow,
   type StatsWindow,
 } from "@/lib/search-params/window";
+import { loadHomeMediaLeaders, type MediaLeaders } from "@/lib/discover/media-rankings";
 import { traceHomeFanOut } from "@/lib/telemetry/trace";
 import type {
   DomainEntry,
@@ -101,6 +102,7 @@ export type HomePageData = {
   errorMessage: string;
   homeTimedOut: boolean;
   homeNotes: EventRecord[];
+  mediaLeaders: MediaLeaders;
   hydratedHomeProfiles: Profile[];
   hydratedHomeRisingProfiles: Profile[];
   homeHashtags: HashtagEntry[];
@@ -180,6 +182,7 @@ export async function loadHomePageData(
         errorMessage: "",
         homeTimedOut: false,
         homeNotes: [],
+        mediaLeaders: {},
         hydratedHomeProfiles: [],
         hydratedHomeRisingProfiles: [],
         homeHashtags: [],
@@ -297,12 +300,14 @@ export async function loadHomePageData(
     );
   }
 
+  const mediaLeaders = await loadHomeMediaLeaders(scopedQuery);
+  upstreamCallCount += 3;
+
   let noteAuthorsByPubkey: Record<string, Profile> = {};
   let hydratedHomeProfiles = homeProfiles;
   let hydratedHomeRisingProfiles = homeRisingProfiles;
-  const notePreviewPubkeys = homeNotes
-    .slice(0, 5)
-    .map((note) => note.pubkey)
+  const notePreviewPubkeys = [...homeNotes.slice(0, 5), ...Object.values(mediaLeaders)]
+    .map((note) => note?.pubkey)
     .filter((pubkey): pubkey is string => typeof pubkey === "string" && pubkey.length > 0);
   const profilePreviewPubkeys = homeProfiles
     .slice(0, 5)
@@ -414,6 +419,7 @@ export async function loadHomePageData(
     errorMessage: summarizeLoadErrors(failedMessages) ?? "",
     homeTimedOut,
     homeNotes,
+    mediaLeaders,
     hydratedHomeProfiles,
     hydratedHomeRisingProfiles,
     homeHashtags,

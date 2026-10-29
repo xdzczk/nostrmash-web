@@ -26,6 +26,27 @@ const RANKINGS = [
     context: "The line under an article is the leading reason, read the same way as on a note.",
   },
   {
+    href: "/trending/pictures",
+    title: "Pictures",
+    order: "The same discovery score as notes, for kind 20 pictures.",
+    context:
+      "Pictures, videos, and shorts each have their own list. A busy short does not take a picture's place.",
+  },
+  {
+    href: "/trending/videos",
+    title: "Videos",
+    order: "The same discovery score as notes, for long video (kinds 21 and 34235).",
+    context:
+      "The addressable form is ranked with regular video. The line under the card is the leading reason.",
+  },
+  {
+    href: "/trending/shorts",
+    title: "Shorts",
+    order: "The same discovery score as notes, for short video (kinds 22 and 34236).",
+    context:
+      "A short is ranked with other shorts. It does not compete with pictures or long video.",
+  },
+  {
     href: "/discovery/conversations/hot",
     title: "Conversations",
     order: "How fast a thread is growing, and how recent that growth is.",

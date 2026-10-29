@@ -69,6 +69,7 @@ const BOUNDED_CACHE_PATHS = new Set<string>([
   "/api/v1/discovery/home",
   "/api/v1/discovery/notes/trending",
   "/api/v1/discovery/long-form/trending",
+  "/api/v1/discovery/media/trending",
   "/api/v1/discovery/profiles/trending",
   "/api/v1/discovery/conversations/hot",
   "/api/v1/discovery/profiles/rising",

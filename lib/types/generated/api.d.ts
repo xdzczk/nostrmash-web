@@ -1274,7 +1274,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Popular relays ranked by distinct user count. Localhost, loopback, link-local, and private-network URLs are omitted. total is the full ranked population after that filter; relays is capped by limit. */
+        /** @description Popular relays ranked by distinct user count. Localhost, loopback, link-local, and private-network URLs are omitted. total is the full ranked population after that filter; relays is capped by limit. When the relay is in the registry and a NIP-11 fetch succeeded, name, icon, auth_required, and payment_required are included. auth_required and payment_required are omitted when the relay did not say. They are the relay's claim, not a probe result. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -1310,7 +1310,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Relays from relay_registry whose latest read probe succeeded inside the freshness window, ordered by distinct_users, score, then relay_url. Localhost, private-network, and directory relays are omitted, as are blocked and drained relays. Admission state is ignored. generated_at is the query time. freshness_seconds is the window. Each relay has relay_url, distinct_users, score (number), last_probe_at, last_probe_status, avg_connect_latency_ms, and avg_eose_latency_ms. An empty relays array is a successful response. */
+        /** @description Relays from relay_registry whose latest read probe succeeded inside the freshness window, ordered by distinct_users, score, then relay_url. Localhost, private-network, and directory relays are omitted, as are blocked and drained relays. Admission state is ignored. generated_at is the query time. freshness_seconds is the window. Each relay has relay_url, distinct_users, score (number), last_probe_at, last_probe_status, avg_connect_latency_ms, and avg_eose_latency_ms. name, icon, auth_required, and payment_required are added when a stored NIP-11 document includes them. auth_required and payment_required are omitted when the relay did not say. An empty relays array is a successful response. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -1318,6 +1318,46 @@ export interface paths {
           content?: never;
         };
         400: components["responses"]["Error"];
+        503: components["responses"]["Error"];
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/relays/info": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One registry relay, including its stored NIP-11 document */
+    get: {
+      parameters: {
+        query: {
+          /** @description Websocket URL. It is normalized the same way as registry keys. */
+          relay_url: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description The registry row for relay_url. distinct_users and score match the catalog. probe is the latest read-probe rollup; last_probe_status is empty when the relay has not been probed. activity.event_count_24h and activity.event_count_7d are sums from the hourly event rollup. nip11 is null until a background fetch has completed. nip11.ok false means the last fetch failed; nip11.error is a short code (timeout, connect_failed, private_address, redirect_rejected, too_large, not_json, or http_<status>). nip11.info is what the relay published. auth_required and payment_required inside nip11.info.limitation are omitted when the relay did not say. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        400: components["responses"]["Error"];
+        404: components["responses"]["Error"];
         503: components["responses"]["Error"];
       };
     };
@@ -1683,6 +1723,54 @@ export interface paths {
       requestBody?: never;
       responses: {
         /** @description Ranked trending long-form articles with trust metadata (`trust_mode`, `trust_applied`, `result_scope`) */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            "application/json": components["schemas"]["DiscoveryListResponse"];
+          };
+        };
+        400: components["responses"]["Error"];
+        501: components["responses"]["Error"];
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/discovery/media/trending": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Trending media from projection-backed discovery stats
+     * @description Ranked separately by format so pictures, videos, and shorts do not share one score list. `pictures` is kind 20. `videos` is kinds 21 and 34235. `shorts` is kinds 22 and 34236.
+     */
+    get: {
+      parameters: {
+        query: {
+          format: "pictures" | "videos" | "shorts";
+          window?: "24h" | "7d" | "30d";
+          /** @description Restrict rankings to one language. Lowercase 2-8 letter code, "und", or "und-uncertain". Omit to rank every language. Responses echo `language` and include global `top_languages`. */
+          lang?: components["parameters"]["DiscoveryLanguage"];
+          limit?: number;
+          offset?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Ranked media events for one format, with trust metadata (`trust_mode`, `trust_applied`, `result_scope`) */
         200: {
           headers: {
             [name: string]: unknown;

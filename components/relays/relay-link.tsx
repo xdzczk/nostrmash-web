@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 import type { StatsWindow } from "@/lib/search-params/window";
@@ -18,11 +19,14 @@ export function RelayLink({
   rank,
   label,
   window,
+  icon,
 }: {
   host: string;
   rank?: number;
   label?: string;
   window?: StatsWindow;
+  /** Sits between the rank and the name. The link still opens this host. */
+  icon?: ReactNode;
 }) {
   return (
     <Link
@@ -32,6 +36,7 @@ export function RelayLink({
       {typeof rank === "number" ? (
         <span className="text-ink-faint w-8 shrink-0 font-normal tabular-nums">{`#${rank}`}</span>
       ) : null}
+      {icon}
       <span className="truncate">{label && label.length > 0 ? label : host}</span>
     </Link>
   );

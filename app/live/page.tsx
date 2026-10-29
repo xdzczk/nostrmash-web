@@ -62,7 +62,7 @@ export default async function LivePage() {
       discoverView="live"
       eyebrow=""
       title="Live"
-      subtitle="Activities streaming on Nostr right now."
+      subtitle="Play a stream here. It keeps going while you browse."
       path="/live"
       searchParams={new URLSearchParams()}
       window={DEFAULT_STATS_WINDOW}

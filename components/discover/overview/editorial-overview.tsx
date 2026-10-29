@@ -17,6 +17,7 @@ import {
   type WhyNowReason,
 } from "@/components/explorer/why-now";
 import { selectSupportingNotes } from "@/lib/discover/lead-notes";
+import { MEDIA_RANKINGS, type MediaLeaders } from "@/lib/discover/media-rankings";
 import { buildDiscoverHref, LANGUAGE_EMPTY_MESSAGE } from "@/lib/search-params/language";
 import { SourceFigure } from "@/components/explorer/source-figure";
 import {
@@ -695,8 +696,65 @@ function SupportingNotes({
   );
 }
 
+function MediaLeadersSection({
+  leaders,
+  authorsByPubkey,
+  window,
+  lang,
+  contentResolution,
+}: {
+  leaders: MediaLeaders;
+  authorsByPubkey: Record<string, Profile>;
+  window: StatsWindow;
+  lang?: string;
+  contentResolution?: NoteContentResolution;
+}) {
+  const columns = MEDIA_RANKINGS.flatMap((ranking) => {
+    const event = leaders[ranking.format];
+    return event ? [{ ...ranking, event }] : [];
+  });
+  if (columns.length === 0) return null;
+
+  return (
+    <section aria-labelledby="media-leaders">
+      <SectionHeader kicker="Media" title="Leading each format" headingId="media-leaders" />
+      <div
+        className={`mt-6 grid items-start gap-10 ${columns.length > 1 ? "lg:grid-cols-2" : ""} ${
+          columns.length > 2 ? "xl:grid-cols-3" : ""
+        }`}
+      >
+        {columns.map((column) => {
+          const pubkey =
+            typeof column.event.pubkey === "string" ? column.event.pubkey.toLowerCase() : "";
+          return (
+            <div key={column.format} className="min-w-0">
+              <div className="mb-3 flex items-end justify-between gap-3">
+                <h3 className="nm-kicker">{column.label}</h3>
+                <Link
+                  href={buildDiscoverHref(column.path, { window, lang })}
+                  className="nm-action-link"
+                >
+                  Ranking
+                </Link>
+              </div>
+              <EventKindSwitch
+                event={column.event}
+                author={pubkey ? authorsByPubkey[pubkey] : undefined}
+                surface="list"
+                showUtilityLinks={false}
+                contentResolution={contentResolution}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export async function EditorialOverview({
   notes,
+  mediaLeaders,
   profiles,
   risingProfiles,
   hashtags,
@@ -708,6 +766,7 @@ export async function EditorialOverview({
   lang,
 }: {
   notes: EventRecord[];
+  mediaLeaders: MediaLeaders;
   profiles: Profile[];
   risingProfiles: Profile[];
   hashtags: HashtagEntry[];
@@ -728,9 +787,12 @@ export async function EditorialOverview({
   const followups = selectSupportingNotes(notes);
   const visibleHashtags = sectionFailures.hashtags ? [] : hashtags;
   const visibleDomains = sectionFailures.domains ? [] : domains;
-  const contentResolution = await resolveContentReferences(lead ? [lead, ...followups] : []).catch(
-    () => undefined
-  );
+  const mediaEvents = MEDIA_RANKINGS.flatMap((ranking) => {
+    const event = mediaLeaders[ranking.format];
+    return event ? [event] : [];
+  });
+  const previewEvents = [...(lead ? [lead, ...followups] : []), ...mediaEvents];
+  const contentResolution = await resolveContentReferences(previewEvents).catch(() => undefined);
   if (contentResolution) {
     contentResolution.profilesByPubkey = {
       ...contentResolution.profilesByPubkey,
@@ -761,6 +823,14 @@ export async function EditorialOverview({
           contentResolution={contentResolution}
         />
       </section>
+
+      <MediaLeadersSection
+        leaders={mediaLeaders}
+        authorsByPubkey={authorsByPubkey}
+        window={window}
+        lang={lang}
+        contentResolution={contentResolution}
+      />
 
       <div className="grid items-start gap-14 lg:grid-cols-2 lg:gap-16 xl:gap-20">
         <ProfileRanking

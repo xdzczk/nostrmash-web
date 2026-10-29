@@ -13,6 +13,9 @@ export const RANKING_SURFACES = [
   "domains",
   "hashtags",
   "long-form",
+  "pictures",
+  "videos",
+  "shorts",
   "rising",
   "conversations",
 ] as const;
@@ -56,6 +59,9 @@ export function rankingItemAnchor(surface: RankingSurface, item: unknown): strin
     case "notes":
     case "conversations":
     case "long-form":
+    case "pictures":
+    case "videos":
+    case "shorts":
       return (text("id") || text("event_id")).toLowerCase();
     case "profiles":
     case "rising":

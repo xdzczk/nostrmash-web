@@ -1,6 +1,7 @@
 import { encodeNaddr } from "@/lib/nostr/nip19";
-import { eventTagRows, firstTagValue } from "@/lib/notes/event-tags";
+import { eventTagRows, firstTagValue, tagValues } from "@/lib/notes/event-tags";
 import { isLiveActivityKind } from "@/lib/notes/kinds";
+import { preferPlayableStream } from "@/lib/notes/live-playback";
 import type { EventRecord } from "@/lib/types/api";
 
 export type LiveStatus = "planned" | "live" | "ended";
@@ -96,7 +97,7 @@ export function getLivePresentation(
     status: liveStatus(firstTagValue(tags, "status")),
     starts: unixSeconds(firstTagValue(tags, "starts")),
     ends: unixSeconds(firstTagValue(tags, "ends")),
-    streaming: httpsUrl(firstTagValue(tags, "streaming")),
+    streaming: preferPlayableStream(tagValues(tags, "streaming")),
     recording: httpsUrl(firstTagValue(tags, "recording")),
     participants,
     identifier: identifier && identifier.length > 0 ? identifier : undefined,

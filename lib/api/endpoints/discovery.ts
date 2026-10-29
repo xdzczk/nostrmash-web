@@ -7,6 +7,8 @@ import type {
   TrendingHashtagsResponse,
   TrendingLongFormApiResponse,
   TrendingLongFormResponse,
+  TrendingMediaApiResponse,
+  TrendingMediaResponse,
   TrendingNotesResponse,
   TrendingProfilesResponse,
   LiveActivitiesApiResponse,
@@ -23,6 +25,7 @@ import {
   normalizeProfiles,
   normalizeLiveActivitiesResponse,
   normalizeTrendingLongFormResponse,
+  normalizeTrendingMediaResponse,
 } from "@/lib/api/normalize";
 import type { CacheClass } from "@/lib/caching/policies";
 import {
@@ -75,6 +78,18 @@ export async function getTrendingNotes(cacheClass: CacheClass = "shortTtl", quer
     ...response,
     notes: normalizeEventRecords(response.notes),
   });
+}
+
+export async function getTrendingMedia(
+  format: "pictures" | "videos" | "shorts",
+  cacheClass: CacheClass = "shortTtl",
+  query?: OffsetQuery
+): Promise<TrendingMediaResponse> {
+  const response = await fetchApiJson<TrendingMediaApiResponse>(nativeApiV1Routes.trendingMedia, {
+    cacheClass,
+    query: { ...buildOffsetQuery(query), format },
+  });
+  return normalizeTrendingMediaResponse(response);
 }
 
 export async function getTrendingLongForm(

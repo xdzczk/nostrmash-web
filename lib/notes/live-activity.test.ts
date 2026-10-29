@@ -28,6 +28,21 @@ describe("getLivePresentation", () => {
     expect(presentation?.naddr?.startsWith("naddr1")).toBe(true);
   });
 
+  it("prefers an HLS streaming tag over MOQ and a web page", () => {
+    const presentation = getLivePresentation({
+      id: "e".repeat(64),
+      pubkey: PUBKEY,
+      kind: 30311,
+      tags: [
+        ["title", "Stage"],
+        ["streaming", "moq://api.example:1443/"],
+        ["streaming", "https://example.com/watch"],
+        ["streaming", "https://media.example.invalid/live.m3u8"],
+      ],
+    });
+    expect(presentation?.streaming).toBe("https://media.example.invalid/live.m3u8");
+  });
+
   it("accepts the role in the relay position used by NIP-53", () => {
     const presentation = getLivePresentation({
       id: "e".repeat(64),

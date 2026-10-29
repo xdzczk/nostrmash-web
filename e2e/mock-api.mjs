@@ -269,6 +269,26 @@ const pictureEvent = {
   ],
 };
 
+const VIDEO_ID = "a3".repeat(32);
+
+const videoEvent = {
+  id: VIDEO_ID,
+  pubkey: AUTHOR_PK,
+  kind: 21,
+  created_at: 1_700_000_605,
+  content: "A longer clip from the mock index",
+  tags: [
+    ["title", "Harbor crossing"],
+    [
+      "imeta",
+      "url https://media.example.invalid/crossing.mp4",
+      "m video/mp4",
+      "image https://media.example.invalid/crossing.jpg",
+    ],
+    ["duration", "184"],
+  ],
+};
+
 const shortEvent = {
   id: SHORT_ID,
   pubkey: AUTHOR_PK,
@@ -396,6 +416,7 @@ const threadEventsById = new Map(
     replyD,
     deepNote,
     pictureEvent,
+    videoEvent,
     shortEvent,
     articleEvent,
     genericRepost,
@@ -584,6 +605,31 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { notes: [...trendingNotes, ...filler], consistency: "eventual" });
   }
 
+  if (path === "/api/v1/discovery/media/trending") {
+    const format = url.searchParams.get("format");
+    const ranked =
+      format === "pictures"
+        ? [pictureEvent]
+        : format === "videos"
+          ? [videoEvent]
+          : format === "shorts"
+            ? [shortEvent]
+            : null;
+    if (!ranked) {
+      return json(res, 400, {
+        error: { code: "invalid_request", message: "format must be pictures, videos, or shorts" },
+      });
+    }
+    const offset = Number.parseInt(url.searchParams.get("offset") ?? "0", 10);
+    return json(res, 200, {
+      surface: "trending_media",
+      format,
+      window: url.searchParams.get("window") ?? "24h",
+      events: Number.isFinite(offset) && offset > 0 ? [] : ranked,
+      consistency: "eventual",
+    });
+  }
+
   if (path === "/api/v1/discovery/profiles/trending") {
     return json(res, 200, { profiles: trendingProfiles, consistency: "eventual" });
   }
@@ -691,6 +737,7 @@ const server = http.createServer(async (req, res) => {
       replyC,
       replyD,
       pictureEvent,
+      videoEvent,
       shortEvent,
       articleEvent,
       genericRepost,

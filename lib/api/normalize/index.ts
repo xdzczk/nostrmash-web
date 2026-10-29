@@ -19,6 +19,7 @@ export {
 
 export {
   normalizeTrendingLongFormResponse,
+  normalizeTrendingMediaResponse,
   normalizeHashtagDetailResponse,
   normalizeHashtagNotesResponse,
   normalizeRelatedHashtagsResponse,

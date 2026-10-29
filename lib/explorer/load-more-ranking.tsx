@@ -16,6 +16,7 @@ import {
   getTrendingDomains,
   getTrendingHashtags,
   getTrendingLongForm,
+  getTrendingMedia,
   getTrendingNotes,
   getTrendingProfiles,
 } from "@/lib/api/endpoints";
@@ -26,6 +27,7 @@ import {
   hydrateProfiles,
 } from "@/lib/api/profile-hydration";
 import { presentConversations } from "@/lib/discover/conversation-order";
+import { hydrateRankedMediaEvents } from "@/lib/discover/media-rankings";
 import { DISCOVERY_30D_HIDDEN_COOKIE } from "@/lib/discover/discovery-window-session";
 import { lastDiscoveryWindow } from "@/lib/discover/window-fallback";
 import {
@@ -120,6 +122,13 @@ async function loadSurface(
       const notes = payload.articles ?? [];
       return { items: notes, notes };
     }
+    case "pictures":
+    case "videos":
+    case "shorts": {
+      const payload = await getTrendingMedia(surface, "shortTtl", query);
+      const notes = await hydrateRankedMediaEvents(payload.events ?? [], surface);
+      return { items: notes, notes };
+    }
     case "profiles": {
       const payload = await getTrendingProfiles("shortTtl", query);
       const profiles = payload.profiles ?? [];
@@ -185,6 +194,21 @@ async function renderSurface(
           articles={articles}
           authorsByPubkey={await authorMap(articles)}
           ranked
+          showUtilityLinks={false}
+          rankOffset={offset}
+        />
+      );
+    }
+    case "pictures":
+    case "videos":
+    case "shorts": {
+      const notes = loaded.notes ?? [];
+      return (
+        <NotesList
+          notes={notes}
+          authorsByPubkey={await authorMap(notes)}
+          ranked
+          discoverySignals
           showUtilityLinks={false}
           rankOffset={offset}
         />

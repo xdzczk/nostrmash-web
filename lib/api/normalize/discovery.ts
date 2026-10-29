@@ -9,6 +9,7 @@ import type {
   DomainEntry,
   TopLanguages,
   TrendingLongFormResponse,
+  TrendingMediaResponse,
 } from "@/lib/types/api";
 import { asArray, asNumber, asRecord, asString, compactDefined } from "@/lib/api/normalize/helpers";
 import { parseLanguage } from "@/lib/search-params/language";
@@ -89,6 +90,25 @@ export function normalizeDiscoveryLanguageFields<T extends object>(
   if (topLanguages) next.top_languages = topLanguages;
   else delete next.top_languages;
   return next;
+}
+
+export function normalizeTrendingMediaResponse(value: unknown): TrendingMediaResponse {
+  const record = asRecord(value) ?? {};
+  const events = normalizeEventRecords(
+    record.events ?? record.notes ?? record.items ?? record.data
+  );
+  const total = asNumber(record.total) ?? (events.length > 0 ? events.length : undefined);
+  return normalizeDiscoveryLanguageFields(
+    compactDefined({
+      ...record,
+      surface: asString(record.surface),
+      format: asString(record.format),
+      window: asString(record.window),
+      events,
+      offset: asNumber(record.offset),
+      total,
+    })
+  );
 }
 
 export function normalizeTrendingLongFormResponse(value: unknown): TrendingLongFormResponse {

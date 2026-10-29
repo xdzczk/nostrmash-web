@@ -74,6 +74,7 @@ export const nativeApiV1Routes = {
   noteRelatedByEventId: (eventId: string) => `/api/v1/notes/${encodeURIComponent(eventId)}/related`,
   trendingNotes: "/api/v1/discovery/notes/trending",
   trendingLongForm: "/api/v1/discovery/long-form/trending",
+  trendingMedia: "/api/v1/discovery/media/trending",
   trendingProfiles: "/api/v1/discovery/profiles/trending",
   hotConversations: "/api/v1/discovery/conversations/hot",
   risingProfiles: "/api/v1/discovery/profiles/rising",
@@ -93,6 +94,7 @@ export const nativeApiV1Routes = {
   statsSeries: "/api/v1/discovery/stats/series",
   relayHealth: "/api/v1/relays/health",
   relayPopular: "/api/v1/relays/popular",
+  relayInfo: "/api/v1/relays/info",
   relayProbeHealth: "/api/v1/relays/probe-health",
 } as const;
 

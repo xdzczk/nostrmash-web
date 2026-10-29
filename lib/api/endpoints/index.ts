@@ -12,6 +12,7 @@ export {
   getDiscoveryHome,
   getTrendingNotes,
   getTrendingLongForm,
+  getTrendingMedia,
   getTrendingProfiles,
   getHotConversations,
   getRisingProfiles,
@@ -72,4 +73,9 @@ export type {
   StatsSeriesWindow,
   StatsSeriesResponse,
 } from "@/lib/api/endpoints/stats";
-export { getRelayHealth, getPopularRelays, getRelayProbeHealth } from "@/lib/api/endpoints/relays";
+export {
+  getRelayHealth,
+  getPopularRelays,
+  getRelayInfo,
+  getRelayProbeHealth,
+} from "@/lib/api/endpoints/relays";

@@ -24,6 +24,9 @@ Public explorer and analytics web surface for NostrMash.
 | `/trending/hashtags`           | Trending hashtags           |
 | `/trending/domains`            | Trending domains            |
 | `/trending/long-form`          | Trending long-form          |
+| `/trending/pictures`           | Trending pictures           |
+| `/trending/videos`             | Trending videos             |
+| `/trending/shorts`             | Trending shorts             |
 | `/discovery/conversations/hot` | Hot conversations           |
 | `/discovery/profiles/rising`   | Rising profiles             |
 | `/hashtags/[hashtag]`          | Hashtag detail              |

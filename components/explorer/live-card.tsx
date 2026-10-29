@@ -8,6 +8,7 @@ import {
 } from "@/components/explorer/card-grammar";
 import { EventByline } from "@/components/explorer/event-byline";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
+import { LivePlaybackFrame, LiveWatchButton } from "@/components/live/live-session";
 import { BlossomImage } from "@/components/ui/blossom-image";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
@@ -19,8 +20,9 @@ import {
   truncateIdentifier,
   truncateProfileLabel,
 } from "@/components/explorer/utils";
-import { eventPageHref } from "@/lib/notes/kinds";
+import { eventIdOf, eventPageHref } from "@/lib/notes/kinds";
 import { getLivePresentation, type LiveStatus } from "@/lib/notes/live-activity";
+import type { LiveSession } from "@/lib/notes/live-playback";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
 function statusLabel(status: LiveStatus | undefined): string {
@@ -51,6 +53,16 @@ export function LiveCard({
   const resolvedAuthor = author ?? noteInlineAuthorProfile(event);
   const authorLabel = resolvedAuthor ? profileLabel(resolvedAuthor) : noteAuthorIdentifier(event);
   const interactive = Boolean(href) && surface === "list";
+  const session: LiveSession | null = presentation.streaming
+    ? {
+        key: presentation.naddr ?? eventIdOf(event) ?? presentation.streaming,
+        title: presentation.title,
+        streaming: presentation.streaming,
+        href,
+        image: presentation.image,
+        authorLabel,
+      }
+    : null;
 
   return (
     <article
@@ -79,7 +91,16 @@ export function LiveCard({
         )}
       </h3>
 
-      {presentation.image ? (
+      {session ? <LiveWatchButton session={session} /> : null}
+
+      {session ? (
+        <LivePlaybackFrame
+          sessionKey={session.key}
+          title={presentation.title}
+          image={presentation.image}
+          priority={priority}
+        />
+      ) : presentation.image ? (
         <div className="border-edge bg-surface-sunken/60 mt-3 max-w-3xl overflow-hidden rounded-[var(--radius-control)] border">
           <BlossomImage
             src={presentation.image}
@@ -108,16 +129,6 @@ export function LiveCard({
           <span>
             Ends <Timestamp unixSeconds={presentation.ends} />
           </span>
-        ) : null}
-        {presentation.streaming ? (
-          <a
-            href={presentation.streaming}
-            target="_blank"
-            rel="noopener noreferrer nofollow"
-            className="text-link hover:text-link-hover"
-          >
-            Stream
-          </a>
         ) : null}
         {presentation.recording ? (
           <a

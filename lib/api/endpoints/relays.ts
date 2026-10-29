@@ -2,6 +2,7 @@ import type {
   PopularRelaysResponse,
   RelayHealthApiResponse,
   RelayHealthResponse,
+  RelayInfoResponse,
   RelayProbeHealthResponse,
 } from "@/lib/types/api";
 import { fetchApiJson } from "@/lib/api/http";
@@ -27,6 +28,16 @@ export async function getPopularRelays(
   return fetchApiJson<PopularRelaysResponse>(nativeApiV1Routes.relayPopular, {
     cacheClass,
     query: { limit: options?.limit },
+  });
+}
+
+export async function getRelayInfo(
+  cacheClass: CacheClass = "shortTtl",
+  relayUrl: string
+): Promise<RelayInfoResponse> {
+  return fetchApiJson<RelayInfoResponse>(nativeApiV1Routes.relayInfo, {
+    cacheClass,
+    query: { relay_url: relayUrl },
   });
 }
 

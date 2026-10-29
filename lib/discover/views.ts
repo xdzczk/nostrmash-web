@@ -1,6 +1,7 @@
 export const DISCOVER_VIEWS = [
   { key: "overview", label: "Overview", href: "/" },
   { key: "notes", label: "Notes", href: "/trending/notes" },
+  { key: "media", label: "Media", href: "/trending/pictures" },
   { key: "conversations", label: "Conversations", href: "/discovery/conversations/hot" },
   { key: "people", label: "People", href: "/trending/profiles" },
   { key: "topics", label: "Topics", href: "/trending/hashtags" },
@@ -8,7 +9,8 @@ export const DISCOVER_VIEWS = [
 ] as const;
 
 export type DiscoverView = (typeof DISCOVER_VIEWS)[number]["key"] | "live";
-export type DiscoverMode = "default" | "long-form" | "rising" | "hot";
+export type DiscoverMode =
+  "default" | "long-form" | "rising" | "hot" | "pictures" | "videos" | "shorts";
 
 export type DiscoverContext = {
   view: DiscoverView;
@@ -21,6 +23,11 @@ export const DISCOVER_MODE_LINKS: Partial<
   notes: [
     { mode: "default", label: "Notes", href: "/trending/notes" },
     { mode: "long-form", label: "Long-form", href: "/trending/long-form" },
+  ],
+  media: [
+    { mode: "pictures", label: "Pictures", href: "/trending/pictures" },
+    { mode: "videos", label: "Videos", href: "/trending/videos" },
+    { mode: "shorts", label: "Shorts", href: "/trending/shorts" },
   ],
   conversations: [
     {

@@ -263,6 +263,17 @@ export interface TrendingProfilesResponse extends NativeApiSemantics {
   [key: string]: unknown;
 }
 
+export interface TrendingMediaResponse extends NativeApiSemantics {
+  surface?: string;
+  format?: string;
+  window?: string;
+  events?: EventRecord[];
+  offset?: number;
+  next_offset?: number;
+  total?: number;
+  [key: string]: unknown;
+}
+
 export interface TrendingLongFormResponse extends NativeApiSemantics {
   surface?: string;
   window?: string;
@@ -696,6 +707,7 @@ export type HashtagNotesApiResponse = NativeApiSemantics & Record<string, unknow
 export type RelatedHashtagsApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type TrendingDomainsApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type TrendingLongFormApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type TrendingMediaApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type UserLongFormApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type UserBookmarksApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type UserHighlightsApiResponse = NativeApiSemantics & Record<string, unknown>;
@@ -715,6 +727,17 @@ export interface PopularRelayEntry {
   distinct_users: number;
   in_registry: boolean;
   admission_state?: string;
+  /** Present when the relay published a name in its stored NIP-11 document. */
+  name?: string;
+  /** Present when the relay published an icon URL. */
+  icon?: string;
+  /**
+   * Present only when the relay stated `limitation.auth_required`.
+   * `false` means the relay said no. A missing field means it said nothing.
+   */
+  auth_required?: boolean;
+  /** Present only when the relay stated `limitation.payment_required`. */
+  payment_required?: boolean;
 }
 
 export interface PopularRelaysResponse {
@@ -742,4 +765,92 @@ export interface RelayProbeHealthResponse {
   /** Registry relays that have been probed. `relays` is the page after `limit`. */
   total?: number;
   limit?: number;
+}
+
+export interface Nip11Fee {
+  amount: number;
+  unit: string;
+  period?: number;
+  kinds?: number[];
+}
+
+export interface Nip11Fees {
+  admission?: Nip11Fee[];
+  subscription?: Nip11Fee[];
+  publication?: Nip11Fee[];
+}
+
+/** A kind number, or an inclusive two-element range. */
+export type Nip11Kind = number | [number, number];
+
+export interface Nip11RetentionRule {
+  kinds?: Nip11Kind[];
+  time?: number;
+  count?: number;
+}
+
+export interface Nip11Limitation {
+  auth_required?: boolean;
+  payment_required?: boolean;
+  restricted_writes?: boolean;
+  max_message_length?: number;
+  max_subscriptions?: number;
+  max_filters?: number;
+  max_limit?: number;
+  max_subid_length?: number;
+  max_event_tags?: number;
+  max_content_length?: number;
+  min_pow_difficulty?: number;
+  created_at_lower_limit?: number;
+  created_at_upper_limit?: number;
+}
+
+/** Fields the relay published. Every property is optional. */
+export interface Nip11Info {
+  name?: string;
+  description?: string;
+  icon?: string;
+  banner?: string;
+  pubkey?: string;
+  contact?: string;
+  supported_nips?: number[];
+  software?: string;
+  version?: string;
+  limitation?: Nip11Limitation;
+  fees?: Nip11Fees;
+  retention?: Nip11RetentionRule[];
+}
+
+export interface Nip11Document {
+  fetched_at: string;
+  ok: boolean;
+  /** Set when `ok` is false. One of the fetcher codes, including `http_<status>`. */
+  error?: string;
+  info?: Nip11Info;
+}
+
+export interface RelayInfoProbe {
+  last_probe_at?: string | null;
+  last_probe_status?: string;
+  probe_fail_rate?: number;
+  avg_connect_latency_ms?: number | null;
+  avg_eose_latency_ms?: number | null;
+  last_connect_ok?: boolean | null;
+  last_subscribe_ok?: boolean | null;
+  last_eose_ok?: boolean | null;
+}
+
+export interface RelayInfoActivity {
+  event_count_24h?: number;
+  event_count_7d?: number;
+}
+
+export interface RelayInfoResponse {
+  relay_url: string;
+  distinct_users: number;
+  score: number;
+  probe: RelayInfoProbe;
+  activity: RelayInfoActivity;
+  /** Null until a background fetch has completed. */
+  nip11: Nip11Document | null;
 }
