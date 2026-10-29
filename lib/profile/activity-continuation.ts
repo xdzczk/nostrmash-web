@@ -37,6 +37,9 @@ type ActivitySlice = {
   reactions: Array<{ event_id?: string; target_event_id?: string }>;
   zaps: Array<{ event_id?: string; target_event_id?: string }>;
   longFormArticles: Array<{ id?: string }>;
+  mediaEvents: Array<{ id?: string }>;
+  liveEvents: Array<{ id?: string }>;
+  pins: Array<{ value?: string }>;
   bookmarks: Array<{ id?: string }>;
   highlights: Array<{ id?: string }>;
   mutedProfiles: Array<{ pubkey?: string }>;
@@ -55,10 +58,16 @@ export function profileActivityHasItems(data: ActivitySlice): boolean {
       return data.zaps.length > 0;
     case "long_form":
       return data.longFormArticles.length > 0;
+    case "media":
+      return data.mediaEvents.length > 0;
     case "bookmarks":
       return data.bookmarks.length > 0;
     case "highlights":
       return data.highlights.length > 0;
+    case "live":
+      return data.liveEvents.length > 0;
+    case "pins":
+      return data.pins.length > 0;
     case "mute_list":
       return data.mutedProfiles.length > 0;
     case "muted_by":
@@ -78,10 +87,16 @@ export function profileActivityAnchor(data: ActivitySlice): string {
       return data.zaps[0]?.event_id || data.zaps[0]?.target_event_id || "";
     case "long_form":
       return data.longFormArticles[0]?.id ?? "";
+    case "media":
+      return data.mediaEvents[0]?.id ?? "";
     case "bookmarks":
       return data.bookmarks[0]?.id ?? "";
     case "highlights":
       return data.highlights[0]?.id ?? "";
+    case "live":
+      return data.liveEvents[0]?.id ?? "";
+    case "pins":
+      return data.pins[0]?.value ?? "";
     case "mute_list":
       return data.mutedProfiles[0]?.pubkey ?? "";
     case "muted_by":

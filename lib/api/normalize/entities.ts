@@ -82,8 +82,8 @@ export function normalizeEventRecord(value: unknown): EventRecord | null {
  * NIP-78 app data, Blossom/server lists.
  */
 export const HIDDEN_NOTE_KINDS = new Set([
-  3, 5, 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10009, 10012, 10015, 10030, 10050,
-  10063, 10096, 30000, 30001, 30002, 30003, 30004, 30005, 30007, 30015, 30030, 30078,
+  3, 5, 1111, 1984, 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10009, 10012, 10015,
+  10030, 10050, 10063, 10096, 30000, 30001, 30002, 30003, 30004, 30005, 30007, 30015, 30030, 30078,
 ]);
 
 export function isHiddenNoteKind(event: { kind?: number } | null | undefined): boolean {

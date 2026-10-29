@@ -28,6 +28,7 @@ const STATIC_PATHS = [
   "/methodology",
   "/discovery/conversations/hot",
   "/discovery/profiles/rising",
+  "/live",
 ];
 
 export async function buildSitemapEntries(): Promise<MetadataRoute.Sitemap> {

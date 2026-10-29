@@ -81,6 +81,7 @@ const BOUNDED_CACHE_PATHS = new Set<string>([
   "/api/v1/relays/health",
   "/api/v1/relays/popular",
   "/api/v1/relays/probe-health",
+  "/api/v1/live",
 ]);
 
 export function isBoundedCachePath(path: string): boolean {

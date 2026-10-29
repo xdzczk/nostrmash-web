@@ -294,6 +294,59 @@ export interface UserHighlightsResponse extends NativeApiSemantics {
   [key: string]: unknown;
 }
 
+export interface UserMediaResponse extends NativeApiSemantics {
+  pubkey?: string;
+  events?: EventRecord[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface UserLiveActivitiesResponse extends NativeApiSemantics {
+  pubkey?: string;
+  events?: EventRecord[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface PinItem {
+  tag: "e" | "a";
+  value: string;
+}
+
+export interface UserPinsResponse extends NativeApiSemantics {
+  pubkey?: string;
+  items?: PinItem[];
+  [key: string]: unknown;
+}
+
+export interface LiveActivitiesResponse extends NativeApiSemantics {
+  events?: EventRecord[];
+  [key: string]: unknown;
+}
+
+export interface EventCommentsResponse extends NativeApiSemantics {
+  event_id?: string;
+  comments?: EventRecord[];
+  [key: string]: unknown;
+}
+
+export interface ReportTarget {
+  id?: string;
+  reporter_pubkey?: string;
+  report_type?: string;
+  content?: string;
+  created_at?: number;
+  target_event_id?: string;
+  target_pubkey?: string;
+}
+
+export interface ReportsResponse extends NativeApiSemantics {
+  reports?: ReportTarget[];
+  event_id?: string;
+  pubkey?: string;
+  [key: string]: unknown;
+}
+
 export interface UserMuteListResponse extends NativeApiSemantics {
   pubkey?: string;
   profiles?: Profile[];
@@ -646,6 +699,12 @@ export type TrendingLongFormApiResponse = NativeApiSemantics & Record<string, un
 export type UserLongFormApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type UserBookmarksApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type UserHighlightsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type UserMediaApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type UserLiveActivitiesApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type UserPinsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type LiveActivitiesApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type EventCommentsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type ReportsApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type UserMuteListApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type UserMutedByApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type DomainDetailApiResponse = NativeApiSemantics & Record<string, unknown>;

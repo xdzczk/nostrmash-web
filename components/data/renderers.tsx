@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 import { ArticleCard } from "@/components/explorer/article-card";
+import { EventKindSwitch } from "@/components/explorer/event-kind-switch";
 import { DomainChip } from "@/components/explorer/domain-chip";
 import { pickPrimaryDomainSupportingSignal } from "@/components/explorer/domain-supporting-signal";
 import { HashtagChip } from "@/components/explorer/hashtag-chip";
-import { NoteCard } from "@/components/explorer/note-card";
 import type { NoteContentSize } from "@/components/explorer/note-content";
 import type { NoteMediaVariant } from "@/components/explorer/note-media";
 import { SourceFigure } from "@/components/explorer/source-figure";
@@ -15,7 +15,7 @@ import {
   noteInlineAuthorProfile,
 } from "@/components/explorer/utils";
 import { ProfileCard } from "@/components/explorer/profile-card";
-import { isLongFormEvent } from "@/components/explorer/article-meta";
+import { isHiddenNoteKind } from "@/lib/api/normalize";
 import { belowVolumeFloor, listedVolume, reasonsBesideSourceFigure } from "@/lib/discover/reasons";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import {
@@ -90,12 +90,13 @@ export async function NotesList({
 
   return (
     <ul className="min-w-0">
-      {notes.map((note, index) => (
-        <li key={note.id ?? `note-${index}`} className="min-w-0">
-          {isLongFormEvent(note) ? (
-            <ArticleCard
-              article={note}
+      {notes.map((note, index) =>
+        isHiddenNoteKind(note) ? null : (
+          <li key={note.id ?? `note-${index}`} className="min-w-0">
+            <EventKindSwitch
+              event={note}
               author={getAuthorByPubkey(authorsByPubkey, note)}
+              surface="list"
               rank={
                 ranked
                   ? conversation
@@ -103,24 +104,6 @@ export async function NotesList({
                     : rankOffset + (note.ranking?.rank ?? index + 1)
                   : undefined
               }
-              discoverySignals={discoverySignals}
-              contentResolution={contentResolution}
-              showAuthor={showAuthor}
-              showUtilityLinks={showUtilityLinks}
-              omitZeroStats={omitZeroStats}
-            />
-          ) : (
-            <NoteCard
-              note={note}
-              author={getAuthorByPubkey(authorsByPubkey, note)}
-              rank={
-                ranked
-                  ? conversation
-                    ? rankOffset + index + 1
-                    : rankOffset + (note.ranking?.rank ?? index + 1)
-                  : undefined
-              }
-              showFullContent={showFullContent}
               discoverySignals={discoverySignals}
               contentResolution={contentResolution}
               conversation={conversation}
@@ -131,10 +114,12 @@ export async function NotesList({
               suppressEmbeds={suppressEmbeds ?? compactMedia}
               highlightTerms={highlightTerms}
               contentSize={contentSize}
+              showFullContent={showFullContent}
+              profilesByPubkey={authorsByPubkey}
             />
-          )}
-        </li>
-      ))}
+          </li>
+        )
+      )}
     </ul>
   );
 }

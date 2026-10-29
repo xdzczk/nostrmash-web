@@ -1,12 +1,11 @@
 import type { ReactNode } from "react";
 
-import { ArticleReader } from "@/components/explorer/article-reader";
-import { isLongFormEvent } from "@/components/explorer/article-meta";
-import { NoteCard, type NoteCardDensity } from "@/components/explorer/note-card";
+import { EventKindSwitch } from "@/components/explorer/event-kind-switch";
+import type { NoteCardDensity } from "@/components/explorer/note-card";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
-/** Full reading surface: article reader for kind 30023, otherwise an unclamped note. */
+/** Full reading surface. Kind selects the card; kind 1111 and 1984 stay off this page. */
 export function EventReadingSurface({
   event,
   author,
@@ -32,22 +31,18 @@ export function EventReadingSurface({
   /** Carry that line across the gap to the open note's avatar. */
   bridgeToNote?: boolean;
 }) {
-  if (isLongFormEvent(event)) {
-    return <ArticleReader article={event} author={author} contentResolution={contentResolution} />;
-  }
-
   return (
-    <NoteCard
-      note={event}
+    <EventKindSwitch
+      event={event}
       author={author}
-      showFullContent
-      density={density}
-      priorityMedia={priorityMedia}
+      surface={density === "reply" ? "reply" : "detail"}
       contentResolution={contentResolution}
+      priorityMedia={priorityMedia}
       repostsControl={repostsControl}
       connectAbove={connectAbove}
       connectBelow={connectBelow}
       bridgeToNote={bridgeToNote}
+      showUtilityLinks={false}
     />
   );
 }

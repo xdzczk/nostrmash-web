@@ -12,9 +12,12 @@ import {
   getRelatedProfiles,
   getUserBookmarks,
   getUserHighlights,
+  getUserLiveActivities,
   getUserLongForm,
+  getUserMedia,
   getUserMuteList,
   getUserMutedBy,
+  getUserPins,
 } from "@/lib/api/endpoints";
 import {
   extractNativeApiSemantics,
@@ -40,9 +43,10 @@ import {
   readSearchParam,
   toUrlSearchParams,
 } from "@/lib/search-params/pagination";
+import { getLivePresentation } from "@/lib/notes/live-activity";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import { resolveReplyParent } from "@/lib/notes/thread-tree";
-import type { EventRecord, Profile } from "@/lib/types/api";
+import type { EventRecord, PinItem, Profile } from "@/lib/types/api";
 
 export const getProfileSummaryCached = cache(async (pubkeyOrNpub: string) =>
   getProfileSummary(pubkeyOrNpub, "shortTtl")
@@ -87,8 +91,11 @@ function readActivitySearchParams(
   const reactionsCursor = readSearchParam(resolvedSearchParams, "reactions_cursor");
   const zapsCursor = readSearchParam(resolvedSearchParams, "zaps_cursor");
   const longFormCursor = readSearchParam(resolvedSearchParams, "long_form_cursor");
+  const mediaCursor = readSearchParam(resolvedSearchParams, "media_cursor");
   const bookmarksCursor = readSearchParam(resolvedSearchParams, "bookmarks_cursor");
   const highlightsCursor = readSearchParam(resolvedSearchParams, "highlights_cursor");
+  const liveCursor = readSearchParam(resolvedSearchParams, "live_cursor");
+  const pinsCursor = readSearchParam(resolvedSearchParams, "pins_cursor");
   const muteListCursor = readSearchParam(resolvedSearchParams, "mute_list_cursor");
   const mutedByCursor = readSearchParam(resolvedSearchParams, "muted_by_cursor");
   const activityTab = parseProfileActivityTab(readSearchParam(resolvedSearchParams, "activity"));
@@ -99,16 +106,22 @@ function readActivitySearchParams(
     reactionsCursor,
     zapsCursor,
     longFormCursor,
+    mediaCursor,
     bookmarksCursor,
     highlightsCursor,
+    liveCursor,
+    pinsCursor,
     muteListCursor,
     mutedByCursor,
     shouldLoadReplies: activityTab === "replies" || typeof repliesCursor === "string",
     shouldLoadReactions: activityTab === "reactions" || typeof reactionsCursor === "string",
     shouldLoadZaps: activityTab === "zaps" || typeof zapsCursor === "string",
     shouldLoadLongForm: activityTab === "long_form" || typeof longFormCursor === "string",
+    shouldLoadMedia: activityTab === "media" || typeof mediaCursor === "string",
     shouldLoadBookmarks: activityTab === "bookmarks" || typeof bookmarksCursor === "string",
     shouldLoadHighlights: activityTab === "highlights" || typeof highlightsCursor === "string",
+    shouldLoadLive: activityTab === "live" || typeof liveCursor === "string",
+    shouldLoadPins: activityTab === "pins" || typeof pinsCursor === "string",
     shouldLoadMuteList: activityTab === "mute_list" || typeof muteListCursor === "string",
     shouldLoadMutedBy: activityTab === "muted_by" || typeof mutedByCursor === "string",
   };
@@ -206,8 +219,11 @@ export async function loadProfileActivityData(
   let authoredReactionsPayload: Awaited<ReturnType<typeof getAuthorReactions>> | null = null;
   let authoredZapsPayload: Awaited<ReturnType<typeof getAuthorZaps>> | null = null;
   let longFormPayload: Awaited<ReturnType<typeof getUserLongForm>> | null = null;
+  let mediaPayload: Awaited<ReturnType<typeof getUserMedia>> | null = null;
   let bookmarksPayload: Awaited<ReturnType<typeof getUserBookmarks>> | null = null;
   let highlightsPayload: Awaited<ReturnType<typeof getUserHighlights>> | null = null;
+  let livePayload: Awaited<ReturnType<typeof getUserLiveActivities>> | null = null;
+  let pinsPayload: Awaited<ReturnType<typeof getUserPins>> | null = null;
   let muteListPayload: Awaited<ReturnType<typeof getUserMuteList>> | null = null;
   let mutedByPayload: Awaited<ReturnType<typeof getUserMutedBy>> | null = null;
 
@@ -217,8 +233,11 @@ export async function loadProfileActivityData(
     reactionsResult,
     zapsResult,
     longFormResult,
+    mediaResult,
     bookmarksResult,
     highlightsResult,
+    liveResult,
+    pinsResult,
     muteListResult,
     mutedByResult,
   ] = await Promise.allSettled([
@@ -239,11 +258,20 @@ export async function loadProfileActivityData(
     params.shouldLoadLongForm
       ? getUserLongForm(lookupKey, "shortTtl", { cursor: params.longFormCursor })
       : Promise.resolve(null),
+    params.shouldLoadMedia
+      ? getUserMedia(lookupKey, "shortTtl", { cursor: params.mediaCursor })
+      : Promise.resolve(null),
     params.shouldLoadBookmarks
       ? getUserBookmarks(lookupKey, "shortTtl", { cursor: params.bookmarksCursor })
       : Promise.resolve(null),
     params.shouldLoadHighlights
       ? getUserHighlights(lookupKey, "shortTtl", { cursor: params.highlightsCursor })
+      : Promise.resolve(null),
+    params.shouldLoadLive
+      ? getUserLiveActivities(lookupKey, "shortTtl", { cursor: params.liveCursor })
+      : Promise.resolve(null),
+    params.shouldLoadPins
+      ? getUserPins(lookupKey, "shortTtl", { cursor: params.pinsCursor })
       : Promise.resolve(null),
     params.shouldLoadMuteList
       ? getUserMuteList(lookupKey, "shortTtl", { cursor: params.muteListCursor })
@@ -282,6 +310,11 @@ export async function loadProfileActivityData(
       toUserFacingErrorMessage(longFormResult.reason, "Failed to load long-form articles.")
     );
   }
+  if (mediaResult.status === "fulfilled") {
+    mediaPayload = mediaResult.value;
+  } else if (params.shouldLoadMedia && !isNotFoundReason(mediaResult.reason)) {
+    errors.push(toUserFacingErrorMessage(mediaResult.reason, "Failed to load media."));
+  }
   if (bookmarksResult.status === "fulfilled") {
     bookmarksPayload = bookmarksResult.value;
   } else if (params.shouldLoadBookmarks && !isNotFoundReason(bookmarksResult.reason)) {
@@ -291,6 +324,16 @@ export async function loadProfileActivityData(
     highlightsPayload = highlightsResult.value;
   } else if (params.shouldLoadHighlights && !isNotFoundReason(highlightsResult.reason)) {
     errors.push(toUserFacingErrorMessage(highlightsResult.reason, "Failed to load highlights."));
+  }
+  if (liveResult.status === "fulfilled") {
+    livePayload = liveResult.value;
+  } else if (params.shouldLoadLive && !isNotFoundReason(liveResult.reason)) {
+    errors.push(toUserFacingErrorMessage(liveResult.reason, "Failed to load live activities."));
+  }
+  if (pinsResult.status === "fulfilled") {
+    pinsPayload = pinsResult.value;
+  } else if (params.shouldLoadPins && !isNotFoundReason(pinsResult.reason)) {
+    errors.push(toUserFacingErrorMessage(pinsResult.reason, "Failed to load pins."));
   }
   if (muteListResult.status === "fulfilled") {
     muteListPayload = muteListResult.value;
@@ -316,8 +359,14 @@ export async function loadProfileActivityData(
   const reactions = authoredReactionsPayload?.reactions ?? [];
   const zaps = authoredZapsPayload?.zaps ?? [];
   const longFormArticles = longFormPayload?.articles ?? [];
+  const mediaEvents = mediaPayload?.events ?? [];
   const bookmarks = bookmarksPayload?.events ?? [];
   const highlights = highlightsPayload?.highlights ?? [];
+  const liveEvents = livePayload?.events ?? [];
+  const pins: PinItem[] = pinsPayload?.items ?? [];
+  const pinEventIds = pins.flatMap((pin) => (pin.tag === "e" ? [pin.value] : []));
+  const pinnedEventsById =
+    pinEventIds.length > 0 ? await fetchEventsById(pinEventIds, "shortTtl") : {};
   const mutedProfiles = muteListPayload?.profiles ?? [];
   const mutedByProfiles = await withProfileIdentity(mutedByPayload?.profiles ?? []);
 
@@ -326,8 +375,11 @@ export async function loadProfileActivityData(
   const reactionsNextCursor = extractNativeApiSemantics(authoredReactionsPayload).next_cursor;
   const zapsNextCursor = extractNativeApiSemantics(authoredZapsPayload).next_cursor;
   const longFormNextCursor = extractNativeApiSemantics(longFormPayload).next_cursor;
+  const mediaNextCursor = extractNativeApiSemantics(mediaPayload).next_cursor;
   const bookmarksNextCursor = extractNativeApiSemantics(bookmarksPayload).next_cursor;
   const highlightsNextCursor = extractNativeApiSemantics(highlightsPayload).next_cursor;
+  const liveNextCursor = extractNativeApiSemantics(livePayload).next_cursor;
+  const pinsNextCursor = extractNativeApiSemantics(pinsPayload).next_cursor;
   const muteListNextCursor = extractNativeApiSemantics(muteListPayload).next_cursor;
   const mutedByNextCursor = extractNativeApiSemantics(mutedByPayload).next_cursor;
 
@@ -342,8 +394,11 @@ export async function loadProfileActivityData(
     reactions: reactionsNextCursor,
     zaps: zapsNextCursor,
     long_form: longFormNextCursor,
+    media: mediaNextCursor,
     bookmarks: bookmarksNextCursor,
     highlights: highlightsNextCursor,
+    live: liveNextCursor,
+    pins: pinsNextCursor,
     mute_list: muteListNextCursor,
     muted_by: mutedByNextCursor,
   };
@@ -378,6 +433,12 @@ export async function loadProfileActivityData(
       "long_form",
       longFormNextCursor
     ),
+    media: buildProfileActivityContinuationHref(
+      profileRoute,
+      currentSearchParams,
+      "media",
+      mediaNextCursor
+    ),
     bookmarks: buildProfileActivityContinuationHref(
       profileRoute,
       currentSearchParams,
@@ -389,6 +450,18 @@ export async function loadProfileActivityData(
       currentSearchParams,
       "highlights",
       highlightsNextCursor
+    ),
+    live: buildProfileActivityContinuationHref(
+      profileRoute,
+      currentSearchParams,
+      "live",
+      liveNextCursor
+    ),
+    pins: buildProfileActivityContinuationHref(
+      profileRoute,
+      currentSearchParams,
+      "pins",
+      pinsNextCursor
     ),
     mute_list: buildProfileActivityContinuationHref(
       profileRoute,
@@ -425,11 +498,21 @@ export async function loadProfileActivityData(
         )
       : {};
 
-  const eventListAuthorPubkeys = extractEventAuthorPubkeys([
-    ...longFormArticles,
-    ...bookmarks,
-    ...highlights,
-  ]);
+  const liveParticipantPubkeys = liveEvents.flatMap(
+    (event) =>
+      getLivePresentation(event)?.participants.map((participant) => participant.pubkey) ?? []
+  );
+  const eventListAuthorPubkeys = [
+    ...extractEventAuthorPubkeys([
+      ...longFormArticles,
+      ...mediaEvents,
+      ...bookmarks,
+      ...highlights,
+      ...liveEvents,
+      ...Object.values(pinnedEventsById),
+    ]),
+    ...liveParticipantPubkeys,
+  ];
   const eventListAuthorsByPubkey =
     eventListAuthorPubkeys.length > 0
       ? await fetchProfilesByPubkey(eventListAuthorPubkeys, "shortTtl")
@@ -475,10 +558,16 @@ export async function loadProfileActivityData(
           params.shouldLoadLongForm,
           "Failed to load long-form articles."
         );
+      case "media":
+        return failure(mediaResult, params.shouldLoadMedia, "Failed to load media.");
       case "bookmarks":
         return failure(bookmarksResult, params.shouldLoadBookmarks, "Failed to load bookmarks.");
       case "highlights":
         return failure(highlightsResult, params.shouldLoadHighlights, "Failed to load highlights.");
+      case "live":
+        return failure(liveResult, params.shouldLoadLive, "Failed to load live activities.");
+      case "pins":
+        return failure(pinsResult, params.shouldLoadPins, "Failed to load pins.");
       case "mute_list":
         return failure(muteListResult, params.shouldLoadMuteList, "Failed to load mute list.");
       case "muted_by":
@@ -507,8 +596,15 @@ export async function loadProfileActivityData(
     eventListAuthorsByPubkey,
     highlights,
     highlightsPayload,
+    liveEvents,
+    livePayload,
     longFormArticles,
     longFormPayload,
+    mediaEvents,
+    mediaPayload,
+    pins,
+    pinnedEventsById,
+    pinsPayload,
     muteListPayload,
     mutedByPayload,
     mutedByProfiles,

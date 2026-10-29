@@ -39,6 +39,7 @@ export function DiscoverShell({
   languageControl,
   freshnessLabel,
   freshness,
+  rankingControls = true,
   staleMessage,
   errorMessage,
   hasContent = true,
@@ -65,6 +66,8 @@ export function DiscoverShell({
    * Suspense) so the hero can render before the data it describes resolves.
    */
   freshness?: ReactNode;
+  /** Window and language selectors. Live activities are not a ranked window. */
+  rankingControls?: boolean;
   staleMessage?: string | null;
   errorMessage?: string | null;
   hasContent?: boolean;
@@ -74,6 +77,7 @@ export function DiscoverShell({
   const modeLinks = DISCOVER_MODE_LINKS[view] ?? [];
   const query = searchParams.toString();
   const retryHref = query.length > 0 ? `${path}?${query}` : path;
+  const showRankingBadges = rankingControls || Boolean(freshness) || Boolean(freshnessLabel);
 
   return (
     <div className="min-w-0 space-y-6 sm:space-y-7">
@@ -86,23 +90,29 @@ export function DiscoverShell({
         subtitle={subtitle}
         subtitleFromSm
         badges={
-          <div className="nm-meta flex flex-wrap items-center gap-x-3 gap-y-2">
-            <WindowSelector
-              path={path}
-              searchParams={searchParams}
-              activeWindow={window}
-              windows={windows}
-            />
-            {languageControl ?? (
-              <LanguageSelector
-                path={path}
-                query={searchParams.toString()}
-                activeLanguage={language}
-                options={topLanguages?.[window] ?? []}
-              />
-            )}
-            {freshness ?? (freshnessLabel ? <FreshnessBadge label={freshnessLabel} /> : null)}
-          </div>
+          showRankingBadges ? (
+            <div className="nm-meta flex flex-wrap items-center gap-x-3 gap-y-2">
+              {rankingControls ? (
+                <>
+                  <WindowSelector
+                    path={path}
+                    searchParams={searchParams}
+                    activeWindow={window}
+                    windows={windows}
+                  />
+                  {languageControl ?? (
+                    <LanguageSelector
+                      path={path}
+                      query={searchParams.toString()}
+                      activeLanguage={language}
+                      options={topLanguages?.[window] ?? []}
+                    />
+                  )}
+                </>
+              ) : null}
+              {freshness ?? (freshnessLabel ? <FreshnessBadge label={freshnessLabel} /> : null)}
+            </div>
+          ) : undefined
         }
         support={heroSupport}
       />

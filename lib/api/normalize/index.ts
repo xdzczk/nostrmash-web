@@ -47,6 +47,15 @@ export {
 export { normalizeRelayHealthResponse } from "@/lib/api/normalize/relays";
 
 export {
+  normalizeUserMediaResponse,
+  normalizeUserLiveActivitiesResponse,
+  normalizeUserPinsResponse,
+  normalizeLiveActivitiesResponse,
+  normalizeEventCommentsResponse,
+  normalizeReportsResponse,
+} from "@/lib/api/normalize/social";
+
+export {
   normalizeThreadResponse,
   normalizeEventAncestorsResponse,
   normalizeEventRepliesResponse,

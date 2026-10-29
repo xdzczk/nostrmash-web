@@ -7,7 +7,7 @@ export const DISCOVER_VIEWS = [
   { key: "links", label: "Links", href: "/trending/domains" },
 ] as const;
 
-export type DiscoverView = (typeof DISCOVER_VIEWS)[number]["key"];
+export type DiscoverView = (typeof DISCOVER_VIEWS)[number]["key"] | "live";
 export type DiscoverMode = "default" | "long-form" | "rising" | "hot";
 
 export type DiscoverContext = {
@@ -36,9 +36,11 @@ export const DISCOVER_MODE_LINKS: Partial<
 };
 
 export function discoverViewLabel(view: DiscoverView): string {
+  if (view === "live") return "Live";
   return DISCOVER_VIEWS.find((candidate) => candidate.key === view)?.label ?? "Discover";
 }
 
 export function discoverViewHref(view: DiscoverView): string {
+  if (view === "live") return "/live";
   return DISCOVER_VIEWS.find((candidate) => candidate.key === view)?.href ?? "/";
 }

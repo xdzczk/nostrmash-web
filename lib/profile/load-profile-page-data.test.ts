@@ -18,6 +18,9 @@ vi.mock("@/lib/api/endpoints", () => ({
   getUserLongForm: vi.fn(),
   getUserBookmarks: vi.fn(),
   getUserHighlights: vi.fn(),
+  getUserMedia: vi.fn(),
+  getUserLiveActivities: vi.fn(),
+  getUserPins: vi.fn(),
   getUserMuteList: vi.fn(),
   getUserMutedBy: vi.fn(),
   getRelatedProfiles: vi.fn(),
@@ -39,9 +42,12 @@ import {
   getRelatedProfiles,
   getUserBookmarks,
   getUserHighlights,
+  getUserLiveActivities,
   getUserLongForm,
+  getUserMedia,
   getUserMuteList,
   getUserMutedBy,
+  getUserPins,
 } from "@/lib/api/endpoints";
 import { loadProfileActivityData, loadProfilePageData } from "@/lib/profile/load-profile-page-data";
 
@@ -55,6 +61,9 @@ const mocked = {
   getUserLongForm: vi.mocked(getUserLongForm),
   getUserBookmarks: vi.mocked(getUserBookmarks),
   getUserHighlights: vi.mocked(getUserHighlights),
+  getUserMedia: vi.mocked(getUserMedia),
+  getUserLiveActivities: vi.mocked(getUserLiveActivities),
+  getUserPins: vi.mocked(getUserPins),
   getUserMuteList: vi.mocked(getUserMuteList),
   getUserMutedBy: vi.mocked(getUserMutedBy),
   getRelatedProfiles: vi.mocked(getRelatedProfiles),
@@ -70,6 +79,9 @@ describe("loadProfilePageData", () => {
     mocked.getUserLongForm.mockResolvedValue({ articles: [] });
     mocked.getUserBookmarks.mockResolvedValue({ events: [] });
     mocked.getUserHighlights.mockResolvedValue({ highlights: [] });
+    mocked.getUserMedia.mockResolvedValue({ events: [] });
+    mocked.getUserLiveActivities.mockResolvedValue({ events: [] });
+    mocked.getUserPins.mockResolvedValue({ items: [] });
     mocked.getUserMuteList.mockResolvedValue({ profiles: [] });
     mocked.getUserMutedBy.mockResolvedValue({ profiles: [] });
     mocked.getRelatedProfiles.mockResolvedValue({ related_profiles: [] });
@@ -139,6 +151,27 @@ describe("loadProfilePageData", () => {
     expect(data.activityTab).toBe("replies");
     expect(data.replies).toHaveLength(1);
     expect(data.activeNextCursor).toBe("cursor-3");
+  });
+
+  it("treats a missing media route as an empty tab", async () => {
+    const pubkey = "a".repeat(64);
+    mocked.getUserMedia.mockRejectedValue(new Error("API 404: not found"));
+
+    const data = await loadProfileActivityData(
+      {
+        lookupKey: pubkey,
+        profile: { pubkey },
+        profileRoute: `/profiles/${pubkey}`,
+        summaryRecord: null,
+      },
+      { activity: "media" },
+      { focused: true }
+    );
+
+    expect(data.activityTab).toBe("media");
+    expect(data.mediaEvents).toEqual([]);
+    expect(data.activeTabError).toBeNull();
+    expect(data.errorMessage).toBe("");
   });
 
   it("captures summary failures as a user-facing error message", async () => {

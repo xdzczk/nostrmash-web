@@ -455,7 +455,7 @@ export interface paths {
     get: {
       parameters: {
         query?: {
-          window?: "24h" | "7d";
+          window?: "24h" | "7d" | "30d";
         };
         header?: never;
         path: {
@@ -1274,13 +1274,51 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Popular relays ranked by distinct user count. total is the full ranked population; relays is capped by limit. */
+        /** @description Popular relays ranked by distinct user count. Localhost, loopback, link-local, and private-network URLs are omitted. total is the full ranked population after that filter; relays is capped by limit. */
         200: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/relays/catalog": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Popular relays with a recent successful read probe */
+    get: {
+      parameters: {
+        query?: {
+          limit?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Relays from relay_registry whose latest read probe succeeded inside the freshness window, ordered by distinct_users, score, then relay_url. Localhost, private-network, and directory relays are omitted, as are blocked and drained relays. Admission state is ignored. generated_at is the query time. freshness_seconds is the window. Each relay has relay_url, distinct_users, score (number), last_probe_at, last_probe_status, avg_connect_latency_ms, and avg_eose_latency_ms. An empty relays array is a successful response. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        400: components["responses"]["Error"];
+        503: components["responses"]["Error"];
       };
     };
     put?: never;
@@ -1412,10 +1450,15 @@ export interface paths {
     get: {
       parameters: {
         query: {
+          /** @description Search text. Quoted phrases are a phrase operator (`"not your keys"`). A weak typo may be rewritten; see `corrected_query`. */
           q: string;
           limit?: number;
           /** @description Optional comma-separated extras. `suggest` folds suggestion profiles/hashtags into the response. */
           include?: "suggest";
+          sort?: "relevant" | "latest";
+          window?: "24h" | "7d" | "30d" | "all";
+          /** @description Restrict rankings to one language. Lowercase 2-8 letter code, "und", or "und-uncertain". Omit to rank every language. Responses echo `language` and include global `top_languages`. */
+          lang?: components["parameters"]["DiscoveryLanguage"];
         };
         header?: never;
         path?: never;
@@ -1423,7 +1466,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Search results with trust metadata (`trust_mode`, `trust_applied`, `result_scope`). When `include=suggest`, also returns `suggested_profiles`, `suggested_hashtags`, and `section_totals`. */
+        /** @description Search results with trust metadata (`trust_mode`, `trust_applied`, `result_scope`), `consistency`, and `search_engine`. `total` is a corpus estimate (`total_is_estimate` says whether it is exact). `section_totals` is `{notes, profiles, hashtags, relays}`. `corrected_query` and `correction_applied` report spelling correction. `surface_cursors.notes` and `surface_cursors.profiles` are opaque cursors for the notes and profiles routes. `surface_errors` is present when a section was dropped instead of failing the request. Profile rows include `name`, `follower_count`, `recent_post_count`, `recent_activity_at`, `nip05`, and `bot`. When `include=suggest`, also returns `suggested_profiles`, `suggested_hashtags`, and `profile_suggestions`. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -1454,7 +1497,9 @@ export interface paths {
         query: {
           q: string;
           sort?: "relevant" | "latest";
-          window?: "24h" | "7d";
+          window?: "24h" | "7d" | "30d" | "all";
+          /** @description Restrict rankings to one language. Lowercase 2-8 letter code, "und", or "und-uncertain". Omit to rank every language. Responses echo `language` and include global `top_languages`. */
+          lang?: components["parameters"]["DiscoveryLanguage"];
           limit?: number;
           offset?: number;
           /** @description Opaque continuation token from a prior response's `next_cursor`. Mutually exclusive with `offset`; bound to the original `q`, `sort`, `window`, and `lang`. */
@@ -1466,7 +1511,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Notes search results with trust metadata (`trust_mode`, `trust_applied`, `result_scope`) and eventual engagement counters on each note payload for note-card rendering. Includes `next_cursor` when another page may exist. */
+        /** @description Notes search results with trust metadata (`trust_mode`, `trust_applied`, `result_scope`) and eventual engagement counters on each note payload for note-card rendering. Includes `total`, `total_is_estimate`, `correction_applied`, optional `corrected_query`, and `next_cursor` when another page may exist. Ranking matches `GET /api/v1/search` for the same `q`. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -1496,10 +1541,13 @@ export interface paths {
       parameters: {
         query: {
           q: string;
-          sort?: "relevant";
+          sort?: "relevant" | "latest";
+          window?: "24h" | "7d" | "30d" | "all";
+          /** @description Restrict rankings to one language. Lowercase 2-8 letter code, "und", or "und-uncertain". Omit to rank every language. Responses echo `language` and include global `top_languages`. */
+          lang?: components["parameters"]["DiscoveryLanguage"];
           limit?: number;
           offset?: number;
-          /** @description Opaque continuation token from a prior response's `next_cursor`. Mutually exclusive with `offset`; bound to the original `q` and `sort`. */
+          /** @description Opaque continuation token from a prior response's `next_cursor`. Mutually exclusive with `offset`; bound to the original `q`, `sort`, `window`, and `lang`. */
           cursor?: string;
         };
         header?: never;
@@ -1508,7 +1556,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Profiles search results with trust metadata (`trust_mode`, `trust_applied`, `result_scope`). Includes `next_cursor` when another page may exist. */
+        /** @description Profiles search results with trust metadata (`trust_mode`, `trust_applied`, `result_scope`). Each row includes `name`, `follower_count`, `recent_post_count`, `recent_activity_at`, `nip05`, and `bot`. Includes `total`, `total_is_estimate`, `correction_applied`, optional `corrected_query`, and `next_cursor` when another page may exist. Ranking matches `GET /api/v1/search` for the same `q`. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -1533,12 +1581,16 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** Lightweight grouped suggestions for profiles and hashtags */
+    /** Lightweight grouped suggestions for profiles, hashtags, and notes */
     get: {
       parameters: {
         query: {
           q: string;
           limit?: number;
+          sort?: "relevant" | "latest";
+          window?: "24h" | "7d" | "30d" | "all";
+          /** @description Restrict rankings to one language. Lowercase 2-8 letter code, "und", or "und-uncertain". Omit to rank every language. Responses echo `language` and include global `top_languages`. */
+          lang?: components["parameters"]["DiscoveryLanguage"];
         };
         header?: never;
         path?: never;
@@ -1546,7 +1598,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Grouped search suggestions */
+        /** @description Grouped suggestions. `profiles` use the same ranking as `/api/v1/search/profiles` and include `follower_count` and `nip05`. `notes` contains up to 3 previews (`id`, `pubkey`, `created_at`, `content_preview`, `match_spans`). `corrected_query` and `correction_applied` report spelling correction. `hashtags` is unchanged. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -1576,6 +1628,8 @@ export interface paths {
       parameters: {
         query?: {
           window?: "24h" | "7d" | "30d";
+          /** @description Restrict rankings to one language. Lowercase 2-8 letter code, "und", or "und-uncertain". Omit to rank every language. Responses echo `language` and include global `top_languages`. */
+          lang?: components["parameters"]["DiscoveryLanguage"];
           limit?: number;
           offset?: number;
         };
@@ -1617,6 +1671,8 @@ export interface paths {
       parameters: {
         query?: {
           window?: "24h" | "7d" | "30d";
+          /** @description Restrict rankings to one language. Lowercase 2-8 letter code, "und", or "und-uncertain". Omit to rank every language. Responses echo `language` and include global `top_languages`. */
+          lang?: components["parameters"]["DiscoveryLanguage"];
           limit?: number;
           offset?: number;
         };
@@ -1659,6 +1715,8 @@ export interface paths {
       parameters: {
         query?: {
           window?: "24h" | "7d" | "30d";
+          /** @description Restrict rankings to one language. Lowercase 2-8 letter code, "und", or "und-uncertain". Omit to rank every language. Responses echo `language` and include global `top_languages`. */
+          lang?: components["parameters"]["DiscoveryLanguage"];
           limit?: number;
           offset?: number;
         };
@@ -1668,7 +1726,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Active conversation hotspots ranked by velocity score and recency. Each conversation includes thread reply totals (`reply_count`, `activity.replies_24h` / `replies_7d` / `replies_30d`) from `thread_summaries` plus root-note engagement (`repost_count`, `reaction_count`, `zap_count`, `zap_msats`) from `note_discovery_stats`. */
+        /** @description Active conversation hotspots ranked by velocity score and recency. Each conversation includes thread reply totals (`reply_count`, `activity.replies_24h` / `replies_7d`) from `thread_summaries` plus root-note engagement (`repost_count`, `reaction_count`, `zap_count`, `zap_msats`) from `note_discovery_stats`. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -1700,6 +1758,8 @@ export interface paths {
       parameters: {
         query?: {
           window?: "24h" | "7d" | "30d";
+          /** @description Restrict rankings to one language. Lowercase 2-8 letter code, "und", or "und-uncertain". Omit to rank every language. Responses echo `language` and include global `top_languages`. */
+          lang?: components["parameters"]["DiscoveryLanguage"];
           notes_limit?: number;
           hashtags_limit?: number;
           profiles_limit?: number;
@@ -1742,12 +1802,14 @@ export interface paths {
     };
     /**
      * Profiles ranked by engagement earned per post ("Profiles in motion")
-     * @description Ranks profiles by how much engagement their posts earn (engagement received per post), not by raw posting volume or audience size — intended to back a "Profiles in motion" UI surface. Profiles with no (optionally trust-weighted) engagement in the window are ineligible, so posting volume or consistency alone cannot occupy a slot. Leading reason code is `engagement_quality` (engagement-per-post ratio), followed by `publishing_momentum` (omitted for a single post, which isn't a meaningful momentum signal on its own) and `engagement_received`. Reason evidence cites the same scored engagement the ranking used. Does not use `follower_growth`; see `/discovery/profiles/rising` for that.
+     * @description Ranks profiles by how much engagement their posts earn (engagement received per post), not by raw posting volume or audience size — intended to back a "Profiles in motion" UI surface. Profiles with no (optionally trust-weighted) engagement in the window are ineligible, so posting volume or consistency alone cannot occupy a slot. `reasons[0]` is one metric that does not rise down the page. On a 24h list that is `engagement_quality` when the per-post rate is non-increasing; otherwise `engagement_received`, `recency`, or `combined_engagement` (no number) when no single metric agrees with the order. The 7d list does not cite a per-post rate, because stored post counts are the 24h window. Evidence cites the same scored engagement the ranking used. Does not use `follower_growth`; see `/discovery/profiles/rising` for that.
      */
     get: {
       parameters: {
         query?: {
           window?: "24h" | "7d" | "30d";
+          /** @description Restrict rankings to one language. Lowercase 2-8 letter code, "und", or "und-uncertain". Omit to rank every language. Responses echo `language` and include global `top_languages`. */
+          lang?: components["parameters"]["DiscoveryLanguage"];
           limit?: number;
           offset?: number;
         };
@@ -1786,12 +1848,14 @@ export interface paths {
     };
     /**
      * Small accounts gaining momentum fast ("Up and coming")
-     * @description Ranks small/lower-follower profiles that are either gaining followers quickly or earning engagement that's large relative to their own (small) audience, even without new followers yet — intended to back an "Up and coming" UI surface. Audience size is penalized continuously (no hard follower-count cutoff), with a steeper hinge above ~500 followers so the list stays mostly sub-500 without excluding larger accounts that have enormous growth. New-follower counts of 2 or fewer are treated as noise (common for any brand-new account) and both omitted from the `follower_growth` reason and discounted in the underlying score, so accounts with substantial absolute growth (e.g. +60 followers on a 400-follower account) reliably outrank barely-started ones (e.g. +5 followers on a 5-follower account) rather than the reverse. Engagement has a matching noise floor: a single (weighted) interaction contributes nothing, and the engagement-momentum term is shrunk for small samples and discounted when concentrated in a single day of activity, so a lone boosted note (the bridged-bot pattern) cannot carry an account into the list -- while sustained, multi-account engagement on a tiny account still can. Eligibility requires above-noise follower growth or engagement of the account's own; a trending score alone does not qualify. Meaningful follower growth can rank even when the profile has no trending engagement. Reason evidence cites the same scored (optionally trust-weighted) engagement and new-follower values the ranking used. Reason codes in priority order: `follower_growth`, `relative_engagement_growth` (engagement-per-follower ratio, omitted for a single interaction), `engagement_received`, `publishing_momentum`.
+     * @description Ranks small/lower-follower profiles that are either gaining followers quickly or earning engagement that's large relative to their own (small) audience, even without new followers yet — intended to back an "Up and coming" UI surface. Audience size is penalized continuously (no hard follower-count cutoff), with a steeper hinge above ~500 followers so the list stays mostly sub-500 without excluding larger accounts that have enormous growth. New-follower counts of 2 or fewer are treated as noise (common for any brand-new account) and both omitted from the `follower_growth` reason and discounted in the underlying score, so accounts with substantial absolute growth (e.g. +60 followers on a 400-follower account) reliably outrank barely-started ones (e.g. +5 followers on a 5-follower account) rather than the reverse. Engagement has a matching noise floor: a single (weighted) interaction contributes nothing, and the engagement-momentum term is shrunk for small samples and discounted when concentrated in a single day of activity, so a lone boosted note (the bridged-bot pattern) cannot carry an account into the list -- while sustained, multi-account engagement on a tiny account still can. Eligibility requires above-noise follower growth or engagement of the account's own; a trending score alone does not qualify. Meaningful follower growth can rank even when the profile has no trending engagement. Reason evidence cites the same scored (optionally trust-weighted) engagement and new-follower values the ranking used. `reasons[0]` is the larger additive piece of that score when the piece does not rise down the page. `follower_growth` evidence is audience-adjusted momentum (the first two followers never count, and growth past 500 followers is divided by followers/500), and only when that term dominates the row. Otherwise the row cites `relative_engagement_growth`, `engagement_received`, `recency`, or `combined_engagement` when no single metric agrees with the order.
      */
     get: {
       parameters: {
         query?: {
           window?: "24h" | "7d" | "30d";
+          /** @description Restrict rankings to one language. Lowercase 2-8 letter code, "und", or "und-uncertain". Omit to rank every language. Responses echo `language` and include global `top_languages`. */
+          lang?: components["parameters"]["DiscoveryLanguage"];
           limit?: number;
           offset?: number;
         };
@@ -1873,6 +1937,8 @@ export interface paths {
       parameters: {
         query?: {
           window?: "24h" | "7d" | "30d";
+          /** @description Restrict rankings to one language. Lowercase 2-8 letter code, "und", or "und-uncertain". Omit to rank every language. Responses echo `language` and include global `top_languages`. */
+          lang?: components["parameters"]["DiscoveryLanguage"];
           limit?: number;
           offset?: number;
         };
@@ -2036,6 +2102,8 @@ export interface paths {
       parameters: {
         query?: {
           window?: "24h" | "7d" | "30d";
+          /** @description Restrict rankings to one language. Lowercase 2-8 letter code, "und", or "und-uncertain". Omit to rank every language. Responses echo `language` and include global `top_languages`. */
+          lang?: components["parameters"]["DiscoveryLanguage"];
           limit?: number;
           offset?: number;
         };
@@ -2234,7 +2302,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Relay activity snapshot. total is distinct relay URLs that have delivered events. unique_authors counts every pubkey seen on a relay. relays.top follows window and is ranked by event count. */
+        /** @description Relay activity snapshot. total is distinct relay URLs that have delivered events, excluding localhost, 127.0.0.0/8, and [::1]. unique_authors counts every pubkey seen on a counted relay. relays.top follows window and is ranked by event count. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -2419,6 +2487,269 @@ export interface paths {
       requestBody?: never;
       responses: {
         /** @description Highlight events with eventual engagement counters attached for note-card rendering. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/users/{pubkey}/media": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Picture and video events for pubkey */
+    get: {
+      parameters: {
+        query?: {
+          limit?: number;
+        };
+        header?: never;
+        path: {
+          pubkey: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Kinds 20, 21, 22, 34235, and 34236. Addressable video is the current replaceable winner. Envelope is pubkey, items, and consistency. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/users/{pubkey}/live": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Current kind 30311 live activities for pubkey */
+    get: {
+      parameters: {
+        query?: {
+          limit?: number;
+        };
+        header?: never;
+        path: {
+          pubkey: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Latest kind 30311 row per d tag for the pubkey. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/users/{pubkey}/pins": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** e and a tags from the latest kind 10001 pin list */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          pubkey: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Pin items as tag and value, with eventual consistency. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/live": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Current kind 30311 live activities */
+    get: {
+      parameters: {
+        query?: {
+          status?: "planned" | "live" | "ended";
+          limit?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Current live activities ordered by starts, then created_at. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/events/{id}/comments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Kind 1111 comments on an event or its address */
+    get: {
+      parameters: {
+        query?: {
+          limit?: number;
+        };
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Comment events with eventual consistency. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/events/{id}/reports": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** NIP-56 reports targeting an event */
+    get: {
+      parameters: {
+        query?: {
+          limit?: number;
+        };
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Report targets for the event. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/users/{pubkey}/reports": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** NIP-56 reports targeting a pubkey */
+    get: {
+      parameters: {
+        query?: {
+          limit?: number;
+        };
+        header?: never;
+        path: {
+          pubkey: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Report targets for the pubkey. */
         200: {
           headers: {
             [name: string]: unknown;
@@ -3479,6 +3810,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/primal/ws/v1": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Primal iOS cache WebSocket (zlib EVENTS, mega feeds, enrichment) */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description WebSocket protocol switch */
+        101: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/admin/v1/relays": {
     parameters: {
       query?: never;
@@ -4229,7 +4594,10 @@ export interface components {
       };
     };
   };
-  parameters: never;
+  parameters: {
+    /** @description Restrict rankings to one language. Lowercase 2-8 letter code, "und", or "und-uncertain". Omit to rank every language. Responses echo `language` and include global `top_languages`. */
+    DiscoveryLanguage: string;
+  };
   requestBodies: never;
   headers: never;
   pathItems: never;

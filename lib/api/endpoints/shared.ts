@@ -41,6 +41,11 @@ export const nativeApiV1Routes = {
     `/api/v1/users/${encodeURIComponent(pubkey)}/bookmarks`,
   userHighlightsByPubkey: (pubkey: string) =>
     `/api/v1/users/${encodeURIComponent(pubkey)}/highlights`,
+  userMediaByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/media`,
+  userLiveByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/live`,
+  userPinsByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/pins`,
+  userReportsByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/reports`,
+  liveActivities: "/api/v1/live",
   userMuteListByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/mute-list`,
   userMutedByByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/muted-by`,
   relatedProfilesByPubkey: (pubkey: string) =>
@@ -58,6 +63,8 @@ export const nativeApiV1Routes = {
   eventRepliesById: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/replies`,
   eventSeenOnById: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/seen-on`,
   eventCountsById: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/counts`,
+  eventCommentsById: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/comments`,
+  eventReportsById: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/reports`,
   threadByEventId: (eventId: string) => `/api/v1/threads/${encodeURIComponent(eventId)}`,
   threadSummaryByRootEventId: (rootEventId: string) =>
     `/api/v1/threads/${encodeURIComponent(rootEventId)}/summary`,

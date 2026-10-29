@@ -18,6 +18,7 @@ import { fetchProfilesByPubkey, listHydratablePubkeys } from "@/lib/api/profile-
 import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import type { ThreadActivityStats } from "@/lib/notes/thread-activity";
+import { isRepostEvent } from "@/lib/notes/repost";
 import { resolveReplyParent, resolveReplyRoot } from "@/lib/notes/thread-tree";
 import { readSearchParam, toUrlSearchParams } from "@/lib/search-params/pagination";
 import type { EventRecord, Profile } from "@/lib/types/api";
@@ -131,14 +132,18 @@ export async function loadNoteFocalData(eventId: string) {
   // Prefer the index's thread context; fall back to the event's own NIP-10
   // tags so replies are still recognised when the summary omits it.
   const threadContextFromSummary = isRecord(noteSummary?.thread) ? noteSummary.thread : {};
-  const rootEventId =
-    typeof threadContextFromSummary.root_event_id === "string"
+  // Kind 6 and 16 `e` tags point at the reposted event, not a reply parent.
+  const repost = focal ? isRepostEvent(focal) : false;
+  const rootEventId = repost
+    ? undefined
+    : typeof threadContextFromSummary.root_event_id === "string"
       ? threadContextFromSummary.root_event_id
       : focal
         ? resolveReplyRoot(focal)
         : undefined;
-  const parentEventId =
-    typeof threadContextFromSummary.parent_event_id === "string"
+  const parentEventId = repost
+    ? undefined
+    : typeof threadContextFromSummary.parent_event_id === "string"
       ? threadContextFromSummary.parent_event_id
       : focal
         ? resolveReplyParent(focal)

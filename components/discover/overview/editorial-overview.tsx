@@ -31,10 +31,14 @@ import {
   profileSecondaryLabel,
   truncateProfileLabel,
 } from "@/components/explorer/utils";
+import { EventKindSwitch } from "@/components/explorer/event-kind-switch";
+import { isLongFormEvent } from "@/components/explorer/article-meta";
 import { NoteLinkPreviews } from "@/components/explorer/note-link-previews";
 import { NoteMedia } from "@/components/explorer/note-media";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { getEditorialNoteText } from "@/components/explorer/note-preview";
+import { isHiddenNoteKind } from "@/lib/api/normalize";
+import { GENERIC_REPOST_KIND, isLiveActivityKind, isMediaKind } from "@/lib/notes/kinds";
 import {
   belowVolumeFloor,
   listedVolume,
@@ -190,7 +194,28 @@ function EditorialNote({
   lead?: boolean;
   contentResolution?: NoteContentResolution;
 }) {
+  if (isHiddenNoteKind(note)) return null;
   const author = noteAuthor(note, authorsByPubkey);
+  if (
+    isMediaKind(note.kind) ||
+    isLiveActivityKind(note.kind) ||
+    note.kind === 6 ||
+    note.kind === GENERIC_REPOST_KIND ||
+    isLongFormEvent(note)
+  ) {
+    return (
+      <EventKindSwitch
+        event={note}
+        author={author}
+        surface="list"
+        rank={rank}
+        contentResolution={contentResolution}
+        profilesByPubkey={authorsByPubkey}
+        showUtilityLinks={false}
+        omitZeroStats
+      />
+    );
+  }
   const id = noteId(note);
   const editorialText = getEditorialNoteText(note, contentResolution);
   const authorLabel = authorName(note, author);

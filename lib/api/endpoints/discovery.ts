@@ -9,6 +9,8 @@ import type {
   TrendingLongFormResponse,
   TrendingNotesResponse,
   TrendingProfilesResponse,
+  LiveActivitiesApiResponse,
+  LiveActivitiesResponse,
 } from "@/lib/types/api";
 import { fetchApiJson } from "@/lib/api/http";
 import {
@@ -19,6 +21,7 @@ import {
   normalizeEventRecords,
   normalizeHashtagEntries,
   normalizeProfiles,
+  normalizeLiveActivitiesResponse,
   normalizeTrendingLongFormResponse,
 } from "@/lib/api/normalize";
 import type { CacheClass } from "@/lib/caching/policies";
@@ -189,4 +192,15 @@ export async function getTrendingDomains(cacheClass: CacheClass = "shortTtl", qu
       typeof response.window === "string" ? response.window : undefined
     ),
   }) satisfies TrendingDomainsResponse;
+}
+
+export async function getLiveActivities(
+  status: "live" | "planned" | "ended" = "live",
+  cacheClass: CacheClass = "shortTtl"
+): Promise<LiveActivitiesResponse> {
+  const response = await fetchApiJson<LiveActivitiesApiResponse>(nativeApiV1Routes.liveActivities, {
+    cacheClass,
+    query: { status },
+  });
+  return normalizeLiveActivitiesResponse(response);
 }

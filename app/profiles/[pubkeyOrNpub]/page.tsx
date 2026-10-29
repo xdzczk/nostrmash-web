@@ -25,6 +25,7 @@ import {
   DeferredProfileActivity,
   DeferredProfileDiscovery,
 } from "@/components/profile/deferred-profile-sections";
+import { ProfileReports } from "@/components/profile/profile-reports";
 import { ProfileCover } from "@/components/profile/profile-banner-backdrop";
 import { ProfileHeroSignals } from "@/components/profile/profile-hero-signals";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -690,6 +691,9 @@ export default async function ProfilePage({
 
       {profile || !errorMessage ? (
         <>
+          <Suspense fallback={null}>
+            <ProfileReports pubkey={lookupKey} />
+          </Suspense>
           <Suspense fallback={<Skeleton className="h-48 w-full rounded-xl" />}>
             <DeferredProfileActivity
               lookupKey={lookupKey}

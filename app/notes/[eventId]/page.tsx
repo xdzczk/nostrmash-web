@@ -28,6 +28,8 @@ import {
   DeferredNoteRelated,
   DeferredNoteThread,
 } from "@/components/notes/deferred-note-sections";
+import { EventComments } from "@/components/notes/event-comments";
+import { EventReports } from "@/components/notes/event-reports";
 import { RepostRollup } from "@/components/notes/repost-rollup";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Disclosure } from "@/components/ui/disclosure";
@@ -35,6 +37,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
 import { isHiddenNoteKind } from "@/lib/api/normalize";
 import { encodeNevent, hexToNote } from "@/lib/nostr/nip19";
+import { noteKindLabel } from "@/lib/notes/kinds";
+import { isRepostEvent } from "@/lib/notes/repost";
+import { liveActivityNaddr } from "@/lib/notes/live-activity";
+import { addressableMediaNaddr } from "@/lib/notes/media-event";
 import { getNoteSummaryCached, loadNoteFocalData } from "@/lib/notes/load-note-page-data";
 import { referencedNoteIds } from "@/lib/notes/referenced-notes";
 import { summarizeNoteText } from "@/lib/notes/summary-text";
@@ -70,13 +76,6 @@ function isProvenanceValue(value: unknown): boolean {
   return true;
 }
 
-function noteKindLabel(kind: number): string {
-  if (kind === 1) return "Note";
-  if (kind === 6 || kind === 16) return "Repost";
-  if (kind === 30023) return "Long-form";
-  return `Kind ${kind}`;
-}
-
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { eventId } = await params;
   if (!isValidEventIdParam(eventId)) {
@@ -100,12 +99,14 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     const article = note && isLongFormEvent(note) ? getArticlePresentation(note) : null;
     const contentPreview = summarizeNoteText(note?.content, 150) || null;
     const threadContext = isRecord(payload.thread) ? payload.thread : {};
+    const repost = note ? isRepostEvent(note) : false;
     const isReply =
-      typeof threadContext.parent_event_id === "string" ||
-      (typeof threadContext.root_event_id === "string" &&
-        threadContext.root_event_id !== resolvedId) ||
-      (note ? Boolean(resolveReplyParent(note)) : false);
-    const kindLabel = isReply ? "Reply" : "Note";
+      !repost &&
+      (typeof threadContext.parent_event_id === "string" ||
+        (typeof threadContext.root_event_id === "string" &&
+          threadContext.root_event_id !== resolvedId) ||
+        (note ? Boolean(resolveReplyParent(note)) : false));
+    const kindLabel = repost ? "Repost" : isReply ? "Reply" : "Note";
     const title = article
       ? article.title
       : authorLabel
@@ -267,6 +268,7 @@ export default async function NotePage({
   // only the fields that actually carry a value.
   const referenceIds = referencedNoteIds(focal, noteSummary?.quote_repost_context, eventId);
   const noteBech32 =
+    (focal ? (addressableMediaNaddr(focal) ?? liveActivityNaddr(focal)) : null) ??
     encodeNevent({
       id: eventId,
       author: typeof focal?.pubkey === "string" ? focal.pubkey : undefined,
@@ -390,6 +392,12 @@ export default async function NotePage({
                   searchParams={resolvedSearchParams}
                   replyCount={replyCount}
                 />
+              </Suspense>
+              <Suspense fallback={null}>
+                <EventComments eventId={eventId} />
+              </Suspense>
+              <Suspense fallback={null}>
+                <EventReports eventId={eventId} />
               </Suspense>
             </div>
           </div>

@@ -201,7 +201,8 @@ export function EntityActions({
 }) {
   const toast = useToast();
   const label = useMemo(() => (kind === "note" ? "note" : "profile"), [kind]);
-  const copyLabel = kind === "note" ? "nevent" : "npub";
+  const copyLabel =
+    kind === "note" ? (identifier.startsWith("naddr1") ? "naddr" : "nevent") : "npub";
   const menuItemClass =
     "text-ink-soft hover:bg-surface-hover hover:text-ink flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm";
 
@@ -253,7 +254,7 @@ export function EntityActions({
             else toast.danger("Copy failed");
           }}
         >
-          Copy {kind === "note" ? "nevent" : "npub"}
+          Copy {copyLabel}
         </Button>
         <a
           href={nostrUri}
@@ -287,7 +288,7 @@ export function EntityActions({
             else toast.danger("Copy failed");
           }}
         >
-          Copy {kind === "note" ? "nevent" : "npub"}
+          Copy {copyLabel}
         </Button>
         <Button
           size="sm"

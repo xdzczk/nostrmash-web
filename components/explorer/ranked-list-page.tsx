@@ -25,6 +25,7 @@ export function RankedListPage({
   window,
   windows,
   language,
+  rankingControls = true,
   topLanguages,
   semantics,
   heroExtraBadges,
@@ -53,6 +54,8 @@ export function RankedListPage({
   window: StatsWindow;
   windows?: readonly StatsWindow[];
   language?: string;
+  /** Window and language selectors. Hidden on surfaces that are not ranked. */
+  rankingControls?: boolean;
   topLanguages?: TopLanguages;
   semantics: NativeApiSemantics;
   heroExtraBadges?: ReactNode;
@@ -86,6 +89,7 @@ export function RankedListPage({
       window={window}
       windows={windows}
       language={language}
+      rankingControls={rankingControls}
       topLanguages={topLanguages}
       errorMessage={errorMessage}
       hasContent={hasItems}

@@ -19,7 +19,15 @@ function listen(target: EventTarget, type: string, handler: () => void) {
   return () => target.removeEventListener(type, handler);
 }
 
-function NoteVideo({ url, className }: { url: string; className: string }) {
+function NoteVideo({
+  url,
+  className,
+  poster,
+}: {
+  url: string;
+  className: string;
+  poster?: string;
+}) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const primedUrlRef = useRef<string | null>(null);
 
@@ -75,6 +83,7 @@ function NoteVideo({ url, className }: { url: string; className: string }) {
     <video
       ref={videoRef}
       src={videoPreviewSrc(url)}
+      poster={poster}
       controls
       playsInline
       preload="metadata"
@@ -89,19 +98,29 @@ export function NoteMediaReveal({
   variant = "full",
   priority = false,
   hiddenCount = 0,
+  alt = "Image attached to note",
+  poster,
 }: {
   url: string;
   kind: MediaKind;
-  variant?: "full" | "lead" | "compact" | "feed" | "detail" | "thread";
+  variant?: "full" | "lead" | "compact" | "feed" | "detail" | "thread" | "portrait";
   /** Eager-load with high fetch priority (lead/LCP image). */
   priority?: boolean;
   /** Number of further attachments not rendered; shown as a `+N` badge. */
   hiddenCount?: number;
+  alt?: string;
+  poster?: string;
 }) {
   // Fixed-ratio variants reserve their box before the image loads (no CLS).
   // Compact is a square thumbnail at every width so a screenshot stays a thumb.
   const fixedRatio =
-    variant === "compact" ? "aspect-square" : variant === "lead" ? "aspect-[16/10]" : "";
+    variant === "compact"
+      ? "aspect-square"
+      : variant === "lead"
+        ? "aspect-[16/10]"
+        : variant === "portrait"
+          ? "aspect-[9/16]"
+          : "";
   const fill = fixedRatio.length > 0;
   // Other variants keep the file's aspect ratio. A full-width box plus a short
   // max-height letterboxes portrait photos down to a thin strip.
@@ -130,7 +149,11 @@ export function NoteMediaReveal({
       </span>
     ) : null;
 
-  const frameWidthClass = fill ? fixedRatio : kind === "audio" ? "w-full" : "w-fit max-w-full";
+  const frameWidthClass = fill
+    ? `${fixedRatio}${variant === "portrait" ? " w-full" : ""}`
+    : kind === "audio"
+      ? "w-full"
+      : "w-fit max-w-full";
 
   return (
     <div
@@ -139,12 +162,12 @@ export function NoteMediaReveal({
       {kind === "image" ? (
         <EnlargeableImage
           src={url}
-          alt="Image attached to note"
+          alt={alt}
           className={`block max-w-full cursor-zoom-in ${fill ? "h-full w-full" : "w-fit"}`}
         >
           <BlossomImage
             src={url}
-            alt="Image attached to note"
+            alt={alt}
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : "auto"}
             decoding="async"
@@ -153,7 +176,7 @@ export function NoteMediaReveal({
           />
         </EnlargeableImage>
       ) : null}
-      {kind === "video" ? <NoteVideo url={url} className={videoClass} /> : null}
+      {kind === "video" ? <NoteVideo url={url} poster={poster} className={videoClass} /> : null}
       {kind === "audio" ? (
         <div className={fill ? "flex h-full items-center p-3" : "p-3"}>
           <audio src={url} controls preload="metadata" className="w-full" />

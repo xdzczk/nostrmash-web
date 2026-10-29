@@ -22,12 +22,19 @@ export type NoteContentResolution = {
   eventsById?: Record<string, EventRecord | undefined>;
 };
 
-function naddrHref(pubkey: string): string {
+function naddrActivityTab(kind: number): "long_form" | "media" | "live" | "notes" {
+  if (kind === 30023) return "long_form";
+  if (kind === 30311) return "live";
+  if (kind === 20 || kind === 21 || kind === 22 || kind === 34235 || kind === 34236) return "media";
+  return "notes";
+}
+
+function naddrHref(pubkey: string, kind: number): string {
   const npub = hexToNpub(pubkey) ?? pubkey;
   return buildProfileActivityTabHref(
     `/profiles/${encodeURIComponent(npub)}`,
     new URLSearchParams(),
-    "long_form"
+    naddrActivityTab(kind)
   );
 }
 
@@ -254,7 +261,7 @@ export function NoteContent({
             return (
               <Link
                 key={key}
-                href={naddrHref(token.pubkey)}
+                href={naddrHref(token.pubkey, token.kind)}
                 className="text-link hover:text-link-hover font-medium"
                 title={`kind:${token.kind} ${token.identifier}`}
               >

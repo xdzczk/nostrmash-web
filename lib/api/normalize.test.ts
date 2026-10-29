@@ -157,6 +157,8 @@ describe("isHiddenNoteKind", () => {
     expect(isHiddenNoteKind({ kind: 10002 })).toBe(true);
     expect(isHiddenNoteKind({ kind: 30000 })).toBe(true);
     expect(isHiddenNoteKind({ kind: 30001 })).toBe(true);
+    expect(isHiddenNoteKind({ kind: 1111 })).toBe(true);
+    expect(isHiddenNoteKind({ kind: 1984 })).toBe(true);
     expect(isHiddenNoteKind({ kind: 1 })).toBe(false);
     expect(isHiddenNoteKind({ kind: 30023 })).toBe(false);
     expect(isHiddenNoteKind(null)).toBe(false);

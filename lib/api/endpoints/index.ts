@@ -17,6 +17,7 @@ export {
   getRisingProfiles,
   getTrendingHashtags,
   getTrendingDomains,
+  getLiveActivities,
 } from "@/lib/api/endpoints/discovery";
 export { getSearch } from "@/lib/api/endpoints/search";
 export {
@@ -26,6 +27,10 @@ export {
   getUserLongForm,
   getUserBookmarks,
   getUserHighlights,
+  getUserMedia,
+  getUserLiveActivities,
+  getUserPins,
+  getUserReports,
   getUserMuteList,
   getUserMutedBy,
   getRelatedProfiles,
@@ -36,6 +41,8 @@ export {
 } from "@/lib/api/endpoints/profiles";
 export {
   getEvent,
+  getEventComments,
+  getEventReports,
   getEventsBatch,
   getEventSeenOn,
   getEventCounts,

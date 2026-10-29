@@ -61,6 +61,34 @@ describe("parseRepostTarget", () => {
     expect(parseRepostTarget(repost)).toEqual({ targetId: ORIGINAL_ID, targetPubkey: undefined });
   });
 
+  it("keeps an addressable a-tag target on a kind 16 repost", () => {
+    const address = `30023:${ORIGINAL_PUBKEY}:reposted-article`;
+    const article = {
+      ...embeddedOriginal,
+      kind: 30023,
+      content: "Article body",
+      tags: [
+        ["title", "Reposted article title"],
+        ["d", "reposted-article"],
+      ],
+    };
+    const repost: EventRecord = {
+      id: "d".repeat(64),
+      pubkey: "c".repeat(64),
+      kind: 16,
+      content: JSON.stringify(article),
+      tags: [
+        ["a", address],
+        ["e", ORIGINAL_ID],
+        ["p", ORIGINAL_PUBKEY],
+      ],
+    };
+    const target = parseRepostTarget(repost);
+    expect(target.targetAddress).toBe(address);
+    expect(target.embedded?.kind).toBe(30023);
+    expect(target.targetId).toBe(ORIGINAL_ID);
+  });
+
   it("returns nothing for non-repost kinds", () => {
     expect(parseRepostTarget({ id: "x", kind: 1, content: "{}" })).toEqual({});
     expect(isRepostEvent({ id: "x", kind: 16 })).toBe(true);

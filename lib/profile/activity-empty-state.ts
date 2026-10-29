@@ -28,6 +28,11 @@ export function activityEmptyCopy(tab: ProfileActivityTab): ActivityEmptyCopy {
         message: "This profile has not published long-form articles that we have indexed.",
         hint: "Long-form posts are Markdown articles (NIP-23), distinct from short notes.",
       };
+    case "media":
+      return {
+        message: "This profile has not published pictures or videos that we have indexed.",
+        hint: "Pictures and videos are NIP-68 and NIP-71 media events.",
+      };
     case "bookmarks":
       return {
         message: "No public bookmarks from this profile are in the index yet.",
@@ -37,6 +42,16 @@ export function activityEmptyCopy(tab: ProfileActivityTab): ActivityEmptyCopy {
       return {
         message: "No highlights from this profile are in the index yet.",
         hint: "Highlights are passages the account clipped from articles or web pages (NIP-84).",
+      };
+    case "live":
+      return {
+        message: "This profile has no live activities in the index.",
+        hint: "Live activities are NIP-53 streams, including ones that are planned or have ended.",
+      };
+    case "pins":
+      return {
+        message: "This profile has not pinned any events that we have indexed.",
+        hint: "Pins are the public pin list for this account.",
       };
     case "mute_list":
       return {

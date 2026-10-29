@@ -10,8 +10,11 @@ export const PROFILE_ACTIVITY_TABS = [
   { id: "reactions", label: "Reactions", secondary: false },
   { id: "zaps", label: "Zaps sent", secondary: false },
   { id: "long_form", label: "Articles", secondary: false },
+  { id: "media", label: "Media", secondary: false },
   { id: "bookmarks", label: "Bookmarks", secondary: true },
   { id: "highlights", label: "Highlights", secondary: true },
+  { id: "live", label: "Live", secondary: true },
+  { id: "pins", label: "Pins", secondary: true },
   { id: "mute_list", label: "Mute list", secondary: true },
   { id: "muted_by", label: "Muted by", secondary: true },
 ] as const;
@@ -43,10 +46,16 @@ export function profileActivityCursorKey(tab: ProfileActivityTab): string {
       return "zaps_cursor";
     case "long_form":
       return "long_form_cursor";
+    case "media":
+      return "media_cursor";
     case "bookmarks":
       return "bookmarks_cursor";
     case "highlights":
       return "highlights_cursor";
+    case "live":
+      return "live_cursor";
+    case "pins":
+      return "pins_cursor";
     case "mute_list":
       return "mute_list_cursor";
     case "muted_by":

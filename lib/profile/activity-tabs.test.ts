@@ -10,8 +10,11 @@ describe("PROFILE_ACTIVITY_TABS", () => {
       ["reactions", "Reactions", false],
       ["zaps", "Zaps sent", false],
       ["long_form", "Articles", false],
+      ["media", "Media", false],
       ["bookmarks", "Bookmarks", true],
       ["highlights", "Highlights", true],
+      ["live", "Live", true],
+      ["pins", "Pins", true],
       ["mute_list", "Mute list", true],
       ["muted_by", "Muted by", true],
     ]);

@@ -250,7 +250,111 @@ const mediaNote = {
   repost_count: 1,
   reaction_count: 3,
 };
-const trendingNotes = [focalNote, quotedEvent, mediaNote];
+const PICTURE_ID = "a2".repeat(32);
+const SHORT_ID = "b2".repeat(32);
+const ARTICLE_ID = "c2".repeat(32);
+const GENERIC_REPOST_ID = "d2".repeat(32);
+const LIVE_ID = "e2".repeat(32);
+const COMMENT_ID = "f2".repeat(32);
+
+const pictureEvent = {
+  id: PICTURE_ID,
+  pubkey: AUTHOR_PK,
+  kind: 20,
+  created_at: 1_700_000_600,
+  content: "A picture caption from the mock index",
+  tags: [
+    ["title", "Harbor light"],
+    ["imeta", "url https://media.example.invalid/harbor.jpg", "m image/jpeg", "alt Harbor at dusk"],
+  ],
+};
+
+const shortEvent = {
+  id: SHORT_ID,
+  pubkey: AUTHOR_PK,
+  kind: 22,
+  created_at: 1_700_000_610,
+  content: "A short vertical clip",
+  tags: [
+    ["title", "Cliff path"],
+    [
+      "imeta",
+      "url https://media.example.invalid/cliff.mp4",
+      "m video/mp4",
+      "image https://media.example.invalid/cliff.jpg",
+    ],
+    ["duration", "12"],
+  ],
+};
+
+const articleEvent = {
+  id: ARTICLE_ID,
+  pubkey: AUTHOR_PK,
+  kind: 30023,
+  created_at: 1_700_000_620,
+  content: "Body of the reposted article.",
+  tags: [
+    ["title", "Reposted article title"],
+    ["d", "reposted-article"],
+  ],
+};
+
+const genericRepost = {
+  id: GENERIC_REPOST_ID,
+  pubkey: AUTHOR_PK,
+  kind: 16,
+  created_at: 1_700_000_630,
+  content: JSON.stringify(articleEvent),
+  tags: [
+    ["a", `30023:${AUTHOR_PK}:reposted-article`],
+    ["e", ARTICLE_ID],
+    ["p", AUTHOR_PK],
+  ],
+};
+
+const liveEvent = {
+  id: LIVE_ID,
+  pubkey: AUTHOR_PK,
+  kind: 30311,
+  created_at: 1_700_000_640,
+  content: "",
+  tags: [
+    ["d", "harbor-live"],
+    ["title", "Harbor live"],
+    ["summary", "A live activity in the mock index"],
+    ["image", "https://media.example.invalid/live.jpg"],
+    ["status", "live"],
+    ["streaming", "https://media.example.invalid/live.m3u8"],
+    ["p", AUTHOR_PK, "Host"],
+  ],
+};
+
+const commentEvent = {
+  id: COMMENT_ID,
+  pubkey: MENTION_PK,
+  kind: 1111,
+  created_at: 1_700_000_650,
+  content: "A quiet comment on the focal note",
+  tags: [
+    ["E", FOCAL_ID],
+    ["K", "1"],
+    ["P", AUTHOR_PK],
+    ["e", FOCAL_ID],
+    ["k", "1"],
+    ["p", AUTHOR_PK],
+  ],
+};
+
+const hiddenReport = {
+  id: "ab".repeat(32),
+  pubkey: MENTION_PK,
+  kind: 1984,
+  created_at: 1_700_000_660,
+  content: "classified-report-reason-should-stay-hidden",
+  tags: [["e", FOCAL_ID, "", "spam"]],
+};
+
+const trendingNotes = [focalNote, quotedEvent, mediaNote, hiddenReport];
 const trendingProfiles = [authorProfile, mentionProfile];
 const trendingHashtags = [
   {
@@ -284,7 +388,20 @@ const trendingDomains = [
 ];
 
 const threadEventsById = new Map(
-  [quotedEvent, replyA, replyB, replyC, replyD, deepNote].map((event) => [event.id, event])
+  [
+    quotedEvent,
+    replyA,
+    replyB,
+    replyC,
+    replyD,
+    deepNote,
+    pictureEvent,
+    shortEvent,
+    articleEvent,
+    genericRepost,
+    liveEvent,
+    commentEvent,
+  ].map((event) => [event.id, event])
 );
 
 function notePayload(id = FOCAL_ID) {
@@ -566,9 +683,19 @@ const server = http.createServer(async (req, res) => {
   if (path === "/api/v1/events/batch") {
     const body = (await readBody(req)) ?? {};
     const ids = Array.isArray(body.ids) ? body.ids : [];
-    const events = [focalNote, quotedEvent, replyA, replyB, replyC, replyD].filter((event) =>
-      ids.length === 0 ? true : ids.includes(event.id)
-    );
+    const events = [
+      focalNote,
+      quotedEvent,
+      replyA,
+      replyB,
+      replyC,
+      replyD,
+      pictureEvent,
+      shortEvent,
+      articleEvent,
+      genericRepost,
+      liveEvent,
+    ].filter((event) => (ids.length === 0 ? true : ids.includes(event.id)));
     return json(res, 200, { events, missing: [] });
   }
 
@@ -691,6 +818,90 @@ const server = http.createServer(async (req, res) => {
         ],
         rising_profiles: [mentionProfile],
       },
+      consistency: "eventual",
+    });
+  }
+
+  if (path === "/api/v1/live") {
+    const status = url.searchParams.get("status") ?? "live";
+    return json(res, 200, {
+      items: status === "live" ? [liveEvent] : [],
+      consistency: "eventual",
+    });
+  }
+
+  if (path.startsWith("/api/v1/users/") && path.endsWith("/media")) {
+    return json(res, 200, {
+      pubkey: AUTHOR_PK,
+      items: [pictureEvent, shortEvent],
+      consistency: "eventual",
+    });
+  }
+
+  if (path.startsWith("/api/v1/users/") && path.endsWith("/live")) {
+    return json(res, 200, {
+      pubkey: AUTHOR_PK,
+      items: [liveEvent],
+      consistency: "eventual",
+    });
+  }
+
+  if (path.startsWith("/api/v1/users/") && path.endsWith("/pins")) {
+    return json(res, 200, {
+      pubkey: AUTHOR_PK,
+      items: [
+        { tag: "e", value: PICTURE_ID },
+        { tag: "a", value: `30023:${AUTHOR_PK}:reposted-article` },
+      ],
+      consistency: "eventual",
+    });
+  }
+
+  if (path.startsWith("/api/v1/users/") && path.endsWith("/reports")) {
+    return json(res, 200, {
+      pubkey: AUTHOR_PK,
+      items: [
+        {
+          report_event_id: "cd".repeat(32),
+          reporter_pubkey: MENTION_PK,
+          report_type: "impersonation",
+          content: "This profile was reported for impersonation in the mock index.",
+          created_at: 1_700_000_400,
+          target_pubkey: AUTHOR_PK,
+        },
+      ],
+      consistency: "eventual",
+    });
+  }
+
+  if (path.startsWith("/api/v1/events/") && path.endsWith("/comments")) {
+    const parts = path.split("/").filter(Boolean);
+    const id = parts[3] && /^[a-f0-9]{64}$/i.test(parts[3]) ? parts[3].toLowerCase() : "";
+    return json(res, 200, {
+      event_id: id,
+      items: id === FOCAL_ID ? [commentEvent] : [],
+      consistency: "eventual",
+    });
+  }
+
+  if (path.startsWith("/api/v1/events/") && path.endsWith("/reports")) {
+    const parts = path.split("/").filter(Boolean);
+    const id = parts[3] && /^[a-f0-9]{64}$/i.test(parts[3]) ? parts[3].toLowerCase() : "";
+    return json(res, 200, {
+      event_id: id,
+      items:
+        id === FOCAL_ID
+          ? [
+              {
+                report_event_id: "ab".repeat(32),
+                reporter_pubkey: MENTION_PK,
+                report_type: "spam",
+                content: "This note was reported as spam in the mock index.",
+                created_at: 1_700_000_500,
+                target_event_id: FOCAL_ID,
+              },
+            ]
+          : [],
       consistency: "eventual",
     });
   }
