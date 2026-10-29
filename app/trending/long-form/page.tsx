@@ -27,8 +27,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   return withLanguageVariantMetadata(
     {
-      title: "Long-form",
-      description: "Explore the long-form articles leading the network.",
+      title: "Articles",
+      description: "Explore the articles leading the network.",
     },
     readLanguage(await searchParams),
     "/trending/long-form"
@@ -51,7 +51,7 @@ export default async function TrendingLongFormPage({
 
   const { payload, errorMessage, semantics } = await loadRankedListPayload(
     () => getTrendingLongForm("shortTtl", rankedListRequest(window, language, offset)),
-    "Failed to load trending long-form.",
+    "Failed to load articles.",
     { window, path, params: currentSearchParams }
   );
 
@@ -76,11 +76,10 @@ export default async function TrendingLongFormPage({
 
   return (
     <RankedListPage
-      discoverView="notes"
-      discoverMode="long-form"
-      eyebrow="Notes"
-      title="Long-form"
-      subtitle="The long-form articles leading the network."
+      discoverView="articles"
+      eyebrow=""
+      title="Articles"
+      subtitle="The articles leading the network."
       path={path}
       searchParams={currentSearchParams}
       window={window}
@@ -97,7 +96,7 @@ export default async function TrendingLongFormPage({
       }
       errorMessage={errorMessage}
       emptyTitle="No ranked articles yet"
-      emptyMessage="Ranked long-form articles have not populated for this window."
+      emptyMessage="Ranked articles have not populated for this window."
       hasItems={articles.length > 0}
       loadMore={loadMoreRanking.bind(null, "long-form", window, language ?? "")}
       loadMoreCursor={continuation.token}
@@ -109,7 +108,7 @@ export default async function TrendingLongFormPage({
             href={buildLanguageHref("/trending/notes", new URLSearchParams(), language)}
             className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
           >
-            Open trending notes
+            Open notes
           </Link>
         </div>
       }

@@ -22,6 +22,8 @@ export type LivePresentation = {
   streaming?: string;
   recording?: string;
   participants: LiveParticipant[];
+  /** NIP-53 `current_participants`, the viewers reported on the activity. */
+  currentParticipants?: number;
   /** `d` tag, the stable addressable id. */
   identifier?: string;
   naddr?: string;
@@ -48,6 +50,13 @@ function unixSeconds(value: string | undefined): number | undefined {
   if (!value) return undefined;
   const parsed = Number(value.trim());
   if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
+  return parsed;
+}
+
+function wholeNumber(value: string | undefined): number | undefined {
+  if (!value || !/^\d+$/.test(value.trim())) return undefined;
+  const parsed = Number(value.trim());
+  if (!Number.isSafeInteger(parsed)) return undefined;
   return parsed;
 }
 
@@ -100,6 +109,7 @@ export function getLivePresentation(
     streaming: preferPlayableStream(tagValues(tags, "streaming")),
     recording: httpsUrl(firstTagValue(tags, "recording")),
     participants,
+    currentParticipants: wholeNumber(firstTagValue(tags, "current_participants")),
     identifier: identifier && identifier.length > 0 ? identifier : undefined,
     naddr,
   };
@@ -107,4 +117,48 @@ export function getLivePresentation(
 
 export function liveActivityNaddr(event: EventRecord | null | undefined): string | null {
   return getLivePresentation(event)?.naddr ?? null;
+}
+
+function engagementTotal(event: EventRecord): number {
+  let total = 0;
+  for (const key of ["reply_count", "repost_count", "reaction_count", "zap_count"] as const) {
+    const value = event[key];
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) total += value;
+  }
+  return total;
+}
+
+/** A live activity whose published start and end still cover `nowSeconds`. */
+export function isCurrentLiveActivity(
+  event: EventRecord | null | undefined,
+  nowSeconds: number
+): boolean {
+  const presentation = getLivePresentation(event);
+  if (!presentation || presentation.status !== "live") return false;
+  if (presentation.starts !== undefined && presentation.starts > nowSeconds) return false;
+  if (presentation.ends !== undefined && presentation.ends > 0 && presentation.ends < nowSeconds) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Streams that are live right now, most-watched first.
+ * Engagement (replies, reposts, reactions, zaps) breaks viewer ties, then start time.
+ */
+export function rankLiveActivities(events: EventRecord[], nowSeconds: number): EventRecord[] {
+  return events
+    .filter((event) => isCurrentLiveActivity(event, nowSeconds))
+    .sort((left, right) => {
+      const leftView = getLivePresentation(left);
+      const rightView = getLivePresentation(right);
+      const viewers = (rightView?.currentParticipants ?? 0) - (leftView?.currentParticipants ?? 0);
+      if (viewers !== 0) return viewers;
+      const engagement = engagementTotal(right) - engagementTotal(left);
+      if (engagement !== 0) return engagement;
+      const started =
+        (rightView?.starts ?? right.created_at ?? 0) - (leftView?.starts ?? left.created_at ?? 0);
+      if (started !== 0) return started;
+      return (right.id ?? "").localeCompare(left.id ?? "");
+    });
 }

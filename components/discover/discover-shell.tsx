@@ -40,6 +40,7 @@ export function DiscoverShell({
   freshnessLabel,
   freshness,
   rankingControls = true,
+  rememberWindow = true,
   staleMessage,
   errorMessage,
   hasContent = true,
@@ -68,6 +69,8 @@ export function DiscoverShell({
   freshness?: ReactNode;
   /** Window and language selectors. Live activities are not a ranked window. */
   rankingControls?: boolean;
+  /** Skip writing the 24h/7d cookie. Live must not replace the range the reader was using. */
+  rememberWindow?: boolean;
   staleMessage?: string | null;
   errorMessage?: string | null;
   hasContent?: boolean;
@@ -82,7 +85,7 @@ export function DiscoverShell({
   return (
     <div className="min-w-0 space-y-6 sm:space-y-7">
       <DiscoverTelemetry view={view} mode={mode} window={window} language={language} />
-      <RememberDiscoveryWindow window={window} />
+      {rememberWindow ? <RememberDiscoveryWindow window={window} /> : null}
       <LiveRefresh />
       <PageHero
         eyebrow={formatDiscoverEyebrow(eyebrow, language)}
@@ -124,7 +127,10 @@ export function DiscoverShell({
             {modeLinks.map((item) => (
               <Link
                 key={item.mode}
-                href={buildDiscoverHref(item.href, { window, lang: language })}
+                href={buildDiscoverHref(item.href, {
+                  window: item.windowed === false ? undefined : window,
+                  lang: item.windowed === false ? undefined : language,
+                })}
                 aria-current={item.mode === mode ? "page" : undefined}
                 className={`nm-meta inline-flex min-h-6 items-center py-0.5 text-[13px] font-medium transition ${
                   item.mode === mode

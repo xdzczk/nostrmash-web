@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { NotesList } from "@/components/data/renderers";
 import { RankedListPage } from "@/components/explorer/ranked-list-page";
@@ -13,7 +12,7 @@ import {
 } from "@/lib/explorer/ranked-pagination";
 import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
-import { buildLanguageHref, readLanguage } from "@/lib/search-params/language";
+import { readLanguage } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
@@ -104,26 +103,6 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
       }
       continuationLabel="Load more notes"
       itemListUrls={itemListUrls}
-      footer={
-        <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          <Link
-            href={buildLanguageHref(
-              "/discovery/conversations/hot",
-              new URLSearchParams(),
-              language
-            )}
-            className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
-          >
-            Open hot conversations
-          </Link>
-          <Link
-            href={buildLanguageHref("/trending/long-form", new URLSearchParams(), language)}
-            className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
-          >
-            Open trending long-form
-          </Link>
-        </div>
-      }
       debugPayload={payload ?? {}}
     >
       <NotesList

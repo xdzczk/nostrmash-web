@@ -21,7 +21,7 @@ const RANKINGS = [
   },
   {
     href: "/trending/long-form",
-    title: "Long-form",
+    title: "Articles",
     order: "The same discovery score as notes, for articles.",
     context: "The line under an article is the leading reason, read the same way as on a note.",
   },
@@ -45,6 +45,13 @@ const RANKINGS = [
     order: "The same discovery score as notes, for short video (kinds 22 and 34236).",
     context:
       "A short is ranked with other shorts. It does not compete with pictures or long video.",
+  },
+  {
+    href: "/live",
+    title: "Live",
+    order: "How many people are watching now, then replies, reposts, reactions, and zaps.",
+    context:
+      "The list is what is on the air at the moment you open it. A stream whose start is still ahead, or whose end has passed, stays off. 24h, 7d, and 30d belong to the other rankings.",
   },
   {
     href: "/discovery/conversations/hot",
@@ -138,7 +145,8 @@ export default function MethodologyPage() {
           <p className="text-ink-muted text-[1.02rem] leading-7">
             24h is the last day. 7d is the last week. 30d is the last 30 days. All three keep
             rolling, so the same list read an hour later can have moved. Switching the window
-            changes who qualifies. It does not change the question that list is asking.
+            changes who qualifies. It does not change the question that list is asking. Live uses
+            the present: the streams on the air when you open the page.
           </p>
         </section>
 

@@ -63,7 +63,7 @@ test.describe("global product shell", () => {
     await page.goto("/trending/long-form?window=7d");
 
     const categories = page.getByRole("navigation", { name: "Discover categories" });
-    await expect(categories.getByRole("link", { name: "Notes" })).toHaveAttribute(
+    await expect(categories.getByRole("link", { name: "Articles" })).toHaveAttribute(
       "aria-current",
       "page"
     );
@@ -71,11 +71,31 @@ test.describe("global product shell", () => {
       "href",
       "/trending/profiles?window=7d"
     );
+    await expect(page.getByRole("navigation", { name: "notes modes" })).toHaveCount(0);
+
+    await page.goto("/trending/notes?window=7d");
+    await expect(categories.getByRole("link", { name: "Notes" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
     await expect(
       page.getByRole("navigation", { name: "notes modes" }).getByRole("link", {
-        name: "Long-form",
+        name: "Conversations",
       })
-    ).toHaveAttribute("aria-current", "page");
+    ).toHaveAttribute("href", "/discovery/conversations/hot?window=7d");
+
+    await page.goto("/live");
+    await expect(categories.getByRole("link", { name: "Media" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+    const mediaModes = page.getByRole("navigation", { name: "media modes" });
+    await expect(mediaModes.getByRole("link", { name: "Live" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+    await expect(mediaModes.getByRole("link", { name: "Live" })).toHaveAttribute("href", "/live");
+    await expect(page.getByRole("group", { name: "Ranking window" })).toHaveCount(0);
   });
 
   test("entity pages use contextual return navigation instead of category chrome", async ({

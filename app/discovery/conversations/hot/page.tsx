@@ -104,8 +104,8 @@ export default async function HotConversationsPage({
 
   return (
     <DiscoverShell
-      view="conversations"
-      mode="hot"
+      view="notes"
+      mode="conversations"
       path={path}
       searchParams={currentSearchParams}
       window={window}

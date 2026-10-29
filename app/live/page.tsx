@@ -8,14 +8,15 @@ import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import { eventPageHref } from "@/lib/notes/kinds";
-import { getLivePresentation } from "@/lib/notes/live-activity";
+import { getLivePresentation, rankLiveActivities } from "@/lib/notes/live-activity";
 import { buildEntityMetadata } from "@/lib/seo/metadata";
 import { DEFAULT_STATS_WINDOW } from "@/lib/search-params/window";
+import { getRequestNowMs } from "@/lib/time/request-now";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
 export const metadata: Metadata = buildEntityMetadata({
   title: "Live",
-  description: "Live activities happening on Nostr right now.",
+  description: "Live activities on Nostr right now, ordered by current viewers and engagement.",
   path: "/live",
 });
 
@@ -29,8 +30,8 @@ export default async function LivePage() {
   let errorMessage = "";
   let payload: Awaited<ReturnType<typeof getLiveActivities>> | null = null;
   try {
-    payload = await getLiveActivities("live", "shortTtl");
-    events = payload.events ?? [];
+    payload = await getLiveActivities("live", "shortTtl", { limit: 100 });
+    events = rankLiveActivities(payload.events ?? [], Math.floor(getRequestNowMs() / 1000));
   } catch (error) {
     if (!isMissingRoute(error)) {
       errorMessage = toUserFacingErrorMessage(error, "Failed to load live activities.");
@@ -59,14 +60,16 @@ export default async function LivePage() {
 
   return (
     <RankedListPage
-      discoverView="live"
+      discoverView="media"
+      discoverMode="live"
       eyebrow=""
       title="Live"
-      subtitle="Play a stream here. It keeps going while you browse."
+      subtitle="Streams that are on the air now, ordered by current viewers, then engagement. Playback keeps going while you browse."
       path="/live"
       searchParams={new URLSearchParams()}
       window={DEFAULT_STATS_WINDOW}
       rankingControls={false}
+      rememberWindow={false}
       semantics={extractNativeApiSemantics(payload)}
       errorMessage={errorMessage}
       emptyTitle=""

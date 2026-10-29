@@ -5,6 +5,7 @@ import {
   cardHitTargetClassName,
   cardTierClassName,
   DiscoveryPill,
+  DiscoveryStatPills,
 } from "@/components/explorer/card-grammar";
 import { EventByline } from "@/components/explorer/event-byline";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
@@ -19,6 +20,7 @@ import {
   profileLabel,
   truncateIdentifier,
   truncateProfileLabel,
+  extractEngagementStats,
 } from "@/components/explorer/utils";
 import { eventIdOf, eventPageHref } from "@/lib/notes/kinds";
 import { getLivePresentation, type LiveStatus } from "@/lib/notes/live-activity";
@@ -130,6 +132,12 @@ export function LiveCard({
             Ends <Timestamp unixSeconds={presentation.ends} />
           </span>
         ) : null}
+        {presentation.currentParticipants !== undefined ? (
+          <span>
+            {presentation.currentParticipants.toLocaleString()}{" "}
+            {presentation.currentParticipants === 1 ? "viewer" : "viewers"}
+          </span>
+        ) : null}
         {presentation.recording ? (
           <a
             href={presentation.recording}
@@ -141,6 +149,13 @@ export function LiveCard({
           </a>
         ) : null}
       </div>
+
+      <DiscoveryStatPills
+        stats={extractEngagementStats(event)}
+        omitZero
+        className="mt-2.5"
+        size="sm"
+      />
 
       {presentation.participants.length > 0 ? (
         <ul className="mt-3 flex flex-wrap gap-2">

@@ -211,11 +211,12 @@ export async function getTrendingDomains(cacheClass: CacheClass = "shortTtl", qu
 
 export async function getLiveActivities(
   status: "live" | "planned" | "ended" = "live",
-  cacheClass: CacheClass = "shortTtl"
+  cacheClass: CacheClass = "shortTtl",
+  options?: { limit?: number }
 ): Promise<LiveActivitiesResponse> {
   const response = await fetchApiJson<LiveActivitiesApiResponse>(nativeApiV1Routes.liveActivities, {
     cacheClass,
-    query: { status },
+    query: { status, limit: options?.limit },
   });
   return normalizeLiveActivitiesResponse(response);
 }

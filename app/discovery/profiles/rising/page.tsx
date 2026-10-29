@@ -103,7 +103,7 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
             )}
             className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
           >
-            Open hot conversations
+            Open conversations
           </Link>
           <Link
             href={buildLanguageHref("/trending/profiles", new URLSearchParams(), language)}

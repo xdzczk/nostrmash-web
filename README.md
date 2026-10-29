@@ -12,34 +12,35 @@ Public explorer and analytics web surface for NostrMash.
 
 ## Routes
 
-| Route                          | Purpose                     |
-| ------------------------------ | --------------------------- |
-| `/`                            | Discovery home              |
-| `/search`                      | Search notes and profiles   |
-| `/profiles/[pubkeyOrNpub]`     | Profile detail and activity |
-| `/notes/[eventId]`             | Note detail and thread      |
-| `/trending`                    | Trending hub                |
-| `/trending/notes`              | Trending notes              |
-| `/trending/profiles`           | Trending profiles           |
-| `/trending/hashtags`           | Trending hashtags           |
-| `/trending/domains`            | Trending domains            |
-| `/trending/long-form`          | Trending long-form          |
-| `/trending/pictures`           | Trending pictures           |
-| `/trending/videos`             | Trending videos             |
-| `/trending/shorts`             | Trending shorts             |
-| `/discovery/conversations/hot` | Hot conversations           |
-| `/discovery/profiles/rising`   | Rising profiles             |
-| `/hashtags/[hashtag]`          | Hashtag detail              |
-| `/hashtags/[hashtag]/notes`    | Notes for a hashtag         |
-| `/domains/[domain]`            | Domain detail               |
-| `/domains/[domain]/notes`      | Notes for a domain          |
-| `/relays`                      | Relay explorer              |
-| `/relays/[relayHost]`          | Relay detail                |
-| `/relays/health`               | Relay health                |
-| `/relays/popular`              | Popular relays              |
-| `/relays/probe-health`         | Probe health                |
-| `/stats`                       | Network and content stats   |
-| `/methodology`                 | How to interpret the index  |
+| Route                          | Purpose                      |
+| ------------------------------ | ---------------------------- |
+| `/`                            | Discovery home               |
+| `/search`                      | Search notes and profiles    |
+| `/profiles/[pubkeyOrNpub]`     | Profile detail and activity  |
+| `/notes/[eventId]`             | Note detail and thread       |
+| `/trending`                    | Trending hub                 |
+| `/trending/notes`              | Trending notes               |
+| `/trending/profiles`           | Trending profiles            |
+| `/trending/hashtags`           | Trending hashtags            |
+| `/trending/domains`            | Trending domains             |
+| `/trending/long-form`          | Trending articles            |
+| `/trending/pictures`           | Trending pictures            |
+| `/trending/videos`             | Trending videos              |
+| `/trending/shorts`             | Trending shorts              |
+| `/discovery/conversations/hot` | Conversations, under Notes   |
+| `/live`                        | Live activities, under Media |
+| `/discovery/profiles/rising`   | Rising profiles              |
+| `/hashtags/[hashtag]`          | Hashtag detail               |
+| `/hashtags/[hashtag]/notes`    | Notes for a hashtag          |
+| `/domains/[domain]`            | Domain detail                |
+| `/domains/[domain]/notes`      | Notes for a domain           |
+| `/relays`                      | Relay explorer               |
+| `/relays/[relayHost]`          | Relay detail                 |
+| `/relays/health`               | Relay health                 |
+| `/relays/popular`              | Popular relays               |
+| `/relays/probe-health`         | Probe health                 |
+| `/stats`                       | Network and content stats    |
+| `/methodology`                 | How to interpret the index   |
 
 Primary nav: Home, Search, Trends, Relays, Stats, Methodology (Methodology lives in the desktop nav and site footer; the mobile bottom bar keeps five primary destinations).
 
