@@ -102,6 +102,7 @@ export function DiscoverShell({
                     searchParams={searchParams}
                     activeWindow={window}
                     windows={windows}
+                    persist={rememberWindow}
                   />
                   {languageControl ?? (
                     <LanguageSelector

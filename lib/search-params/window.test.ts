@@ -5,7 +5,13 @@ import {
   filterPrimitiveStatsForWindow,
   pickTopPrimitiveStats,
 } from "@/components/explorer/stats-utils";
-import { safeInternalPath } from "@/lib/discover/discovery-window-session";
+import {
+  DISCOVERY_WINDOW_PREFERENCE_COOKIE,
+  DISCOVERY_WINDOW_PREFERENCE_MAX_AGE,
+  safeInternalPath,
+  serializeDiscoveryWindowPreferenceCookie,
+} from "@/lib/discover/discovery-window-session";
+import { discoveryWindowPreferenceHref } from "@/lib/discover/window-fallback";
 import {
   buildWindowHref,
   fallbackAfterRejected30d,
@@ -49,6 +55,40 @@ describe("30d fallback", () => {
     expect(safeInternalPath("/trending/notes?window=7d")).toBe("/trending/notes?window=7d");
     expect(safeInternalPath("//evil.example")).toBe("/");
     expect(safeInternalPath("https://evil.example")).toBe("/");
+  });
+});
+
+describe("discovery window preference", () => {
+  it("restores a saved 7d or 30d when the URL omits window", () => {
+    expect(discoveryWindowPreferenceHref("/trending/notes", {}, "7d", false, "24h")).toBe(
+      "/trending/notes?window=7d"
+    );
+    expect(
+      discoveryWindowPreferenceHref("/", { lang: "de", cursor: "abc" }, "30d", false, "24h")
+    ).toBe("/?lang=de&cursor=abc&window=30d");
+  });
+
+  it("leaves an explicit window alone and treats 24h as the cleared default", () => {
+    expect(
+      discoveryWindowPreferenceHref("/trending/notes", { window: "24h" }, "7d", false, "24h")
+    ).toBeNull();
+    expect(discoveryWindowPreferenceHref("/trending/notes", {}, undefined, false, "7d")).toBeNull();
+    expect(discoveryWindowPreferenceHref("/trending/notes", {}, "24h", false, "7d")).toBeNull();
+  });
+
+  it("falls back from a saved 30d once that range is hidden", () => {
+    expect(discoveryWindowPreferenceHref("/", {}, "30d", true, "7d")).toBe("/?window=7d");
+    expect(discoveryWindowPreferenceHref("/", {}, "30d", true, "24h")).toBeNull();
+  });
+
+  it("keeps the choice for a year and clears it for 24h", () => {
+    expect(serializeDiscoveryWindowPreferenceCookie("7d")).toBe(
+      `${DISCOVERY_WINDOW_PREFERENCE_COOKIE}=7d; Max-Age=${DISCOVERY_WINDOW_PREFERENCE_MAX_AGE}; Path=/; SameSite=Lax`
+    );
+    expect(DISCOVERY_WINDOW_PREFERENCE_MAX_AGE).toBe(60 * 60 * 24 * 365);
+    expect(serializeDiscoveryWindowPreferenceCookie("24h")).toBe(
+      `${DISCOVERY_WINDOW_PREFERENCE_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`
+    );
   });
 });
 

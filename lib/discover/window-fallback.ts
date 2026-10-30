@@ -5,13 +5,20 @@ import { isApiError } from "@/lib/api/errors";
 import {
   DISCOVERY_30D_HIDDEN_COOKIE,
   DISCOVERY_LAST_WINDOW_COOKIE,
+  DISCOVERY_WINDOW_PREFERENCE_COOKIE,
+  parseDiscoveryWindowPreference,
   unsupportedDiscoveryWindowHref,
 } from "@/lib/discover/discovery-window-session";
-import { toUrlSearchParams, type RouteSearchParams } from "@/lib/search-params/pagination";
+import {
+  readSearchParam,
+  toUrlSearchParams,
+  type RouteSearchParams,
+} from "@/lib/search-params/pagination";
 import {
   buildWindowHref,
   fallbackAfterRejected30d,
   isRelayStatsWindow,
+  isStatsWindow,
   readStatsWindow,
   type RelayStatsWindow,
   type StatsWindow,
@@ -20,7 +27,9 @@ import {
 export {
   DISCOVERY_30D_HIDDEN_COOKIE,
   DISCOVERY_LAST_WINDOW_COOKIE,
+  DISCOVERY_WINDOW_PREFERENCE_COOKIE,
   safeInternalPath,
+  serializeDiscoveryWindowPreferenceCookie,
   serializeLastDiscoveryWindowCookie,
   unsupportedDiscoveryWindowHref,
 } from "@/lib/discover/discovery-window-session";
@@ -52,15 +61,50 @@ export async function lastDiscoveryWindow(): Promise<RelayStatsWindow> {
 }
 
 /**
- * When this session already learned that 30d is unsupported, leave `?window=30d`
- * and render the previous range instead.
+ * Where to send a Discover URL that omitted `window`, so a saved 7d or 30d
+ * comes back the way a saved language does. An explicit `window` wins.
+ * Pagination stays; choosing a range in the selector is what clears it.
+ * A saved 30d is skipped once this session knows the index rejected it.
+ */
+export function discoveryWindowPreferenceHref(
+  path: string,
+  params: RouteSearchParams,
+  preference: string | undefined,
+  monthHidden: boolean,
+  previous: RelayStatsWindow
+): string | null {
+  if (isStatsWindow(readSearchParam(params, "window"))) return null;
+  const saved = parseDiscoveryWindowPreference(preference);
+  if (!saved) return null;
+  const window = saved === "30d" && monthHidden ? previous : saved;
+  if (window === "24h") return null;
+  const next = toUrlSearchParams(params);
+  next.set("window", window);
+  const query = next.toString();
+  return query.length > 0 ? `${path}?${query}` : path;
+}
+
+/**
+ * Restore a saved ranking window, then leave a rejected `window=30d` for the
+ * previous 24h/7d range.
  */
 export async function syncDiscoveryWindow(
   path: string,
   params: RouteSearchParams
 ): Promise<StatsWindow> {
+  const monthHidden = await isDiscovery30dHidden();
+  if (!isStatsWindow(readSearchParam(params, "window"))) {
+    const jar = await cookies();
+    const saved = parseDiscoveryWindowPreference(
+      jar.get(DISCOVERY_WINDOW_PREFERENCE_COOKIE)?.value
+    );
+    const previous = saved === "30d" && monthHidden ? await lastDiscoveryWindow() : "24h";
+    const href = discoveryWindowPreferenceHref(path, params, saved, monthHidden, previous);
+    if (href) redirect(href);
+  }
+
   const requested = readStatsWindow(params);
-  if (requested !== "30d" || !(await isDiscovery30dHidden())) return requested;
+  if (requested !== "30d" || !monthHidden) return requested;
   const fallback = await lastDiscoveryWindow();
   redirect(buildWindowHref(path, toUrlSearchParams(params), fallback));
 }

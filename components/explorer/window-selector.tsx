@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 
+import { serializeDiscoveryWindowPreferenceCookie } from "@/lib/discover/discovery-window-session";
 import {
   DEFAULT_STATS_WINDOW,
   STATS_WINDOWS,
@@ -21,6 +24,12 @@ export function WindowSelector({
    * the client cache instead of waiting on a fresh server render.
    */
   prefetch = true,
+  /**
+   * Write the choice before navigation. Discover uses this so 24h clears the
+   * saved range before the URL that omits `window` is requested. Search and
+   * relay ranges stay local to those pages.
+   */
+  persist = false,
 }: {
   path: string;
   searchParams: URLSearchParams;
@@ -30,6 +39,7 @@ export function WindowSelector({
   labelFor?: (window: string) => string;
   ariaLabel?: string;
   prefetch?: boolean;
+  persist?: boolean;
 }) {
   return (
     <div
@@ -43,7 +53,11 @@ export function WindowSelector({
           <Link
             key={window}
             href={windowChoiceHref(path, searchParams, window, defaultWindow)}
-            prefetch={prefetch}
+            prefetch={persist && window === defaultWindow ? false : prefetch}
+            onClick={() => {
+              if (!persist || !isStatsWindow(window)) return;
+              document.cookie = serializeDiscoveryWindowPreferenceCookie(window);
+            }}
             aria-current={isActive ? "true" : undefined}
             className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
               isActive ? "bg-surface text-ink shadow-sm" : "text-ink-muted hover:text-ink"
