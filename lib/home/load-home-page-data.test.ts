@@ -19,6 +19,7 @@ vi.mock("@/lib/api/endpoints", () => ({
   getTrendingHashtags: vi.fn(),
   getTrendingNotes: vi.fn(),
   getTrendingProfiles: vi.fn(),
+  getTrendingMedia: vi.fn(async () => ({ events: [] })),
 }));
 
 vi.mock("@/lib/api/profile-hydration", () => ({
@@ -33,6 +34,7 @@ import {
   getStatsSeries,
   getTrendingDomains,
   getTrendingHashtags,
+  getTrendingMedia,
   getTrendingNotes,
   getTrendingProfiles,
 } from "@/lib/api/endpoints";
@@ -91,6 +93,38 @@ describe("loadHomePageData", () => {
   afterEach(() => {
     vi.clearAllMocks();
     vi.restoreAllMocks();
+  });
+
+  it("starts media leaders without waiting for discovery", async () => {
+    let releaseHome: (value: unknown) => void = () => undefined;
+    vi.mocked(getDiscoveryHome).mockReturnValue(
+      new Promise((resolve) => {
+        releaseHome = resolve;
+      }) as never
+    );
+    vi.mocked(getNetworkStats).mockResolvedValue({} as never);
+    vi.mocked(getRelayStats).mockResolvedValue({} as never);
+    vi.mocked(getStatsSeries).mockResolvedValue({ points: [] } as never);
+    vi.mocked(getTrendingMedia).mockResolvedValue({ events: [] } as never);
+
+    const pending = loadHomePageData({});
+    try {
+      await vi.waitFor(() => {
+        expect(getTrendingMedia).toHaveBeenCalled();
+      });
+      expect(getDiscoveryHome).toHaveBeenCalled();
+      const homeSettled = await Promise.race([pending.then(() => true), Promise.resolve(false)]);
+      expect(homeSettled).toBe(false);
+    } finally {
+      releaseHome({
+        notes: [{ id: "a".repeat(64), content: "hello" }],
+        profiles: [{ pubkey: "b".repeat(64), display_name: "Ada" }],
+        rising_profiles: [{ pubkey: "c".repeat(64) }],
+        hashtags: [{ hashtag: "nostr" }],
+        domains: [{ domain: "example.com" }],
+      });
+      await pending;
+    }
   });
 
   it("loads discovery + network stats in a single parallel stage for 24h", async () => {

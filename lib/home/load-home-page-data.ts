@@ -149,6 +149,11 @@ export async function loadHomePageData(
   let networkStats: Awaited<ReturnType<typeof getNetworkStats>> | null = null;
   let relayStats: Awaited<ReturnType<typeof getRelayStats>> | null = null;
 
+  // Pictures, videos, and shorts do not depend on the home payload. Overlap
+  // them with the first fan-out so a window change is not home-then-media.
+  const mediaLeadersPromise = loadHomeMediaLeaders(scopedQuery);
+  upstreamCallCount += 3;
+
   upstreamCallCount += 3;
 
   const stageOne = await Promise.allSettled([
@@ -300,8 +305,7 @@ export async function loadHomePageData(
     );
   }
 
-  const mediaLeaders = await loadHomeMediaLeaders(scopedQuery);
-  upstreamCallCount += 3;
+  const mediaLeaders = await mediaLeadersPromise;
 
   let noteAuthorsByPubkey: Record<string, Profile> = {};
   let hydratedHomeProfiles = homeProfiles;

@@ -15,6 +15,12 @@ export function WindowSelector({
   defaultWindow = DEFAULT_STATS_WINDOW,
   labelFor,
   ariaLabel = "Ranking window",
+  /**
+   * These routes read cookies, so Next only prefetches the loading skeleton
+   * unless a link asks for the full payload. The other ranges then paint from
+   * the client cache instead of waiting on a fresh server render.
+   */
+  prefetch = true,
 }: {
   path: string;
   searchParams: URLSearchParams;
@@ -23,6 +29,7 @@ export function WindowSelector({
   defaultWindow?: string;
   labelFor?: (window: string) => string;
   ariaLabel?: string;
+  prefetch?: boolean;
 }) {
   return (
     <div
@@ -36,6 +43,7 @@ export function WindowSelector({
           <Link
             key={window}
             href={windowChoiceHref(path, searchParams, window, defaultWindow)}
+            prefetch={prefetch}
             aria-current={isActive ? "true" : undefined}
             className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
               isActive ? "bg-surface text-ink shadow-sm" : "text-ink-muted hover:text-ink"

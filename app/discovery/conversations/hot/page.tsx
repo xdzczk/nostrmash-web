@@ -1,13 +1,20 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { unstable_rethrow } from "next/navigation";
 
-import { DiscoverShell } from "@/components/discover/discover-shell";
 import { LoadMoreList } from "@/components/data/load-more-list";
 import { NotesList, ProfilesList } from "@/components/data/renderers";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { AboutThisData } from "@/components/explorer/about-this-data";
+import { FreshnessBadge } from "@/components/discover/discover-shell";
+import {
+  RankedLanguageControl,
+  RankedListChrome,
+  RankedListStatus,
+} from "@/components/explorer/ranked-list-page";
+import { NotesListSkeleton } from "@/components/ui/skeleton";
 import { SectionCard } from "@/components/ui/section-card";
 import { getHotConversations } from "@/lib/api/endpoints";
 import { presentConversations } from "@/lib/discover/conversation-order";
@@ -24,6 +31,7 @@ import {
 } from "@/lib/explorer/ranked-pagination";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
+import { startRankedLoad } from "@/lib/explorer/ranked-list";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import {
   buildLanguageHref,
@@ -32,10 +40,14 @@ import {
 } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { buildContinuationHref, toUrlSearchParams } from "@/lib/search-params/pagination";
-import { readStatsWindow, selectableStatsWindows } from "@/lib/search-params/window";
+import {
+  readStatsWindow,
+  selectableStatsWindows,
+  type StatsWindow,
+} from "@/lib/search-params/window";
 import { withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import { formatUpdatedRelative } from "@/lib/time/freshness";
-import type { Profile } from "@/lib/types/api";
+import type { HotConversationsResponse, Profile } from "@/lib/types/api";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -67,28 +79,119 @@ export default async function HotConversationsPage({
   const window = readStatsWindow(resolvedSearchParams);
   const windows = selectableStatsWindows(!(await isDiscovery30dHidden()));
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
-  let errorMessage = "";
-  let payload: Awaited<ReturnType<typeof getHotConversations>> | null = null;
-  let authorsByPubkey: Record<string, Profile> = {};
-  let activeProfiles: Profile[] = [];
+  const data = startRankedLoad(
+    loadHotConversations(window, path, currentSearchParams, language, offset)
+  );
+  const query = currentSearchParams.toString();
 
+  return (
+    <RankedListChrome
+      discoverView="notes"
+      discoverMode="conversations"
+      eyebrow=""
+      title="Conversations"
+      subtitle="Notes driving active threads, so you can move from signal to conversation context quickly."
+      path={path}
+      searchParams={currentSearchParams}
+      window={window}
+      windows={windows}
+      language={language}
+      languageControl={
+        <RankedLanguageControl
+          data={data}
+          path={path}
+          query={query}
+          language={language}
+          window={window}
+        />
+      }
+      freshness={
+        <Suspense fallback={null}>
+          <ConversationFreshness data={data} />
+        </Suspense>
+      }
+    >
+      <Suspense
+        fallback={
+          <div>
+            <span className="sr-only" role="status">
+              Loading this ranking
+            </span>
+            <NotesListSkeleton />
+          </div>
+        }
+      >
+        <HotConversationsBody
+          data={data}
+          path={path}
+          searchParams={currentSearchParams}
+          window={window}
+          language={language}
+          offset={offset}
+        />
+      </Suspense>
+    </RankedListChrome>
+  );
+}
+
+async function loadHotConversations(
+  window: StatsWindow,
+  path: string,
+  searchParams: URLSearchParams,
+  language: string | undefined,
+  offset: number
+): Promise<{ payload: HotConversationsResponse | null; errorMessage: string }> {
   try {
-    payload = await requestDiscovery(window, path, currentSearchParams, (activeWindow) =>
+    const payload = await requestDiscovery(window, path, searchParams, (activeWindow) =>
       getHotConversations("shortTtl", rankedListRequest(activeWindow, language, offset))
     );
+    return { payload, errorMessage: "" };
   } catch (error) {
     unstable_rethrow(error);
-    errorMessage = toUserFacingErrorMessage(error, "Failed to load hot conversations.");
+    return {
+      payload: null,
+      errorMessage: toUserFacingErrorMessage(error, "Failed to load hot conversations."),
+    };
   }
+}
 
+async function ConversationFreshness({
+  data,
+}: {
+  data: Promise<{ payload: HotConversationsResponse | null }>;
+}) {
+  const { payload } = await data;
+  const label = formatUpdatedRelative(payload?.computed_at);
+  return label ? <FreshnessBadge label={label} /> : null;
+}
+
+async function HotConversationsBody({
+  data,
+  path,
+  searchParams,
+  window,
+  language,
+  offset,
+}: {
+  data: Promise<{ payload: HotConversationsResponse | null; errorMessage: string }>;
+  path: string;
+  searchParams: URLSearchParams;
+  window: StatsWindow;
+  language?: string;
+  offset: number;
+}) {
+  const { payload, errorMessage } = await data;
   const rawNotes = payload?.notes ?? [];
   const notes = presentConversations(rawNotes);
   const semantics = extractNativeApiSemantics(payload);
   const continuation = rankedPageContinuation("conversations", rawNotes, offset);
   const continuationHref =
     continuation.nextOffset != null
-      ? buildContinuationHref(path, currentSearchParams, "offset", String(continuation.nextOffset))
+      ? buildContinuationHref(path, searchParams, "offset", String(continuation.nextOffset))
       : undefined;
+
+  let authorsByPubkey: Record<string, Profile> = {};
+  let activeProfiles: Profile[] = [];
   if (notes.length > 0) {
     const authorPubkeys = extractEventAuthorPubkeys(notes);
     if (authorPubkeys.length > 0) {
@@ -103,24 +206,13 @@ export default async function HotConversationsPage({
   }
 
   return (
-    <DiscoverShell
-      view="notes"
-      mode="conversations"
-      path={path}
-      searchParams={currentSearchParams}
-      window={window}
-      windows={windows}
-      language={language}
-      topLanguages={payload?.top_languages}
-      freshnessLabel={formatUpdatedRelative(
-        (payload as { computed_at?: string | number | null } | null)?.computed_at
-      )}
-      errorMessage={errorMessage}
-      hasContent={notes.length > 0}
-      eyebrow=""
-      title="Conversations"
-      subtitle="Notes driving active threads, so you can move from signal to conversation context quickly."
-    >
+    <>
+      <RankedListStatus
+        errorMessage={errorMessage}
+        hasItems={notes.length > 0}
+        path={path}
+        searchParams={searchParams}
+      />
       <div>
         {notes.length > 0 ? (
           <NotesList
@@ -193,6 +285,6 @@ export default async function HotConversationsPage({
 
       <AboutThisData semantics={semantics} />
       <DebugDisclosure title="Debug payload" data={payload ?? {}} />
-    </DiscoverShell>
+    </>
   );
 }

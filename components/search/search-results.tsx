@@ -473,6 +473,9 @@ export async function SearchResults({ query }: { query: SearchQuery }) {
           defaultWindow={DEFAULT_SEARCH_WINDOW}
           ariaLabel="Time range"
           labelFor={(window) => (window === "all" ? "All" : window)}
+          // Each query is its own uncached search. Prefetching every range would
+          // multiply that work for results the reader may never open.
+          prefetch={false}
         />
         <LanguageSelector
           path="/search"

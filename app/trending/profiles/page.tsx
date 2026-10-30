@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ProfilesList } from "@/components/data/renderers";
-import { RankedListPage } from "@/components/explorer/ranked-list-page";
+import {
+  RankedListResults,
+  RankedListStatus,
+  RankedListStream,
+} from "@/components/explorer/ranked-list-page";
+import { ProfilesListSkeleton } from "@/components/ui/skeleton";
 import { getTrendingProfiles } from "@/lib/api/endpoints";
 import { hydrateProfiles } from "@/lib/api/profile-hydration";
 import { loadMoreRanking } from "@/lib/explorer/load-more-ranking";
@@ -11,12 +16,17 @@ import {
   rankedPageContinuation,
   readRankedOffset,
 } from "@/lib/explorer/ranked-pagination";
-import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
+import {
+  loadRankedListPayload,
+  readRankedListContext,
+  startRankedLoad,
+} from "@/lib/explorer/ranked-list";
 import { hexToNpub } from "@/lib/nostr/nip19";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
 import { buildLanguageHref, readLanguage } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
+import type { StatsWindow } from "@/lib/search-params/window";
 import type { Profile } from "@/lib/types/api";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -50,11 +60,56 @@ export default async function TrendingProfilesPage({
     path
   );
   const offset = readRankedOffset(resolvedSearchParams);
-  const { payload, errorMessage, semantics } = await loadRankedListPayload(
-    () => getTrendingProfiles("shortTtl", rankedListRequest(window, language, offset)),
-    "Failed to load trending profiles.",
-    { window, path, params: currentSearchParams }
+  const data = startRankedLoad(
+    loadRankedListPayload(
+      () => getTrendingProfiles("shortTtl", rankedListRequest(window, language, offset)),
+      "Failed to load trending profiles.",
+      { window, path, params: currentSearchParams }
+    )
   );
+
+  return (
+    <RankedListStream
+      data={data}
+      discoverView="people"
+      eyebrow=""
+      title="People"
+      subtitle="The profiles with the strongest momentum."
+      path={path}
+      searchParams={currentSearchParams}
+      window={window}
+      windows={windows}
+      language={language}
+      fallback={<ProfilesListSkeleton />}
+    >
+      <TrendingProfilesBody
+        data={data}
+        path={path}
+        searchParams={currentSearchParams}
+        window={window}
+        language={language}
+        offset={offset}
+      />
+    </RankedListStream>
+  );
+}
+
+async function TrendingProfilesBody({
+  data,
+  path,
+  searchParams,
+  window,
+  language,
+  offset,
+}: {
+  data: ReturnType<typeof loadRankedListPayload<Awaited<ReturnType<typeof getTrendingProfiles>>>>;
+  path: string;
+  searchParams: URLSearchParams;
+  window: StatsWindow;
+  language?: string;
+  offset: number;
+}) {
+  const { payload, errorMessage, semantics } = await data;
   const sourceProfiles = payload?.profiles ?? [];
   const continuation = rankedPageContinuation("profiles", sourceProfiles, offset);
 
@@ -78,49 +133,48 @@ export default async function TrendingProfilesPage({
     .filter(Boolean);
 
   return (
-    <RankedListPage
-      discoverView="people"
-      eyebrow=""
-      title="People"
-      subtitle="The profiles with the strongest momentum."
-      path={path}
-      searchParams={currentSearchParams}
-      window={window}
-      windows={windows}
-      language={language}
-      topLanguages={payload?.top_languages}
-      semantics={semantics}
-      errorMessage={errorMessage}
-      emptyTitle="No ranked profiles yet"
-      emptyMessage="Ranked profiles have not populated for this window."
-      hasItems={hydratedProfiles.length > 0}
-      loadMore={loadMoreRanking.bind(null, "profiles", window, language ?? "")}
-      loadMoreCursor={continuation.token}
-      continuationHref={
-        continuation.nextOffset != null
-          ? buildContinuationHref(
-              path,
-              currentSearchParams,
-              "offset",
-              String(continuation.nextOffset)
-            )
-          : undefined
-      }
-      continuationLabel="Load more profiles"
-      itemListUrls={itemListUrls}
-      footer={
-        <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          <Link
-            href={buildLanguageHref("/discovery/profiles/rising", new URLSearchParams(), language)}
-            className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
-          >
-            Open up and coming
-          </Link>
-        </div>
-      }
-      debugPayload={payload ?? {}}
-    >
-      <ProfilesList profiles={hydratedProfiles} ranked discoverySignals rankOffset={offset} />
-    </RankedListPage>
+    <>
+      <RankedListStatus
+        errorMessage={errorMessage}
+        hasItems={hydratedProfiles.length > 0}
+        path={path}
+        searchParams={searchParams}
+      />
+      <RankedListResults
+        title="People"
+        language={language}
+        semantics={semantics}
+        errorMessage={errorMessage}
+        emptyTitle="No ranked profiles yet"
+        emptyMessage="Ranked profiles have not populated for this window."
+        hasItems={hydratedProfiles.length > 0}
+        loadMore={loadMoreRanking.bind(null, "profiles", window, language ?? "")}
+        loadMoreCursor={continuation.token}
+        continuationHref={
+          continuation.nextOffset != null
+            ? buildContinuationHref(path, searchParams, "offset", String(continuation.nextOffset))
+            : undefined
+        }
+        continuationLabel="Load more profiles"
+        itemListUrls={itemListUrls}
+        footer={
+          <div className="mt-4 flex flex-wrap gap-2 text-xs">
+            <Link
+              href={buildLanguageHref(
+                "/discovery/profiles/rising",
+                new URLSearchParams(),
+                language
+              )}
+              className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
+            >
+              Open up and coming
+            </Link>
+          </div>
+        }
+        debugPayload={payload ?? {}}
+      >
+        <ProfilesList profiles={hydratedProfiles} ranked discoverySignals rankOffset={offset} />
+      </RankedListResults>
+    </>
   );
 }

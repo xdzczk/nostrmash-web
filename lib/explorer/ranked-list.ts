@@ -57,6 +57,12 @@ export async function readRankedListContext(
   };
 }
 
+/** Keep a fire-and-forget load from surfacing as an unhandled rejection. */
+export function startRankedLoad<T>(promise: Promise<T>): Promise<T> {
+  promise.catch(() => undefined);
+  return promise;
+}
+
 export async function loadRankedListPayload<T>(
   loader: () => Promise<T>,
   fallbackError: string,
