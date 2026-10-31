@@ -8,6 +8,7 @@ import {
   DiscoveryPill,
 } from "@/components/explorer/card-grammar";
 import { PostEngagement } from "@/components/explorer/post-engagement";
+import { TopZap } from "@/components/explorer/top-zap";
 import { EventByline } from "@/components/explorer/event-byline";
 import { NoteMediaReveal } from "@/components/explorer/note-media-reveal";
 import { NoteContent, type NoteContentResolution } from "@/components/explorer/note-content";
@@ -150,6 +151,7 @@ export function MediaCard({
         className="mt-2.5 sm:mt-3"
         size={isDetail ? "md" : "sm"}
       />
+      <TopZap source={event} size={isDetail ? "md" : "sm"} />
 
       {showUtilityLinks && href && surface === "list" ? (
         <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">

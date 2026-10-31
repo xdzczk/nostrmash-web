@@ -4,6 +4,7 @@ import { ArticleMarkdown } from "@/components/explorer/article-markdown";
 import { getArticlePresentation } from "@/components/explorer/article-meta";
 import { DiscoveryPill } from "@/components/explorer/card-grammar";
 import { PostEngagement } from "@/components/explorer/post-engagement";
+import { TopZap } from "@/components/explorer/top-zap";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
@@ -147,6 +148,7 @@ export function ArticleReader({
       </div>
 
       <PostEngagement stats={metrics} className="mt-8" size="md" />
+      <TopZap source={article} size="md" />
     </article>
   );
 }

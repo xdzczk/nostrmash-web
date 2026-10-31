@@ -8,6 +8,7 @@ import {
   DiscoveryPill,
 } from "@/components/explorer/card-grammar";
 import { PostEngagement } from "@/components/explorer/post-engagement";
+import { TopZap } from "@/components/explorer/top-zap";
 import { getArticlePresentation } from "@/components/explorer/article-meta";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { BlossomNextImage } from "@/components/ui/blossom-image";
@@ -166,6 +167,7 @@ export function ArticleCard({
           ) : null}
         </div>
         <PostEngagement stats={metrics} className="mt-2.5 sm:mt-3" />
+        <TopZap source={article} />
         {showUtilityLinks && resolvedArticleId ? (
           <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs">
             <DiscoveryActionLinks
@@ -321,6 +323,7 @@ export function ArticleCard({
       ) : null}
 
       <PostEngagement stats={metrics} className="mt-2.5 sm:mt-3" />
+      <TopZap source={article} />
 
       {showUtilityLinks && resolvedArticleId ? (
         <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">

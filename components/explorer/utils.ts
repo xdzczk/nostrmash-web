@@ -221,6 +221,93 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/** Largest zap on a note, shown as a zapvertisement. Absent when nobody has zapped it. */
+export type TopZap = {
+  sats: number;
+  senderPubkey: string;
+  name?: string;
+  displayName?: string;
+  picture?: string;
+  comment?: string;
+};
+
+const TOP_ZAP_FIELDS = ["top_zap", "topZap"] as const;
+
+export function readTopZap(...sources: unknown[]): TopZap | null {
+  for (const source of sources) {
+    const parsed = topZapFromRecord(source);
+    if (parsed) return parsed;
+  }
+  return null;
+}
+
+function topZapFromRecord(source: unknown): TopZap | null {
+  if (!isRecord(source)) return null;
+  for (const key of TOP_ZAP_FIELDS) {
+    const parsed = parseTopZap(source[key]);
+    if (parsed) return parsed;
+  }
+  for (const nestedKey of ["counts", "summary"] as const) {
+    const nested = source[nestedKey];
+    if (!isRecord(nested)) continue;
+    for (const key of TOP_ZAP_FIELDS) {
+      const parsed = parseTopZap(nested[key]);
+      if (parsed) return parsed;
+    }
+  }
+  return null;
+}
+
+function parseTopZap(value: unknown): TopZap | null {
+  if (!isRecord(value)) return null;
+  const sender = isRecord(value.sender)
+    ? value.sender
+    : isRecord(value.profile)
+      ? value.profile
+      : null;
+  const sats =
+    readFiniteNonNegativeNumber(value.sats) ??
+    readFiniteNonNegativeNumber(value.amount_sats) ??
+    satsFromMillisats(value.msats ?? value.amount_msats);
+  if (sats === null || sats <= 0) return null;
+  const senderPubkey =
+    readZapText(value.sender_pubkey) ??
+    readZapText(value.senderPubkey) ??
+    readZapText(sender?.pubkey) ??
+    readZapText(sender?.sender_pubkey) ??
+    "";
+  if (!senderPubkey) return null;
+  const name = readZapText(value.name) ?? readZapText(sender?.name);
+  const displayName =
+    readZapText(value.display_name) ??
+    readZapText(value.displayName) ??
+    readZapText(sender?.display_name) ??
+    readZapText(sender?.displayName);
+  const picture = readZapText(value.picture) ?? readZapText(sender?.picture);
+  const comment =
+    readZapText(value.comment) ?? readZapText(value.zap_text) ?? readZapText(value.content);
+  return {
+    sats,
+    senderPubkey,
+    ...(name ? { name } : {}),
+    ...(displayName ? { displayName } : {}),
+    ...(picture ? { picture } : {}),
+    ...(comment ? { comment } : {}),
+  };
+}
+
+function satsFromMillisats(value: unknown): number | null {
+  const msats = readFiniteNonNegativeNumber(value);
+  if (msats === null || msats < 1000) return null;
+  return Math.floor(msats / 1000);
+}
+
+function readZapText(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 function parseJsonRecord(value: unknown): Record<string, unknown> | null {
   if (typeof value !== "string") return null;
   try {

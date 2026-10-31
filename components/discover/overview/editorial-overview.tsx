@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { CardHitTarget, cardHitTargetClassName } from "@/components/explorer/card-grammar";
 import { PostEngagement } from "@/components/explorer/post-engagement";
+import { TopZap } from "@/components/explorer/top-zap";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
@@ -273,6 +274,7 @@ function EditorialNote({
         ) : null}
         <EvidenceLine reasons={mapNoteWhyNow(note)} ranking={note.ranking} />
         <PostEngagement stats={postEngagementStats(note)} className="mt-2.5" />
+        <TopZap source={note} />
         {noteHref ? (
           <Link
             href={noteHref}
@@ -316,6 +318,7 @@ function EditorialNote({
       <div className="col-span-2">
         <EvidenceLine reasons={mapNoteWhyNow(note)} ranking={note.ranking} />
         <PostEngagement stats={postEngagementStats(note)} className="mt-2.5" />
+        <TopZap source={note} />
       </div>
       {noteHref ? <CardHitTarget href={noteHref} label={`Open note by ${authorLabel}`} /> : null}
     </article>

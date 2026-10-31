@@ -84,6 +84,28 @@ describe("NoteCard", () => {
     expect(screen.queryByRole("link", { name: "Open note" })).not.toBeInTheDocument();
   });
 
+  it("links the top zap to the zapper", () => {
+    const sender = "c".repeat(64);
+    render(
+      <NoteCard
+        note={{
+          ...NOTE,
+          top_zap: {
+            sats: 21000,
+            sender_pubkey: sender,
+            display_name: "Bob",
+            comment: "welcome",
+          },
+        }}
+        author={AUTHOR}
+      />
+    );
+    expect(
+      screen.getByRole("link", { name: "Top zap from Bob, 21,000 sats: welcome" })
+    ).toHaveAttribute("href", `/profiles/${sender}`);
+    expect(screen.getByText("welcome")).toBeInTheDocument();
+  });
+
   it("shows the shared stat row and one thread link on a conversation row", () => {
     render(<NoteCard note={NOTE} author={AUTHOR} conversation />);
     expect(screen.getByRole("group", { name: "4 replies" })).toBeInTheDocument();

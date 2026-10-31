@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { PostEngagement } from "@/components/explorer/post-engagement";
+import { TopZap } from "@/components/explorer/top-zap";
 import {
   formatMentionLabel,
   formatNaddrLabel,
@@ -87,6 +88,7 @@ function QuoteCard({
         </p>
       )}
       <PostEngagement stats={postEngagementStats(event)} className="mt-2" />
+      <TopZap source={event} />
     </div>
   );
 }

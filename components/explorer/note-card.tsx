@@ -19,6 +19,7 @@ import {
   DiscoveryActionLinks,
 } from "@/components/explorer/card-grammar";
 import { PostEngagement } from "@/components/explorer/post-engagement";
+import { TopZap } from "@/components/explorer/top-zap";
 import { mapNoteWhyNow, WhyNow } from "@/components/explorer/why-now";
 import {
   postEngagementStats,
@@ -517,6 +518,7 @@ function NoteCardBody({
           size={isDetail ? "md" : "sm"}
           replacements={isDetail && repostsControl ? { repost_count: repostsControl } : undefined}
         />
+        <TopZap source={note} size={isDetail ? "md" : "sm"} />
 
         {conversation && replyCount > 0 && resolvedNoteId ? (
           <Link

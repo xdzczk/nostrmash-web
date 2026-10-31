@@ -7,6 +7,7 @@ import {
   DiscoveryPill,
 } from "@/components/explorer/card-grammar";
 import { PostEngagement } from "@/components/explorer/post-engagement";
+import { TopZap } from "@/components/explorer/top-zap";
 import { EventByline } from "@/components/explorer/event-byline";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { LivePlaybackFrame, LiveWatchButton } from "@/components/live/live-session";
@@ -151,6 +152,7 @@ export function LiveCard({
       </div>
 
       <PostEngagement stats={postEngagementStats(event)} className="mt-2.5" size="sm" />
+      <TopZap source={event} />
 
       {presentation.participants.length > 0 ? (
         <ul className="mt-3 flex flex-wrap gap-2">

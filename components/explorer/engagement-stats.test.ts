@@ -5,6 +5,7 @@ import {
   extractEngagementStats,
   formatSatsFromMsats,
   postEngagementStats,
+  readTopZap,
 } from "@/components/explorer/utils";
 
 describe("formatSatsFromMsats", () => {
@@ -99,6 +100,31 @@ describe("postEngagementStats", () => {
       quoteCount: 4,
     });
     expect(postEngagementStats(note).find((stat) => stat.label === "repost_count")?.value).toBe(6);
+  });
+});
+
+describe("readTopZap", () => {
+  it("reads the largest zap, including a nested sender", () => {
+    expect(
+      readTopZap({
+        top_zap: {
+          sats: 21000,
+          sender: { pubkey: "ab".repeat(32), display_name: "Bob" },
+          comment: "nice",
+        },
+      })
+    ).toEqual({
+      sats: 21000,
+      senderPubkey: "ab".repeat(32),
+      displayName: "Bob",
+      comment: "nice",
+    });
+  });
+
+  it("ignores a zap with no sender or no sats", () => {
+    expect(readTopZap({ top_zap: { sats: 10 } })).toBeNull();
+    expect(readTopZap({ top_zap: { sats: 0, sender_pubkey: "ab".repeat(32) } })).toBeNull();
+    expect(readTopZap({ content: "hello" })).toBeNull();
   });
 });
 
