@@ -108,8 +108,10 @@ function languagePrefetchHrefs(
   activeLanguage: string | undefined,
   listed: Array<{ language: string }>
 ): string[] {
-  const choices: Array<string | undefined> = [];
-  if (activeLanguage) choices.push(undefined);
+  // Skip the URL that omits `lang`. That request still carries `nm_lang`, so
+  // the server redirects back to the saved language and choosing All languages
+  // replays the redirect.
+  const choices: string[] = [];
   for (const option of listed) {
     if (option.language === activeLanguage) continue;
     choices.push(option.language);

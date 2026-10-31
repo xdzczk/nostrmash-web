@@ -96,7 +96,6 @@ describe("LanguageSelector", () => {
       anchor.getAttribute("href")
     );
     expect(hrefs).toEqual([
-      "/trending/notes?window=7d",
       "/trending/notes?window=7d&lang=ja",
       "/trending/notes?window=7d&lang=de",
       "/trending/notes?window=7d&lang=pt",
@@ -104,9 +103,11 @@ describe("LanguageSelector", () => {
       "/trending/notes?window=7d&lang=es",
       "/trending/notes?window=7d&lang=fr",
       "/trending/notes?window=7d&lang=it",
+      "/trending/notes?window=7d&lang=nl",
     ]);
+    expect(hrefs.some((href) => href === "/trending/notes?window=7d")).toBe(false);
     expect(hrefs.some((href) => href?.includes("lang=en"))).toBe(false);
-    expect(hrefs.some((href) => href?.includes("lang=nl"))).toBe(false);
+    expect(hrefs.some((href) => href?.includes("lang=pl"))).toBe(false);
 
     rerender(
       <LanguageSelector path="/search" query="q=nostr" activeLanguage="en" options={options} />
