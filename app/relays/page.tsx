@@ -31,6 +31,12 @@ import {
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { concentrationTitle } from "@/lib/relays/concentration";
 import { indexMembershipNote } from "@/lib/relays/index-membership";
+import {
+  publishedRelayMark,
+  publishedRelayMarksByHost,
+  relayRankingDetail,
+  withPublishedNames,
+} from "@/lib/relays/nip11";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
@@ -96,7 +102,10 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
     .filter((entry) => entry.host.length > 0);
   const listedByHost = new Map(listed.map((entry) => [entry.host, entry]));
   const indexedByHost = new Map(rankedRelays.map((row) => [row.host, row]));
+  const publishedByHost = publishedRelayMarksByHost(popular?.relays);
   const listedTotal = typeof popular?.total === "number" ? popular.total : listed.length;
+  const indexedRows = rankedRelays.slice(0, 10);
+  const listedRows = listed.slice(0, 8);
 
   return (
     <div className="space-y-8">
@@ -145,15 +154,17 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
       <div className="grid gap-x-12 lg:grid-cols-2">
         <SectionCard
           title="Indexed"
-          description={
+          description={withPublishedNames(
             rankedRelays.length > 0
               ? `Share of indexed events in this ${formatStatsWindowLabel(window).toLowerCase()} ranking. The bar matches the leader.`
-              : "Relays carrying the most indexed events."
-          }
+              : "Relays carrying the most indexed events.",
+            indexedRows.some((row) => publishedByHost.has(row.host)),
+            "indexed"
+          )}
         >
-          {rankedRelays.length > 0 ? (
+          {indexedRows.length > 0 ? (
             <ul className="divide-edge/70 divide-y">
-              {rankedRelays.slice(0, 10).map((row) => {
+              {indexedRows.map((row) => {
                 const share =
                   totalActivity > 0
                     ? ((row.activityScore / totalActivity) * 100).toFixed(1)
@@ -162,13 +173,12 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
                   readMetricNumber(row.metrics, "event_count", "events") ?? row.activityScore;
                 const authors = readMetricNumber(row.metrics, "unique_authors");
                 const listedRank = listedByHost.get(row.host)?.rank ?? null;
-                const detail = [
+                const published = publishedByHost.get(row.host);
+                const detail = relayRankingDetail(row.host, published?.name, [
                   `${events.toLocaleString()} events`,
                   authors !== null ? `${authors.toLocaleString()} authors` : null,
                   listedRank !== null ? `Listed #${listedRank}` : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ");
+                ]);
                 return (
                   <RelayRankRow
                     key={row.host}
@@ -177,10 +187,12 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
                     window={window}
                     value={`${share}%`}
                     detail={detail}
+                    label={published?.name}
+                    iconSrc={published?.iconSrc}
                     bar={{
                       value: row.activityScore,
                       max: leaderScore,
-                      label: `${row.host} compared with the leading relay`,
+                      label: `${published?.name || row.host} compared with the leading relay`,
                     }}
                   />
                 );
@@ -193,27 +205,28 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
 
         <SectionCard
           title="Listed by people"
-          description={
+          description={withPublishedNames(
             listed.length > 0
               ? `${listedTotal.toLocaleString()} relays appear in a public relay list. Someone who lists several is counted on each one.`
-              : "Relays ranked by how many people include them in a public relay list."
-          }
+              : "Relays ranked by how many people include them in a public relay list.",
+            listedRows.some((entry) => publishedByHost.has(entry.host)),
+            "listed"
+          )}
         >
-          {listed.length > 0 ? (
+          {listedRows.length > 0 ? (
             <ul className="divide-edge/70 divide-y">
-              {listed.slice(0, 8).map((entry) => {
+              {listedRows.map((entry) => {
                 const indexed = indexedByHost.get(entry.host);
                 const membership = indexMembershipNote(
                   entry.relay.admission_state,
                   entry.relay.in_registry
                 );
-                const detail = [
+                const published = publishedRelayMark(entry.relay);
+                const detail = relayRankingDetail(entry.host, published?.name, [
                   "people list this relay",
                   indexed ? `Indexed #${indexed.rank}` : "Not in this indexed ranking",
                   membership,
-                ]
-                  .filter(Boolean)
-                  .join(" · ");
+                ]);
                 return (
                   <RelayRankRow
                     key={entry.relay.normalized_url}
@@ -222,10 +235,12 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
                     window={window}
                     value={entry.relay.distinct_users.toLocaleString()}
                     detail={detail}
+                    label={published?.name}
+                    iconSrc={published?.iconSrc}
                     bar={{
                       value: entry.relay.distinct_users,
                       max: listed[0]?.relay.distinct_users ?? entry.relay.distinct_users,
-                      label: `${entry.host} compared with the most listed relay`,
+                      label: `${published?.name || entry.host} compared with the most listed relay`,
                     }}
                   />
                 );

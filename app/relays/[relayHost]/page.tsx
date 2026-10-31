@@ -16,6 +16,7 @@ import { PageHero } from "@/components/explorer/page-hero";
 import { NetworkNav } from "@/components/explorer/network-nav";
 import { WindowSelector } from "@/components/explorer/window-selector";
 import { RelayLink } from "@/components/relays/relay-link";
+import { RelayPublishedIcon } from "@/components/relays/relay-rank-row";
 import { RelayPublishedInfo } from "@/components/relays/relay-published-info";
 import { RelaySummaryCard } from "@/components/relays/relay-summary-card";
 import { SectionCard } from "@/components/ui/section-card";
@@ -27,8 +28,11 @@ import { loadRelayDirectorySnapshot } from "@/lib/relays/load-relay-page";
 import {
   httpUrl,
   publishedInfo,
+  publishedRelayMarksByHost,
   relayDocumentTitle,
   relayMetaDescription,
+  relayRankingDetail,
+  withPublishedNames,
 } from "@/lib/relays/nip11";
 import { displayProbeStatus, probeStatusLabel } from "@/lib/relays/probe-status";
 import { getRequestNowMs } from "@/lib/time/request-now";
@@ -151,6 +155,7 @@ export default async function RelayPage({
     probes?.relays.find(
       (relay) => normalizeRelayHost(relay.normalized_url ?? "") === normalizedRelayHost
     ) ?? null;
+  const publishedByHost = publishedRelayMarksByHost(popular?.relays);
   const published = publishedInfo(snapshot.info?.nip11);
   const publishedName = published?.name?.trim() || undefined;
   const iconSrc = httpUrl(published?.icon);
@@ -207,25 +212,40 @@ export default async function RelayPage({
 
       <SectionCard
         title={relayActivity ? "Adjacent in this ranking" : "Highest volume relays"}
-        description={
+        description={withPublishedNames(
           relayActivity
             ? "Relays within three ranks of this one, by indexed event volume."
-            : "This host is outside the current ranking. These are the relays at the top of it."
-        }
+            : "This host is outside the current ranking. These are the relays at the top of it.",
+          neighboringRelays.some((entry) => publishedByHost.has(entry.host)),
+          "indexed"
+        )}
       >
         {neighboringRelays.length > 0 ? (
           <ul className="divide-edge/70 divide-y">
-            {neighboringRelays.map((entry) => (
-              <li key={entry.host} className="py-2">
-                <RelayLink host={entry.host} rank={entry.rank} window={window} />
-                <p className="text-ink-muted text-sm">
-                  {entry.activityScore.toLocaleString()} events
-                  {activityTotal > 0
-                    ? ` · ${((entry.activityScore / activityTotal) * 100).toFixed(1)}% of this ranking`
-                    : ""}
-                </p>
-              </li>
-            ))}
+            {neighboringRelays.map((entry) => {
+              const mark = publishedByHost.get(entry.host);
+              const share =
+                activityTotal > 0
+                  ? `${((entry.activityScore / activityTotal) * 100).toFixed(1)}% of this ranking`
+                  : null;
+              return (
+                <li key={entry.host} className="py-2">
+                  <RelayLink
+                    host={entry.host}
+                    rank={entry.rank}
+                    window={window}
+                    label={mark?.name}
+                    icon={mark?.iconSrc ? <RelayPublishedIcon src={mark.iconSrc} /> : undefined}
+                  />
+                  <p className="text-ink-muted text-sm">
+                    {relayRankingDetail(entry.host, mark?.name, [
+                      `${entry.activityScore.toLocaleString()} events`,
+                      share,
+                    ])}
+                  </p>
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <EmptyState message="No other relay rows were found in this response." />

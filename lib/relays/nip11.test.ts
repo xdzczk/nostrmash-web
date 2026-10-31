@@ -7,10 +7,14 @@ import {
   httpUrl,
   nip11FailureMessage,
   publishedInfoRows,
+  publishedRelayMark,
+  publishedRelayMarksByHost,
   relayDocumentTitle,
   relayInfoUrlForHost,
   relayMetaDescription,
+  relayRankingDetail,
   singleLineText,
+  withPublishedNames,
 } from "@/lib/relays/nip11";
 import type { Nip11Info } from "@/lib/types/api";
 
@@ -66,6 +70,42 @@ describe("relay info URL", () => {
         host: "relay.example.com",
       })
     ).toBe("wss://relay.example.com");
+  });
+});
+
+describe("published relay marks", () => {
+  it("keeps the first name for a host and drops an icon that is not an http URL", () => {
+    const marks = publishedRelayMarksByHost([
+      { normalized_url: "wss://relay.example.com/path", name: " Example ", icon: "not-a-url" },
+      {
+        normalized_url: "wss://relay.example.com",
+        name: "Later",
+        icon: "https://cdn.example/a.png",
+      },
+      { normalized_url: "wss://plain.example", name: "  " },
+      {
+        normalized_url: "wss://icon.example",
+        name: "Icon Relay",
+        icon: "https://cdn.example/b.png",
+      },
+    ]);
+
+    expect(marks.get("relay.example.com")).toEqual({ name: "Example" });
+    expect(marks.has("plain.example")).toBe(false);
+    expect(publishedRelayMark({ name: "Icon Relay", icon: "https://cdn.example/b.png" })).toEqual({
+      name: "Icon Relay",
+      iconSrc: "https://cdn.example/b.png",
+    });
+    expect(relayRankingDetail("relay.example.com", "Example", ["12 events", null])).toBe(
+      "relay.example.com · 12 events"
+    );
+    expect(relayRankingDetail("relay.example.com", undefined, ["12 events"])).toBe("12 events");
+    expect(withPublishedNames("Share of indexed events.", true, "indexed")).toContain(
+      "separate from indexed event volume"
+    );
+    expect(withPublishedNames("People list each relay.", false, "listed")).toBe(
+      "People list each relay."
+    );
   });
 });
 

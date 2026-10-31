@@ -4,6 +4,20 @@ import { RelayLink } from "@/components/relays/relay-link";
 import { ShareBar } from "@/components/relays/share-bar";
 import { PlainRemoteImage } from "@/components/ui/plain-remote-image";
 
+/** Small icon beside a published relay name. Hidden if the image fails. */
+export function RelayPublishedIcon({ src }: { src: string }) {
+  return (
+    <PlainRemoteImage
+      src={src}
+      alt=""
+      width={20}
+      height={20}
+      loading="lazy"
+      className="size-5 shrink-0 rounded-sm object-cover"
+    />
+  );
+}
+
 /** A ranking row whose figure is the point, and whose host is the link. */
 export function RelayRankRow({
   host,
@@ -27,17 +41,7 @@ export function RelayRankRow({
   iconSrc?: string;
 }) {
   const name = label?.trim();
-  const icon =
-    name && iconSrc ? (
-      <PlainRemoteImage
-        src={iconSrc}
-        alt=""
-        width={20}
-        height={20}
-        loading="lazy"
-        className="size-5 shrink-0 rounded-sm object-cover"
-      />
-    ) : null;
+  const icon = name && iconSrc ? <RelayPublishedIcon src={iconSrc} /> : null;
 
   return (
     <li className="py-3">

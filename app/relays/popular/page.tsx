@@ -9,7 +9,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { getPopularRelays } from "@/lib/api/endpoints";
 import { indexMembershipNote } from "@/lib/relays/index-membership";
-import { httpUrl } from "@/lib/relays/nip11";
+import { publishedRelayMark, relayRankingDetail, withPublishedNames } from "@/lib/relays/nip11";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
@@ -31,13 +31,16 @@ export default async function PopularRelaysPage() {
   const relays = data?.relays ?? [];
   const total = typeof data?.total === "number" ? data.total : relays.length;
   const leaderUsers = relays.reduce((max, relay) => Math.max(max, relay.distinct_users), 0);
-  const hasPublishedNames = relays.some((relay) => Boolean(relay.name?.trim()));
-  const listDescription =
+  const hasPublishedNames = relays.some((relay) => publishedRelayMark(relay));
+  const listDescription = withPublishedNames(
     relays.length === 0
       ? "Ranked by how many people list each relay."
       : total === relays.length
         ? `${total.toLocaleString()} relays people list. Bars match the most listed relay.`
-        : `${total.toLocaleString()} relays people list. ${relays.length.toLocaleString()} shown. Bars match the most listed relay.`;
+        : `${total.toLocaleString()} relays people list. ${relays.length.toLocaleString()} shown. Bars match the most listed relay.`,
+    hasPublishedNames,
+    "listed"
+  );
 
   return (
     <div className="space-y-8">
@@ -50,31 +53,26 @@ export default async function PopularRelaysPage() {
 
       {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
 
-      <SectionCard
-        title="Most listed"
-        description={
-          hasPublishedNames
-            ? `${listDescription} Names are what each relay publishes about itself, separate from how many people list it.`
-            : listDescription
-        }
-      >
+      <SectionCard title="Most listed" description={listDescription}>
         {relays.length > 0 ? (
           <ul className="divide-edge/70 divide-y">
             {relays.map((relay, index) => {
               const host = normalizeRelayHost(relay.normalized_url ?? "");
-              const name = relay.name?.trim();
+              const published = publishedRelayMark(relay);
               const membership = indexMembershipNote(relay.admission_state, relay.in_registry);
-              const detail = [name ? host : null, "people list this relay", membership]
-                .filter(Boolean)
-                .join(" · ");
+              const detail = relayRankingDetail(host, published?.name, [
+                "people list this relay",
+                membership,
+              ]);
               if (!host) {
                 return (
                   <li key={relay.normalized_url} className="py-3">
-                    <p className="text-ink text-sm">{name || relay.normalized_url}</p>
+                    <p className="text-ink text-sm">{published?.name || relay.normalized_url}</p>
                     <p className="text-ink-muted text-sm">
-                      {[name ? relay.normalized_url : null, "people list this relay", membership]
-                        .filter(Boolean)
-                        .join(" · ")}
+                      {relayRankingDetail(relay.normalized_url, published?.name, [
+                        "people list this relay",
+                        membership,
+                      ])}
                     </p>
                   </li>
                 );
@@ -86,12 +84,12 @@ export default async function PopularRelaysPage() {
                   rank={index + 1}
                   value={relay.distinct_users.toLocaleString()}
                   detail={detail}
-                  label={name || undefined}
-                  iconSrc={name ? (httpUrl(relay.icon) ?? undefined) : undefined}
+                  label={published?.name}
+                  iconSrc={published?.iconSrc}
                   bar={{
                     value: relay.distinct_users,
                     max: leaderUsers,
-                    label: `${name || host} compared with the most listed relay`,
+                    label: `${published?.name || host} compared with the most listed relay`,
                   }}
                 />
               );

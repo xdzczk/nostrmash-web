@@ -87,6 +87,61 @@ export function publishedText(value: string | null | undefined): string | undefi
   return trimmed ? trimmed : undefined;
 }
 
+export type PublishedRelayMark = {
+  name: string;
+  iconSrc?: string;
+};
+
+/** Name and icon from a stored NIP-11 document. An icon is kept only as an http(s) URL. */
+export function publishedRelayMark(relay: {
+  name?: string | null;
+  icon?: string | null;
+}): PublishedRelayMark | undefined {
+  const name = publishedText(relay.name);
+  if (!name) return undefined;
+  const iconSrc = httpUrl(relay.icon) ?? undefined;
+  return iconSrc ? { name, iconSrc } : { name };
+}
+
+/**
+ * First published name for each host. Later rows for the same host stay unused,
+ * so a more-listed URL wins when the caller passes relays in rank order.
+ */
+export function publishedRelayMarksByHost(
+  relays:
+    | Array<{ normalized_url?: string | null; name?: string | null; icon?: string | null }>
+    | null
+    | undefined
+): Map<string, PublishedRelayMark> {
+  const marks = new Map<string, PublishedRelayMark>();
+  for (const relay of relays ?? []) {
+    const host = normalizeRelayHost(relay.normalized_url ?? "");
+    const mark = publishedRelayMark(relay);
+    if (!host || !mark || marks.has(host)) continue;
+    marks.set(host, mark);
+  }
+  return marks;
+}
+
+/** Host moves into the detail line when the row label is the published name. */
+export function relayRankingDetail(
+  host: string,
+  name: string | undefined,
+  parts: Array<string | null | undefined>
+): string {
+  return [name ? host : null, ...parts].filter((part): part is string => Boolean(part)).join(" · ");
+}
+
+export function withPublishedNames(
+  description: string,
+  show: boolean,
+  ranking: "listed" | "indexed"
+): string {
+  if (!show) return description;
+  const basis = ranking === "listed" ? "how many people list it" : "indexed event volume";
+  return `${description} Names are what each relay publishes about itself, separate from ${basis}.`;
+}
+
 /** The NIP-11 object when the last fetch succeeded. */
 export function publishedInfo(nip11: Nip11Document | null | undefined): Nip11Info | null {
   if (!nip11?.ok || !nip11.info) return null;
