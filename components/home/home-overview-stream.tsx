@@ -50,6 +50,7 @@ export async function HomeLanguageSelector({
       query={query}
       activeLanguage={language ?? home.language}
       options={home.topLanguages?.[window] ?? []}
+      prefetchLanguages
     />
   );
 }

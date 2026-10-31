@@ -50,7 +50,6 @@ export function ProfilePinsList({
                   author={author}
                   surface="list"
                   showUtilityLinks={false}
-                  omitZeroStats
                   profilesByPubkey={authorsByPubkey}
                 />
               </li>

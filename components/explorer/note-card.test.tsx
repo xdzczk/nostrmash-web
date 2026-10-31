@@ -84,9 +84,12 @@ describe("NoteCard", () => {
     expect(screen.queryByRole("link", { name: "Open note" })).not.toBeInTheDocument();
   });
 
-  it("shows the reply count and one thread link on a conversation row", () => {
+  it("shows the shared stat row and one thread link on a conversation row", () => {
     render(<NoteCard note={NOTE} author={AUTHOR} conversation />);
-    expect(screen.getByText("4 replies")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "4 replies" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "2 reposts" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "8 reactions" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "1 zap, 21 sats" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Thread" })).toHaveAttribute(
       "href",
       `/notes/${NOTE.id}#conversation-context`
@@ -178,18 +181,18 @@ describe("NoteCard", () => {
 
   it("always renders complete engagement stats", () => {
     render(<NoteCard note={NOTE} author={AUTHOR} />);
-    expect(screen.getByText("Replies")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "4 replies" })).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
-    expect(screen.getByText("Reposts")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "2 reposts" })).toBeInTheDocument();
     expect(screen.getByText("2")).toBeInTheDocument();
-    expect(screen.getByText("Reactions")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "8 reactions" })).toBeInTheDocument();
     expect(screen.getByText("8")).toBeInTheDocument();
-    expect(screen.getByText("Zaps")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "1 zap, 21 sats" })).toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument();
-    expect(screen.getByText("(21 sats)")).toBeInTheDocument();
+    expect(screen.getByText("21 sats")).toBeInTheDocument();
   });
 
-  it("hides zero engagement on the note page", () => {
+  it("keeps zero engagement visible on the note page", () => {
     render(
       <NoteCard
         note={{
@@ -204,10 +207,18 @@ describe("NoteCard", () => {
         density="detail"
       />
     );
-    expect(screen.getByText("Reactions")).toBeInTheDocument();
-    expect(screen.queryByText("Replies")).not.toBeInTheDocument();
-    expect(screen.queryByText("Reposts")).not.toBeInTheDocument();
-    expect(screen.queryByText("Zaps")).not.toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "0 replies" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "0 reposts" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "1 reaction" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "0 zaps" })).toBeInTheDocument();
+  });
+
+  it("includes quote posts in the repost count", () => {
+    render(<NoteCard note={{ ...NOTE, quote_count: 3 }} author={AUTHOR} />);
+    expect(
+      screen.getByRole("group", { name: "5 reposts, including 3 quote posts" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("5")).toBeInTheDocument();
   });
 
   it("opens a reply from the card body", () => {
@@ -246,10 +257,10 @@ describe("NoteCard", () => {
       ...bareNote
     } = NOTE;
     render(<NoteCard note={bareNote} author={AUTHOR} />);
-    expect(screen.getByText("Replies")).toBeInTheDocument();
-    expect(screen.getByText("Reposts")).toBeInTheDocument();
-    expect(screen.getByText("Reactions")).toBeInTheDocument();
-    expect(screen.getByText("Zaps")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "0 replies" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "0 reposts" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "0 reactions" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "0 zaps" })).toBeInTheDocument();
     expect(screen.getAllByText("0")).toHaveLength(4);
     expect(screen.queryByText(/sats/)).not.toBeInTheDocument();
   });

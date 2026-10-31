@@ -63,6 +63,8 @@ export function normalizeEventRecord(value: unknown): EventRecord | null {
       asNumber(counts?.reaction_count),
     repost_count:
       asNumber(record.repost_count) ?? asNumber(record.reposts) ?? asNumber(counts?.repost_count),
+    quote_count:
+      asNumber(record.quote_count) ?? asNumber(record.quotes) ?? asNumber(counts?.quote_count),
     zap_count: asNumber(record.zap_count) ?? asNumber(record.zaps) ?? asNumber(counts?.zap_count),
     zap_msats: asNumber(record.zap_msats) ?? asNumber(counts?.zap_msats),
     ranking: normalizeDiscoveryRanking(record.ranking),

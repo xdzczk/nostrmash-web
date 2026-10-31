@@ -1,11 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import {
-  CardHitTarget,
-  cardHitTargetClassName,
-  DiscoveryStatPills,
-} from "@/components/explorer/card-grammar";
+import { CardHitTarget, cardHitTargetClassName } from "@/components/explorer/card-grammar";
+import { PostEngagement } from "@/components/explorer/post-engagement";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
@@ -13,7 +10,6 @@ import {
   mapHashtagWhyNow,
   mapNoteWhyNow,
   mapProfileWhyNow,
-  statsCitedByReasons,
   type WhyNowReason,
 } from "@/components/explorer/why-now";
 import { selectSupportingNotes } from "@/lib/discover/lead-notes";
@@ -21,7 +17,7 @@ import { MEDIA_RANKINGS, type MediaLeaders } from "@/lib/discover/media-rankings
 import { buildDiscoverHref, LANGUAGE_EMPTY_MESSAGE } from "@/lib/search-params/language";
 import { SourceFigure } from "@/components/explorer/source-figure";
 import {
-  extractEngagementStats,
+  postEngagementStats,
   formatCompactNumber,
   formatProfileSecondary,
   normalizeDomainLabel,
@@ -213,7 +209,6 @@ function EditorialNote({
         contentResolution={contentResolution}
         profilesByPubkey={authorsByPubkey}
         showUtilityLinks={false}
-        omitZeroStats
       />
     );
   }
@@ -277,11 +272,7 @@ function EditorialNote({
           </>
         ) : null}
         <EvidenceLine reasons={mapNoteWhyNow(note)} ranking={note.ranking} />
-        <DiscoveryStatPills
-          stats={extractEngagementStats(note)}
-          omitLabels={statsCitedByReasons(mapNoteWhyNow(note))}
-          className="mt-2.5"
-        />
+        <PostEngagement stats={postEngagementStats(note)} className="mt-2.5" />
         {noteHref ? (
           <Link
             href={noteHref}
@@ -324,11 +315,7 @@ function EditorialNote({
       ) : null}
       <div className="col-span-2">
         <EvidenceLine reasons={mapNoteWhyNow(note)} ranking={note.ranking} />
-        <DiscoveryStatPills
-          stats={extractEngagementStats(note)}
-          omitLabels={statsCitedByReasons(mapNoteWhyNow(note))}
-          className="mt-2.5"
-        />
+        <PostEngagement stats={postEngagementStats(note)} className="mt-2.5" />
       </div>
       {noteHref ? <CardHitTarget href={noteHref} label={`Open note by ${authorLabel}`} /> : null}
     </article>

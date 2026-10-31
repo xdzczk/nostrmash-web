@@ -153,6 +153,7 @@ async function RankedLanguageOptions({
       query={query}
       activeLanguage={language}
       options={topLanguages?.[window] ?? []}
+      prefetchLanguages
     />
   );
 }

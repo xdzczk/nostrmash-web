@@ -6,14 +6,14 @@ import {
   cardTierClassName,
   DiscoveryActionLinks,
   DiscoveryPill,
-  DiscoveryStatPills,
 } from "@/components/explorer/card-grammar";
+import { PostEngagement } from "@/components/explorer/post-engagement";
 import { EventByline } from "@/components/explorer/event-byline";
 import { NoteMediaReveal } from "@/components/explorer/note-media-reveal";
 import { NoteContent, type NoteContentResolution } from "@/components/explorer/note-content";
 import {
-  extractEngagementStats,
   noteAuthorIdentifier,
+  postEngagementStats,
   noteInlineAuthorProfile,
   profileLabel,
 } from "@/components/explorer/utils";
@@ -28,7 +28,6 @@ export function MediaCard({
   surface = "list",
   showAuthor = true,
   showUtilityLinks = true,
-  omitZeroStats = false,
   rank,
   contentResolution,
   highlightTerms,
@@ -39,7 +38,6 @@ export function MediaCard({
   surface?: "list" | "detail" | "reply";
   showAuthor?: boolean;
   showUtilityLinks?: boolean;
-  omitZeroStats?: boolean;
   rank?: number;
   contentResolution?: NoteContentResolution;
   highlightTerms?: string[];
@@ -147,22 +145,8 @@ export function MediaCard({
         />
       </div>
 
-      {presentation.address ? (
-        <p className="text-ink-faint mt-2 text-xs break-all">
-          {presentation.naddr ? (
-            <span title={presentation.naddr}>
-              {presentation.address.kind}:{presentation.address.pubkey.slice(0, 8)}… :
-              {presentation.address.identifier}
-            </span>
-          ) : (
-            `${presentation.address.kind}:${presentation.address.pubkey}:${presentation.address.identifier}`
-          )}
-        </p>
-      ) : null}
-
-      <DiscoveryStatPills
-        stats={extractEngagementStats(event)}
-        omitZero={omitZeroStats || surface !== "list"}
+      <PostEngagement
+        stats={postEngagementStats(event)}
         className="mt-2.5 sm:mt-3"
         size={isDetail ? "md" : "sm"}
       />

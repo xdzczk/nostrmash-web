@@ -5,6 +5,7 @@ import { useEffect, useRef, type MouseEvent } from "react";
 
 import {
   tabLinkClassName,
+  tabLinkPrefetch,
   tabMenuItemClassName,
   type RenderTabLink,
   type TabItem,
@@ -20,10 +21,12 @@ export function TabOverflowMenu({
   label,
   items,
   renderLink,
+  prefetch,
 }: {
   label: string;
   items: TabItem[];
   renderLink?: RenderTabLink;
+  prefetch?: boolean;
 }) {
   const ref = useRef<HTMLDetailsElement | null>(null);
   const activeItem = items.find((item) => item.active) ?? null;
@@ -81,6 +84,7 @@ export function TabOverflowMenu({
               <Link
                 role="menuitem"
                 href={tab.href}
+                prefetch={tabLinkPrefetch(prefetch, tab.active)}
                 aria-current={tab.active ? "page" : undefined}
                 className={tabMenuItemClassName(tab.active)}
               >

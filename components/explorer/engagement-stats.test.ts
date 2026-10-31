@@ -4,6 +4,7 @@ import {
   applyEngagementStats,
   extractEngagementStats,
   formatSatsFromMsats,
+  postEngagementStats,
 } from "@/components/explorer/utils";
 
 describe("formatSatsFromMsats", () => {
@@ -66,6 +67,38 @@ describe("extractEngagementStats", () => {
       { label: "reaction_count", value: 0 },
       { label: "zap_count", value: 3, detail: "42 sats" },
     ]);
+  });
+});
+
+describe("postEngagementStats", () => {
+  it("adds quote posts to the repost total", () => {
+    expect(postEngagementStats({ repost_count: 2, quote_count: 3 })).toEqual([
+      { label: "reply_count", value: 0 },
+      { label: "repost_count", value: 5, quoteCount: 3 },
+      { label: "reaction_count", value: 0 },
+      { label: "zap_count", value: 0 },
+    ]);
+  });
+
+  it("leaves the repost total unchanged when no quote count is present", () => {
+    expect(postEngagementStats({ repost_count: 2 })).toEqual(
+      extractEngagementStats({ repost_count: 2 })
+    );
+  });
+
+  it("reads a nested quote count without folding it into the stored repost field", () => {
+    const note = applyEngagementStats(
+      { id: "abc", content: "hello" },
+      { counts: { repost_count: 2, quote_count: 4, reply_count: 1 } }
+    );
+    expect(note.repost_count).toBe(2);
+    expect(note.quote_count).toBe(4);
+    expect(postEngagementStats(note).find((stat) => stat.label === "repost_count")).toEqual({
+      label: "repost_count",
+      value: 6,
+      quoteCount: 4,
+    });
+    expect(postEngagementStats(note).find((stat) => stat.label === "repost_count")?.value).toBe(6);
   });
 });
 

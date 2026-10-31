@@ -78,6 +78,42 @@ describe("LanguageSelector", () => {
     cookie.mockRestore();
   });
 
+  it("warms the other Discover languages and leaves search alone", () => {
+    const codes = ["en", "ja", "de", "pt", "zh", "es", "fr", "it", "nl", "pl"];
+    const options = codes.map((language, index) => ({ language, count: 100 - index }));
+
+    const { container, rerender } = render(
+      <LanguageSelector
+        path="/trending/notes"
+        query="window=7d"
+        activeLanguage="en"
+        options={options}
+        prefetchLanguages
+      />
+    );
+
+    const hrefs = Array.from(container.querySelectorAll("a")).map((anchor) =>
+      anchor.getAttribute("href")
+    );
+    expect(hrefs).toEqual([
+      "/trending/notes?window=7d",
+      "/trending/notes?window=7d&lang=ja",
+      "/trending/notes?window=7d&lang=de",
+      "/trending/notes?window=7d&lang=pt",
+      "/trending/notes?window=7d&lang=zh",
+      "/trending/notes?window=7d&lang=es",
+      "/trending/notes?window=7d&lang=fr",
+      "/trending/notes?window=7d&lang=it",
+    ]);
+    expect(hrefs.some((href) => href?.includes("lang=en"))).toBe(false);
+    expect(hrefs.some((href) => href?.includes("lang=nl"))).toBe(false);
+
+    rerender(
+      <LanguageSelector path="/search" query="q=nostr" activeLanguage="en" options={options} />
+    );
+    expect(container.querySelectorAll("a")).toHaveLength(0);
+  });
+
   it("shows the language empty state instead of an error when a filtered ranking is empty", () => {
     render(
       <RankedListPage

@@ -2,14 +2,15 @@ import Link from "next/link";
 
 import { ArticleMarkdown } from "@/components/explorer/article-markdown";
 import { getArticlePresentation } from "@/components/explorer/article-meta";
-import { DiscoveryPill, DiscoveryStatPills } from "@/components/explorer/card-grammar";
+import { DiscoveryPill } from "@/components/explorer/card-grammar";
+import { PostEngagement } from "@/components/explorer/post-engagement";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
 import { BlossomNextImage } from "@/components/ui/blossom-image";
 import { EnlargeableImage } from "@/components/ui/image-lightbox";
 import {
-  extractEngagementStats,
+  postEngagementStats,
   isNextImageCompatibleSrc,
   normalizeImageSrc,
   noteAuthorIdentifier,
@@ -47,7 +48,7 @@ export function ArticleReader({
     (typeof article.pubkey === "string" && article.pubkey.length > 0
       ? { pubkey: article.pubkey }
       : null);
-  const metrics = extractEngagementStats(article);
+  const metrics = postEngagementStats(article);
 
   return (
     <article className="overflow-visible">
@@ -145,7 +146,7 @@ export function ArticleReader({
         <ArticleMarkdown markdown={presentation.body} resolution={contentResolution} />
       </div>
 
-      <DiscoveryStatPills stats={metrics} className="mt-8" />
+      <PostEngagement stats={metrics} className="mt-8" size="md" />
     </article>
   );
 }

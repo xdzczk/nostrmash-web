@@ -4,6 +4,7 @@ import { TabOverflow } from "@/components/ui/tab-overflow";
 import { TabOverflowMenu } from "@/components/ui/tab-overflow-menu";
 import {
   tabLinkClassName,
+  tabLinkPrefetch,
   type RenderTabLink,
   type TabBarOverflow,
   type TabItem,
@@ -40,11 +41,14 @@ export function TabBar({
   overflow,
   ariaLabel,
   renderLink,
+  prefetch,
 }: {
   items: TabItem[];
   overflow?: TabBarOverflow;
   ariaLabel?: string;
   renderLink?: RenderTabLink;
+  /** Fetch inactive tabs in full before they are opened. */
+  prefetch?: boolean;
 }) {
   const showOverflow = overflow && overflow.items.length > 0;
   return (
@@ -61,6 +65,7 @@ export function TabBar({
               ) : (
                 <Link
                   href={tab.href}
+                  prefetch={tabLinkPrefetch(prefetch, tab.active)}
                   aria-current={tab.active ? "page" : undefined}
                   className={tabLinkClassName(tab.active)}
                 >
@@ -75,7 +80,12 @@ export function TabBar({
         // Outside the scroller so the dropdown is not clipped by overflow-x
         // and the trigger stays visible while primary tabs scroll.
         <div className="-mb-px shrink-0 pl-5 sm:pl-7">
-          <TabOverflowMenu label={overflow.label} items={overflow.items} renderLink={renderLink} />
+          <TabOverflowMenu
+            label={overflow.label}
+            items={overflow.items}
+            renderLink={renderLink}
+            prefetch={prefetch}
+          />
         </div>
       ) : null}
     </nav>

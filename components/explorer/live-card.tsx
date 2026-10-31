@@ -5,8 +5,8 @@ import {
   cardHitTargetClassName,
   cardTierClassName,
   DiscoveryPill,
-  DiscoveryStatPills,
 } from "@/components/explorer/card-grammar";
+import { PostEngagement } from "@/components/explorer/post-engagement";
 import { EventByline } from "@/components/explorer/event-byline";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { LivePlaybackFrame, LiveWatchButton } from "@/components/live/live-session";
@@ -19,8 +19,8 @@ import {
   profileHref,
   profileLabel,
   truncateIdentifier,
+  postEngagementStats,
   truncateProfileLabel,
-  extractEngagementStats,
 } from "@/components/explorer/utils";
 import { eventIdOf, eventPageHref } from "@/lib/notes/kinds";
 import { getLivePresentation, type LiveStatus } from "@/lib/notes/live-activity";
@@ -150,12 +150,7 @@ export function LiveCard({
         ) : null}
       </div>
 
-      <DiscoveryStatPills
-        stats={extractEngagementStats(event)}
-        omitZero
-        className="mt-2.5"
-        size="sm"
-      />
+      <PostEngagement stats={postEngagementStats(event)} className="mt-2.5" size="sm" />
 
       {presentation.participants.length > 0 ? (
         <ul className="mt-3 flex flex-wrap gap-2">

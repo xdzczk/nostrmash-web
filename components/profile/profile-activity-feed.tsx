@@ -45,7 +45,6 @@ export async function ProfileActivityFeed({ data }: { data: ActivityData }) {
           authorsByPubkey={data.notesAuthorMap}
           showAuthor={false}
           showUtilityLinks={false}
-          omitZeroStats
           mediaVariant="feed"
           suppressEmbeds
           contentSize="profile"
@@ -88,7 +87,6 @@ export async function ProfileActivityFeed({ data }: { data: ActivityData }) {
           authorsByPubkey={{ ...data.notesAuthorMap, ...data.eventListAuthorsByPubkey }}
           showAuthor={false}
           showUtilityLinks={false}
-          omitZeroStats
         />
       ) : null;
     case "media":
@@ -98,7 +96,6 @@ export async function ProfileActivityFeed({ data }: { data: ActivityData }) {
           authorsByPubkey={{ ...data.notesAuthorMap, ...data.eventListAuthorsByPubkey }}
           showAuthor={false}
           showUtilityLinks={false}
-          omitZeroStats
         />
       ) : null;
     case "bookmarks":
@@ -107,7 +104,6 @@ export async function ProfileActivityFeed({ data }: { data: ActivityData }) {
           notes={data.bookmarks}
           authorsByPubkey={{ ...data.notesAuthorMap, ...data.eventListAuthorsByPubkey }}
           showUtilityLinks={false}
-          omitZeroStats
           mediaVariant="feed"
           suppressEmbeds
           contentSize="profile"
@@ -124,7 +120,6 @@ export async function ProfileActivityFeed({ data }: { data: ActivityData }) {
           authorsByPubkey={{ ...data.notesAuthorMap, ...data.eventListAuthorsByPubkey }}
           showAuthor={false}
           showUtilityLinks={false}
-          omitZeroStats
         />
       ) : null;
     case "pins":

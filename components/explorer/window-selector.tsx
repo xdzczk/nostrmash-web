@@ -16,7 +16,7 @@ export function WindowSelector({
   activeWindow,
   windows = STATS_WINDOWS,
   defaultWindow = DEFAULT_STATS_WINDOW,
-  labelFor,
+  labels,
   ariaLabel = "Ranking window",
   /**
    * These routes read cookies, so Next only prefetches the loading skeleton
@@ -36,7 +36,7 @@ export function WindowSelector({
   activeWindow: string;
   windows?: readonly string[];
   defaultWindow?: string;
-  labelFor?: (window: string) => string;
+  labels?: Record<string, string>;
   ariaLabel?: string;
   prefetch?: boolean;
   persist?: boolean;
@@ -63,11 +63,8 @@ export function WindowSelector({
               isActive ? "bg-surface text-ink shadow-sm" : "text-ink-muted hover:text-ink"
             }`}
           >
-            {labelFor
-              ? labelFor(window)
-              : isStatsWindow(window)
-                ? formatStatsWindowLabel(window, "short")
-                : window}
+            {labels?.[window] ??
+              (isStatsWindow(window) ? formatStatsWindowLabel(window, "short") : window)}
           </Link>
         );
       })}

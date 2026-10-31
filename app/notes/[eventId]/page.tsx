@@ -19,7 +19,7 @@ import { Timestamp } from "@/components/explorer/timestamp";
 import {
   applyEngagementStats,
   buildMetadataEntries,
-  extractEngagementStats,
+  postEngagementStats,
   isRecord,
   profileLabel,
 } from "@/components/explorer/utils";
@@ -179,7 +179,7 @@ export default async function NotePage({
       : isRecord(eventCountsPayload)
         ? eventCountsPayload
         : {};
-  const countStats = extractEngagementStats(
+  const countStats = postEngagementStats(
     countsRecord,
     isRecord(noteSummary?.summary) ? noteSummary.summary : {},
     focal
@@ -196,6 +196,7 @@ export default async function NotePage({
     delete focalForStats.reply_count;
     delete focalForStats.reaction_count;
     delete focalForStats.repost_count;
+    delete focalForStats.quote_count;
     delete focalForStats.zap_count;
     delete focalForStats.zap_msats;
   }
@@ -282,10 +283,15 @@ export default async function NotePage({
     typeof focal?.content === "string" && focal.content.trim().length > 0
       ? focal.content.trim()
       : "";
-  const repostCount = Number(countStats.find((entry) => entry.label === "repost_count")?.value);
+  const repostStat = countStats.find((entry) => entry.label === "repost_count");
+  const repostCount = Number(repostStat?.value);
   const repostsControl =
     Number.isFinite(repostCount) && repostCount > 0 ? (
-      <RepostRollup count={repostCount} load={loadRepostRollup.bind(null, eventId, repostCount)} />
+      <RepostRollup
+        count={repostCount}
+        quoteCount={repostStat?.quoteCount}
+        load={loadRepostRollup.bind(null, eventId, repostCount)}
+      />
     ) : undefined;
 
   return (

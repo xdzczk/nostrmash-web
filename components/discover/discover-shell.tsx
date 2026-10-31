@@ -9,6 +9,7 @@ import { PageHero } from "@/components/explorer/page-hero";
 import { WindowSelector } from "@/components/explorer/window-selector";
 import { LiveRefresh } from "@/components/freshness/live-refresh";
 import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
+import { tabLinkPrefetch } from "@/components/ui/tab-styles";
 import { DISCOVER_MODE_LINKS, type DiscoverMode, type DiscoverView } from "@/lib/discover/views";
 import { formatDiscoverEyebrow } from "@/lib/i18n/language-names";
 import { buildDiscoverHref } from "@/lib/search-params/language";
@@ -110,6 +111,7 @@ export function DiscoverShell({
                       query={searchParams.toString()}
                       activeLanguage={language}
                       options={topLanguages?.[window] ?? []}
+                      prefetchLanguages
                     />
                   )}
                 </>
@@ -132,6 +134,7 @@ export function DiscoverShell({
                   window: item.windowed === false ? undefined : window,
                   lang: item.windowed === false ? undefined : language,
                 })}
+                prefetch={tabLinkPrefetch(true, item.mode === mode)}
                 aria-current={item.mode === mode ? "page" : undefined}
                 className={`nm-meta inline-flex min-h-6 items-center py-0.5 text-[13px] font-medium transition ${
                   item.mode === mode

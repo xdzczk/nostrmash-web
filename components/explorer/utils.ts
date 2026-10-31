@@ -93,6 +93,8 @@ export type EngagementStat = {
   label: EngagementStatKey;
   value: number;
   detail?: string;
+  /** Quote posts added into a repost total. Omitted when none were added. */
+  quoteCount?: number;
 };
 
 const ENGAGEMENT_ALIASES: Record<EngagementStatKey, readonly string[]> = {
@@ -103,6 +105,9 @@ const ENGAGEMENT_ALIASES: Record<EngagementStatKey, readonly string[]> = {
 };
 
 const ZAP_MSATS_ALIASES = ["zap_msats", "msats", "amount_msats"] as const;
+
+/** Quote posts stored apart from kind 6 / kind 16 reposts. */
+const QUOTE_COUNT_ALIASES = ["quote_count", "quotes", "quote_reposts"] as const;
 
 function readFiniteNonNegativeNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, value);
@@ -149,34 +154,67 @@ export function extractZapMsats(...sources: unknown[]): number {
   return 0;
 }
 
+function readFirstEngagement(sources: unknown[], keys: readonly string[]): number | null {
+  for (const source of sources) {
+    const value = readEngagementValue(source, keys);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
 /** Always returns replies/reposts/reactions/zaps, defaulting missing values to 0. */
 export function extractEngagementStats(...sources: unknown[]): EngagementStat[] {
   const zapMsats = extractZapMsats(...sources);
   const zapDetail = formatSatsFromMsats(zapMsats) ?? undefined;
   return ENGAGEMENT_STAT_KEYS.map((key) => {
-    let value: number | null = null;
-    for (const source of sources) {
-      value = readEngagementValue(source, ENGAGEMENT_ALIASES[key]);
-      if (value !== null) break;
-    }
     return {
       label: key,
-      value: value ?? 0,
+      value: readFirstEngagement(sources, ENGAGEMENT_ALIASES[key]) ?? 0,
       ...(key === "zap_count" && zapDetail ? { detail: zapDetail } : {}),
     };
   });
 }
 
+/**
+ * Quote posts that are counted separately from reposts.
+ * This is not the note-page linkage split, where `quote_count` is the subset of
+ * reposts that carry text and is already inside the full `repost_count`.
+ */
+export function readQuoteCount(...sources: unknown[]): number {
+  return readFirstEngagement(sources, QUOTE_COUNT_ALIASES) ?? 0;
+}
+
+/**
+ * The four post stats. Quote posts are added to the repost total when
+ * `quote_count` is present and is not already part of `repost_count`.
+ */
+export function postEngagementStats(...sources: unknown[]): EngagementStat[] {
+  const stats = extractEngagementStats(...sources);
+  const quotes = readQuoteCount(...sources);
+  if (quotes <= 0) return stats;
+  return stats.map((stat) =>
+    stat.label === "repost_count"
+      ? { ...stat, value: stat.value + quotes, quoteCount: quotes }
+      : stat
+  );
+}
+
 export function applyEngagementStats<T extends Record<string, unknown>>(
   note: T,
   ...extraSources: unknown[]
-): T & Record<EngagementStatKey, number> & { zap_msats: number } {
+): T & Record<EngagementStatKey, number> & { zap_msats: number; quote_count?: number } {
   const stats = extractEngagementStats(note, ...extraSources);
   const values = Object.fromEntries(stats.map((stat) => [stat.label, stat.value])) as Record<
     EngagementStatKey,
     number
   >;
-  return { ...note, ...values, zap_msats: extractZapMsats(note, ...extraSources) };
+  const quoteCount = readQuoteCount(note, ...extraSources);
+  return {
+    ...note,
+    ...values,
+    zap_msats: extractZapMsats(note, ...extraSources),
+    ...(quoteCount > 0 ? { quote_count: quoteCount } : {}),
+  };
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {

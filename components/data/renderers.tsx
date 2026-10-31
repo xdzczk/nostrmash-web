@@ -46,7 +46,6 @@ export async function NotesList({
   conversation = false,
   showAuthor = true,
   showUtilityLinks = true,
-  omitZeroStats = false,
   compactMedia = false,
   mediaVariant,
   suppressEmbeds,
@@ -59,11 +58,10 @@ export async function NotesList({
   ranked?: boolean;
   showFullContent?: boolean;
   discoverySignals?: boolean;
-  /** Hot conversations: reply count is the row stat, plus one thread link. */
+  /** Hot conversations: the shared stat row, plus one thread link. */
   conversation?: boolean;
   showAuthor?: boolean;
   showUtilityLinks?: boolean;
-  omitZeroStats?: boolean;
   /** Square thumbnail instead of full-bleed media. */
   compactMedia?: boolean;
   /** Overrides the list thumbnail. Profile notes use `feed`. */
@@ -109,7 +107,6 @@ export async function NotesList({
               conversation={conversation}
               showAuthor={showAuthor}
               showUtilityLinks={showUtilityLinks}
-              omitZeroStats={omitZeroStats}
               mediaVariant={mediaVariant ?? (compactMedia ? "compact" : undefined)}
               suppressEmbeds={suppressEmbeds ?? compactMedia}
               highlightTerms={highlightTerms}
@@ -131,7 +128,6 @@ export async function ArticlesList({
   discoverySignals = false,
   showAuthor = true,
   showUtilityLinks = true,
-  omitZeroStats = false,
   rankOffset = 0,
 }: {
   articles: EventRecord[];
@@ -140,7 +136,6 @@ export async function ArticlesList({
   discoverySignals?: boolean;
   showAuthor?: boolean;
   showUtilityLinks?: boolean;
-  omitZeroStats?: boolean;
   /** Items skipped before this page. See `NotesList`. */
   rankOffset?: number;
 }) {
@@ -164,7 +159,6 @@ export async function ArticlesList({
             contentResolution={contentResolution}
             showAuthor={showAuthor}
             showUtilityLinks={showUtilityLinks}
-            omitZeroStats={omitZeroStats}
           />
         </li>
       ))}

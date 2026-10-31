@@ -129,6 +129,7 @@ describe("normalizeEventRecord", () => {
         reply_count: 3,
         reaction_count: 5,
         repost_count: 2,
+        quote_count: 3,
         zap_count: 7,
         zap_msats: 42000,
       },
@@ -140,6 +141,7 @@ describe("normalizeEventRecord", () => {
     expect(note?.reply_count).toBe(3);
     expect(note?.reaction_count).toBe(5);
     expect(note?.repost_count).toBe(2);
+    expect(note?.quote_count).toBe(3);
     expect(note?.zap_count).toBe(7);
     expect(note?.zap_msats).toBe(42000);
   });

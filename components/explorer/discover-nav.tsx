@@ -15,6 +15,7 @@ export function DiscoverNav({
   return (
     <TabBar
       ariaLabel="Discover categories"
+      prefetch
       items={DISCOVER_VIEWS.map((view) => ({
         ...view,
         href: buildDiscoverHref(view.href, { window, lang }),

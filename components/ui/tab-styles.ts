@@ -27,6 +27,19 @@ export type RenderTabLink = (
   options?: RenderTabLinkOptions
 ) => ReactNode;
 
+/**
+ * Full prefetch for inactive tabs. The active tab is already on screen.
+ * `undefined` keeps Next's default, which for a dynamic route stops at
+ * `loading.tsx` and still renders on the server when the tab is opened.
+ */
+export function tabLinkPrefetch(
+  enabled: boolean | undefined,
+  active: boolean
+): boolean | undefined {
+  if (enabled !== true) return undefined;
+  return !active;
+}
+
 /** Shared tab link styling so server and client renderers stay identical. */
 export function tabLinkClassName(active: boolean): string {
   return `nm-pressable focus-visible:ring-accent-soft/70 relative inline-flex min-h-11 items-center rounded-sm py-2 text-[13px] font-medium focus-visible:ring-2 focus-visible:outline-none ${

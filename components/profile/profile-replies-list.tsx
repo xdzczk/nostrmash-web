@@ -67,7 +67,6 @@ export function ProfileRepliesList({
               author={authorFor(reply, authorsByPubkey)}
               showAuthor={false}
               showUtilityLinks={false}
-              omitZeroStats
               mediaVariant="compact"
               suppressEmbeds
               contentSize="profile"

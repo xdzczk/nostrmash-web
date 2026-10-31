@@ -26,7 +26,6 @@ export function EventKindSwitch({
   contentResolution,
   showAuthor = true,
   showUtilityLinks = true,
-  omitZeroStats = false,
   discoverySignals = false,
   rank,
   highlightTerms,
@@ -49,7 +48,6 @@ export function EventKindSwitch({
   contentResolution?: NoteContentResolution;
   showAuthor?: boolean;
   showUtilityLinks?: boolean;
-  omitZeroStats?: boolean;
   discoverySignals?: boolean;
   rank?: number;
   highlightTerms?: string[];
@@ -80,7 +78,6 @@ export function EventKindSwitch({
         surface={surface}
         showAuthor={showAuthor}
         showUtilityLinks={showUtilityLinks}
-        omitZeroStats={omitZeroStats}
         rank={rank}
         contentResolution={contentResolution}
         highlightTerms={highlightTerms}
@@ -116,7 +113,6 @@ export function EventKindSwitch({
             contentResolution={contentResolution}
             showAuthor
             showUtilityLinks={false}
-            omitZeroStats
             profilesByPubkey={profilesByPubkey}
             unwrapReposts={false}
           />
@@ -140,7 +136,6 @@ export function EventKindSwitch({
         contentResolution={contentResolution}
         showAuthor={showAuthor}
         showUtilityLinks={showUtilityLinks}
-        omitZeroStats={omitZeroStats}
       />
     );
   }
@@ -159,7 +154,6 @@ export function EventKindSwitch({
       conversation={conversation}
       showAuthor={showAuthor}
       showUtilityLinks={showUtilityLinks}
-      omitZeroStats={omitZeroStats}
       mediaVariant={mediaVariant}
       suppressEmbeds={suppressEmbeds}
       connectAbove={connectAbove}

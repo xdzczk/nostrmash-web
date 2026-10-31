@@ -38,8 +38,13 @@ test.describe("note page reading surface", () => {
     await expect(page.getByText(/cursor/i)).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Inspect thread" })).toHaveCount(0);
 
-    // Engagement appears once, on the note itself.
-    await expect(page.locator("#note").getByText("Replies", { exact: true })).toHaveCount(1);
+    // Engagement appears once, on the note itself: reply, repost, reaction, zap.
+    // A quoted note inside the body has its own row, so this is the note's row.
+    const stats = page.locator("#note [data-post-engagement]").last();
+    await expect(stats.getByRole("group", { name: "5 replies" })).toHaveCount(1);
+    await expect(stats.getByRole("group", { name: "5 reactions" })).toHaveCount(1);
+    await expect(stats.getByRole("group", { name: "0 zaps" })).toHaveCount(1);
+    await expect(stats.getByRole("button", { name: "22 reposts" })).toHaveCount(1);
     await expect(page.getByRole("heading", { name: /engagement/i })).toHaveCount(0);
   });
 
@@ -181,7 +186,7 @@ test.describe("note page thread", () => {
 test.describe("note page context", () => {
   test("reposts roll up and quotes stay in their own section", async ({ page }) => {
     await page.goto(`/notes/${FOCAL_ID}`);
-    await page.getByRole("button", { name: /Reposts/ }).click();
+    await page.getByRole("button", { name: "22 reposts" }).click();
     await expect(page.getByText("Reposted by Rhea Reposter, and 21 others")).toBeVisible();
 
     const related = page.locator("#related-notes");

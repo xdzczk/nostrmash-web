@@ -1,11 +1,13 @@
 import Link from "next/link";
 
+import { PostEngagement } from "@/components/explorer/post-engagement";
 import {
   formatMentionLabel,
   formatNaddrLabel,
   formatUrlForDisplay,
   lookupProfileByHandle,
   lookupProfileByPubkey,
+  postEngagementStats,
   sanitizeExternalHref,
   stripEmojiShortcodes,
   truncateIdentifier,
@@ -84,6 +86,7 @@ function QuoteCard({
           (no content)
         </p>
       )}
+      <PostEngagement stats={postEngagementStats(event)} className="mt-2" />
     </div>
   );
 }

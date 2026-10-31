@@ -290,20 +290,6 @@ export function mapDomainWhyNow(entry: DomainEntry): WhyNowReason[] {
   return dedupeReasons(reasons);
 }
 
-/** Stat keys already stated on the why-now line, so the pill row does not repeat them. */
-export function statsCitedByReasons(reasons: WhyNowReason[]): string[] {
-  const blob = reasons
-    .map((reason) => `${reason.text} ${reason.support ?? ""}`)
-    .join(" ")
-    .toLowerCase();
-  const cited: string[] = [];
-  if (/\brepl/.test(blob)) cited.push("reply_count");
-  if (/repost|boost/.test(blob)) cited.push("repost_count");
-  if (/reaction|\blike/.test(blob)) cited.push("reaction_count");
-  if (/\bzap/.test(blob)) cited.push("zap_count");
-  return cited;
-}
-
 export function WhyNow({
   reasons,
   maxReasons = 1,

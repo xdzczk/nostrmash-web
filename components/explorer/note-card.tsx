@@ -17,11 +17,11 @@ import {
   cardHitTargetClassName,
   cardTierClassName,
   DiscoveryActionLinks,
-  DiscoveryStatPills,
 } from "@/components/explorer/card-grammar";
-import { mapNoteWhyNow, statsCitedByReasons, WhyNow } from "@/components/explorer/why-now";
+import { PostEngagement } from "@/components/explorer/post-engagement";
+import { mapNoteWhyNow, WhyNow } from "@/components/explorer/why-now";
 import {
-  extractEngagementStats,
+  postEngagementStats,
   formatProfileSecondary,
   normalizeDomainLabel,
   noteInlineAuthorProfile,
@@ -47,15 +47,9 @@ import { RepostCard } from "./repost-card";
  * - `list`: clamped preview with action links (trending, search, profiles).
  * - `detail`: the focal note on its own page — prose type, no action links.
  * - `reply`: a thread participant — full content, timestamp is the permalink,
- *   zero-valued stats and chip rows hidden.
+ *   chip rows hidden. Engagement still shows reply, repost, reaction, and zap.
  */
 export type NoteCardDensity = "list" | "detail" | "reply";
-
-function isNonZeroStat(stat: { value: unknown }): boolean {
-  if (typeof stat.value === "number") return stat.value > 0;
-  if (typeof stat.value === "string") return stat.value.trim() !== "" && stat.value !== "0";
-  return stat.value !== null && stat.value !== undefined;
-}
 
 export function NoteCard({
   note,
@@ -72,7 +66,6 @@ export function NoteCard({
   conversation = false,
   showAuthor = true,
   showUtilityLinks = true,
-  omitZeroStats = false,
   mediaVariant,
   suppressEmbeds = false,
   connectAbove = false,
@@ -95,14 +88,12 @@ export function NoteCard({
   contextEventId?: string;
   /** Replaces the Reposts stat on the focal note with an expandable rollup. */
   repostsControl?: ReactNode;
-  /** Reply count is the row stat, with one link into the thread. */
+  /** Same stat row as every other post, plus one link into the thread. */
   conversation?: boolean;
   /** Hide the author row. Profile activity already names the subject. */
   showAuthor?: boolean;
   /** Open note / Inspect thread / Seen on relays. The card hit target stays. */
   showUtilityLinks?: boolean;
-  /** Drop engagement stats whose value is zero. */
-  omitZeroStats?: boolean;
   mediaVariant?: NoteMediaVariant;
   /** Profile dossier: no link-unfurl cards, domain chips, or relay chips. */
   suppressEmbeds?: boolean;
@@ -144,7 +135,6 @@ export function NoteCard({
       conversation={conversation}
       showAuthor={showAuthor}
       showUtilityLinks={showUtilityLinks}
-      omitZeroStats={omitZeroStats}
       mediaVariant={mediaVariant}
       suppressEmbeds={suppressEmbeds}
       connectAbove={connectAbove}
@@ -170,7 +160,6 @@ function NoteCardBody({
   conversation,
   showAuthor,
   showUtilityLinks,
-  omitZeroStats,
   mediaVariant: mediaVariantProp,
   suppressEmbeds,
   connectAbove,
@@ -192,7 +181,6 @@ function NoteCardBody({
   conversation: boolean;
   showAuthor: boolean;
   showUtilityLinks: boolean;
-  omitZeroStats: boolean;
   mediaVariant?: NoteMediaVariant;
   suppressEmbeds: boolean;
   connectAbove: boolean;
@@ -254,9 +242,8 @@ function NoteCardBody({
         : !showFullContent && density === "list"
           ? "compact"
           : undefined);
-  const replyCount = noteReplyCount(note);
-  const allMetrics = extractEngagementStats(note);
-  const metrics = isReply || isDetail ? allMetrics.filter(isNonZeroStat) : allMetrics;
+  const metrics = postEngagementStats(note);
+  const replyCount = metrics.find((stat) => stat.label === "reply_count")?.value ?? 0;
   const isTopRank = typeof rank === "number" && rank <= 3;
   const noteDomains = isReply
     ? []
@@ -524,24 +511,14 @@ function NoteCardBody({
           <WhyNow reasons={reasonCandidates} showLabel={false} className="mt-2.5 sm:mt-3" />
         ) : null}
 
-        {conversation ? (
-          replyCount !== null ? (
-            <p className="text-ink mt-2.5 text-sm font-medium tabular-nums">
-              {replyCount.toLocaleString()} {replyCount === 1 ? "reply" : "replies"}
-            </p>
-          ) : null
-        ) : (
-          <DiscoveryStatPills
-            stats={metrics}
-            omitZero={omitZeroStats}
-            omitLabels={discoverySignals ? statsCitedByReasons(reasonCandidates) : undefined}
-            className={isDetail ? "mt-4" : "mt-2.5 sm:mt-3"}
-            size={isDetail ? "md" : "sm"}
-            replacements={isDetail && repostsControl ? { repost_count: repostsControl } : undefined}
-          />
-        )}
+        <PostEngagement
+          stats={metrics}
+          className={isDetail ? "mt-4" : "mt-2.5 sm:mt-3"}
+          size={isDetail ? "md" : "sm"}
+          replacements={isDetail && repostsControl ? { repost_count: repostsControl } : undefined}
+        />
 
-        {conversation && replyCount !== null && replyCount > 0 && resolvedNoteId ? (
+        {conversation && replyCount > 0 && resolvedNoteId ? (
           <Link
             href={`/notes/${encodeURIComponent(resolvedNoteId)}#conversation-context`}
             className="nm-action-link mt-1 inline-flex min-h-11 items-center text-sm"
@@ -588,10 +565,4 @@ function presentAuthorSecondary(value: string): string | null {
   }
   const formatted = formatProfileSecondary(value);
   return formatted.length > 0 ? formatted : null;
-}
-
-function noteReplyCount(note: EventRecord): number | null {
-  const value = note.reply_count;
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return null;
-  return Math.round(value);
 }

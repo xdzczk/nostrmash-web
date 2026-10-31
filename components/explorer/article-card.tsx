@@ -6,15 +6,15 @@ import {
   cardTierClassName,
   DiscoveryActionLinks,
   DiscoveryPill,
-  DiscoveryStatPills,
 } from "@/components/explorer/card-grammar";
+import { PostEngagement } from "@/components/explorer/post-engagement";
 import { getArticlePresentation } from "@/components/explorer/article-meta";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { BlossomNextImage } from "@/components/ui/blossom-image";
 import { Timestamp } from "@/components/explorer/timestamp";
 import { RichInlineText, type NoteContentResolution } from "@/components/explorer/note-content";
 import {
-  extractEngagementStats,
+  postEngagementStats,
   isNextImageCompatibleSrc,
   normalizeImageSrc,
   noteAuthorIdentifier,
@@ -37,7 +37,6 @@ export function ArticleCard({
   contentResolution,
   showAuthor = true,
   showUtilityLinks = true,
-  omitZeroStats = false,
 }: {
   article: EventRecord;
   author?: Profile;
@@ -48,7 +47,6 @@ export function ArticleCard({
   /** Hide the author row. The profile page already names the subject. */
   showAuthor?: boolean;
   showUtilityLinks?: boolean;
-  omitZeroStats?: boolean;
 }) {
   const presentation = getArticlePresentation(article);
   const imageSrc = normalizeImageSrc(presentation.image);
@@ -78,7 +76,7 @@ export function ArticleCard({
       ? { pubkey: article.pubkey }
       : null);
 
-  const metrics = extractEngagementStats(article);
+  const metrics = postEngagementStats(article);
 
   const isTopRank = typeof rank === "number" && rank <= 3;
   const rankLabel = typeof rank === "number" ? String(rank).padStart(2, "0") : null;
@@ -167,6 +165,7 @@ export function ArticleCard({
             />
           ) : null}
         </div>
+        <PostEngagement stats={metrics} className="mt-2.5 sm:mt-3" />
         {showUtilityLinks && resolvedArticleId ? (
           <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs">
             <DiscoveryActionLinks
@@ -321,7 +320,7 @@ export function ArticleCard({
         </div>
       ) : null}
 
-      <DiscoveryStatPills stats={metrics} omitZero={omitZeroStats} className="mt-2.5 sm:mt-3" />
+      <PostEngagement stats={metrics} className="mt-2.5 sm:mt-3" />
 
       {showUtilityLinks && resolvedArticleId ? (
         <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">

@@ -11,7 +11,7 @@ vi.mock("next/link", () => ({
   default: ({
     href,
     children,
-    prefetch: _prefetch,
+    prefetch: prefetchProp,
     ...rest
   }: {
     href: string;
@@ -19,7 +19,15 @@ vi.mock("next/link", () => ({
     prefetch?: boolean | null;
     [key: string]: unknown;
   }) => (
-    <a href={typeof href === "string" ? href : "#"} {...rest}>
+    <a
+      href={typeof href === "string" ? href : "#"}
+      {...(prefetchProp === true
+        ? { "data-prefetch": "full" }
+        : prefetchProp === false
+          ? { "data-prefetch": "off" }
+          : {})}
+      {...rest}
+    >
       {children}
     </a>
   ),
