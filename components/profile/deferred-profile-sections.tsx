@@ -46,6 +46,7 @@ function ActivityEmpty({
         target && targetLabel ? (
           <Link
             href={target.href}
+            prefetch
             className="nm-pressable border-edge-strong text-ink-soft hover:bg-surface-hover inline-flex min-h-9 items-center rounded-lg border px-3 py-1.5 text-xs font-medium"
           >
             View {targetLabel.toLowerCase()}
@@ -82,7 +83,9 @@ export async function DeferredProfileActivity({
 }) {
   const data = await loadProfileActivityData(
     { lookupKey, profile, profileRoute, summaryRecord },
-    searchParams
+    searchParams,
+    // One list per request. The notes feed is not reused by the other tabs.
+    { focused: true }
   );
   const stats = readSummaryStats(summaryRecord);
   const hasItems = profileActivityHasItems(data);

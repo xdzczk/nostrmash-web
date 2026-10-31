@@ -359,6 +359,9 @@ export default async function ProfilePage({
     notFound();
   }
 
+  const activityParam = resolvedSearchParams.activity;
+  const currentActivity =
+    typeof activityParam === "string" && activityParam.length > 0 ? activityParam : "notes";
   const hero = isRecord(summaryRecord?.hero) ? summaryRecord.hero : null;
   const heroMetadata = isRecord(hero?.metadata) ? hero.metadata : null;
   const heroCounters = toCounterRows(
@@ -580,6 +583,7 @@ export default async function ProfilePage({
                       {href ? (
                         <Link
                           href={href}
+                          prefetch={!href.endsWith(`activity=${currentActivity}`)}
                           className="hover:text-ink-strong"
                           aria-label={`${value} ${counter.label.toLowerCase()}`}
                         >

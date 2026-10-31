@@ -48,8 +48,20 @@ describe("ProfileActivityTabBar", () => {
       "aria-current",
       "page"
     );
+    expect(screen.getByRole("link", { name: "Recent notes" })).toHaveAttribute(
+      "data-prefetch",
+      "off"
+    );
     expect(screen.getByRole("link", { name: "Recent replies" })).not.toHaveAttribute(
       "aria-current"
+    );
+    expect(screen.getByRole("link", { name: "Recent replies" })).toHaveAttribute(
+      "data-prefetch",
+      "full"
+    );
+    expect(document.querySelector('a[href="/profiles/x?activity=highlights"]')).toHaveAttribute(
+      "data-prefetch",
+      "full"
     );
     expect(screen.getByText("More")).toBeInTheDocument();
   });

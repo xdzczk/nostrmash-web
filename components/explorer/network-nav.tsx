@@ -13,6 +13,7 @@ export function NetworkNav({ active }: { active?: NetworkView }) {
   return (
     <TabBar
       ariaLabel="Network categories"
+      prefetch
       items={NETWORK_VIEWS.map((view) => ({ ...view, active: view.key === active }))}
     />
   );

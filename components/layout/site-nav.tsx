@@ -27,6 +27,10 @@ export function SiteNav() {
           <Link
             key={item.href}
             href={item.href}
+            // These routes read request headers and ship a loading skeleton,
+            // so the default prefetch never includes the page. The other
+            // section is fetched in full before the click.
+            prefetch={!active}
             aria-current={active ? "page" : undefined}
             className={`nm-pressable focus-visible:ring-accent-soft/70 relative inline-flex min-h-11 items-center rounded-md px-1 text-[13px] font-medium tracking-[0.005em] focus-visible:ring-2 focus-visible:outline-none ${
               active

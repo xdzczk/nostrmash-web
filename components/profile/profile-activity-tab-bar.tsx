@@ -13,7 +13,7 @@ import {
 
 import { NotesListSkeleton } from "@/components/ui/skeleton";
 import { TabBar, TabLinkContent } from "@/components/ui/tabs";
-import type { TabBarOverflow, TabItem } from "@/components/ui/tab-styles";
+import { tabLinkPrefetch, type TabBarOverflow, type TabItem } from "@/components/ui/tab-styles";
 
 function restoreProfileTabScroll(savedY: number) {
   const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
@@ -54,6 +54,10 @@ function isPlainLeftClick(event: MouseEvent<HTMLAnchorElement>): boolean {
  * the clicked tab highlights immediately, the panel shows a skeleton while
  * the server payload streams in, and the page does not scroll. Modifier and
  * middle clicks fall through to the browser so "open in new tab" still works.
+ *
+ * The profile route is dynamic and has no loading boundary, so a plain link
+ * does not prefetch it. Inactive tabs request the full page first; the
+ * replace below then paints from that cache.
  */
 export function ProfileActivityTabBar({
   items,
@@ -120,6 +124,7 @@ export function ProfileActivityTabBar({
           renderLink={(tab, className, options) => (
             <Link
               href={tab.href}
+              prefetch={tabLinkPrefetch(true, tab.active)}
               onClick={select(tab)}
               role={options?.role}
               aria-current={tab.active ? "page" : undefined}
