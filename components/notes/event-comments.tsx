@@ -85,9 +85,10 @@ export async function EventComments({ eventId }: { eventId: string }) {
     fetchProfilesByPubkey(extractEventAuthorPubkeys(comments), "shortTtl").catch(
       () => ({}) as Record<string, Profile>
     ),
-    resolveContentReferences(comments).catch(
-      () => ({ profilesByPubkey: {}, eventsById: {} }) satisfies NoteContentResolution
-    ),
+    resolveContentReferences(comments).catch((): NoteContentResolution => ({
+      profilesByPubkey: {},
+      eventsById: {},
+    })),
   ]);
 
   const knownProfiles = new Set(
@@ -95,7 +96,8 @@ export async function EventComments({ eventId }: { eventId: string }) {
       (key) => key.toLowerCase()
     )
   );
-  const quotedAuthorPubkeys = Object.values(contentResolution.eventsById ?? {})
+  const quotedEvents: Record<string, EventRecord | undefined> = contentResolution.eventsById ?? {};
+  const quotedAuthorPubkeys = Object.values(quotedEvents)
     .map((event) => (typeof event?.pubkey === "string" ? event.pubkey : ""))
     .filter((pubkey) => pubkey.length > 0 && !knownProfiles.has(pubkey.toLowerCase()));
   const quotedAuthors =
