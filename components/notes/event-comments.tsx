@@ -85,9 +85,10 @@ export async function EventComments({ eventId }: { eventId: string }) {
     fetchProfilesByPubkey(extractEventAuthorPubkeys(comments), "shortTtl").catch(
       () => ({}) as Record<string, Profile>
     ),
-    resolveContentReferences(comments).catch(
-      () => ({ profilesByPubkey: {}, eventsById: {} }) satisfies NoteContentResolution
-    ),
+    resolveContentReferences(comments).catch((): NoteContentResolution => ({
+      profilesByPubkey: {},
+      eventsById: {},
+    })),
   ]);
 
   const knownProfiles = new Set(

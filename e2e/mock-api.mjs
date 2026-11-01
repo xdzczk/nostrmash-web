@@ -62,9 +62,8 @@ const focalNote = {
 
 // --- Note page thread fixtures -------------------------------------------
 // A direct reply, a nested reply (rendered one level deep with "replying to"),
-// two identical replies from one author (folded), a kind-6 repost of another
-// note and a kind-6 repost of the focal note (collapses to one line), plus a
-// second page of replies behind `next_cursor`.
+// two identical replies from one author (folded), a kind-6 repost of the focal
+// note, plus a second page of replies behind `next_cursor`.
 const REPLIER_PK = "d".repeat(64);
 const NESTED_PK = "e".repeat(64);
 const DUP_PK = "f".repeat(64);
@@ -75,7 +74,6 @@ const DUP_1_ID = "4".repeat(64);
 const DUP_2_ID = "5".repeat(64);
 const REPLY_C_ID = "6".repeat(64);
 const REPLY_D_ID = "9".repeat(64);
-const REPOST_OTHER_ID = "7".repeat(64);
 const REPOST_FOCAL_ID = "8".repeat(64);
 const REPLIES_CURSOR_2 = "mock_replies_cursor_2";
 const DEEP_ID = "a1".repeat(32);
@@ -136,17 +134,6 @@ const replyC = {
   created_at: 1_700_000_500,
   content: "Second page reply loaded in place",
   tags: [["e", FOCAL_ID, "", "root"]],
-};
-const repostOfOther = {
-  id: REPOST_OTHER_ID,
-  pubkey: REPOSTER_PK,
-  kind: 6,
-  created_at: 1_700_000_600,
-  content: JSON.stringify(quotedEvent),
-  tags: [
-    ["e", QUOTED_ID],
-    ["p", AUTHOR_PK],
-  ],
 };
 // Related entries come back wrapped in an `event` envelope with only a subset
 // of fields lifted to the top level (mirrors the production API).

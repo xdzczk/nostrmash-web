@@ -24,6 +24,7 @@ describe("EnlargeableImage", () => {
     const user = userEvent.setup();
     render(
       <EnlargeableImage src="https://media.example/photo.jpg" alt="Attached photo">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="https://media.example/photo.jpg" alt="" />
       </EnlargeableImage>
     );
@@ -45,6 +46,7 @@ describe("EnlargeableImage", () => {
     const user = userEvent.setup();
     render(
       <EnlargeableImage src="https://media.example/photo.jpg" alt="Wide shot">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="https://media.example/photo.jpg" alt="" />
       </EnlargeableImage>
     );
