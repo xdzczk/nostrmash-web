@@ -11,7 +11,11 @@ import {
   ProfilesList,
 } from "@/components/data/renderers";
 import {
+  getBookmarkedNotes,
   getHotConversations,
+  getMostFollowedProfiles,
+  getMostSupportedProfiles,
+  getMostZappedNotes,
   getRisingProfiles,
   getTrendingDomains,
   getTrendingHashtags,
@@ -25,6 +29,7 @@ import {
   extractEventAuthorPubkeys,
   fetchProfilesByPubkey,
   hydrateProfiles,
+  restoreRankingMetrics,
 } from "@/lib/api/profile-hydration";
 import { presentConversations } from "@/lib/discover/conversation-order";
 import { hydrateRankedMediaEvents } from "@/lib/discover/media-rankings";
@@ -33,12 +38,11 @@ import { lastDiscoveryWindow } from "@/lib/discover/window-fallback";
 import {
   isRankingSurface,
   parseRankedContinuation,
-  rankedListRequest,
   rankedPageContinuation,
+  rankingContinuationQuery,
   rankingItemAnchor,
   type RankingSurface,
 } from "@/lib/explorer/ranked-pagination";
-import { parseLanguage } from "@/lib/search-params/language";
 import { fallbackAfterRejected30d, isStatsWindow } from "@/lib/search-params/window";
 import type { DomainEntry, EventRecord, HashtagEntry, Profile } from "@/lib/types/api";
 
@@ -62,15 +66,17 @@ export async function loadMoreRanking(
   token: string
 ): Promise<LoadMoreChunk> {
   if (!isRankingSurface(surface)) return { content: null };
-  if (!isStatsWindow(window)) return { content: null };
   const parsed = parseRankedContinuation(token);
   if (!parsed) return { content: null };
-  const language = parseLanguage(lang);
+  const query = rankingContinuationQuery(surface, window, lang, parsed.offset);
+  if (!query) return { content: null };
+  const windowless = surface === "bookmarked" || surface === "followed";
 
   let loaded: Awaited<ReturnType<typeof loadSurface>>;
   try {
-    loaded = await loadSurface(surface, rankedListRequest(window, language, parsed.offset));
+    loaded = await loadSurface(surface, query);
   } catch (error) {
+    if (windowless || !isStatsWindow(window)) throw error;
     const status = isApiError(error) ? error.status : null;
     if (!fallbackAfterRejected30d(window, "24h", status).hide30d) throw error;
     const jar = await cookies();
@@ -80,7 +86,9 @@ export async function loadMoreRanking(
       sameSite: "lax",
     });
     const previous = await lastDiscoveryWindow();
-    loaded = await loadSurface(surface, rankedListRequest(previous, language, parsed.offset));
+    const retry = rankingContinuationQuery(surface, previous, lang, parsed.offset);
+    if (!retry) throw error;
+    loaded = await loadSurface(surface, retry);
   }
   const first = rankingItemAnchor(surface, loaded.items[0]);
   if (loaded.items.length === 0 || !first || first === parsed.anchor) {
@@ -94,7 +102,7 @@ export async function loadMoreRanking(
   };
 }
 
-type RankedQuery = ReturnType<typeof rankedListRequest>;
+type RankedQuery = NonNullable<ReturnType<typeof rankingContinuationQuery>>;
 
 async function loadSurface(
   surface: RankingSurface,
@@ -109,6 +117,16 @@ async function loadSurface(
   switch (surface) {
     case "notes": {
       const payload = await getTrendingNotes("shortTtl", query);
+      const notes = payload.notes ?? [];
+      return { items: notes, notes };
+    }
+    case "bookmarked": {
+      const payload = await getBookmarkedNotes("shortTtl", query);
+      const notes = payload.notes ?? [];
+      return { items: notes, notes };
+    }
+    case "zapped": {
+      const payload = await getMostZappedNotes("shortTtl", query);
       const notes = payload.notes ?? [];
       return { items: notes, notes };
     }
@@ -139,6 +157,16 @@ async function loadSurface(
       const profiles = payload.profiles ?? [];
       return { items: profiles, profiles };
     }
+    case "followed": {
+      const payload = await getMostFollowedProfiles("shortTtl", query);
+      const profiles = payload.profiles ?? [];
+      return { items: profiles, profiles };
+    }
+    case "supported": {
+      const payload = await getMostSupportedProfiles("shortTtl", query);
+      const profiles = payload.profiles ?? [];
+      return { items: profiles, profiles };
+    }
     case "hashtags": {
       const payload = await getTrendingHashtags("shortTtl", query);
       const hashtags = payload.hashtags ?? [];
@@ -163,7 +191,9 @@ async function renderSurface(
   offset: number
 ) {
   switch (surface) {
-    case "notes": {
+    case "notes":
+    case "bookmarked":
+    case "zapped": {
       const notes = loaded.notes ?? [];
       return (
         <NotesList
@@ -215,11 +245,19 @@ async function renderSurface(
       );
     }
     case "profiles":
-    case "rising": {
+    case "rising":
+    case "followed":
+    case "supported": {
       let profiles = loaded.profiles ?? [];
       if (profiles.length > 0) {
         try {
-          profiles = await hydrateProfiles(profiles, "shortTtl");
+          const hydrated = await hydrateProfiles(profiles, "shortTtl");
+          profiles =
+            surface === "followed" || surface === "supported"
+              ? hydrated.map((profile, index) =>
+                  restoreRankingMetrics(loaded.profiles?.[index] ?? profile, profile)
+                )
+              : hydrated;
         } catch {
           // Keep the ranking rows when identity lookup fails.
         }

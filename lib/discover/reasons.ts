@@ -27,6 +27,10 @@ const REASON_LABELS: Record<string, string> = {
   recency: "newer in this window",
   conversation_velocity: "conversation velocity",
   participant_breadth: "participant breadth",
+  saved_by: "saved by",
+  zap_volume: "sats received in this window",
+  audience_size: "audience size",
+  supporter_sats: "capped sats",
 };
 
 /**
@@ -57,9 +61,10 @@ const GROWTH_CODES = new Set(["follower_growth"]);
 
 /** Units that count whole things and must never render fractionally. */
 const COUNT_UNIT_PATTERN =
-  /^(followers?|posts?|notes?|repl(y|ies)|reposts?|interactions?|links?|mentions?|authors?|zaps?|reactions?|sources?|relays?|participants?|shares?|appearances?|boosts?|likes?)$/i;
+  /^(followers?|posts?|notes?|repl(y|ies)|reposts?|interactions?|links?|mentions?|authors?|zaps?|reactions?|sources?|relays?|participants?|shares?|appearances?|boosts?|likes?|people|person|sats?)$/i;
 
 function singularize(unit: string): string {
+  if (/^people$/i.test(unit)) return unit.startsWith("P") ? "Person" : "person";
   if (/ies$/i.test(unit)) return unit.replace(/ies$/i, "y");
   if (/s$/i.test(unit) && !/ss$/i.test(unit)) return unit.slice(0, -1);
   return unit;

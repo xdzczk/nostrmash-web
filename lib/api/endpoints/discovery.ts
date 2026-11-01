@@ -11,6 +11,7 @@ import type {
   TrendingMediaResponse,
   TrendingNotesResponse,
   TrendingProfilesResponse,
+  SupportedProfilesResponse,
   LiveActivitiesApiResponse,
   LiveActivitiesResponse,
 } from "@/lib/types/api";
@@ -68,10 +69,52 @@ export async function getDiscoveryHome(
   });
   return normalizeDiscoveryHomeResponse(response);
 }
+function discoveryListQuery(
+  query:
+    | { limit?: number; offset?: number; cursor?: string; window?: string; lang?: string }
+    | undefined,
+  options: { window?: boolean; lang?: boolean }
+) {
+  if (!query) return undefined;
+  const window =
+    options.window && query.window && query.window !== "all" ? query.window : undefined;
+  return {
+    limit: query.limit,
+    offset: query.offset,
+    ...(query.cursor ? { cursor: query.cursor } : {}),
+    ...(window ? { window } : {}),
+    ...(options.lang && query.lang ? { lang: query.lang } : {}),
+  };
+}
+
 export async function getTrendingNotes(cacheClass: CacheClass = "shortTtl", query?: CursorQuery) {
   const response = await fetchApiJson<TrendingNotesResponse>(nativeApiV1Routes.trendingNotes, {
     cacheClass,
     query: buildCursorQuery(query),
+    schema: eventListResponseSchema,
+  });
+  return normalizeDiscoveryLanguageFields({
+    ...response,
+    notes: normalizeEventRecords(response.notes),
+  });
+}
+
+export async function getBookmarkedNotes(cacheClass: CacheClass = "shortTtl", query?: OffsetQuery) {
+  const response = await fetchApiJson<TrendingNotesResponse>(nativeApiV1Routes.bookmarkedNotes, {
+    cacheClass,
+    query: discoveryListQuery(query, { lang: true }),
+    schema: eventListResponseSchema,
+  });
+  return normalizeDiscoveryLanguageFields({
+    ...response,
+    notes: normalizeEventRecords(response.notes),
+  });
+}
+
+export async function getMostZappedNotes(cacheClass: CacheClass = "shortTtl", query?: OffsetQuery) {
+  const response = await fetchApiJson<TrendingNotesResponse>(nativeApiV1Routes.zappedNotes, {
+    cacheClass,
+    query: discoveryListQuery(query, { window: true, lang: true }),
     schema: eventListResponseSchema,
   });
   return normalizeDiscoveryLanguageFields({
@@ -169,6 +212,37 @@ export async function getRisingProfiles(cacheClass: CacheClass = "shortTtl", que
         responseRecord.data
     ),
   }) satisfies RisingProfilesResponse;
+}
+
+export async function getMostFollowedProfiles(
+  cacheClass: CacheClass = "shortTtl",
+  query?: OffsetQuery
+) {
+  const response = await fetchApiJson<RisingProfilesResponse>(nativeApiV1Routes.followedProfiles, {
+    cacheClass,
+    query: discoveryListQuery(query, {}),
+  });
+  return normalizeDiscoveryLanguageFields({
+    ...response,
+    profiles: normalizeProfiles(response.profiles),
+  }) satisfies RisingProfilesResponse;
+}
+
+export async function getMostSupportedProfiles(
+  cacheClass: CacheClass = "shortTtl",
+  query?: OffsetQuery
+) {
+  const response = await fetchApiJson<SupportedProfilesResponse>(
+    nativeApiV1Routes.supportedProfiles,
+    {
+      cacheClass,
+      query: discoveryListQuery(query, { window: true }),
+    }
+  );
+  return normalizeDiscoveryLanguageFields({
+    ...response,
+    profiles: normalizeProfiles(response.profiles),
+  }) satisfies SupportedProfilesResponse;
 }
 
 export async function getTrendingHashtags(

@@ -12,7 +12,12 @@ import {
   readSearchParam,
   toUrlSearchParams,
 } from "@/lib/search-params/pagination";
-import { selectableStatsWindows, type StatsWindow } from "@/lib/search-params/window";
+import {
+  isStatsWindow,
+  rankingWindowChoice,
+  selectableStatsWindows,
+  type StatsWindow,
+} from "@/lib/search-params/window";
 import type { NativeApiSemantics } from "@/lib/types/api";
 
 type ResolvedSearchParams = Record<string, string | string[] | undefined>;
@@ -54,6 +59,63 @@ export async function readRankedListContext(
     currentSearchParams,
     buildCursorContinuation: (nextCursor) =>
       buildContinuationHref(path, currentSearchParams, "cursor", nextCursor),
+  };
+}
+
+/**
+ * Bookmarked notes and most-followed profiles have no stats window.
+ * A saved discovery-window cookie must not be written back onto the URL,
+ * and `window=all` must not be forwarded.
+ */
+export async function readUnwindowedRankingContext(
+  resolvedSearchParams: ResolvedSearchParams
+): Promise<{
+  window: StatsWindow;
+  windows: readonly StatsWindow[];
+  currentSearchParams: URLSearchParams;
+  linkedWindow: StatsWindow | null;
+}> {
+  const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
+  const requested = readSearchParam(resolvedSearchParams, "window");
+  const explicit = isStatsWindow(requested) ? requested : null;
+  const windows = selectableStatsWindows(!(await isDiscovery30dHidden()));
+  return {
+    window: explicit ?? "24h",
+    windows,
+    currentSearchParams,
+    linkedWindow: explicit,
+  };
+}
+
+/**
+ * Most zapped and most supported honor an explicit `window` and a saved
+ * discovery-window cookie. When neither is set, request `fallback` (7d or 30d).
+ * That implicit default is not written onto outgoing links or the cookie.
+ */
+export async function readWindowedRankingContext(
+  resolvedSearchParams: ResolvedSearchParams,
+  path: string,
+  fallback: StatsWindow
+): Promise<{
+  window: StatsWindow;
+  windows: readonly StatsWindow[];
+  currentSearchParams: URLSearchParams;
+  pageDefault: StatsWindow;
+  rememberWindow: boolean;
+  linkedWindow: StatsWindow | null;
+}> {
+  const requested = readSearchParam(resolvedSearchParams, "window");
+  const explicit = isStatsWindow(requested);
+  const context = await readRankedListContext(resolvedSearchParams, path);
+  const pageDefault = rankingWindowChoice(undefined, fallback, context.windows);
+  const window = explicit ? context.window : pageDefault;
+  return {
+    window,
+    windows: context.windows,
+    currentSearchParams: context.currentSearchParams,
+    pageDefault,
+    rememberWindow: explicit,
+    linkedWindow: explicit ? window : null,
   };
 }
 

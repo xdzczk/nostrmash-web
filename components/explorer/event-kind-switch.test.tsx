@@ -39,6 +39,39 @@ describe("EventKindSwitch", () => {
     expect(screen.getByText("reposted")).toBeInTheDocument();
   });
 
+  it("renders a ranked article from its content and the server reason", () => {
+    render(
+      <EventKindSwitch
+        event={{
+          id: ARTICLE_ID,
+          pubkey: AUTHOR,
+          kind: 30023,
+          content:
+            "Bookmarked long-form piece about public relays and how readers find them today.",
+          bookmark_count: 1,
+          ranking: {
+            rank: 1,
+            score: 1,
+            reasons: [
+              {
+                code: "saved_by",
+                evidence: [{ metric: "bookmark_count", value: 1, unit: "people" }],
+              },
+            ],
+          },
+        }}
+        rank={1}
+        discoverySignals
+      />
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /Bookmarked long-form piece about public relays/ })
+    ).toBeInTheDocument();
+    expect(screen.getByText("saved by")).toBeInTheDocument();
+    expect(screen.getByText("1 person")).toBeInTheDocument();
+  });
+
   it("does not render a report as a note", () => {
     const { container } = render(
       <EventKindSwitch

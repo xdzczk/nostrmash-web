@@ -30,8 +30,13 @@ export type RankedListChromeProps = {
   language?: string;
   /** Window and language selectors. Hidden on surfaces that are not ranked. */
   rankingControls?: boolean;
+  showWindowControl?: boolean;
+  showLanguageControl?: boolean;
+  defaultWindow?: StatsWindow;
+  linkedWindow?: StatsWindow | null;
   /** Skip writing the 24h/7d cookie. */
   rememberWindow?: boolean;
+  subtitleFromSm?: boolean;
   topLanguages?: TopLanguages;
   languageControl?: ReactNode;
   freshness?: ReactNode;
@@ -54,7 +59,12 @@ export function RankedListChrome({
   windows,
   language,
   rankingControls = true,
+  showWindowControl,
+  showLanguageControl,
+  defaultWindow,
+  linkedWindow,
   rememberWindow = true,
+  subtitleFromSm,
   topLanguages,
   languageControl,
   freshness,
@@ -76,7 +86,12 @@ export function RankedListChrome({
       windows={windows}
       language={language}
       rankingControls={rankingControls}
+      showWindowControl={showWindowControl}
+      showLanguageControl={showLanguageControl}
+      defaultWindow={defaultWindow}
+      linkedWindow={linkedWindow}
       rememberWindow={rememberWindow}
+      subtitleFromSm={subtitleFromSm}
       topLanguages={topLanguages}
       languageControl={languageControl}
       freshness={freshness}

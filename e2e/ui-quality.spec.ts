@@ -73,16 +73,39 @@ test.describe("global product shell", () => {
     );
     await expect(page.getByRole("navigation", { name: "notes modes" })).toHaveCount(0);
 
-    await page.goto("/trending/notes?window=7d");
+    await page.goto("/trending/notes?window=7d&lang=ja");
     await expect(categories.getByRole("link", { name: "Notes" })).toHaveAttribute(
       "aria-current",
       "page"
     );
-    await expect(
-      page.getByRole("navigation", { name: "notes modes" }).getByRole("link", {
-        name: "Conversations",
-      })
-    ).toHaveAttribute("href", "/discovery/conversations/hot?window=7d");
+    const noteModes = page.getByRole("navigation", { name: "notes modes" });
+    await expect(noteModes.getByRole("link", { name: "Most zapped" })).toHaveAttribute(
+      "href",
+      "/discovery/notes/zapped?window=7d&lang=ja"
+    );
+    await expect(noteModes.getByRole("link", { name: "Conversations" })).toHaveAttribute(
+      "href",
+      "/discovery/conversations/hot?window=7d&lang=ja"
+    );
+    await expect(noteModes.getByRole("link", { name: "Most bookmarked" })).toHaveAttribute(
+      "href",
+      "/discovery/notes/bookmarked?lang=ja"
+    );
+
+    await page.goto("/trending/profiles?window=7d&lang=ja");
+    const peopleModes = page.getByRole("navigation", { name: "people modes" });
+    await expect(peopleModes.getByRole("link", { name: "Up and coming" })).toHaveAttribute(
+      "href",
+      "/discovery/profiles/rising?window=7d&lang=ja"
+    );
+    await expect(peopleModes.getByRole("link", { name: "Most followed" })).toHaveAttribute(
+      "href",
+      "/discovery/profiles/followed"
+    );
+    await expect(peopleModes.getByRole("link", { name: "Most supported" })).toHaveAttribute(
+      "href",
+      "/discovery/profiles/supported?window=7d"
+    );
 
     await page.goto("/live");
     await expect(categories.getByRole("link", { name: "Media" })).toHaveAttribute(

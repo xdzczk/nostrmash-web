@@ -21,6 +21,42 @@ import {
 import { searchProfileContextLine } from "@/lib/search/display";
 import type { Profile } from "@/lib/types/api";
 
+type StatPill = { label: string; value: string | number | boolean };
+
+/**
+ * Most followed would otherwise print `score` and `follower_count`, which are
+ * the same number. The why-now line is that count, so the pills stay quiet.
+ * Most supported prints the capped amount, with supporter count beside it.
+ * The uncapped total is not the order.
+ */
+function rankingOrderPills(profile: Profile): StatPill[] | null {
+  const code = profile.ranking?.reasons?.[0]?.code;
+  if (code === "audience_size") return [];
+  if (code !== "supporter_sats") return null;
+  const capped =
+    typeof profile.capped_sats === "number"
+      ? profile.capped_sats
+      : typeof profile.score === "number"
+        ? profile.score
+        : null;
+  const supporters = typeof profile.supporter_count === "number" ? profile.supporter_count : null;
+  const pills: StatPill[] = [];
+  if (capped !== null && Number.isFinite(capped)) {
+    pills.push({ label: "capped_sats", value: capped });
+  }
+  if (supporters !== null && Number.isFinite(supporters)) {
+    pills.push({ label: "supporter_count", value: supporters });
+  }
+  return pills;
+}
+
+function withoutDuplicateFollowerScore(metrics: StatPill[]): StatPill[] {
+  const followers = metrics.find((entry) => entry.label === "follower_count");
+  const score = metrics.find((entry) => entry.label === "score");
+  if (!followers || !score || followers.value !== score.value) return metrics;
+  return metrics.filter((entry) => entry.label !== "score");
+}
+
 export function ProfileCard({
   profile,
   rank,
@@ -63,14 +99,16 @@ export function ProfileCard({
       /(count|score|rank|followers|following|note|activity|relay)/i.test(entry.label)
     )
     .slice(0, 6);
+  const comparableMetrics = withoutDuplicateFollowerScore(rawMetrics);
   const profileMetricPriority = [
     /new.*follower|follower.*new/i,
     /recent|activity|active/i,
     /note|author|event/i,
     /visibility|reach|relay|mention/i,
   ];
+  const orderStats = rankingOrderPills(profile);
   const metrics = profileMetricPriority
-    .map((matcher) => rawMetrics.find((entry) => matcher.test(entry.label)))
+    .map((matcher) => comparableMetrics.find((entry) => matcher.test(entry.label)))
     .filter((entry): entry is (typeof rawMetrics)[number] => Boolean(entry))
     .slice(0, 2);
   const isTopRank = typeof rank === "number" && rank <= 3;
@@ -152,7 +190,11 @@ export function ProfileCard({
         />
       ) : null}
 
-      {quietRow || searchContext ? null : (
+      {discoverySignals && orderStats ? (
+        orderStats.length > 0 ? (
+          <DiscoveryStatPills stats={orderStats} className="mt-2.5 sm:mt-3" />
+        ) : null
+      ) : quietRow || searchContext ? null : (
         <DiscoveryStatPills stats={metrics} className="mt-2.5 sm:mt-3" />
       )}
 

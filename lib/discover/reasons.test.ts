@@ -100,6 +100,32 @@ describe("mapServerRankingReasons", () => {
     ]);
   });
 
+  it("keeps a single saver, sat, or supporter as a real rank", () => {
+    expect(
+      mapServerRankingReasons({
+        rank: 1,
+        score: 1,
+        reasons: [
+          { code: "saved_by", evidence: [{ metric: "bookmark_count", value: 1, unit: "people" }] },
+          { code: "zap_volume", evidence: [{ metric: "zap_sats", value: 1, unit: "sats" }] },
+          {
+            code: "supporter_sats",
+            evidence: [{ metric: "capped_sats", value: 1, unit: "sats" }],
+          },
+          {
+            code: "audience_size",
+            evidence: [{ metric: "follower_count", value: 1, unit: "followers" }],
+          },
+        ],
+      })
+    ).toEqual([
+      { text: "saved by", support: "1 person", code: "saved_by" },
+      { text: "sats received in this window", support: "1 sat", code: "zap_volume" },
+      { text: "capped sats", support: "1 sat", code: "supporter_sats" },
+      { text: "audience size", support: "1 follower", code: "audience_size" },
+    ]);
+  });
+
   it("humanises unknown codes instead of discarding the server's rationale", () => {
     expect(
       mapServerRankingReasons({ rank: 1, score: 1, reasons: [{ code: "zap_velocity" }] })

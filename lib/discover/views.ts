@@ -10,7 +10,17 @@ export const DISCOVER_VIEWS = [
 
 export type DiscoverView = (typeof DISCOVER_VIEWS)[number]["key"];
 export type DiscoverMode =
-  "default" | "conversations" | "rising" | "pictures" | "videos" | "shorts" | "live";
+  | "default"
+  | "conversations"
+  | "rising"
+  | "pictures"
+  | "videos"
+  | "shorts"
+  | "live"
+  | "zapped"
+  | "bookmarked"
+  | "followed"
+  | "supported";
 
 export type DiscoverContext = {
   view: DiscoverView;
@@ -24,14 +34,35 @@ export type DiscoverModeLink = {
   /**
    * When false, the mode link stays on the present and does not carry
    * 24h/7d/30d or a language. Live is that case.
+   * `carryWindow` and `carryLanguage` override it when a mode keeps only one.
    */
   windowed?: boolean;
+  /** Carry the current stats window. Defaults to `windowed !== false`. */
+  carryWindow?: boolean;
+  /** Carry the current language. Defaults to `windowed !== false`. */
+  carryLanguage?: boolean;
 };
+
+/** Which of the current window and language a mode link should copy. */
+export function modeLinkCarries(link: DiscoverModeLink): { window: boolean; language: boolean } {
+  const bundled = link.windowed !== false;
+  return {
+    window: link.carryWindow ?? bundled,
+    language: link.carryLanguage ?? bundled,
+  };
+}
 
 export const DISCOVER_MODE_LINKS: Partial<Record<DiscoverView, DiscoverModeLink[]>> = {
   notes: [
     { mode: "default", label: "Notes", href: "/trending/notes" },
+    { mode: "zapped", label: "Most zapped", href: "/discovery/notes/zapped" },
     { mode: "conversations", label: "Conversations", href: "/discovery/conversations/hot" },
+    {
+      mode: "bookmarked",
+      label: "Most bookmarked",
+      href: "/discovery/notes/bookmarked",
+      carryWindow: false,
+    },
   ],
   media: [
     { mode: "pictures", label: "Pictures", href: "/trending/pictures" },
@@ -42,6 +73,18 @@ export const DISCOVER_MODE_LINKS: Partial<Record<DiscoverView, DiscoverModeLink[
   people: [
     { mode: "default", label: "Trending", href: "/trending/profiles" },
     { mode: "rising", label: "Up and coming", href: "/discovery/profiles/rising" },
+    {
+      mode: "followed",
+      label: "Most followed",
+      href: "/discovery/profiles/followed",
+      windowed: false,
+    },
+    {
+      mode: "supported",
+      label: "Most supported",
+      href: "/discovery/profiles/supported",
+      carryLanguage: false,
+    },
   ],
 };
 

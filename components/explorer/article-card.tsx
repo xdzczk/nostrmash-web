@@ -10,6 +10,7 @@ import {
 import { PostEngagement } from "@/components/explorer/post-engagement";
 import { TopZap } from "@/components/explorer/top-zap";
 import { getArticlePresentation } from "@/components/explorer/article-meta";
+import { mapNoteWhyNow, WhyNow } from "@/components/explorer/why-now";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { BlossomNextImage } from "@/components/ui/blossom-image";
 import { Timestamp } from "@/components/explorer/timestamp";
@@ -166,6 +167,9 @@ export function ArticleCard({
             />
           ) : null}
         </div>
+        {discoverySignals ? (
+          <WhyNow reasons={mapNoteWhyNow(article)} showLabel={false} className="mt-2.5 sm:mt-3" />
+        ) : null}
         <PostEngagement stats={metrics} className="mt-2.5 sm:mt-3" />
         <TopZap source={article} />
         {showUtilityLinks && resolvedArticleId ? (

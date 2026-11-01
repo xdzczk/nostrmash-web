@@ -100,6 +100,12 @@ export interface Profile {
   recent_active_days?: number;
   recent_activity_at?: number;
   follower_count?: number;
+  /** Sats received in the window after each sender is capped. The supported-profile rank. */
+  capped_sats?: number;
+  /** Uncapped sats received in the window. Not the supported-profile rank. */
+  sats_received?: number;
+  /** Distinct senders behind `capped_sats`. */
+  supporter_count?: number;
   ranking?: DiscoveryItemRanking;
   /** Related-profile signals (only present on `/related` results). */
   reasons?: string[];
@@ -138,6 +144,8 @@ export interface EventRecord {
   created_at?: number;
   content?: string;
   tags?: string[][];
+  /** Distinct people who currently have this note on a public bookmark list. */
+  bookmark_count?: number;
   ranking?: DiscoveryItemRanking;
   preview?: {
     mode?: string;
@@ -412,6 +420,12 @@ export interface HotConversationsResponse extends NativeApiSemantics {
 export interface RisingProfilesResponse extends NativeApiSemantics {
   profiles?: Profile[];
   [key: string]: unknown;
+}
+
+export interface SupportedProfilesResponse extends RisingProfilesResponse {
+  /** Cap applied to each sender before sats count toward the rank. */
+  sender_cap_sats?: number;
+  surface?: string;
 }
 
 export interface HashtagDetailResponse extends NativeApiSemantics {

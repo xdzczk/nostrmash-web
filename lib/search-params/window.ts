@@ -36,6 +36,21 @@ export function readStatsWindow(params: RouteSearchParams): StatsWindow {
   return parseStatsWindow(readSearchParam(params, "window"));
 }
 
+/**
+ * Window to request when the URL did not name 24h, 7d, or 30d.
+ * An explicit value wins. Otherwise use `fallback` when the selector still
+ * offers it (a rejected 30d drops out of `available`).
+ */
+export function rankingWindowChoice(
+  requested: string | undefined,
+  fallback: StatsWindow,
+  available: readonly StatsWindow[] = STATS_WINDOWS
+): StatsWindow {
+  if (isStatsWindow(requested)) return requested;
+  if ((available as readonly string[]).includes(fallback)) return fallback;
+  return available[0] ?? DEFAULT_STATS_WINDOW;
+}
+
 /** Relay pages keep today's 24h/7d parsing. `window=30d` stays on the default. */
 export function readRelayStatsWindow(params: RouteSearchParams): RelayStatsWindow {
   const value = readSearchParam(params, "window");

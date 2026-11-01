@@ -18,9 +18,20 @@ import {
   formatDiscoveryWindowEyebrow,
   parseStatsWindow,
   preferredMetricKeysForWindow,
+  rankingWindowChoice,
   relayStatsWindow,
   selectableStatsWindows,
 } from "./window";
+
+describe("rankingWindowChoice", () => {
+  it("keeps an explicit window and otherwise uses the page default", () => {
+    expect(rankingWindowChoice("24h", "7d")).toBe("24h");
+    expect(rankingWindowChoice("30d", "7d")).toBe("30d");
+    expect(rankingWindowChoice(undefined, "7d")).toBe("7d");
+    expect(rankingWindowChoice("all", "30d")).toBe("30d");
+    expect(rankingWindowChoice(undefined, "30d", ["24h", "7d"])).toBe("24h");
+  });
+});
 
 describe("parseStatsWindow", () => {
   it("defaults to 24h and accepts 7d and 30d", () => {

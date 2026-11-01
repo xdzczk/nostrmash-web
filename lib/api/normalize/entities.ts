@@ -67,6 +67,7 @@ export function normalizeEventRecord(value: unknown): EventRecord | null {
       asNumber(record.quote_count) ?? asNumber(record.quotes) ?? asNumber(counts?.quote_count),
     zap_count: asNumber(record.zap_count) ?? asNumber(record.zaps) ?? asNumber(counts?.zap_count),
     zap_msats: asNumber(record.zap_msats) ?? asNumber(counts?.zap_msats),
+    bookmark_count: asNumber(record.bookmark_count),
     ranking: normalizeDiscoveryRanking(record.ranking),
   } satisfies EventRecord;
 
@@ -280,6 +281,12 @@ export function normalizeProfile(value: unknown): Profile | null {
     bot: asBoolean(asProfileRecord.bot),
     fields: normalizeProfileFields(asProfileRecord.fields),
     ranking: normalizeDiscoveryRanking(asProfileRecord.ranking),
+    score: asNumber(asProfileRecord.score),
+    follower_count: asNumber(asProfileRecord.follower_count),
+    capped_sats: asNumber(asProfileRecord.capped_sats),
+    sats_received: asNumber(asProfileRecord.sats_received),
+    supporter_count: asNumber(asProfileRecord.supporter_count),
+    recent_zap_volume_msats: asNumber(asProfileRecord.recent_zap_volume_msats),
   };
 
   if (!normalized.pubkey) return null;

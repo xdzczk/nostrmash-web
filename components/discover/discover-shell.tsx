@@ -10,10 +10,15 @@ import { WindowSelector } from "@/components/explorer/window-selector";
 import { LiveRefresh } from "@/components/freshness/live-refresh";
 import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
 import { tabLinkPrefetch } from "@/components/ui/tab-styles";
-import { DISCOVER_MODE_LINKS, type DiscoverMode, type DiscoverView } from "@/lib/discover/views";
+import {
+  DISCOVER_MODE_LINKS,
+  modeLinkCarries,
+  type DiscoverMode,
+  type DiscoverView,
+} from "@/lib/discover/views";
 import { formatDiscoverEyebrow } from "@/lib/i18n/language-names";
 import { buildDiscoverHref } from "@/lib/search-params/language";
-import { STATS_WINDOWS, type StatsWindow } from "@/lib/search-params/window";
+import { DEFAULT_STATS_WINDOW, STATS_WINDOWS, type StatsWindow } from "@/lib/search-params/window";
 import type { TopLanguages } from "@/lib/types/api";
 
 export function FreshnessBadge({ label }: { label: string }) {
@@ -41,7 +46,12 @@ export function DiscoverShell({
   freshnessLabel,
   freshness,
   rankingControls = true,
+  showWindowControl,
+  showLanguageControl,
+  defaultWindow = DEFAULT_STATS_WINDOW,
+  linkedWindow,
   rememberWindow = true,
+  subtitleFromSm = true,
   staleMessage,
   errorMessage,
   hasContent = true,
@@ -68,10 +78,23 @@ export function DiscoverShell({
    * Suspense) so the hero can render before the data it describes resolves.
    */
   freshness?: ReactNode;
-  /** Window and language selectors. Live activities are not a ranked window. */
+  /** Window and language selectors together. Live passes false to hide both. */
   rankingControls?: boolean;
+  /** Overrides `rankingControls` for the window selector alone. */
+  showWindowControl?: boolean;
+  /** Overrides `rankingControls` for the language selector alone. */
+  showLanguageControl?: boolean;
+  /** Range the selector omits from the URL. Most lists use 24h; zapped uses 7d and supported uses 30d. */
+  defaultWindow?: StatsWindow;
+  /**
+   * Window copied onto category and mode links that keep one.
+   * `null` copies nothing. Omit to copy `window`.
+   */
+  linkedWindow?: StatsWindow | null;
   /** Skip writing the 24h/7d cookie. Live must not replace the range the reader was using. */
   rememberWindow?: boolean;
+  /** Phones hide the subtitle on the shared Discover lists. Rankings that explain a chip keep it. */
+  subtitleFromSm?: boolean;
   staleMessage?: string | null;
   errorMessage?: string | null;
   hasContent?: boolean;
@@ -81,7 +104,11 @@ export function DiscoverShell({
   const modeLinks = DISCOVER_MODE_LINKS[view] ?? [];
   const query = searchParams.toString();
   const retryHref = query.length > 0 ? `${path}?${query}` : path;
-  const showRankingBadges = rankingControls || Boolean(freshness) || Boolean(freshnessLabel);
+  const showWindow = showWindowControl ?? rankingControls;
+  const showLanguage = showLanguageControl ?? rankingControls;
+  const carriedWindow = linkedWindow === null ? undefined : (linkedWindow ?? window);
+  const showRankingBadges =
+    showWindow || showLanguage || Boolean(freshness) || Boolean(freshnessLabel);
 
   return (
     <div className="min-w-0 space-y-6 sm:space-y-7">
@@ -92,28 +119,33 @@ export function DiscoverShell({
         eyebrow={formatDiscoverEyebrow(eyebrow, language)}
         title={title}
         subtitle={subtitle}
-        subtitleFromSm
+        subtitleFromSm={subtitleFromSm}
         badges={
           showRankingBadges ? (
             <div className="nm-meta flex flex-wrap items-center gap-x-3 gap-y-2">
-              {rankingControls ? (
+              {showWindow || showLanguage ? (
                 <>
-                  <WindowSelector
-                    path={path}
-                    searchParams={searchParams}
-                    activeWindow={window}
-                    windows={windows}
-                    persist={rememberWindow}
-                  />
-                  {languageControl ?? (
-                    <LanguageSelector
+                  {showWindow ? (
+                    <WindowSelector
                       path={path}
-                      query={searchParams.toString()}
-                      activeLanguage={language}
-                      options={topLanguages?.[window] ?? []}
-                      prefetchLanguages
+                      searchParams={searchParams}
+                      activeWindow={window}
+                      windows={windows}
+                      defaultWindow={defaultWindow}
+                      persist={showWindow}
                     />
-                  )}
+                  ) : null}
+                  {showLanguage
+                    ? (languageControl ?? (
+                        <LanguageSelector
+                          path={path}
+                          query={searchParams.toString()}
+                          activeLanguage={language}
+                          options={topLanguages?.[window] ?? []}
+                          prefetchLanguages
+                        />
+                      ))
+                    : null}
                 </>
               ) : null}
               {freshness ?? (freshnessLabel ? <FreshnessBadge label={freshnessLabel} /> : null)}
@@ -124,27 +156,30 @@ export function DiscoverShell({
       />
 
       <div className="space-y-2.5">
-        <DiscoverNav active={view} window={window} lang={language} />
+        <DiscoverNav active={view} window={carriedWindow} lang={language} />
         {modeLinks.length > 1 ? (
           <nav aria-label={`${view} modes`} className="flex flex-wrap items-center gap-4">
-            {modeLinks.map((item) => (
-              <Link
-                key={item.mode}
-                href={buildDiscoverHref(item.href, {
-                  window: item.windowed === false ? undefined : window,
-                  lang: item.windowed === false ? undefined : language,
-                })}
-                prefetch={tabLinkPrefetch(true, item.mode === mode)}
-                aria-current={item.mode === mode ? "page" : undefined}
-                className={`nm-meta inline-flex min-h-6 items-center py-0.5 text-[13px] font-medium transition ${
-                  item.mode === mode
-                    ? "text-ink underline decoration-[var(--accent-soft)] decoration-2 underline-offset-4"
-                    : "text-ink-muted hover:text-ink"
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
+            {modeLinks.map((item) => {
+              const carries = modeLinkCarries(item);
+              return (
+                <Link
+                  key={item.mode}
+                  href={buildDiscoverHref(item.href, {
+                    window: carries.window ? carriedWindow : undefined,
+                    lang: carries.language ? language : undefined,
+                  })}
+                  prefetch={tabLinkPrefetch(true, item.mode === mode)}
+                  aria-current={item.mode === mode ? "page" : undefined}
+                  className={`nm-meta inline-flex min-h-6 items-center py-0.5 text-[13px] font-medium transition ${
+                    item.mode === mode
+                      ? "text-ink underline decoration-[var(--accent-soft)] decoration-2 underline-offset-4"
+                      : "text-ink-muted hover:text-ink"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
         ) : null}
       </div>

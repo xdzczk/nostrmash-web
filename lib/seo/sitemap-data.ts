@@ -30,7 +30,11 @@ const STATIC_PATHS = [
   "/relays/popular",
   "/methodology",
   "/discovery/conversations/hot",
+  "/discovery/notes/zapped",
+  "/discovery/notes/bookmarked",
   "/discovery/profiles/rising",
+  "/discovery/profiles/followed",
+  "/discovery/profiles/supported",
   "/live",
 ];
 

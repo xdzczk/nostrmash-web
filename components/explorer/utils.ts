@@ -57,6 +57,8 @@ const LABEL_ALIASES: Record<string, string> = {
   recent_reply_count: "Replies",
   recent_active_days: "Active days",
   recent_activity_at: "Recent activity",
+  capped_sats: "Capped sats",
+  supporter_count: "Supporters",
   likes: "Likes",
   replies: "Replies",
   reply_count: "Replies",

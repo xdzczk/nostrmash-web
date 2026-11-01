@@ -130,6 +130,27 @@ export async function hydrateProfiles(
   });
 }
 
+const RANKING_METRIC_KEYS = [
+  "score",
+  "follower_count",
+  "capped_sats",
+  "sats_received",
+  "supporter_count",
+  "recent_zap_volume_msats",
+] as const satisfies readonly (keyof Profile)[];
+
+/**
+ * Identity hydration must not replace the numbers the ranking sorted by.
+ * A profile-service row can carry a different follower count or zap total.
+ */
+export function restoreRankingMetrics(ranked: Profile, hydrated: Profile): Profile {
+  const next: Profile = { ...hydrated, ranking: ranked.ranking ?? hydrated.ranking };
+  for (const key of RANKING_METRIC_KEYS) {
+    if (ranked[key] !== undefined) next[key] = ranked[key];
+  }
+  return next;
+}
+
 /**
  * Fill in a display name and avatar without dropping the discovery ranking.
  * A profile-service record has no `ranking`, and spreading it over the
