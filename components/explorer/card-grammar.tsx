@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { Pill, type PillTone } from "@/components/ui/pill";
 import { formatMetricLabel, formatValue, truncateMiddle } from "@/components/explorer/utils";

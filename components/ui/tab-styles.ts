@@ -29,8 +29,7 @@ export type RenderTabLink = (
 
 /**
  * Full prefetch for inactive tabs. The active tab is already on screen.
- * `undefined` keeps Next's default, which for a dynamic route stops at
- * `loading.tsx` and still renders on the server when the tab is opened.
+ * `undefined` leaves the shared link default, which does not prefetch.
  */
 export function tabLinkPrefetch(
   enabled: boolean | undefined,

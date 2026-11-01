@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { EmptyState } from "@/components/explorer/empty-state";
 import { buttonClassName } from "@/components/ui/button";

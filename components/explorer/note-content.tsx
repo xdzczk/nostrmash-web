@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { PostEngagement } from "@/components/explorer/post-engagement";
 import { TopZap } from "@/components/explorer/top-zap";

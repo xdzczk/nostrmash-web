@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { ZapIcon } from "@/components/explorer/post-engagement";

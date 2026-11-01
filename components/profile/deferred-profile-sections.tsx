@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { LoadMoreList } from "@/components/data/load-more-list";
 import { ProfileRelatedRail } from "@/components/profile/profile-related-rail";

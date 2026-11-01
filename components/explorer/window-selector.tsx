@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { serializeDiscoveryWindowPreferenceCookie } from "@/lib/discover/discovery-window-session";
 import {

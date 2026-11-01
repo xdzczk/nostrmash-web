@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { unstable_rethrow } from "next/navigation";

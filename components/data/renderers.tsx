@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { ArticleCard } from "@/components/explorer/article-card";
 import { EventKindSwitch } from "@/components/explorer/event-kind-switch";

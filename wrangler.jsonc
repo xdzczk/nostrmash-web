@@ -4,8 +4,13 @@
     "command": "pnpm run cf:build",
     "cwd": ".",
   },
-  "main": ".open-next/worker.js",
+  "main": "cloudflare/worker.ts",
   "name": "nostrmash-web",
+  // Cache hits for `/`, `/relays`, and `/methodology` are served before this
+  // Worker runs. Other responses stay private and are not stored.
+  "cache": {
+    "enabled": true,
+  },
   "compatibility_date": "2026-04-09",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "vars": {

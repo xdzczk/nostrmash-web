@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { cardTierClassName } from "@/components/explorer/card-grammar";
 import type { DomainSupportingSignal } from "@/components/explorer/domain-supporting-signal";

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import type { LoadMoreChunk } from "@/components/data/load-more-list";
 import { OnDemandSection } from "@/components/notes/on-demand-section";

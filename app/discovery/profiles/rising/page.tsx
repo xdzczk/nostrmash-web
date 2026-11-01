@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 import type { Metadata } from "next";
 
 import { ProfilesList } from "@/components/data/renderers";

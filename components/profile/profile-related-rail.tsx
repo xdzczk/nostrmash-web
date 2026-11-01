@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { profileHref, profileLabel, profileSecondaryLabel } from "@/components/explorer/utils";

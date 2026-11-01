@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { EventKindSwitch } from "@/components/explorer/event-kind-switch";
 import { isHiddenNoteKind } from "@/lib/api/normalize";

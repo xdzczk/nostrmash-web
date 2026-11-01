@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { discoverViewHref, discoverViewLabel, type DiscoverView } from "@/lib/discover/views";
 

@@ -56,7 +56,7 @@ describe("Discover category and mode prefetch", () => {
     expect(modes.getByRole("link", { name: "Live" })).toHaveAttribute("data-prefetch", "full");
   });
 
-  it("leaves other tab bars on the default prefetch", () => {
+  it("leaves other tab bars unprefetched unless they opt in", () => {
     render(
       <TabBar
         ariaLabel="Result kinds"
@@ -67,7 +67,7 @@ describe("Discover category and mode prefetch", () => {
       />
     );
 
-    expect(screen.getByRole("link", { name: "Notes" })).not.toHaveAttribute("data-prefetch");
-    expect(screen.getByRole("link", { name: "All" })).not.toHaveAttribute("data-prefetch");
+    expect(screen.getByRole("link", { name: "Notes" })).toHaveAttribute("data-prefetch", "off");
+    expect(screen.getByRole("link", { name: "All" })).toHaveAttribute("data-prefetch", "off");
   });
 });

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { ArticleMarkdown } from "@/components/explorer/article-markdown";
 import { getArticlePresentation } from "@/components/explorer/article-meta";

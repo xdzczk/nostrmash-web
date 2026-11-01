@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { cardTierClassName } from "@/components/explorer/card-grammar";
 import { WhyNow, type WhyNowReason } from "@/components/explorer/why-now";

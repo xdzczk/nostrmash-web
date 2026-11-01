@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { NoteCard } from "@/components/explorer/note-card";
 import type { NoteContentResolution } from "@/components/explorer/note-content";

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { CopyValueButton } from "@/components/actions/copy-value-button";
 import { relaySearchHref } from "@/components/relays/relay-link";
