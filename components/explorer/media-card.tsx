@@ -11,6 +11,7 @@ import { PostEngagement } from "@/components/explorer/post-engagement";
 import { TopZap } from "@/components/explorer/top-zap";
 import { EventByline } from "@/components/explorer/event-byline";
 import { NoteMediaReveal } from "@/components/explorer/note-media-reveal";
+import { PictureCarousel } from "@/components/explorer/picture-carousel";
 import { NoteContent, type NoteContentResolution } from "@/components/explorer/note-content";
 import {
   noteAuthorIdentifier,
@@ -57,6 +58,7 @@ export function MediaCard({
   const frameVariant = presentation.variant === "short" ? "portrait" : isDetail ? "detail" : "full";
   const mediaWrap =
     presentation.variant === "short" ? "mx-auto w-full max-w-[22rem]" : "w-full max-w-3xl";
+  const showPictureCarousel = presentation.variant === "picture" && presentation.images.length > 1;
 
   return (
     <article
@@ -105,7 +107,18 @@ export function MediaCard({
         </div>
       ) : null}
 
-      {presentation.images.length > 0 &&
+      {showPictureCarousel ? (
+        <PictureCarousel
+          images={presentation.images}
+          variant={isDetail ? "detail" : "full"}
+          priority={priority}
+          fallbackAlt={presentation.title ?? kindLabel}
+          className="mt-3"
+        />
+      ) : null}
+
+      {!showPictureCarousel &&
+      presentation.images.length > 0 &&
       (presentation.variant === "picture" || !presentation.videoUrl) ? (
         <div
           className={`mt-3 grid gap-3 ${

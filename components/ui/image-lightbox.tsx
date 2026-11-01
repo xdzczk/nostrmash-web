@@ -222,12 +222,15 @@ export function EnlargeableImage({
   children,
   className = "",
   label,
+  inert = false,
 }: {
   src: string;
   alt: string;
   children: ReactNode;
   className?: string;
   label?: string;
+  /** Off-screen carousel frames stay out of the tab order until they are current. */
+  inert?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -235,6 +238,7 @@ export function EnlargeableImage({
     <>
       <button
         type="button"
+        inert={inert || undefined}
         onClick={() => setOpen(true)}
         aria-label={label ?? (alt.trim() ? `Enlarge ${alt}` : "Enlarge image")}
         className={`border-0 bg-transparent p-0 ${className}`.trim()}

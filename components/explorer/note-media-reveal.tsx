@@ -100,6 +100,7 @@ export function NoteMediaReveal({
   hiddenCount = 0,
   alt = "Image attached to note",
   poster,
+  inert = false,
 }: {
   url: string;
   kind: MediaKind;
@@ -110,6 +111,8 @@ export function NoteMediaReveal({
   hiddenCount?: number;
   alt?: string;
   poster?: string;
+  /** Off-screen carousel frames stay out of the tab order until they are current. */
+  inert?: boolean;
 }) {
   // Fixed-ratio variants reserve their box before the image loads (no CLS).
   // Compact is a square thumbnail at every width so a screenshot stays a thumb.
@@ -163,6 +166,7 @@ export function NoteMediaReveal({
         <EnlargeableImage
           src={url}
           alt={alt}
+          inert={inert}
           className={`block max-w-full cursor-zoom-in ${fill ? "h-full w-full" : "w-fit"}`}
         >
           <BlossomImage
