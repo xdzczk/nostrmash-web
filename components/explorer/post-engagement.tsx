@@ -98,7 +98,10 @@ function EngagementStatView({ stat }: { stat: EngagementStat }) {
       <span aria-hidden className="text-ink-faint inline-flex">
         <Icon />
       </span>
-      <span aria-hidden className="text-ink-soft font-medium tabular-nums">
+      <span
+        aria-hidden
+        className={`${stat.value === 0 ? "text-ink-faint" : "text-ink-soft"} font-medium tabular-nums`}
+      >
         {stat.value.toLocaleString()}
       </span>
       {stat.detail ? (

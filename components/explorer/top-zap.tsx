@@ -1,7 +1,6 @@
 import Link from "@/components/app-link";
 
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
-import { ZapIcon } from "@/components/explorer/post-engagement";
 import {
   profileHref,
   profileLabel,
@@ -15,9 +14,16 @@ const TEXT_SIZE = {
   md: "text-sm",
 } as const;
 
+/** A smaller zap stays in the stat row. The citation starts at 21 sats. */
+const CITATION_MIN_SATS = 21;
+/** A message at this size leads, and the zapper becomes the caption. */
+const PULL_QUOTE_MIN_SATS = 10_000;
+
 /**
- * The largest zap on a post: who sent it, how much, and their message.
- * That line is the zapvertisement. Notes with no zap omit it.
+ * The largest zap on a post, when it is large enough to cite.
+ * From 21 sats it is one line: name, amount, message.
+ * From 10,000 sats a message leads as a pull quote.
+ * Smaller zaps stay in the stat row.
  */
 export function TopZap({
   source,
@@ -29,7 +35,7 @@ export function TopZap({
   size?: keyof typeof TEXT_SIZE;
 }) {
   const zap = readTopZap(source);
-  if (!zap) return null;
+  if (!zap || zap.sats < CITATION_MIN_SATS) return null;
 
   const profile: Profile = {
     pubkey: zap.senderPubkey,
@@ -46,32 +52,55 @@ export function TopZap({
   const label = comment
     ? `Top zap from ${name}, ${amount}: ${comment}`
     : `Top zap from ${name}, ${amount}`;
-  const avatar = size === "md" ? 18 : 16;
+  const detail = size === "md";
+  const avatar = detail ? 28 : 20;
+  const pullQuote = Boolean(comment) && zap.sats >= PULL_QUOTE_MIN_SATS;
+  const portrait = (
+    <ProfileAvatar
+      profile={profile}
+      size={avatar}
+      alt=""
+      className={`${detail ? "size-7" : "size-5"} shrink-0 rounded-full object-cover`}
+    />
+  );
 
   return (
     <Link
       href={href}
       aria-label={label}
       title={label}
-      data-top-zap
-      className={`hover:text-ink mt-1.5 inline-flex max-w-full min-w-0 items-start gap-1.5 ${TEXT_SIZE[size]} ${className}`.trim()}
+      data-top-zap={pullQuote ? "quote" : "line"}
+      className={`${detail ? "mt-4" : "mt-1.5"} hover:text-ink flex w-full min-w-0 flex-col ${TEXT_SIZE[size]} ${className}`.trim()}
     >
-      <span aria-hidden className="inline-flex min-w-0 flex-col gap-0.5">
-        <span className="inline-flex min-w-0 items-center gap-1.5">
-          <span className="text-ink-faint inline-flex shrink-0">
-            <ZapIcon />
+      <span aria-hidden className="flex w-full min-w-0 flex-col gap-1.5">
+        {pullQuote ? (
+          <>
+            <span className="text-ink line-clamp-2 text-[15px] leading-snug">{comment}</span>
+            <span className="flex min-w-0 items-center gap-1.5">
+              {portrait}
+              <span className="text-ink min-w-0 truncate font-medium">{name}</span>
+              <span className="text-ink-faint shrink-0">·</span>
+              <span className="text-ink shrink-0 font-medium tabular-nums">{amount}</span>
+            </span>
+          </>
+        ) : (
+          <span className="flex min-w-0 items-center gap-1.5">
+            {portrait}
+            <span
+              className={`text-ink min-w-0 truncate font-medium ${comment ? "max-w-[50%] shrink" : ""}`}
+            >
+              {name}
+            </span>
+            <span className="text-ink-faint shrink-0">·</span>
+            <span className="text-ink shrink-0 font-medium tabular-nums">{amount}</span>
+            {comment ? (
+              <>
+                <span className="text-ink-faint shrink-0">—</span>
+                <span className="text-ink-dim min-w-0 flex-1 truncate">{comment}</span>
+              </>
+            ) : null}
           </span>
-          <ProfileAvatar
-            profile={profile}
-            size={avatar}
-            alt=""
-            className={`${avatar === 18 ? "size-[18px]" : "size-4"} shrink-0 rounded-full object-cover`}
-          />
-          <span className="text-ink truncate font-medium">{name}</span>
-          <span className="text-ink-faint shrink-0">·</span>
-          <span className="text-ink-soft shrink-0 font-medium tabular-nums">{amount}</span>
-        </span>
-        {comment ? <span className="text-ink-dim line-clamp-2">{comment}</span> : null}
+        )}
       </span>
     </Link>
   );
