@@ -1,5 +1,6 @@
 import Link from "@/components/app-link";
 
+import { NoteMedia } from "@/components/explorer/note-media";
 import { PostEngagement } from "@/components/explorer/post-engagement";
 import { TopZap } from "@/components/explorer/top-zap";
 import {
@@ -13,7 +14,8 @@ import {
   stripEmojiShortcodes,
   truncateIdentifier,
 } from "@/components/explorer/utils";
-import { isNoteMediaUrl, stripNoteMediaUrls } from "@/lib/notes/media";
+import { extractNoteMediaAttachments, isNoteMediaUrl, stripNoteMediaUrls } from "@/lib/notes/media";
+import { extractImetaAttachments } from "@/lib/notes/media-event";
 import { hexToNpub } from "@/lib/nostr/nip19";
 import { tokenizeNoteContent, type NoteToken } from "@/lib/notes/tokenize";
 import { HighlightedText } from "@/components/search/highlighted-text";
@@ -59,10 +61,17 @@ function QuoteCard({
     (typeof author?.display_name === "string" && author.display_name) ||
     (typeof author?.name === "string" && author.name) ||
     (typeof event.pubkey === "string" ? event.pubkey.slice(0, 12) : "Note");
+  const raw = typeof event.content === "string" ? event.content : "";
+  const tagged = extractImetaAttachments(event.tags);
   const cleaned =
-    typeof event.content === "string" && event.content.length > 0
-      ? stripNoteMediaUrls(event.content)
+    raw.length > 0
+      ? stripNoteMediaUrls(
+          raw,
+          raw,
+          tagged.map((item) => item.url)
+        )
       : "";
+  const hasMedia = extractNoteMediaAttachments(raw).length > 0 || tagged.length > 0;
 
   const header = <div className="text-ink-soft text-xs font-medium">{label}</div>;
 
@@ -82,11 +91,12 @@ function QuoteCard({
           showQuotes={false}
           resolution={resolution}
         />
-      ) : (
+      ) : hasMedia ? null : (
         <p className="text-ink-dim mt-1 line-clamp-3 text-sm break-words whitespace-pre-wrap">
           (no content)
         </p>
       )}
+      {hasMedia ? <NoteMedia content={raw} tags={event.tags} variant="thread" /> : null}
       <PostEngagement stats={postEngagementStats(event)} className="mt-2" />
       <TopZap source={event} />
     </div>

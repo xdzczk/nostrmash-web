@@ -1,5 +1,9 @@
 import { encodeNaddr } from "@/lib/nostr/nip19";
-import { classifyNoteMediaUrl } from "@/lib/notes/media";
+import {
+  classifyNoteMediaUrl,
+  type NoteMediaAttachment,
+  type NoteMediaKind,
+} from "@/lib/notes/media";
 import {
   eventTagRows,
   firstTagValue,
@@ -90,6 +94,42 @@ function parseImeta(parts: string[]): ImetaFields {
     }
   }
   return { urls, images, fallbacks, mime, alt };
+}
+
+function attachmentKind(url: string, mime: string | undefined): NoteMediaKind | null {
+  if (mime?.startsWith("image/")) return "image";
+  if (mime?.startsWith("video/")) return "video";
+  if (mime?.startsWith("audio/")) return "audio";
+  return classifyNoteMediaUrl(url);
+}
+
+/** NIP-92 imeta files. A poster image is not a second attachment when a video is present. */
+export function extractImetaAttachments(tags: unknown): NoteMediaAttachment[] {
+  const seen = new Set<string>();
+  const attachments: NoteMediaAttachment[] = [];
+  const add = (url: string, kind: NoteMediaKind, alt?: string) => {
+    if (seen.has(url)) return;
+    seen.add(url);
+    attachments.push(alt ? { url, kind, alt } : { url, kind });
+  };
+
+  for (const row of eventTagRows(tags)) {
+    if ((row[0] ?? "").toLowerCase() !== "imeta") continue;
+    const imeta = parseImeta(row);
+    const pool = imeta.urls.length > 0 ? imeta.urls : imeta.fallbacks;
+    const video = pool.find((url) => attachmentKind(url, imeta.mime) === "video");
+    if (video) {
+      add(video, "video", imeta.alt);
+      continue;
+    }
+    for (const url of imeta.images) add(url, "image", imeta.alt);
+    for (const url of pool) {
+      const kind = attachmentKind(url, imeta.mime);
+      if (kind === "image" || kind === "audio") add(url, kind, imeta.alt);
+    }
+  }
+
+  return attachments;
 }
 
 function looksLikeVideo(url: string, mime: string | undefined): boolean {

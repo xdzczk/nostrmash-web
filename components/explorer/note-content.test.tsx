@@ -227,4 +227,77 @@ describe("NoteContent", () => {
     expect(header).not.toHaveTextContent("Quoted body");
     expect(screen.getByText("Quoted body")).toBeInTheDocument();
   });
+
+  it("renders a quoted image and drops the media url from the quote text", () => {
+    const tokens = tokenizeNoteContent(`see ${NOTE}`);
+    const { container } = render(
+      <NoteContent
+        tokens={tokens}
+        resolution={{
+          eventsById: {
+            [EVENT_ID]: {
+              id: EVENT_ID,
+              pubkey: PUBKEY,
+              content: "Stash https://cdn.example/stash.jpg",
+              kind: 1,
+            },
+          },
+          profilesByPubkey: {
+            [PUBKEY]: { pubkey: PUBKEY, display_name: "Alice" },
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByText("Stash")).toBeInTheDocument();
+    expect(screen.queryByText(/stash\.jpg/)).not.toBeInTheDocument();
+    expect(screen.queryByText("(no content)")).not.toBeInTheDocument();
+    expect(container.querySelector('img[src="https://cdn.example/stash.jpg"]')).toBeTruthy();
+  });
+
+  it("renders an imeta image inside a quote when the url is not in the text", () => {
+    const tokens = tokenizeNoteContent(`see ${NOTE}`);
+    const { container } = render(
+      <NoteContent
+        tokens={tokens}
+        resolution={{
+          eventsById: {
+            [EVENT_ID]: {
+              id: EVENT_ID,
+              pubkey: PUBKEY,
+              content: "Stash",
+              kind: 1,
+              tags: [["imeta", "url https://cdn.example/blob", "m image/jpeg", "alt Stash photo"]],
+            },
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByText("Stash")).toBeInTheDocument();
+    const image = container.querySelector("img");
+    expect(image).toHaveAttribute("src", "https://cdn.example/blob");
+    expect(image).toHaveAttribute("alt", "Stash photo");
+  });
+
+  it("shows a quoted image without an empty-content placeholder", () => {
+    const tokens = tokenizeNoteContent(`see ${NOTE}`);
+    const { container } = render(
+      <NoteContent
+        tokens={tokens}
+        resolution={{
+          eventsById: {
+            [EVENT_ID]: {
+              id: EVENT_ID,
+              content: "https://cdn.example/only.jpg",
+              kind: 1,
+            },
+          },
+        }}
+      />
+    );
+
+    expect(screen.queryByText("(no content)")).not.toBeInTheDocument();
+    expect(container.querySelector('img[src="https://cdn.example/only.jpg"]')).toBeTruthy();
+  });
 });

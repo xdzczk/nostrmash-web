@@ -1,8 +1,31 @@
 import { describe, expect, it } from "vitest";
 
-import { getMediaPresentation } from "@/lib/notes/media-event";
+import { extractImetaAttachments, getMediaPresentation } from "@/lib/notes/media-event";
 
 const PUBKEY = "b".repeat(64);
+
+describe("extractImetaAttachments", () => {
+  it("reads an extensionless image from its mime type", () => {
+    expect(
+      extractImetaAttachments([
+        ["imeta", "url https://blossom.example/abc", "m image/jpeg", "alt Harbor"],
+      ])
+    ).toEqual([{ url: "https://blossom.example/abc", kind: "image", alt: "Harbor" }]);
+  });
+
+  it("keeps a video without also attaching its poster", () => {
+    expect(
+      extractImetaAttachments([
+        [
+          "imeta",
+          "url https://media.example.invalid/cliff.mp4",
+          "m video/mp4",
+          "image https://media.example.invalid/cliff.jpg",
+        ],
+      ])
+    ).toEqual([{ url: "https://media.example.invalid/cliff.mp4", kind: "video" }]);
+  });
+});
 
 describe("getMediaPresentation", () => {
   it("reads a picture caption and imeta image", () => {

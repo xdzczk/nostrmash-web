@@ -21,4 +21,19 @@ describe("NoteMedia feed variant", () => {
     expect(container.querySelector("img")).toHaveClass("max-h-[28rem]");
     expect(screen.getByLabelText("2 more attachments")).toHaveTextContent("+2");
   });
+
+  it("renders an imeta image that is not repeated in the text", () => {
+    const { container } = render(
+      <NoteMedia
+        content="Harbor at dusk"
+        tags={[["imeta", "url https://media.example/harbor.jpg", "m image/jpeg", "alt Harbor"]]}
+      />
+    );
+
+    expect(container.querySelector("img")).toHaveAttribute(
+      "src",
+      "https://media.example/harbor.jpg"
+    );
+    expect(container.querySelector("img")).toHaveAttribute("alt", "Harbor");
+  });
 });

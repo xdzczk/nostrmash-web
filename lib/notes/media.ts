@@ -5,6 +5,7 @@ export type NoteMediaKind = "image" | "video" | "audio";
 export interface NoteMediaAttachment {
   url: string;
   kind: NoteMediaKind;
+  alt?: string;
 }
 
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".svg"]);
@@ -74,16 +75,25 @@ function escapeRegExp(value: string): string {
  * Remove media file URLs (and compact `[host]` placeholders produced by API
  * previews) from note copy so they are never shown as text.
  */
-export function stripNoteMediaUrls(text: string, rawContent: string = text): string {
-  const mediaHosts = new Set(
-    extractNoteMediaAttachments(rawContent)
-      .map((attachment) => mediaHostFromUrl(attachment.url))
-      .filter((host): host is string => Boolean(host))
-  );
+export function stripNoteMediaUrls(
+  text: string,
+  rawContent: string = text,
+  extraUrls: readonly string[] = []
+): string {
+  const extras = new Set(extraUrls.filter((url) => url.length > 0));
+  const mediaHosts = new Set<string>();
+  for (const attachment of extractNoteMediaAttachments(rawContent)) {
+    const host = mediaHostFromUrl(attachment.url);
+    if (host) mediaHosts.add(host);
+  }
+  for (const url of extras) {
+    const host = mediaHostFromUrl(url);
+    if (host) mediaHosts.add(host);
+  }
 
   let result = text.replace(/https?:\/\/\S+/g, (match) => {
     const normalized = extractUrls(match)[0] ?? match.replace(/[),.;!?]+$/g, "");
-    return isNoteMediaUrl(normalized) ? "" : match;
+    return isNoteMediaUrl(normalized) || extras.has(normalized) ? "" : match;
   });
 
   for (const host of mediaHosts) {

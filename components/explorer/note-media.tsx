@@ -1,5 +1,19 @@
 import { NoteMediaReveal } from "@/components/explorer/note-media-reveal";
-import { extractNoteMediaAttachments } from "@/lib/notes/media";
+import { extractNoteMediaAttachments, type NoteMediaAttachment } from "@/lib/notes/media";
+import { extractImetaAttachments } from "@/lib/notes/media-event";
+
+function collectAttachments(content: string, tags?: unknown): NoteMediaAttachment[] {
+  const fromContent = extractNoteMediaAttachments(content);
+  if (tags === undefined) return fromContent;
+  const seen = new Set(fromContent.map((item) => item.url));
+  const merged = [...fromContent];
+  for (const extra of extractImetaAttachments(tags)) {
+    if (seen.has(extra.url)) continue;
+    seen.add(extra.url);
+    merged.push(extra);
+  }
+  return merged.slice(0, Math.max(4, fromContent.length));
+}
 
 /**
  * - `full`: every attachment at its own aspect ratio, capped so a tall image can still be enlarged.
@@ -14,18 +28,21 @@ export type NoteMediaVariant = "full" | "lead" | "compact" | "feed" | "detail" |
 
 export function NoteMedia({
   content,
+  tags,
   variant = "full",
   maxAttachments,
   priority = false,
 }: {
   content: string;
+  /** NIP-92 imeta rows, for a file that is not repeated in the text. */
+  tags?: unknown;
   variant?: NoteMediaVariant;
   /** Cap on rendered attachments; defaults to 1 (`compact`), 2 (`lead`), unlimited (`full`). */
   maxAttachments?: number;
   /** Eager-load the first image (LCP candidate). */
   priority?: boolean;
 }) {
-  const attachments = extractNoteMediaAttachments(content);
+  const attachments = collectAttachments(content, tags);
 
   if (attachments.length === 0) {
     return null;
@@ -64,6 +81,7 @@ export function NoteMedia({
           variant={variant}
           priority={priority && index === 0}
           hiddenCount={index === visible.length - 1 ? hidden : 0}
+          alt={attachment.alt}
         />
       ))}
     </div>
