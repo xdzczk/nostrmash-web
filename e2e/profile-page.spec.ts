@@ -33,11 +33,11 @@ test.describe("profile page", () => {
     const openMenu = page.getByTestId("entity-actions-menu");
     await openMenu.locator("summary").click();
     await expect(openMenu.getByRole("link", { name: "Open in client" })).toBeVisible();
-    await expect(openMenu.getByRole("link", { name: "njump" })).toBeVisible();
+    await expect(openMenu.getByRole("link", { name: "njump.me" })).toBeVisible();
     await expect(openMenu.getByRole("link", { name: "Damus" })).toBeVisible();
     await expect(openMenu.getByRole("link", { name: "Amethyst" })).toBeVisible();
     await expect(openMenu.getByRole("button", { name: "Copy npub" })).toBeVisible();
-    await expect(openMenu.getByRole("button", { name: "Copy nostr" })).toBeVisible();
+    await expect(openMenu.getByRole("button", { name: "Copy nostr: link" })).toBeVisible();
     await expect(openMenu.getByRole("button", { name: "Share" })).toBeVisible();
 
     // Context nav is compact: only the back link, no breadcrumb trail.

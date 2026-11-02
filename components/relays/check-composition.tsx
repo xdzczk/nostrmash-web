@@ -1,61 +1,67 @@
 export function CheckComposition({
-  fresh,
-  stale,
+  reading,
   failing,
-  unknown,
+  unknown = 0,
+  earlier,
   hosts,
 }: {
-  fresh: number;
-  stale: number;
+  reading: number;
   failing: number;
-  unknown: number;
+  unknown?: number;
+  earlier: number;
   hosts?: number;
 }) {
+  const current = reading + failing + unknown;
   const segments = [
-    { id: "fresh", label: "Checked in today", value: fresh, bar: "bg-success" },
-    { id: "stale", label: "Stale", value: stale, bar: "bg-warning" },
-    { id: "failing", label: "Failing", value: failing, bar: "bg-danger" },
+    { id: "reading", label: "Checked in today", value: reading, bar: "bg-success" },
+    { id: "failing", label: "Failing now", value: failing, bar: "bg-danger" },
     { id: "unknown", label: "No status", value: unknown, bar: "bg-edge-strong" },
   ];
-  const total = segments.reduce((sum, segment) => sum + segment.value, 0);
-  if (total <= 0) return null;
   const visible = segments.filter((segment) => segment.value > 0);
   const summary = visible
     .map((segment) => `${segment.value.toLocaleString()} ${segment.label.toLowerCase()}`)
     .join(", ");
+  const checks = reading + failing + unknown + earlier;
+  const captionParts: string[] = [];
+  if (earlier > 0) {
+    captionParts.push(
+      `${earlier.toLocaleString()} earlier ${earlier === 1 ? "check stays" : "checks stay"} on record.`
+    );
+  }
+  if (hosts && hosts !== checks && checks > 0) {
+    captionParts.push(`${checks.toLocaleString()} checks across ${hosts.toLocaleString()} hosts.`);
+  }
+  const caption = captionParts.join(" ");
+  const figures = segments.filter((segment) => segment.id === "reading" || segment.value > 0);
 
   return (
     <figure>
-      <div
-        className="bg-edge/80 flex h-2 overflow-hidden rounded-full"
-        role="img"
-        aria-label={`${total.toLocaleString()} ingest checks: ${summary}`}
-      >
-        {visible.map((segment) => (
-          <div
-            key={segment.id}
-            className={`${segment.bar} h-full`}
-            style={{ width: `${(segment.value / total) * 100}%` }}
-          />
-        ))}
-      </div>
-      <ul className="mt-4 grid gap-4 sm:grid-cols-3">
-        {segments
-          .filter((segment) => segment.id !== "unknown" || segment.value > 0)
-          .map((segment) => (
-            <li key={segment.id}>
-              <p className="text-ink text-2xl font-semibold tracking-[-0.03em] tabular-nums">
-                {segment.value.toLocaleString()}
-              </p>
-              <p className="text-ink-muted text-sm">{segment.label}</p>
-            </li>
+      {current > 0 ? (
+        <div
+          className="bg-edge/80 flex h-2 overflow-hidden rounded-full"
+          role="img"
+          aria-label={`${current.toLocaleString()} relays in the current read: ${summary}`}
+        >
+          {visible.map((segment) => (
+            <div
+              key={segment.id}
+              className={`${segment.bar} h-full`}
+              style={{ width: `${(segment.value / current) * 100}%` }}
+            />
           ))}
+        </div>
+      ) : null}
+      <ul className="mt-4 flex flex-wrap gap-x-10 gap-y-4">
+        {figures.map((segment) => (
+          <li key={segment.id}>
+            <p className="text-ink text-2xl font-semibold tracking-[-0.03em] tabular-nums">
+              {segment.value.toLocaleString()}
+            </p>
+            <p className="text-ink-muted text-sm">{segment.label}</p>
+          </li>
+        ))}
       </ul>
-      <figcaption className="text-ink-faint mt-3 text-xs">
-        {total.toLocaleString()} ingest checks
-        {hosts && hosts !== total ? ` across ${hosts.toLocaleString()} hosts` : ""}. A stale check
-        is healthy, and older than a day.
-      </figcaption>
+      {caption ? <figcaption className="text-ink-faint mt-3 text-xs">{caption}</figcaption> : null}
     </figure>
   );
 }

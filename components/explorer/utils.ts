@@ -24,8 +24,10 @@ const LABEL_ALIASES: Record<string, string> = {
   active_authors: "Note authors",
   active_authors_24h: "Note authors (24h)",
   active_authors_7d: "Note authors (7d)",
+  active_authors_30d: "Note authors (30d)",
   note_volume_24h: "Note volume (24h)",
   note_volume_7d: "Note volume (7d)",
+  note_volume_30d: "Note volume (30d)",
   active_24h: "Relays indexed (24h)",
   active_7d: "Relays indexed (7d)",
   relays_active_24h: "Relays indexed (24h)",
@@ -55,6 +57,8 @@ const LABEL_ALIASES: Record<string, string> = {
   recent_reply_count: "Replies",
   recent_active_days: "Active days",
   recent_activity_at: "Recent activity",
+  capped_sats: "Capped sats",
+  supporter_count: "Supporters",
   likes: "Likes",
   replies: "Replies",
   reply_count: "Replies",
@@ -91,6 +95,8 @@ export type EngagementStat = {
   label: EngagementStatKey;
   value: number;
   detail?: string;
+  /** Quote posts added into a repost total. Omitted when none were added. */
+  quoteCount?: number;
 };
 
 const ENGAGEMENT_ALIASES: Record<EngagementStatKey, readonly string[]> = {
@@ -101,6 +107,9 @@ const ENGAGEMENT_ALIASES: Record<EngagementStatKey, readonly string[]> = {
 };
 
 const ZAP_MSATS_ALIASES = ["zap_msats", "msats", "amount_msats"] as const;
+
+/** Quote posts stored apart from kind 6 / kind 16 reposts. */
+const QUOTE_COUNT_ALIASES = ["quote_count", "quotes", "quote_reposts"] as const;
 
 function readFiniteNonNegativeNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, value);
@@ -147,38 +156,158 @@ export function extractZapMsats(...sources: unknown[]): number {
   return 0;
 }
 
+function readFirstEngagement(sources: unknown[], keys: readonly string[]): number | null {
+  for (const source of sources) {
+    const value = readEngagementValue(source, keys);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
 /** Always returns replies/reposts/reactions/zaps, defaulting missing values to 0. */
 export function extractEngagementStats(...sources: unknown[]): EngagementStat[] {
   const zapMsats = extractZapMsats(...sources);
   const zapDetail = formatSatsFromMsats(zapMsats) ?? undefined;
   return ENGAGEMENT_STAT_KEYS.map((key) => {
-    let value: number | null = null;
-    for (const source of sources) {
-      value = readEngagementValue(source, ENGAGEMENT_ALIASES[key]);
-      if (value !== null) break;
-    }
     return {
       label: key,
-      value: value ?? 0,
+      value: readFirstEngagement(sources, ENGAGEMENT_ALIASES[key]) ?? 0,
       ...(key === "zap_count" && zapDetail ? { detail: zapDetail } : {}),
     };
   });
 }
 
+/**
+ * Quote posts that are counted separately from reposts.
+ * This is not the note-page linkage split, where `quote_count` is the subset of
+ * reposts that carry text and is already inside the full `repost_count`.
+ */
+export function readQuoteCount(...sources: unknown[]): number {
+  return readFirstEngagement(sources, QUOTE_COUNT_ALIASES) ?? 0;
+}
+
+/**
+ * The four post stats. Quote posts are added to the repost total when
+ * `quote_count` is present and is not already part of `repost_count`.
+ */
+export function postEngagementStats(...sources: unknown[]): EngagementStat[] {
+  const stats = extractEngagementStats(...sources);
+  const quotes = readQuoteCount(...sources);
+  if (quotes <= 0) return stats;
+  return stats.map((stat) =>
+    stat.label === "repost_count"
+      ? { ...stat, value: stat.value + quotes, quoteCount: quotes }
+      : stat
+  );
+}
+
 export function applyEngagementStats<T extends Record<string, unknown>>(
   note: T,
   ...extraSources: unknown[]
-): T & Record<EngagementStatKey, number> & { zap_msats: number } {
+): T & Record<EngagementStatKey, number> & { zap_msats: number; quote_count?: number } {
   const stats = extractEngagementStats(note, ...extraSources);
   const values = Object.fromEntries(stats.map((stat) => [stat.label, stat.value])) as Record<
     EngagementStatKey,
     number
   >;
-  return { ...note, ...values, zap_msats: extractZapMsats(note, ...extraSources) };
+  const quoteCount = readQuoteCount(note, ...extraSources);
+  return {
+    ...note,
+    ...values,
+    zap_msats: extractZapMsats(note, ...extraSources),
+    ...(quoteCount > 0 ? { quote_count: quoteCount } : {}),
+  };
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Largest zap on a note, shown as a zapvertisement. Absent when nobody has zapped it. */
+export type TopZap = {
+  sats: number;
+  senderPubkey: string;
+  name?: string;
+  displayName?: string;
+  picture?: string;
+  comment?: string;
+};
+
+const TOP_ZAP_FIELDS = ["top_zap", "topZap"] as const;
+
+export function readTopZap(...sources: unknown[]): TopZap | null {
+  for (const source of sources) {
+    const parsed = topZapFromRecord(source);
+    if (parsed) return parsed;
+  }
+  return null;
+}
+
+function topZapFromRecord(source: unknown): TopZap | null {
+  if (!isRecord(source)) return null;
+  for (const key of TOP_ZAP_FIELDS) {
+    const parsed = parseTopZap(source[key]);
+    if (parsed) return parsed;
+  }
+  for (const nestedKey of ["counts", "summary"] as const) {
+    const nested = source[nestedKey];
+    if (!isRecord(nested)) continue;
+    for (const key of TOP_ZAP_FIELDS) {
+      const parsed = parseTopZap(nested[key]);
+      if (parsed) return parsed;
+    }
+  }
+  return null;
+}
+
+function parseTopZap(value: unknown): TopZap | null {
+  if (!isRecord(value)) return null;
+  const sender = isRecord(value.sender)
+    ? value.sender
+    : isRecord(value.profile)
+      ? value.profile
+      : null;
+  const sats =
+    readFiniteNonNegativeNumber(value.sats) ??
+    readFiniteNonNegativeNumber(value.amount_sats) ??
+    satsFromMillisats(value.msats ?? value.amount_msats);
+  if (sats === null || sats <= 0) return null;
+  const senderPubkey =
+    readZapText(value.sender_pubkey) ??
+    readZapText(value.senderPubkey) ??
+    readZapText(sender?.pubkey) ??
+    readZapText(sender?.sender_pubkey) ??
+    "";
+  if (!senderPubkey) return null;
+  const name = readZapText(value.name) ?? readZapText(sender?.name);
+  const displayName =
+    readZapText(value.display_name) ??
+    readZapText(value.displayName) ??
+    readZapText(sender?.display_name) ??
+    readZapText(sender?.displayName);
+  const picture = readZapText(value.picture) ?? readZapText(sender?.picture);
+  const comment =
+    readZapText(value.comment) ?? readZapText(value.zap_text) ?? readZapText(value.content);
+  return {
+    sats,
+    senderPubkey,
+    ...(name ? { name } : {}),
+    ...(displayName ? { displayName } : {}),
+    ...(picture ? { picture } : {}),
+    ...(comment ? { comment } : {}),
+  };
+}
+
+function satsFromMillisats(value: unknown): number | null {
+  const msats = readFiniteNonNegativeNumber(value);
+  if (msats === null || msats < 1000) return null;
+  return Math.floor(msats / 1000);
+}
+
+function readZapText(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function parseJsonRecord(value: unknown): Record<string, unknown> | null {
@@ -569,6 +698,19 @@ export function readableProfileName(value: string | undefined): string | undefin
   return normalized;
 }
 
+/** Local part of a NIP-05, when it can stand in as a name. Root `_@` and bridged handles do not. */
+function nip05LocalPart(profile: Profile): string | undefined {
+  const nip05 = readProfileText(profile, ["nip05", "nip_05"]);
+  if (!nip05 || nip05.length > 128 || /\s|[\u0000-\u001f\u007f-\u009f\ufffd]/u.test(nip05)) {
+    return undefined;
+  }
+  const at = nip05.lastIndexOf("@");
+  if (at <= 0) return undefined;
+  const local = nip05.slice(0, at);
+  if (local === "_" || local.includes("_at_")) return undefined;
+  return readableProfileName(local);
+}
+
 export function profileLabel(profile: Profile): string {
   const displayName = readableProfileName(
     readProfileText(profile, ["display_name", "displayName", "display", "displayname"])
@@ -592,10 +734,12 @@ export function profileLabel(profile: Profile): string {
 
   const cleanedDisplay = displayName ? stripEmojiShortcodes(displayName) : "";
   const cleanedName = name ? stripEmojiShortcodes(name) : "";
+  const nip05Local = nip05LocalPart(profile);
 
   return (
     (cleanedDisplay.length > 0 ? cleanedDisplay : undefined) ??
     (cleanedName.length > 0 ? cleanedName : undefined) ??
+    (nip05Local ? truncateProfileLabel(nip05Local) : undefined) ??
     (fallbackNpub ? truncateIdentifier(fallbackNpub, "npub", "primary") : undefined) ??
     (pubkey ? truncateIdentifier(pubkey, "pubkey", "primary") : undefined) ??
     "Profile"

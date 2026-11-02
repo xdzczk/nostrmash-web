@@ -84,9 +84,86 @@ describe("NoteCard", () => {
     expect(screen.queryByRole("link", { name: "Open note" })).not.toBeInTheDocument();
   });
 
-  it("shows the reply count and one thread link on a conversation row", () => {
+  it("links the top zap to the zapper", () => {
+    const sender = "c".repeat(64);
+    render(
+      <NoteCard
+        note={{
+          ...NOTE,
+          top_zap: {
+            sats: 21000,
+            sender_pubkey: sender,
+            display_name: "Bob",
+            comment: "welcome",
+          },
+        }}
+        author={AUTHOR}
+      />
+    );
+    const link = screen.getByRole("link", { name: "Top zap from Bob, 21,000 sats: welcome" });
+    expect(link).toHaveAttribute("href", `/profiles/${sender}`);
+    expect(link).toHaveAttribute("data-top-zap", "quote");
+    expect(link.querySelector(".text-\\[15px\\]")).toHaveTextContent("welcome");
+    expect(link.querySelector("svg")).toBeNull();
+    expect(link.querySelector("img")).toHaveClass("size-5");
+  });
+
+  it("keeps a wave in the stat row and cites a larger zap on one line", () => {
+    const sender = "d".repeat(64);
+    const { rerender } = render(
+      <NoteCard
+        note={{
+          ...NOTE,
+          top_zap: { sats: 5, sender_pubkey: sender, display_name: "Bob", comment: "hi" },
+        }}
+        author={AUTHOR}
+      />
+    );
+    expect(screen.queryByRole("link", { name: /Top zap/ })).not.toBeInTheDocument();
+    expect(screen.queryByText("hi")).not.toBeInTheDocument();
+
+    rerender(
+      <NoteCard
+        note={{
+          ...NOTE,
+          top_zap: { sats: 21, sender_pubkey: sender, display_name: "Bob", comment: "wave" },
+        }}
+        author={AUTHOR}
+      />
+    );
+    const link = screen.getByRole("link", { name: "Top zap from Bob, 21 sats: wave" });
+    expect(link).toHaveAttribute("data-top-zap", "line");
+    expect(link.querySelector(".text-\\[15px\\]")).toBeNull();
+    expect(link).toHaveTextContent("Bob");
+    expect(link).toHaveTextContent("21 sats");
+    expect(link).toHaveTextContent("—");
+    expect(link).toHaveTextContent("wave");
+    expect(link.querySelector("svg")).toBeNull();
+  });
+
+  it("gives the citation the note width and air on the note page", () => {
+    const sender = "e".repeat(64);
+    render(
+      <NoteCard
+        note={{
+          ...NOTE,
+          top_zap: { sats: 500, sender_pubkey: sender, display_name: "Bob" },
+        }}
+        author={AUTHOR}
+        density="detail"
+      />
+    );
+    const link = screen.getByRole("link", { name: "Top zap from Bob, 500 sats" });
+    expect(link).toHaveClass("mt-4", "w-full");
+    expect(link.querySelector("img")).toHaveClass("size-7");
+  });
+
+  it("shows the shared stat row and one thread link on a conversation row", () => {
     render(<NoteCard note={NOTE} author={AUTHOR} conversation />);
-    expect(screen.getByText("4 replies")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "4 replies" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "2 reposts" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "8 reactions" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "1 zap, 21 sats" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Thread" })).toHaveAttribute(
       "href",
       `/notes/${NOTE.id}#conversation-context`
@@ -178,18 +255,18 @@ describe("NoteCard", () => {
 
   it("always renders complete engagement stats", () => {
     render(<NoteCard note={NOTE} author={AUTHOR} />);
-    expect(screen.getByText("Replies")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "4 replies" })).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
-    expect(screen.getByText("Reposts")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "2 reposts" })).toBeInTheDocument();
     expect(screen.getByText("2")).toBeInTheDocument();
-    expect(screen.getByText("Reactions")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "8 reactions" })).toBeInTheDocument();
     expect(screen.getByText("8")).toBeInTheDocument();
-    expect(screen.getByText("Zaps")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "1 zap, 21 sats" })).toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument();
-    expect(screen.getByText("(21 sats)")).toBeInTheDocument();
+    expect(screen.getByText("21 sats")).toBeInTheDocument();
   });
 
-  it("hides zero engagement on the note page", () => {
+  it("keeps zero engagement visible on the note page", () => {
     render(
       <NoteCard
         note={{
@@ -204,10 +281,20 @@ describe("NoteCard", () => {
         density="detail"
       />
     );
-    expect(screen.getByText("Reactions")).toBeInTheDocument();
-    expect(screen.queryByText("Replies")).not.toBeInTheDocument();
-    expect(screen.queryByText("Reposts")).not.toBeInTheDocument();
-    expect(screen.queryByText("Zaps")).not.toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "0 replies" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "0 reposts" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "1 reaction" })).toBeInTheDocument();
+    expect(screen.getByText("1")).toHaveClass("text-ink-soft");
+    expect(screen.getByRole("group", { name: "0 zaps" })).toBeInTheDocument();
+    for (const zero of screen.getAllByText("0")) expect(zero).toHaveClass("text-ink-faint");
+  });
+
+  it("includes quote posts in the repost count", () => {
+    render(<NoteCard note={{ ...NOTE, quote_count: 3 }} author={AUTHOR} />);
+    expect(
+      screen.getByRole("group", { name: "5 reposts, including 3 quote posts" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("5")).toBeInTheDocument();
   });
 
   it("opens a reply from the card body", () => {
@@ -246,11 +333,13 @@ describe("NoteCard", () => {
       ...bareNote
     } = NOTE;
     render(<NoteCard note={bareNote} author={AUTHOR} />);
-    expect(screen.getByText("Replies")).toBeInTheDocument();
-    expect(screen.getByText("Reposts")).toBeInTheDocument();
-    expect(screen.getByText("Reactions")).toBeInTheDocument();
-    expect(screen.getByText("Zaps")).toBeInTheDocument();
-    expect(screen.getAllByText("0")).toHaveLength(4);
+    expect(screen.getByRole("group", { name: "0 replies" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "0 reposts" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "0 reactions" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "0 zaps" })).toBeInTheDocument();
+    const zeros = screen.getAllByText("0");
+    expect(zeros).toHaveLength(4);
+    for (const zero of zeros) expect(zero).toHaveClass("text-ink-faint");
     expect(screen.queryByText(/sats/)).not.toBeInTheDocument();
   });
 });

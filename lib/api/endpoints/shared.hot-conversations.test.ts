@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeHotConversationNotes } from "@/lib/api/endpoints/shared";
+import {
+  applyConversationReplyWindow,
+  normalizeHotConversationNotes,
+} from "@/lib/api/endpoints/shared";
 
 describe("normalizeHotConversationNotes", () => {
   const rootId = "1b".repeat(32);
@@ -59,5 +62,22 @@ describe("normalizeHotConversationNotes", () => {
       reaction_count: 4,
       zap_count: 1,
     });
+  });
+
+  it("uses replies_30d for the selected range", () => {
+    const notes = applyConversationReplyWindow(
+      normalizeHotConversationNotes([
+        {
+          root_event_id: rootId,
+          author_pubkey: "pk_author",
+          content: "month thread",
+          reply_count: 3,
+          activity: { replies_24h: 3, replies_7d: 11, replies_30d: 40 },
+        },
+      ]),
+      "30d"
+    );
+
+    expect(notes[0]?.reply_count).toBe(40);
   });
 });

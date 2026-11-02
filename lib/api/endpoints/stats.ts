@@ -2,7 +2,7 @@ import type { StatsResponse } from "@/lib/types/api";
 import { fetchApiJson } from "@/lib/api/http";
 import type { CacheClass } from "@/lib/caching/policies";
 import { nativeApiV1Routes } from "@/lib/api/endpoints/shared";
-import type { StatsWindow } from "@/lib/search-params/window";
+import { relayStatsWindow, type StatsWindow } from "@/lib/search-params/window";
 
 export type StatsSeriesMetric = "note_volume" | "active_authors" | "relay_events";
 export type StatsSeriesWindow = "24h" | "7d" | "30d";
@@ -24,9 +24,10 @@ export async function getContentStats(cacheClass: CacheClass = "shortTtl") {
 }
 
 export async function getRelayStats(cacheClass: CacheClass = "shortTtl", window?: StatsWindow) {
+  const relayWindow = window ? relayStatsWindow(window) : undefined;
   return fetchApiJson<StatsResponse>(nativeApiV1Routes.relayStats, {
     cacheClass,
-    query: window ? { window } : undefined,
+    query: relayWindow ? { window: relayWindow } : undefined,
   });
 }
 

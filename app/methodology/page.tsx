@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 import type { Metadata } from "next";
 
 import { PageHero } from "@/components/explorer/page-hero";
@@ -21,9 +21,37 @@ const RANKINGS = [
   },
   {
     href: "/trending/long-form",
-    title: "Long-form",
+    title: "Articles",
     order: "The same discovery score as notes, for articles.",
     context: "The line under an article is the leading reason, read the same way as on a note.",
+  },
+  {
+    href: "/trending/pictures",
+    title: "Pictures",
+    order: "The same discovery score as notes, for kind 20 pictures.",
+    context:
+      "Pictures, videos, and shorts each have their own list. A busy short does not take a picture's place.",
+  },
+  {
+    href: "/trending/videos",
+    title: "Videos",
+    order: "The same discovery score as notes, for long video (kinds 21 and 34235).",
+    context:
+      "The addressable form is ranked with regular video. The line under the card is the leading reason.",
+  },
+  {
+    href: "/trending/shorts",
+    title: "Shorts",
+    order: "The same discovery score as notes, for short video (kinds 22 and 34236).",
+    context:
+      "A short is ranked with other shorts. It does not compete with pictures or long video.",
+  },
+  {
+    href: "/live",
+    title: "Live",
+    order: "How many people are watching now, then replies, reposts, reactions, and zaps.",
+    context:
+      "The list is what is on the air at the moment you open it. A stream whose start is still ahead, or whose end has passed, stays off. 24h, 7d, and 30d belong to the other rankings.",
   },
   {
     href: "/discovery/conversations/hot",
@@ -31,6 +59,20 @@ const RANKINGS = [
     order: "How fast a thread is growing, and how recent that growth is.",
     context:
       "The reply total is the size of the thread. A longer thread can sit below a shorter one that is moving faster now.",
+  },
+  {
+    href: "/discovery/notes/zapped",
+    title: "Most zapped",
+    order: "Sats a root note or article received in the window.",
+    context:
+      "One large zap is enough to rank. A zap the author sent to their own note does not count. The zap figure on the row is that window. Replies, reposts, and reactions are lifetime. The list is rewritten about every 5 minutes.",
+  },
+  {
+    href: "/discovery/notes/bookmarked",
+    title: "Most bookmarked",
+    order: "How many people currently have it saved.",
+    context:
+      "One person counts once, even if they saved it in several lists. The author does not count, and private bookmarks do not count. There is no time window. An article shows up once it has been ingested.",
   },
   {
     href: "/trending/profiles",
@@ -45,6 +87,20 @@ const RANKINGS = [
     order: "Follower growth, or engagement that is large for a smaller audience.",
     context:
       "A larger audience has to move further to appear. Two new followers or fewer, and a single interaction, count as noise and do not hold a place.",
+  },
+  {
+    href: "/discovery/profiles/followed",
+    title: "Most followed",
+    order: "How many people follow the account.",
+    context:
+      "The account needs a profile. Dormant accounts stay in the list, and so do accounts with fewer than 1,000 followers. Language does not change the order.",
+  },
+  {
+    href: "/discovery/profiles/supported",
+    title: "Most supported",
+    order: "Sats received in the window, with each sender capped at 100,000 sats.",
+    context:
+      "Three people sending 50,000 outrank one person sending 500,000, because that sender stops counting at 100,000. The line under the name is the capped amount. A self-zap does not count. The list is rewritten with most zapped notes.",
   },
   {
     href: "/trending/hashtags",
@@ -81,7 +137,7 @@ export default function MethodologyPage() {
       <PageHero
         eyebrow="Methodology"
         title="How rankings work."
-        subtitle="Every list asks one question over the last 24 hours or the last 7 days. The sentence beside each name is the order. Any other number on the row is context, and a larger context number does not mean a higher rank."
+        subtitle="Each list asks one question. Most use the last 24 hours, the last 7 days, or the last 30 days. The sentence beside each name is the order. Any other number on the row is context, and a larger context number does not mean a higher rank."
       />
 
       <section aria-labelledby="ranking-orders">
@@ -115,9 +171,13 @@ export default function MethodologyPage() {
         <section className="space-y-3">
           <h2 className="nm-title text-ink">The window</h2>
           <p className="text-ink-muted text-[1.02rem] leading-7">
-            24h is the last day. 7d is the last week. Both keep rolling, so the same list read an
-            hour later can have moved. Switching the window changes who qualifies. It does not
-            change the question that list is asking.
+            24h is the last day. 7d is the last week. 30d is the last 30 days. All three keep
+            rolling, so the same list read an hour later can have moved. Switching the window
+            changes who qualifies. It does not change the question that list is asking. Live uses
+            the present: the streams on the air when you open the page. Most bookmarked notes and
+            most followed accounts have no window. Bookmarks are who has a note saved now, and
+            followers are the directory. Most zapped notes open on 7 days. Most supported accounts
+            open on 30 days.
           </p>
         </section>
 
@@ -139,7 +199,10 @@ export default function MethodologyPage() {
           <p className="text-ink-muted text-[1.02rem] leading-7">
             Discovery rankings are recomputed about once a minute. When a page says it was updated,
             that is when this ranking was computed. If the index is late, the last useful result
-            stays on screen and the page says so. Old data is never called live.
+            stays on screen and the page says so. Old data is never called live. Most zapped notes
+            and most supported accounts wait for a worker, which writes them once at startup and
+            then about every 5 minutes. Until that happens the list is empty. Most bookmarked notes
+            stay current with ingest.
           </p>
         </section>
 

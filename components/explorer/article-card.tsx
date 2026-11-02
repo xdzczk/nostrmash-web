@@ -1,5 +1,4 @@
-import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import {
   CardHitTarget,
@@ -7,14 +6,17 @@ import {
   cardTierClassName,
   DiscoveryActionLinks,
   DiscoveryPill,
-  DiscoveryStatPills,
 } from "@/components/explorer/card-grammar";
+import { PostEngagement } from "@/components/explorer/post-engagement";
+import { TopZap } from "@/components/explorer/top-zap";
 import { getArticlePresentation } from "@/components/explorer/article-meta";
+import { mapNoteWhyNow, WhyNow } from "@/components/explorer/why-now";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
+import { BlossomNextImage } from "@/components/ui/blossom-image";
 import { Timestamp } from "@/components/explorer/timestamp";
 import { RichInlineText, type NoteContentResolution } from "@/components/explorer/note-content";
 import {
-  extractEngagementStats,
+  postEngagementStats,
   isNextImageCompatibleSrc,
   normalizeImageSrc,
   noteAuthorIdentifier,
@@ -37,7 +39,6 @@ export function ArticleCard({
   contentResolution,
   showAuthor = true,
   showUtilityLinks = true,
-  omitZeroStats = false,
 }: {
   article: EventRecord;
   author?: Profile;
@@ -48,7 +49,6 @@ export function ArticleCard({
   /** Hide the author row. The profile page already names the subject. */
   showAuthor?: boolean;
   showUtilityLinks?: boolean;
-  omitZeroStats?: boolean;
 }) {
   const presentation = getArticlePresentation(article);
   const imageSrc = normalizeImageSrc(presentation.image);
@@ -78,7 +78,7 @@ export function ArticleCard({
       ? { pubkey: article.pubkey }
       : null);
 
-  const metrics = extractEngagementStats(article);
+  const metrics = postEngagementStats(article);
 
   const isTopRank = typeof rank === "number" && rank <= 3;
   const rankLabel = typeof rank === "number" ? String(rank).padStart(2, "0") : null;
@@ -157,7 +157,7 @@ export function ArticleCard({
             </p>
           </div>
           {imageSrc && isNextImageCompatibleSrc(imageSrc) ? (
-            <Image
+            <BlossomNextImage
               src={imageSrc}
               alt=""
               width={88}
@@ -167,6 +167,11 @@ export function ArticleCard({
             />
           ) : null}
         </div>
+        {discoverySignals ? (
+          <WhyNow reasons={mapNoteWhyNow(article)} showLabel={false} className="mt-2.5 sm:mt-3" />
+        ) : null}
+        <PostEngagement stats={metrics} className="mt-2.5 sm:mt-3" />
+        <TopZap source={article} />
         {showUtilityLinks && resolvedArticleId ? (
           <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs">
             <DiscoveryActionLinks
@@ -216,7 +221,7 @@ export function ArticleCard({
 
       <div className="mt-2.5 flex items-start gap-3">
         {imageSrc && isNextImageCompatibleSrc(imageSrc) ? (
-          <Image
+          <BlossomNextImage
             src={imageSrc}
             alt={presentation.title}
             width={96}
@@ -307,7 +312,7 @@ export function ArticleCard({
                 href={`/hashtags/${encodeURIComponent(hashtag)}`}
                 className="text-ink-dim hover:text-ink transition"
               >
-                #{hashtag}
+                {`#${hashtag}`}
               </Link>
             </span>
           ))}
@@ -321,7 +326,8 @@ export function ArticleCard({
         </div>
       ) : null}
 
-      <DiscoveryStatPills stats={metrics} omitZero={omitZeroStats} className="mt-2.5 sm:mt-3" />
+      <PostEngagement stats={metrics} className="mt-2.5 sm:mt-3" />
+      <TopZap source={article} />
 
       {showUtilityLinks && resolvedArticleId ? (
         <div className="text-ink-muted mt-2.5 flex flex-wrap items-center gap-2 text-xs sm:mt-3">

@@ -1,10 +1,11 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { ArticleCard } from "@/components/explorer/article-card";
+import { EventKindSwitch } from "@/components/explorer/event-kind-switch";
 import { DomainChip } from "@/components/explorer/domain-chip";
 import { pickPrimaryDomainSupportingSignal } from "@/components/explorer/domain-supporting-signal";
 import { HashtagChip } from "@/components/explorer/hashtag-chip";
-import { NoteCard } from "@/components/explorer/note-card";
+import type { NoteContentSize } from "@/components/explorer/note-content";
 import type { NoteMediaVariant } from "@/components/explorer/note-media";
 import { SourceFigure } from "@/components/explorer/source-figure";
 import { mapDomainWhyNow, mapHashtagWhyNow, WhyNow } from "@/components/explorer/why-now";
@@ -14,7 +15,7 @@ import {
   noteInlineAuthorProfile,
 } from "@/components/explorer/utils";
 import { ProfileCard } from "@/components/explorer/profile-card";
-import { isLongFormEvent } from "@/components/explorer/article-meta";
+import { isHiddenNoteKind } from "@/lib/api/normalize";
 import { belowVolumeFloor, listedVolume, reasonsBesideSourceFigure } from "@/lib/discover/reasons";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import {
@@ -45,23 +46,22 @@ export async function NotesList({
   conversation = false,
   showAuthor = true,
   showUtilityLinks = true,
-  omitZeroStats = false,
   compactMedia = false,
   mediaVariant,
   suppressEmbeds,
   highlightTerms,
   rankOffset = 0,
+  contentSize,
 }: {
   notes: EventRecord[];
   authorsByPubkey?: Record<string, Profile>;
   ranked?: boolean;
   showFullContent?: boolean;
   discoverySignals?: boolean;
-  /** Hot conversations: reply count is the row stat, plus one thread link. */
+  /** Hot conversations: the shared stat row, plus one thread link. */
   conversation?: boolean;
   showAuthor?: boolean;
   showUtilityLinks?: boolean;
-  omitZeroStats?: boolean;
   /** Square thumbnail instead of full-bleed media. */
   compactMedia?: boolean;
   /** Overrides the list thumbnail. Profile notes use `feed`. */
@@ -75,6 +75,8 @@ export async function NotesList({
    * offset page, so the displayed place is the page rank plus this offset.
    */
   rankOffset?: number;
+  /** Profile lists read at 16px. Omitted on Discover, which stays compact. */
+  contentSize?: NoteContentSize;
 }) {
   const contentResolution = await resolveContentReferences(notes).catch(() => undefined);
   if (contentResolution && authorsByPubkey) {
@@ -86,12 +88,13 @@ export async function NotesList({
 
   return (
     <ul className="min-w-0">
-      {notes.map((note, index) => (
-        <li key={note.id ?? `note-${index}`} className="min-w-0">
-          {isLongFormEvent(note) ? (
-            <ArticleCard
-              article={note}
+      {notes.map((note, index) =>
+        isHiddenNoteKind(note) ? null : (
+          <li key={note.id ?? `note-${index}`} className="min-w-0">
+            <EventKindSwitch
+              event={note}
               author={getAuthorByPubkey(authorsByPubkey, note)}
+              surface="list"
               rank={
                 ranked
                   ? conversation
@@ -99,37 +102,21 @@ export async function NotesList({
                     : rankOffset + (note.ranking?.rank ?? index + 1)
                   : undefined
               }
-              discoverySignals={discoverySignals}
-              contentResolution={contentResolution}
-              showAuthor={showAuthor}
-              showUtilityLinks={showUtilityLinks}
-              omitZeroStats={omitZeroStats}
-            />
-          ) : (
-            <NoteCard
-              note={note}
-              author={getAuthorByPubkey(authorsByPubkey, note)}
-              rank={
-                ranked
-                  ? conversation
-                    ? rankOffset + index + 1
-                    : rankOffset + (note.ranking?.rank ?? index + 1)
-                  : undefined
-              }
-              showFullContent={showFullContent}
               discoverySignals={discoverySignals}
               contentResolution={contentResolution}
               conversation={conversation}
               showAuthor={showAuthor}
               showUtilityLinks={showUtilityLinks}
-              omitZeroStats={omitZeroStats}
               mediaVariant={mediaVariant ?? (compactMedia ? "compact" : undefined)}
               suppressEmbeds={suppressEmbeds ?? compactMedia}
               highlightTerms={highlightTerms}
+              contentSize={contentSize}
+              showFullContent={showFullContent}
+              profilesByPubkey={authorsByPubkey}
             />
-          )}
-        </li>
-      ))}
+          </li>
+        )
+      )}
     </ul>
   );
 }
@@ -141,7 +128,6 @@ export async function ArticlesList({
   discoverySignals = false,
   showAuthor = true,
   showUtilityLinks = true,
-  omitZeroStats = false,
   rankOffset = 0,
 }: {
   articles: EventRecord[];
@@ -150,7 +136,6 @@ export async function ArticlesList({
   discoverySignals?: boolean;
   showAuthor?: boolean;
   showUtilityLinks?: boolean;
-  omitZeroStats?: boolean;
   /** Items skipped before this page. See `NotesList`. */
   rankOffset?: number;
 }) {
@@ -174,7 +159,6 @@ export async function ArticlesList({
             contentResolution={contentResolution}
             showAuthor={showAuthor}
             showUtilityLinks={showUtilityLinks}
-            omitZeroStats={omitZeroStats}
           />
         </li>
       ))}
@@ -292,10 +276,10 @@ export function HashtagsList({
                   href={entry.href}
                   className="text-ink hover:text-accent-ink text-base font-medium"
                 >
-                  #{entry.hashtag}
+                  {`#${entry.hashtag}`}
                 </Link>
               ) : (
-                <span className="text-ink text-base font-medium">#{entry.hashtag}</span>
+                <span className="text-ink text-base font-medium">{`#${entry.hashtag}`}</span>
               )}
               <WhyNow
                 reasons={reasonsBesideSourceFigure(entry.ranking, entry.whyNow)}

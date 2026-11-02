@@ -9,6 +9,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { getPopularRelays } from "@/lib/api/endpoints";
 import { indexMembershipNote } from "@/lib/relays/index-membership";
+import { publishedRelayMark, relayRankingDetail, withPublishedNames } from "@/lib/relays/nip11";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 
 export const metadata: Metadata = {
@@ -30,6 +31,16 @@ export default async function PopularRelaysPage() {
   const relays = data?.relays ?? [];
   const total = typeof data?.total === "number" ? data.total : relays.length;
   const leaderUsers = relays.reduce((max, relay) => Math.max(max, relay.distinct_users), 0);
+  const hasPublishedNames = relays.some((relay) => publishedRelayMark(relay));
+  const listDescription = withPublishedNames(
+    relays.length === 0
+      ? "Ranked by how many people list each relay."
+      : total === relays.length
+        ? `${total.toLocaleString()} relays people list. Bars match the most listed relay.`
+        : `${total.toLocaleString()} relays people list. ${relays.length.toLocaleString()} shown. Bars match the most listed relay.`,
+    hasPublishedNames,
+    "listed"
+  );
 
   return (
     <div className="space-y-8">
@@ -42,27 +53,27 @@ export default async function PopularRelaysPage() {
 
       {errorMessage ? <ErrorPanel message={errorMessage} /> : null}
 
-      <SectionCard
-        title="Most listed"
-        description={
-          relays.length > 0
-            ? total === relays.length
-              ? `${total.toLocaleString()} relays people list. Bars match the most listed relay.`
-              : `${total.toLocaleString()} relays people list. ${relays.length.toLocaleString()} shown. Bars match the most listed relay.`
-            : "Ranked by how many people list each relay."
-        }
-      >
+      <SectionCard title="Most listed" description={listDescription}>
         {relays.length > 0 ? (
           <ul className="divide-edge/70 divide-y">
             {relays.map((relay, index) => {
-              const host = normalizeRelayHost(relay.normalized_url);
+              const host = normalizeRelayHost(relay.normalized_url ?? "");
+              const published = publishedRelayMark(relay);
               const membership = indexMembershipNote(relay.admission_state, relay.in_registry);
-              const detail = ["people list this relay", membership].filter(Boolean).join(" · ");
+              const detail = relayRankingDetail(host, published?.name, [
+                "people list this relay",
+                membership,
+              ]);
               if (!host) {
                 return (
                   <li key={relay.normalized_url} className="py-3">
-                    <p className="text-ink text-sm">{relay.normalized_url}</p>
-                    <p className="text-ink-muted text-sm">{detail}</p>
+                    <p className="text-ink text-sm">{published?.name || relay.normalized_url}</p>
+                    <p className="text-ink-muted text-sm">
+                      {relayRankingDetail(relay.normalized_url, published?.name, [
+                        "people list this relay",
+                        membership,
+                      ])}
+                    </p>
                   </li>
                 );
               }
@@ -73,10 +84,12 @@ export default async function PopularRelaysPage() {
                   rank={index + 1}
                   value={relay.distinct_users.toLocaleString()}
                   detail={detail}
+                  label={published?.name}
+                  iconSrc={published?.iconSrc}
                   bar={{
                     value: relay.distinct_users,
                     max: leaderUsers,
-                    label: `${host} compared with the most listed relay`,
+                    label: `${published?.name || host} compared with the most listed relay`,
                   }}
                 />
               );

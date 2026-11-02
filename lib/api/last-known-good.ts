@@ -68,10 +68,15 @@ export function isLkgCacheClass(cacheClass: CacheClass): boolean {
 const BOUNDED_CACHE_PATHS = new Set<string>([
   "/api/v1/discovery/home",
   "/api/v1/discovery/notes/trending",
+  "/api/v1/discovery/notes/bookmarked",
+  "/api/v1/discovery/notes/zapped",
   "/api/v1/discovery/long-form/trending",
+  "/api/v1/discovery/media/trending",
   "/api/v1/discovery/profiles/trending",
   "/api/v1/discovery/conversations/hot",
   "/api/v1/discovery/profiles/rising",
+  "/api/v1/discovery/profiles/followed",
+  "/api/v1/discovery/profiles/supported",
   "/api/v1/discovery/hashtags/trending",
   "/api/v1/discovery/domains/trending",
   "/api/v1/discovery/stats/network",
@@ -81,6 +86,7 @@ const BOUNDED_CACHE_PATHS = new Set<string>([
   "/api/v1/relays/health",
   "/api/v1/relays/popular",
   "/api/v1/relays/probe-health",
+  "/api/v1/live",
 ]);
 
 export function isBoundedCachePath(path: string): boolean {

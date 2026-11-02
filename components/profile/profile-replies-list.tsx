@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { NoteCard } from "@/components/explorer/note-card";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
@@ -67,9 +67,9 @@ export function ProfileRepliesList({
               author={authorFor(reply, authorsByPubkey)}
               showAuthor={false}
               showUtilityLinks={false}
-              omitZeroStats
               mediaVariant="compact"
               suppressEmbeds
+              contentSize="profile"
             />
           </li>
         );

@@ -22,7 +22,7 @@ function emojiUrl(tags: unknown, shortcode: string): string | undefined {
 
 /**
  * Unicode reactions stay as-is. `:shortcode:` becomes an image when a matching
- * NIP-30 emoji tag has an https URL, otherwise the short name without colons.
+ * NIP-30 emoji tag has an https URL. An unresolved shortcode is omitted.
  */
 export function presentReactionContent(
   content: string | null | undefined,
@@ -33,5 +33,5 @@ export function presentReactionContent(
   if (!match?.[1]) return { text: raw };
   const name = match[1];
   const imageUrl = emojiUrl(tags, name);
-  return imageUrl ? { text: name, imageUrl } : { text: name };
+  return imageUrl ? { text: name, imageUrl } : { text: "+" };
 }

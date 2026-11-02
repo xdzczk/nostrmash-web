@@ -68,13 +68,13 @@ describe("EntityActions menu", () => {
 
     const menu = screen.getByTestId("entity-actions-menu");
     expect(menu).not.toHaveAttribute("open");
-    await user.click(screen.getByText("Open"));
+    await user.click(screen.getByText("Open in app"));
     expect(menu).toHaveAttribute("open");
     expect(screen.getByRole("link", { name: "Open in client" })).toHaveAttribute(
       "href",
       "nostr:npub1abc"
     );
-    expect(screen.getByRole("link", { name: "njump" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "njump.me" })).toHaveAttribute(
       "href",
       "https://njump.me/npub1abc"
     );
@@ -102,16 +102,16 @@ describe("EntityActions menu", () => {
     );
 
     const menu = screen.getByTestId("entity-actions-menu");
-    await user.click(screen.getByText("Open"));
+    await user.click(screen.getByText("Open in app"));
     expect(menu).toHaveAttribute("open");
     await user.keyboard("{Escape}");
     expect(menu).not.toHaveAttribute("open");
 
-    await user.click(screen.getByText("Open"));
+    await user.click(screen.getByText("Open in app"));
     fireEvent.scroll(window);
     expect(menu).not.toHaveAttribute("open");
 
-    await user.click(screen.getByText("Open"));
+    await user.click(screen.getByText("Open in app"));
     fireEvent.pointerDown(document.body);
     expect(menu).not.toHaveAttribute("open");
   });

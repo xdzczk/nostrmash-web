@@ -17,8 +17,16 @@ import type {
   UserBookmarksResponse,
   UserHighlightsApiResponse,
   UserHighlightsResponse,
+  UserLiveActivitiesApiResponse,
+  UserLiveActivitiesResponse,
   UserLongFormApiResponse,
   UserLongFormResponse,
+  UserMediaApiResponse,
+  UserMediaResponse,
+  UserPinsApiResponse,
+  UserPinsResponse,
+  ReportsApiResponse,
+  ReportsResponse,
   UserMuteListApiResponse,
   UserMuteListResponse,
   UserMutedByApiResponse,
@@ -36,7 +44,11 @@ import {
   normalizeRelatedProfilesResponse,
   normalizeUserBookmarksResponse,
   normalizeUserHighlightsResponse,
+  normalizeUserLiveActivitiesResponse,
   normalizeUserLongFormResponse,
+  normalizeUserMediaResponse,
+  normalizeUserPinsResponse,
+  normalizeReportsResponse,
   normalizeUserMuteListResponse,
   normalizeUserMutedByResponse,
 } from "@/lib/api/normalize";
@@ -163,6 +175,86 @@ export async function getUserHighlights(
       return normalizeUserHighlightsResponse(response);
     },
     "User highlights lookup failed."
+  );
+}
+
+export async function getUserMedia(
+  pubkey: string,
+  cacheClass: CacheClass = "shortTtl",
+  query?: CursorQuery
+): Promise<UserMediaResponse> {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
+      const response = await fetchApiJson<UserMediaApiResponse>(
+        nativeApiV1Routes.userMediaByPubkey(candidate),
+        {
+          cacheClass,
+          query: buildCursorQuery(query),
+        }
+      );
+      return normalizeUserMediaResponse(response);
+    },
+    "User media lookup failed."
+  );
+}
+
+export async function getUserLiveActivities(
+  pubkey: string,
+  cacheClass: CacheClass = "shortTtl",
+  query?: CursorQuery
+): Promise<UserLiveActivitiesResponse> {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
+      const response = await fetchApiJson<UserLiveActivitiesApiResponse>(
+        nativeApiV1Routes.userLiveByPubkey(candidate),
+        {
+          cacheClass,
+          query: buildCursorQuery(query),
+        }
+      );
+      return normalizeUserLiveActivitiesResponse(response);
+    },
+    "User live activities lookup failed."
+  );
+}
+
+export async function getUserPins(
+  pubkey: string,
+  cacheClass: CacheClass = "shortTtl",
+  query?: CursorQuery
+): Promise<UserPinsResponse> {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
+      const response = await fetchApiJson<UserPinsApiResponse>(
+        nativeApiV1Routes.userPinsByPubkey(candidate),
+        {
+          cacheClass,
+          query: buildCursorQuery(query),
+        }
+      );
+      return normalizeUserPinsResponse(response);
+    },
+    "User pins lookup failed."
+  );
+}
+
+export async function getUserReports(
+  pubkey: string,
+  cacheClass: CacheClass = "shortTtl"
+): Promise<ReportsResponse> {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
+      const response = await fetchApiJson<ReportsApiResponse>(
+        nativeApiV1Routes.userReportsByPubkey(candidate),
+        { cacheClass }
+      );
+      return normalizeReportsResponse(response);
+    },
+    "User reports lookup failed."
   );
 }
 

@@ -1,5 +1,6 @@
 import { readSearchParam, type RouteSearchParams } from "@/lib/search-params/pagination";
-import type { StatsWindow } from "@/lib/search-params/window";
+import { parseLanguage } from "@/lib/search-params/language";
+import { isStatsWindow, type StatsWindow } from "@/lib/search-params/window";
 
 /** Page size sent to every ranked discovery list. The API default is 20. */
 export const RANKED_PAGE_SIZE = 20;
@@ -13,8 +14,15 @@ export const RANKING_SURFACES = [
   "domains",
   "hashtags",
   "long-form",
+  "pictures",
+  "videos",
+  "shorts",
   "rising",
   "conversations",
+  "bookmarked",
+  "zapped",
+  "followed",
+  "supported",
 ] as const;
 
 export type RankingSurface = (typeof RANKING_SURFACES)[number];
@@ -32,16 +40,36 @@ export function readRankedOffset(params: RouteSearchParams): number {
 }
 
 export function rankedListRequest(
-  window: StatsWindow,
+  window: StatsWindow | undefined,
   language: string | undefined,
   offset: number
-): { window: StatsWindow; offset: number; limit: number; lang?: string } {
+): { window?: StatsWindow; offset: number; limit: number; lang?: string } {
   return {
-    window,
+    ...(window ? { window } : {}),
     offset,
     limit: RANKED_PAGE_SIZE,
     ...(language ? { lang: language } : {}),
   };
+}
+
+const WINDOWLESS_RANKINGS = new Set<RankingSurface>(["bookmarked", "followed"]);
+const LANGUAGELESS_RANKINGS = new Set<RankingSurface>(["followed", "supported"]);
+
+/**
+ * Next-page query for a ranking. Bookmarked and followed omit `window`.
+ * Followed and supported omit `lang`. An invalid window does not page.
+ */
+export function rankingContinuationQuery(
+  surface: RankingSurface,
+  window: string,
+  lang: string,
+  offset: number
+): ReturnType<typeof rankedListRequest> | null {
+  const windowless = WINDOWLESS_RANKINGS.has(surface);
+  const statsWindow = isStatsWindow(window) ? window : undefined;
+  if (!windowless && !statsWindow) return null;
+  const language = LANGUAGELESS_RANKINGS.has(surface) ? undefined : parseLanguage(lang);
+  return rankedListRequest(windowless ? undefined : statsWindow, language, offset);
 }
 
 export function rankingItemAnchor(surface: RankingSurface, item: unknown): string {
@@ -56,9 +84,16 @@ export function rankingItemAnchor(surface: RankingSurface, item: unknown): strin
     case "notes":
     case "conversations":
     case "long-form":
+    case "pictures":
+    case "videos":
+    case "shorts":
+    case "bookmarked":
+    case "zapped":
       return (text("id") || text("event_id")).toLowerCase();
     case "profiles":
     case "rising":
+    case "followed":
+    case "supported":
       return text("pubkey").toLowerCase();
     case "hashtags":
       return (text("hashtag") || text("tag")).replace(/^#/, "").toLowerCase();

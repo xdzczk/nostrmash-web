@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
+import Link from "@/components/app-link";
 
-import { NoteContent, type NoteContentResolution } from "@/components/explorer/note-content";
+import {
+  NoteContent,
+  type NoteContentResolution,
+  type NoteContentSize,
+} from "@/components/explorer/note-content";
 import { NoteLinkPreviews } from "@/components/explorer/note-link-previews";
 import { NoteMedia, type NoteMediaVariant } from "@/components/explorer/note-media";
 import { extractNoteMediaAttachments } from "@/lib/notes/media";
@@ -13,11 +17,12 @@ import {
   cardHitTargetClassName,
   cardTierClassName,
   DiscoveryActionLinks,
-  DiscoveryStatPills,
 } from "@/components/explorer/card-grammar";
-import { mapNoteWhyNow, statsCitedByReasons, WhyNow } from "@/components/explorer/why-now";
+import { PostEngagement } from "@/components/explorer/post-engagement";
+import { TopZap } from "@/components/explorer/top-zap";
+import { mapNoteWhyNow, WhyNow } from "@/components/explorer/why-now";
 import {
-  extractEngagementStats,
+  postEngagementStats,
   formatProfileSecondary,
   normalizeDomainLabel,
   noteInlineAuthorProfile,
@@ -43,15 +48,9 @@ import { RepostCard } from "./repost-card";
  * - `list`: clamped preview with action links (trending, search, profiles).
  * - `detail`: the focal note on its own page — prose type, no action links.
  * - `reply`: a thread participant — full content, timestamp is the permalink,
- *   zero-valued stats and chip rows hidden.
+ *   chip rows hidden. Engagement still shows reply, repost, reaction, and zap.
  */
 export type NoteCardDensity = "list" | "detail" | "reply";
-
-function isNonZeroStat(stat: { value: unknown }): boolean {
-  if (typeof stat.value === "number") return stat.value > 0;
-  if (typeof stat.value === "string") return stat.value.trim() !== "" && stat.value !== "0";
-  return stat.value !== null && stat.value !== undefined;
-}
 
 export function NoteCard({
   note,
@@ -68,13 +67,13 @@ export function NoteCard({
   conversation = false,
   showAuthor = true,
   showUtilityLinks = true,
-  omitZeroStats = false,
   mediaVariant,
   suppressEmbeds = false,
   connectAbove = false,
   connectBelow = false,
   bridgeToNote = false,
   highlightTerms,
+  contentSize,
 }: {
   note: EventRecord;
   author?: Profile;
@@ -90,14 +89,12 @@ export function NoteCard({
   contextEventId?: string;
   /** Replaces the Reposts stat on the focal note with an expandable rollup. */
   repostsControl?: ReactNode;
-  /** Reply count is the row stat, with one link into the thread. */
+  /** Same stat row as every other post, plus one link into the thread. */
   conversation?: boolean;
   /** Hide the author row. Profile activity already names the subject. */
   showAuthor?: boolean;
   /** Open note / Inspect thread / Seen on relays. The card hit target stays. */
   showUtilityLinks?: boolean;
-  /** Drop engagement stats whose value is zero. */
-  omitZeroStats?: boolean;
   mediaVariant?: NoteMediaVariant;
   /** Profile dossier: no link-unfurl cards, domain chips, or relay chips. */
   suppressEmbeds?: boolean;
@@ -109,6 +106,8 @@ export function NoteCard({
   bridgeToNote?: boolean;
   /** Query terms to mark inside the note text. */
   highlightTerms?: string[];
+  /** Profile lists read at 16px. Discover cards keep the compact list size. */
+  contentSize?: NoteContentSize;
 }) {
   if (isRepostEvent(note)) {
     return (
@@ -137,13 +136,13 @@ export function NoteCard({
       conversation={conversation}
       showAuthor={showAuthor}
       showUtilityLinks={showUtilityLinks}
-      omitZeroStats={omitZeroStats}
       mediaVariant={mediaVariant}
       suppressEmbeds={suppressEmbeds}
       connectAbove={connectAbove}
       connectBelow={connectBelow}
       bridgeToNote={bridgeToNote}
       highlightTerms={highlightTerms}
+      contentSize={contentSize}
     />
   );
 }
@@ -162,13 +161,13 @@ function NoteCardBody({
   conversation,
   showAuthor,
   showUtilityLinks,
-  omitZeroStats,
   mediaVariant: mediaVariantProp,
   suppressEmbeds,
   connectAbove,
   connectBelow,
   bridgeToNote,
   highlightTerms,
+  contentSize: contentSizeProp,
 }: {
   note: EventRecord;
   author?: Profile;
@@ -183,13 +182,13 @@ function NoteCardBody({
   conversation: boolean;
   showAuthor: boolean;
   showUtilityLinks: boolean;
-  omitZeroStats: boolean;
   mediaVariant?: NoteMediaVariant;
   suppressEmbeds: boolean;
   connectAbove: boolean;
   connectBelow: boolean;
   bridgeToNote: boolean;
   highlightTerms?: string[];
+  contentSize?: NoteContentSize;
 }) {
   const isReply = density === "reply";
   const isDetail = density === "detail";
@@ -244,9 +243,8 @@ function NoteCardBody({
         : !showFullContent && density === "list"
           ? "compact"
           : undefined);
-  const replyCount = noteReplyCount(note);
-  const allMetrics = extractEngagementStats(note);
-  const metrics = isReply || isDetail ? allMetrics.filter(isNonZeroStat) : allMetrics;
+  const metrics = postEngagementStats(note);
+  const replyCount = metrics.find((stat) => stat.label === "reply_count")?.value ?? 0;
   const isTopRank = typeof rank === "number" && rank <= 3;
   const noteDomains = isReply
     ? []
@@ -268,7 +266,7 @@ function NoteCardBody({
     mediaVariant === "compact" &&
     extractNoteMediaAttachments(rawContent).length > 0;
   const rankLabel = typeof rank === "number" ? String(rank).padStart(2, "0") : null;
-  const contentSize = isDetail ? "detail" : isReply ? "reply" : "list";
+  const contentSize = contentSizeProp ?? (isDetail ? "detail" : isReply ? "reply" : "list");
   const metaTextClass = density === "list" ? "text-xs" : "text-[13px]";
   const chipRowClass = `text-ink-muted mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 ${metaTextClass}`;
   const chipLinkClass = "inline-flex min-h-6 items-center";
@@ -481,9 +479,9 @@ function NoteCardBody({
                 </span>
                 <Link
                   href={`/hashtags/${encodeURIComponent(hashtag)}`}
-                  className={`text-ink-dim hover:text-ink transition ${chipLinkClass}`}
+                  className={`text-ink-dim hover:text-ink whitespace-nowrap transition ${chipLinkClass}`}
                 >
-                  #{hashtag}
+                  {`#${hashtag}`}
                 </Link>
               </span>
             ))}
@@ -501,7 +499,7 @@ function NoteCardBody({
                 <Link
                   href={`/relays/${encodeURIComponent(relayHost.raw)}`}
                   title={relayHost.raw}
-                  className={`hover:text-link-hover text-ink-dim transition ${chipLinkClass}`}
+                  className={`hover:text-link-hover text-ink-dim whitespace-nowrap transition ${chipLinkClass}`}
                 >
                   {relayHost.label}
                 </Link>
@@ -514,24 +512,15 @@ function NoteCardBody({
           <WhyNow reasons={reasonCandidates} showLabel={false} className="mt-2.5 sm:mt-3" />
         ) : null}
 
-        {conversation ? (
-          replyCount !== null ? (
-            <p className="text-ink mt-2.5 text-sm font-medium tabular-nums">
-              {replyCount.toLocaleString()} {replyCount === 1 ? "reply" : "replies"}
-            </p>
-          ) : null
-        ) : (
-          <DiscoveryStatPills
-            stats={metrics}
-            omitZero={omitZeroStats}
-            omitLabels={discoverySignals ? statsCitedByReasons(reasonCandidates) : undefined}
-            className={isDetail ? "mt-4" : "mt-2.5 sm:mt-3"}
-            size={isDetail ? "md" : "sm"}
-            replacements={isDetail && repostsControl ? { repost_count: repostsControl } : undefined}
-          />
-        )}
+        <PostEngagement
+          stats={metrics}
+          className={isDetail ? "mt-4" : "mt-2.5 sm:mt-3"}
+          size={isDetail ? "md" : "sm"}
+          replacements={isDetail && repostsControl ? { repost_count: repostsControl } : undefined}
+        />
+        <TopZap source={note} size={isDetail ? "md" : "sm"} />
 
-        {conversation && replyCount !== null && replyCount > 0 && resolvedNoteId ? (
+        {conversation && replyCount > 0 && resolvedNoteId ? (
           <Link
             href={`/notes/${encodeURIComponent(resolvedNoteId)}#conversation-context`}
             className="nm-action-link mt-1 inline-flex min-h-11 items-center text-sm"
@@ -578,10 +567,4 @@ function presentAuthorSecondary(value: string): string | null {
   }
   const formatted = formatProfileSecondary(value);
   return formatted.length > 0 ? formatted : null;
-}
-
-function noteReplyCount(note: EventRecord): number | null {
-  const value = note.reply_count;
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return null;
-  return Math.round(value);
 }

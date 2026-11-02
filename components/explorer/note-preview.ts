@@ -5,6 +5,7 @@ import {
   formatNaddrLabel,
   formatUrlForDisplay,
   lookupProfileByHandle,
+  stripEmojiShortcodes,
   truncateIdentifier,
 } from "@/components/explorer/utils";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
@@ -307,15 +308,36 @@ function resolveEditorialTokens(
     .join("");
 }
 
+/**
+ * Profile metadata and other JSON blobs are not a sentence. Keep a name or
+ * about line when one is present; otherwise show nothing.
+ */
+function readableActivitySource(content: string): string {
+  const trimmed = content.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return content;
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return "";
+    const record = parsed as Record<string, unknown>;
+    const about = typeof record.about === "string" ? record.about.trim() : "";
+    const displayName = typeof record.display_name === "string" ? record.display_name.trim() : "";
+    const name = typeof record.name === "string" ? record.name.trim() : "";
+    return about || displayName || name;
+  } catch {
+    return "";
+  }
+}
+
 /** One reading line for profile activity: names, short note ids, short URLs. */
 export function activitySnippet(
   note: Pick<EventRecord, "content" | "tags">,
   resolution?: NoteContentResolution
 ): string {
-  const content = typeof note.content === "string" ? note.content : "";
-  return resolveEditorialTokens(content, resolution, { tags: note.tags })
-    .replace(/\s+/g, " ")
-    .trim();
+  const content = readableActivitySource(typeof note.content === "string" ? note.content : "");
+  const withoutMedia = stripNoteMediaUrls(content);
+  return stripEmojiShortcodes(
+    resolveEditorialTokens(withoutMedia, resolution, { tags: note.tags }).replace(/\s+/g, " ")
+  );
 }
 
 export function getEditorialNoteText(

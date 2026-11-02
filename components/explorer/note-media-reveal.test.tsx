@@ -1,8 +1,15 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+
+import { resetBlossomImageCache } from "@/hooks/use-blossom-image-src";
+import { BLOSSOM_MIRRORS } from "@/lib/media/blossom";
 
 import { NoteMediaReveal, videoPreviewSrc } from "./note-media-reveal";
+
+afterEach(() => {
+  resetBlossomImageCache();
+});
 
 describe("NoteMediaReveal", () => {
   it("renders external media immediately without revealing a URL", () => {
@@ -14,6 +21,20 @@ describe("NoteMediaReveal", () => {
     expect(image).toHaveAttribute("src", "https://media.example/image.jpg");
     expect(container.querySelector("a[target='_blank']")).toBeNull();
     expect(container.textContent).not.toMatch(/media\.example|https?:\/\//i);
+  });
+
+  it("retries a missing blossom blob on another server", () => {
+    const hash = "d4".repeat(32);
+    const url = `https://media.21media.to/${hash}.jpg`;
+    const { container } = render(<NoteMediaReveal url={url} kind="image" />);
+    const image = container.querySelector("img");
+    expect(image).toHaveAttribute("src", url);
+
+    fireEvent.error(image!);
+    expect(container.querySelector("img")).toHaveAttribute(
+      "src",
+      `${BLOSSOM_MIRRORS[0]}/${hash}.jpg`
+    );
   });
 
   it("enlarges note photos in a lightbox instead of a new tab", async () => {

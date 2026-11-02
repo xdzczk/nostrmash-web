@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { redirect } from "next/navigation";
 
 import { loadMoreSearchNotes, loadMoreSearchProfiles } from "@/app/search/actions";
@@ -472,7 +472,10 @@ export async function SearchResults({ query }: { query: SearchQuery }) {
           windows={SEARCH_WINDOWS}
           defaultWindow={DEFAULT_SEARCH_WINDOW}
           ariaLabel="Time range"
-          labelFor={(window) => (window === "all" ? "All" : window)}
+          labels={{ all: "All" }}
+          // Each query is its own uncached search. Prefetching every range would
+          // multiply that work for results the reader may never open.
+          prefetch={false}
         />
         <LanguageSelector
           path="/search"

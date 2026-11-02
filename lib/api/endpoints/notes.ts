@@ -4,8 +4,12 @@ import type {
   EventAncestorsResponse,
   EventCountsApiResponse,
   EventCountsResponse,
+  EventCommentsApiResponse,
+  EventCommentsResponse,
   EventDetailResponse,
   EventRecord,
+  ReportsApiResponse,
+  ReportsResponse,
   EventRepliesApiResponse,
   EventRepliesResponse,
   EventSeenOnApiResponse,
@@ -22,6 +26,8 @@ import type {
 import { fetchApiJson } from "@/lib/api/http";
 import {
   normalizeEventAncestorsResponse,
+  normalizeEventCommentsResponse,
+  normalizeReportsResponse,
   normalizeEventCountsResponse,
   normalizeEventRecords,
   normalizeEventRepliesResponse,
@@ -76,6 +82,28 @@ export async function getEventsBatch(
   }
 
   return { events, missing };
+}
+
+export async function getEventComments(
+  eventId: string,
+  cacheClass: CacheClass = "shortTtl"
+): Promise<EventCommentsResponse> {
+  const response = await fetchApiJson<EventCommentsApiResponse>(
+    nativeApiV1Routes.eventCommentsById(eventId),
+    { cacheClass }
+  );
+  return normalizeEventCommentsResponse(response);
+}
+
+export async function getEventReports(
+  eventId: string,
+  cacheClass: CacheClass = "shortTtl"
+): Promise<ReportsResponse> {
+  const response = await fetchApiJson<ReportsApiResponse>(
+    nativeApiV1Routes.eventReportsById(eventId),
+    { cacheClass }
+  );
+  return normalizeReportsResponse(response);
 }
 
 export async function getEventSeenOn(

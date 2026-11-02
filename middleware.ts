@@ -17,7 +17,8 @@ function buildCsp(nonce: string, isEmbed: boolean): string {
     // Tailwind and component style attrs still need unsafe-inline for styles.
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
-    "media-src 'self' https:",
+    // blob: is the MediaSource URL hls.js assigns to the video element.
+    "media-src 'self' blob: https:",
     "font-src 'self' data:",
     "connect-src 'self' https: http://localhost:* http://127.0.0.1:*",
     // Privacy-enhanced YouTube embeds only — no X/Twitter frame hosts.

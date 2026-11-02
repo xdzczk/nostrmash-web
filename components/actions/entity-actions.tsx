@@ -61,7 +61,7 @@ function EntityActionsMenu({
   return (
     <details ref={ref} className="relative" data-testid="entity-actions-menu">
       <summary className="nm-pressable border-edge-strong bg-surface/60 text-ink-soft hover:bg-surface/80 inline-flex min-h-9 cursor-pointer list-none items-center justify-center rounded-lg border px-3 py-1.5 text-xs font-medium">
-        Open
+        Open in app
       </summary>
       <div
         className="border-edge bg-surface absolute right-0 z-[60] mt-2 flex w-52 flex-col rounded-lg border p-1"
@@ -76,7 +76,7 @@ function EntityActionsMenu({
         </a>
         {njumpUrl ? (
           <a href={njumpUrl} target="_blank" rel="noopener noreferrer" className={menuItemClass}>
-            njump
+            njump.me
           </a>
         ) : null}
         <a
@@ -115,7 +115,7 @@ function EntityActionsMenu({
             else toast.danger("Copy failed");
           }}
         >
-          Copy nostr
+          Copy nostr: link
         </button>
         <button
           type="button"
@@ -201,7 +201,8 @@ export function EntityActions({
 }) {
   const toast = useToast();
   const label = useMemo(() => (kind === "note" ? "note" : "profile"), [kind]);
-  const copyLabel = kind === "note" ? "nevent" : "npub";
+  const copyLabel =
+    kind === "note" ? (identifier.startsWith("naddr1") ? "naddr" : "nevent") : "npub";
   const menuItemClass =
     "text-ink-soft hover:bg-surface-hover hover:text-ink flex min-h-9 w-full items-center rounded-md px-3 text-left text-sm";
 
@@ -253,7 +254,7 @@ export function EntityActions({
             else toast.danger("Copy failed");
           }}
         >
-          Copy {kind === "note" ? "nevent" : "npub"}
+          Copy {copyLabel}
         </Button>
         <a
           href={nostrUri}
@@ -287,7 +288,7 @@ export function EntityActions({
             else toast.danger("Copy failed");
           }}
         >
-          Copy {kind === "note" ? "nevent" : "npub"}
+          Copy {copyLabel}
         </Button>
         <Button
           size="sm"

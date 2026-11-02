@@ -38,6 +38,20 @@ describe("tokenizeNoteContent", () => {
     ).toBe(true);
   });
 
+  it("keeps #1 and a relay URL as single tokens", () => {
+    const tokens = tokenizeNoteContent("See #1 on wss://relay.artio.inf.unibe.ch");
+    expect(tokens).toEqual([
+      { type: "text", value: "See " },
+      { type: "hashtag", value: "#1", tag: "1" },
+      { type: "text", value: " on " },
+      {
+        type: "url",
+        value: "wss://relay.artio.inf.unibe.ch",
+        href: "wss://relay.artio.inf.unibe.ch",
+      },
+    ]);
+  });
+
   it("tokenizes urls, hashtags, and mentions", () => {
     const npub = hexToNpub(PUBKEY)!;
     const tokens = tokenizeNoteContent(`Check https://example.com/path. and #Nostr hi ${npub}`);

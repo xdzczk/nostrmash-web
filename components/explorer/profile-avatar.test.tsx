@@ -1,8 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
+import { resetBlossomImageCache } from "@/hooks/use-blossom-image-src";
+import { BLOSSOM_MIRRORS } from "@/lib/media/blossom";
 import type { Profile } from "@/lib/types/api";
 
 const profile = {
@@ -10,6 +12,10 @@ const profile = {
   display_name: "Ada",
   picture: "https://cdn.example/ada.jpg",
 } as Profile;
+
+afterEach(() => {
+  resetBlossomImageCache();
+});
 
 describe("ProfileAvatar", () => {
   it("links to the profile when href is set", () => {
@@ -38,5 +44,22 @@ describe("ProfileAvatar", () => {
     await user.click(screen.getByRole("button", { name: "Enlarge photo of Ada" }));
     const dialog = screen.getByRole("dialog", { name: "Ada" });
     expect(dialog.querySelector("img")).toHaveAttribute("src", "https://cdn.example/ada.jpg");
+  });
+
+  it("tries another blossom server before the letter fallback", () => {
+    const hash = "a1".repeat(32);
+    const picture = `https://media.21media.to/${hash}.jpg`;
+    render(<ProfileAvatar profile={{ ...profile, picture }} size={40} />);
+
+    const avatar = () => screen.getByRole("img", { name: "Ada" });
+    expect(avatar()).toHaveAttribute("src", picture);
+
+    fireEvent.error(avatar());
+    expect(avatar()).toHaveAttribute("src", `${BLOSSOM_MIRRORS[0]}/${hash}.jpg`);
+
+    for (let attempt = 0; attempt < BLOSSOM_MIRRORS.length; attempt += 1) {
+      fireEvent.error(avatar());
+    }
+    expect(avatar().getAttribute("src")).toMatch(/^data:image\/svg\+xml/);
   });
 });

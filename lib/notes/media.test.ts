@@ -29,4 +29,10 @@ describe("note media helpers", () => {
     const raw = "GM https://blossom.primal.net/abc123.jpg";
     expect(stripNoteMediaUrls("GM ☕️ [blossom.primal.net]", raw)).toBe("GM ☕️");
   });
+
+  it("strips extensionless media urls supplied by the caller", () => {
+    const url = "https://blossom.example/abc";
+    expect(stripNoteMediaUrls(`See ${url}`, `See ${url}`, [url])).toBe("See");
+    expect(stripNoteMediaUrls("See [blossom.example]", "x", [url])).toBe("See");
+  });
 });

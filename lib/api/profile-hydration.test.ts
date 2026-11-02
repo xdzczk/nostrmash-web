@@ -1,7 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { mergeHydratedProfile } from "@/lib/api/profile-hydration";
+vi.mock("@/lib/api/endpoints", () => ({
+  getProfilesBatch: vi.fn(),
+  getProfile: vi.fn(),
+  getEventsBatch: vi.fn(),
+}));
+
+import { getProfilesBatch } from "@/lib/api/endpoints";
+import {
+  hydrateProfiles,
+  mergeHydratedProfile,
+  restoreRankingMetrics,
+} from "@/lib/api/profile-hydration";
 import type { Profile } from "@/lib/types/api";
+
+const mockedGetProfilesBatch = vi.mocked(getProfilesBatch);
 
 describe("mergeHydratedProfile", () => {
   it("keeps the discovery ranking when the profile service has none", () => {
@@ -31,5 +44,90 @@ describe("mergeHydratedProfile", () => {
       "engagement_quality"
     );
     expect(mergeHydratedProfile(ranked, hydrated).picture).toBe("https://cdn.example/a.png");
+  });
+});
+
+describe("restoreRankingMetrics", () => {
+  it("puts the ranking numbers back after identity hydration", () => {
+    const ranked = {
+      pubkey: "aa",
+      score: 100_000,
+      follower_count: 12,
+      capped_sats: 100_000,
+      sats_received: 500_000,
+      supporter_count: 3,
+      recent_zap_volume_msats: 500_000_000,
+      ranking: {
+        rank: 1,
+        score: 100_000,
+        reasons: [{ code: "supporter_sats", evidence: [] }],
+      },
+    } satisfies Profile;
+    const hydrated = {
+      pubkey: "aa",
+      display_name: "Ada",
+      picture: "https://cdn.example/a.png",
+      score: 4,
+      follower_count: 900,
+      capped_sats: 1,
+      sats_received: 2,
+      supporter_count: 1,
+      recent_zap_volume_msats: 9,
+    } satisfies Profile;
+
+    const restored = restoreRankingMetrics(ranked, hydrated);
+    expect(restored.display_name).toBe("Ada");
+    expect(restored.picture).toBe("https://cdn.example/a.png");
+    expect(restored.score).toBe(100_000);
+    expect(restored.follower_count).toBe(12);
+    expect(restored.capped_sats).toBe(100_000);
+    expect(restored.sats_received).toBe(500_000);
+    expect(restored.supporter_count).toBe(3);
+    expect(restored.recent_zap_volume_msats).toBe(500_000_000);
+    expect(restored.ranking?.reasons?.[0]?.code).toBe("supporter_sats");
+  });
+});
+
+describe("hydrateProfiles", () => {
+  const pubkey = "ab".repeat(32);
+
+  beforeEach(() => {
+    mockedGetProfilesBatch.mockReset();
+  });
+
+  it("loads a picture when search already returned a name", async () => {
+    mockedGetProfilesBatch.mockResolvedValue([
+      {
+        pubkey,
+        display_name: "Derek",
+        picture: "https://cdn.example/derek.jpg",
+      },
+    ]);
+
+    const [profile] = await hydrateProfiles([
+      {
+        pubkey,
+        display_name: "Derek Ross",
+        nip05: "derek@example.com",
+        follower_count: 12,
+      },
+    ]);
+
+    expect(mockedGetProfilesBatch).toHaveBeenCalledWith([pubkey], "shortTtl");
+    expect(profile?.picture).toBe("https://cdn.example/derek.jpg");
+    expect(profile?.follower_count).toBe(12);
+  });
+
+  it("skips the profile service when a picture is already present", async () => {
+    const profiles = await hydrateProfiles([
+      {
+        pubkey,
+        display_name: "Ada",
+        picture: "https://cdn.example/ada.jpg",
+      },
+    ]);
+
+    expect(mockedGetProfilesBatch).not.toHaveBeenCalled();
+    expect(profiles[0]?.picture).toBe("https://cdn.example/ada.jpg");
   });
 });

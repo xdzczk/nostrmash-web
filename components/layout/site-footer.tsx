@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 const footerLinks = [
   { href: "/", label: "Discover" },

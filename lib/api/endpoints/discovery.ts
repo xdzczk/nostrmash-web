@@ -7,21 +7,30 @@ import type {
   TrendingHashtagsResponse,
   TrendingLongFormApiResponse,
   TrendingLongFormResponse,
+  TrendingMediaApiResponse,
+  TrendingMediaResponse,
   TrendingNotesResponse,
   TrendingProfilesResponse,
+  SupportedProfilesResponse,
+  LiveActivitiesApiResponse,
+  LiveActivitiesResponse,
 } from "@/lib/types/api";
 import { fetchApiJson } from "@/lib/api/http";
 import {
+  applyDomainTrendWindows,
   normalizeDiscoveryHomeResponse,
   normalizeDiscoveryLanguageFields,
   normalizeDomainEntries,
   normalizeEventRecords,
   normalizeHashtagEntries,
   normalizeProfiles,
+  normalizeLiveActivitiesResponse,
   normalizeTrendingLongFormResponse,
+  normalizeTrendingMediaResponse,
 } from "@/lib/api/normalize";
 import type { CacheClass } from "@/lib/caching/policies";
 import {
+  applyConversationReplyWindow,
   buildCursorQuery,
   buildOffsetQuery,
   type CursorQuery,
@@ -60,6 +69,24 @@ export async function getDiscoveryHome(
   });
   return normalizeDiscoveryHomeResponse(response);
 }
+function discoveryListQuery(
+  query:
+    | { limit?: number; offset?: number; cursor?: string; window?: string; lang?: string }
+    | undefined,
+  options: { window?: boolean; lang?: boolean }
+) {
+  if (!query) return undefined;
+  const window =
+    options.window && query.window && query.window !== "all" ? query.window : undefined;
+  return {
+    limit: query.limit,
+    offset: query.offset,
+    ...(query.cursor ? { cursor: query.cursor } : {}),
+    ...(window ? { window } : {}),
+    ...(options.lang && query.lang ? { lang: query.lang } : {}),
+  };
+}
+
 export async function getTrendingNotes(cacheClass: CacheClass = "shortTtl", query?: CursorQuery) {
   const response = await fetchApiJson<TrendingNotesResponse>(nativeApiV1Routes.trendingNotes, {
     cacheClass,
@@ -70,6 +97,42 @@ export async function getTrendingNotes(cacheClass: CacheClass = "shortTtl", quer
     ...response,
     notes: normalizeEventRecords(response.notes),
   });
+}
+
+export async function getBookmarkedNotes(cacheClass: CacheClass = "shortTtl", query?: OffsetQuery) {
+  const response = await fetchApiJson<TrendingNotesResponse>(nativeApiV1Routes.bookmarkedNotes, {
+    cacheClass,
+    query: discoveryListQuery(query, { lang: true }),
+    schema: eventListResponseSchema,
+  });
+  return normalizeDiscoveryLanguageFields({
+    ...response,
+    notes: normalizeEventRecords(response.notes),
+  });
+}
+
+export async function getMostZappedNotes(cacheClass: CacheClass = "shortTtl", query?: OffsetQuery) {
+  const response = await fetchApiJson<TrendingNotesResponse>(nativeApiV1Routes.zappedNotes, {
+    cacheClass,
+    query: discoveryListQuery(query, { window: true, lang: true }),
+    schema: eventListResponseSchema,
+  });
+  return normalizeDiscoveryLanguageFields({
+    ...response,
+    notes: normalizeEventRecords(response.notes),
+  });
+}
+
+export async function getTrendingMedia(
+  format: "pictures" | "videos" | "shorts",
+  cacheClass: CacheClass = "shortTtl",
+  query?: OffsetQuery
+): Promise<TrendingMediaResponse> {
+  const response = await fetchApiJson<TrendingMediaApiResponse>(nativeApiV1Routes.trendingMedia, {
+    cacheClass,
+    query: { ...buildOffsetQuery(query), format },
+  });
+  return normalizeTrendingMediaResponse(response);
 }
 
 export async function getTrendingLongForm(
@@ -116,13 +179,16 @@ export async function getHotConversations(
     }
   );
   const responseRecord = response as Record<string, unknown>;
-  const notes = normalizeHotConversationNotes(
-    response.notes ??
-      responseRecord.conversations ??
-      responseRecord.events ??
-      responseRecord.notes ??
-      responseRecord.items ??
-      responseRecord.data
+  const notes = applyConversationReplyWindow(
+    normalizeHotConversationNotes(
+      response.notes ??
+        responseRecord.conversations ??
+        responseRecord.events ??
+        responseRecord.notes ??
+        responseRecord.items ??
+        responseRecord.data
+    ),
+    query?.window
   );
   return normalizeDiscoveryLanguageFields({
     ...response,
@@ -146,6 +212,37 @@ export async function getRisingProfiles(cacheClass: CacheClass = "shortTtl", que
         responseRecord.data
     ),
   }) satisfies RisingProfilesResponse;
+}
+
+export async function getMostFollowedProfiles(
+  cacheClass: CacheClass = "shortTtl",
+  query?: OffsetQuery
+) {
+  const response = await fetchApiJson<RisingProfilesResponse>(nativeApiV1Routes.followedProfiles, {
+    cacheClass,
+    query: discoveryListQuery(query, {}),
+  });
+  return normalizeDiscoveryLanguageFields({
+    ...response,
+    profiles: normalizeProfiles(response.profiles),
+  }) satisfies RisingProfilesResponse;
+}
+
+export async function getMostSupportedProfiles(
+  cacheClass: CacheClass = "shortTtl",
+  query?: OffsetQuery
+) {
+  const response = await fetchApiJson<SupportedProfilesResponse>(
+    nativeApiV1Routes.supportedProfiles,
+    {
+      cacheClass,
+      query: discoveryListQuery(query, { window: true }),
+    }
+  );
+  return normalizeDiscoveryLanguageFields({
+    ...response,
+    profiles: normalizeProfiles(response.profiles),
+  }) satisfies SupportedProfilesResponse;
 }
 
 export async function getTrendingHashtags(
@@ -175,10 +272,25 @@ export async function getTrendingDomains(cacheClass: CacheClass = "shortTtl", qu
   );
   return normalizeDiscoveryLanguageFields({
     ...response,
-    domains: normalizeDomainEntries(
-      response.domains ??
-        (response as Record<string, unknown>).items ??
-        (response as Record<string, unknown>).data
+    domains: applyDomainTrendWindows(
+      normalizeDomainEntries(
+        response.domains ??
+          (response as Record<string, unknown>).items ??
+          (response as Record<string, unknown>).data
+      ),
+      typeof response.window === "string" ? response.window : undefined
     ),
   }) satisfies TrendingDomainsResponse;
+}
+
+export async function getLiveActivities(
+  status: "live" | "planned" | "ended" = "live",
+  cacheClass: CacheClass = "shortTtl",
+  options?: { limit?: number }
+): Promise<LiveActivitiesResponse> {
+  const response = await fetchApiJson<LiveActivitiesApiResponse>(nativeApiV1Routes.liveActivities, {
+    cacheClass,
+    query: { status, limit: options?.limit },
+  });
+  return normalizeLiveActivitiesResponse(response);
 }

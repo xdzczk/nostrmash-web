@@ -5,6 +5,7 @@ import {
   ProfileZapsActivityList,
 } from "@/components/profile/profile-engagement-activity-list";
 import { ProfileHighlightsList } from "@/components/profile/profile-highlights-list";
+import { ProfilePinsList } from "@/components/profile/profile-pins-list";
 import { ProfileRepliesList } from "@/components/profile/profile-replies-list";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import type { loadProfileActivityData } from "@/lib/profile/load-profile-page-data";
@@ -44,9 +45,9 @@ export async function ProfileActivityFeed({ data }: { data: ActivityData }) {
           authorsByPubkey={data.notesAuthorMap}
           showAuthor={false}
           showUtilityLinks={false}
-          omitZeroStats
           mediaVariant="feed"
           suppressEmbeds
+          contentSize="profile"
         />
       ) : null;
     case "replies":
@@ -86,7 +87,15 @@ export async function ProfileActivityFeed({ data }: { data: ActivityData }) {
           authorsByPubkey={{ ...data.notesAuthorMap, ...data.eventListAuthorsByPubkey }}
           showAuthor={false}
           showUtilityLinks={false}
-          omitZeroStats
+        />
+      ) : null;
+    case "media":
+      return data.mediaEvents.length > 0 ? (
+        <NotesList
+          notes={data.mediaEvents}
+          authorsByPubkey={{ ...data.notesAuthorMap, ...data.eventListAuthorsByPubkey }}
+          showAuthor={false}
+          showUtilityLinks={false}
         />
       ) : null;
     case "bookmarks":
@@ -95,14 +104,31 @@ export async function ProfileActivityFeed({ data }: { data: ActivityData }) {
           notes={data.bookmarks}
           authorsByPubkey={{ ...data.notesAuthorMap, ...data.eventListAuthorsByPubkey }}
           showUtilityLinks={false}
-          omitZeroStats
           mediaVariant="feed"
           suppressEmbeds
+          contentSize="profile"
         />
       ) : null;
     case "highlights":
       return data.highlights.length > 0 ? (
         <ProfileHighlightsList highlights={data.highlights} />
+      ) : null;
+    case "live":
+      return data.liveEvents.length > 0 ? (
+        <NotesList
+          notes={data.liveEvents}
+          authorsByPubkey={{ ...data.notesAuthorMap, ...data.eventListAuthorsByPubkey }}
+          showAuthor={false}
+          showUtilityLinks={false}
+        />
+      ) : null;
+    case "pins":
+      return data.pins.length > 0 ? (
+        <ProfilePinsList
+          pins={data.pins}
+          eventsById={data.pinnedEventsById}
+          authorsByPubkey={{ ...data.notesAuthorMap, ...data.eventListAuthorsByPubkey }}
+        />
       ) : null;
     case "mute_list":
       return data.mutedProfiles.length > 0 ? <ProfilesList profiles={data.mutedProfiles} /> : null;

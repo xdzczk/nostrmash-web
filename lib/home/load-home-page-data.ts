@@ -11,7 +11,7 @@ import {
   normalizeSeriesPoints,
 } from "@/lib/api/endpoints";
 import type { SeriesPoint } from "@/components/charts/sparkline";
-import { isApiTimeoutError } from "@/lib/api/http";
+import { isApiError, isApiTimeoutError } from "@/lib/api/http";
 import { normalizeTopLanguages } from "@/lib/api/normalize";
 import { fetchProfilesByPubkey, mergeHydratedProfile } from "@/lib/api/profile-hydration";
 import { extractRelayRows, pickTopPrimitiveStats } from "@/components/explorer/stats-utils";
@@ -20,11 +20,19 @@ import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user
 import { readLanguage } from "@/lib/search-params/language";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import {
+  lastDiscoveryWindow,
+  unsupportedDiscoveryWindowHref,
+} from "@/lib/discover/window-fallback";
+import {
   NETWORK_PULSE_TILE_LIMIT,
+  buildWindowHref,
+  fallbackAfterRejected30d,
   networkPulsePreferredKeys,
   readStatsWindow,
+  relayStatsWindow,
   type StatsWindow,
 } from "@/lib/search-params/window";
+import { loadHomeMediaLeaders, type MediaLeaders } from "@/lib/discover/media-rankings";
 import { traceHomeFanOut } from "@/lib/telemetry/trace";
 import type {
   DomainEntry,
@@ -94,6 +102,7 @@ export type HomePageData = {
   errorMessage: string;
   homeTimedOut: boolean;
   homeNotes: EventRecord[];
+  mediaLeaders: MediaLeaders;
   hydratedHomeProfiles: Profile[];
   hydratedHomeRisingProfiles: Profile[];
   homeHashtags: HashtagEntry[];
@@ -104,6 +113,8 @@ export type HomePageData = {
   upstreamCallCount: number;
   computedAt?: string | null;
   sectionFailures: HomeSectionFailures;
+  /** Set when `window=30d` was rejected. The shell redirects through the session cookie. */
+  discoveryWindowRedirect: string | null;
 };
 
 /**
@@ -138,12 +149,17 @@ export async function loadHomePageData(
   let networkStats: Awaited<ReturnType<typeof getNetworkStats>> | null = null;
   let relayStats: Awaited<ReturnType<typeof getRelayStats>> | null = null;
 
+  // Pictures, videos, and shorts do not depend on the home payload. Overlap
+  // them with the first fan-out so a window change is not home-then-media.
+  const mediaLeadersPromise = loadHomeMediaLeaders(scopedQuery);
+  upstreamCallCount += 3;
+
   upstreamCallCount += 3;
 
   const stageOne = await Promise.allSettled([
     getDiscoveryHome("shortTtl", scopedQuery),
     getNetworkStats("shortTtl"),
-    getRelayStats("shortTtl", window),
+    getRelayStats("shortTtl", relayStatsWindow(window)),
     getStatsSeries("note_volume", "7d", "shortTtl"),
     getStatsSeries("active_authors", "7d", "shortTtl"),
     getStatsSeries("relay_events", "7d", "shortTtl"),
@@ -158,6 +174,36 @@ export async function loadHomePageData(
     activeAuthorsSeriesResult,
     relayEventsSeriesResult,
   ] = stageOne;
+
+  if (homeResult.status === "rejected") {
+    const status = isApiError(homeResult.reason) ? homeResult.reason.status : null;
+    if (fallbackAfterRejected30d(window, "24h", status).hide30d) {
+      const previous = await lastDiscoveryWindow();
+      return {
+        window,
+        language: lang,
+        topLanguages: undefined,
+        currentSearchParams,
+        errorMessage: "",
+        homeTimedOut: false,
+        homeNotes: [],
+        mediaLeaders: {},
+        hydratedHomeProfiles: [],
+        hydratedHomeRisingProfiles: [],
+        homeHashtags: [],
+        homeDomains: [],
+        noteAuthorsByPubkey: {},
+        pulseStats: [],
+        relayLeaders: [],
+        upstreamCallCount,
+        computedAt: null,
+        sectionFailures,
+        discoveryWindowRedirect: unsupportedDiscoveryWindowHref(
+          buildWindowHref("/", currentSearchParams, previous)
+        ),
+      };
+    }
+  }
 
   if (homeResult.status === "fulfilled") {
     payload = homeResult.value;
@@ -259,12 +305,13 @@ export async function loadHomePageData(
     );
   }
 
+  const mediaLeaders = await mediaLeadersPromise;
+
   let noteAuthorsByPubkey: Record<string, Profile> = {};
   let hydratedHomeProfiles = homeProfiles;
   let hydratedHomeRisingProfiles = homeRisingProfiles;
-  const notePreviewPubkeys = homeNotes
-    .slice(0, 5)
-    .map((note) => note.pubkey)
+  const notePreviewPubkeys = [...homeNotes.slice(0, 5), ...Object.values(mediaLeaders)]
+    .map((note) => note?.pubkey)
     .filter((pubkey): pubkey is string => typeof pubkey === "string" && pubkey.length > 0);
   const profilePreviewPubkeys = homeProfiles
     .slice(0, 5)
@@ -339,9 +386,10 @@ export async function loadHomePageData(
     activeAuthors: lang ? [] : activeAuthorsSeries,
     relayEvents: relayEventsSeries,
   });
-  let relayLeaders = extractRelayRows(networkSummary ?? payload, 1, window);
+  const relayWindow = relayStatsWindow(window);
+  let relayLeaders = extractRelayRows(networkSummary ?? payload, 1, relayWindow);
   if (relayLeaders.length === 0) {
-    relayLeaders = extractRelayRows(relayStats, 1, window);
+    relayLeaders = extractRelayRows(relayStats, 1, relayWindow);
   }
 
   // Prefer discovery/home computed_at: that tracks the live homepage
@@ -359,7 +407,7 @@ export async function loadHomePageData(
     null;
 
   traceHomeFanOut(upstreamCallCount, {
-    window: window === "7d" ? 7 : 1,
+    window: window === "30d" ? 30 : window === "7d" ? 7 : 1,
     homeTimedOut: homeTimedOut ? 1 : 0,
     hydratedPubkeys: pubkeysToHydrate.length,
     failedMessages: failedMessages.length,
@@ -375,6 +423,7 @@ export async function loadHomePageData(
     errorMessage: summarizeLoadErrors(failedMessages) ?? "",
     homeTimedOut,
     homeNotes,
+    mediaLeaders,
     hydratedHomeProfiles,
     hydratedHomeRisingProfiles,
     homeHashtags,
@@ -385,5 +434,6 @@ export async function loadHomePageData(
     upstreamCallCount,
     computedAt,
     sectionFailures,
+    discoveryWindowRedirect: null,
   };
 }

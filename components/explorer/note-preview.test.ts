@@ -20,6 +20,24 @@ describe("activitySnippet", () => {
     expect(text).not.toContain(note);
     expect(text).toMatch(/example\.com/);
   });
+
+  it("does not dump JSON or media URLs into the line", () => {
+    expect(
+      activitySnippet({
+        content: JSON.stringify({
+          display_name: "Ada",
+          about: "Builds relays",
+          picture: "https://cdn.example/a.jpg",
+        }),
+      })
+    ).toBe("Builds relays");
+    expect(
+      activitySnippet({
+        content: "https://cdn.example/photo.jpg",
+      })
+    ).toBe("");
+    expect(activitySnippet({ content: "Hello :unresolved_emoji: there" })).toBe("Hello there");
+  });
 });
 
 describe("getEditorialNoteText", () => {

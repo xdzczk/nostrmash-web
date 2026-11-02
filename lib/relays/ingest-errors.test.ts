@@ -31,7 +31,7 @@ describe("classifyIngestError", () => {
 describe("groupRelayAttention", () => {
   const nowMs = Date.parse("2026-10-25T12:00:00.000Z");
 
-  it("leads with fresh hosts and groups the rest by failure kind", () => {
+  it("leads with the current read and keeps older checks in the record", () => {
     const rows = extractRelayHealthRows({
       relays: [
         {
@@ -51,9 +51,16 @@ describe("groupRelayAttention", () => {
           latest_checkpoint_at: "2026-08-01T00:00:00.000Z",
         },
         {
-          relay_url: "wss://hand-two.example",
+          relay_url: "wss://hand-now.example",
           healthy: false,
           last_error: "websocket: bad handshake",
+          latest_checkpoint_at: "2026-10-25T11:30:00.000Z",
+        },
+        {
+          relay_url: "wss://dns-now.example",
+          healthy: false,
+          last_error: "lookup dns.example: no such host",
+          latest_checkpoint_at: "2026-10-25T10:00:00.000Z",
         },
         {
           relay_url: "wss://dns.example",
@@ -63,12 +70,16 @@ describe("groupRelayAttention", () => {
       ],
     });
 
-    const { fresh, groups } = groupRelayAttention(rows, nowMs);
+    const { fresh, groups, earlierGroups } = groupRelayAttention(rows, nowMs);
     expect(fresh.map((row) => row.host)).toEqual(["fresh.example"]);
     expect(groups.map((group) => [group.id, group.rows.length])).toEqual([
-      ["handshake", 2],
+      ["handshake", 1],
       ["dns", 1],
+    ]);
+    expect(earlierGroups.map((group) => [group.id, group.rows.length])).toEqual([
       ["stale", 1],
+      ["handshake", 1],
+      ["dns", 1],
     ]);
   });
 });

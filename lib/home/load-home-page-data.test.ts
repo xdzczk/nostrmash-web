@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { ApiError } from "@/lib/api/errors";
+
+vi.mock("@/lib/discover/window-fallback", () => ({
+  lastDiscoveryWindow: vi.fn(async () => "7d"),
+  unsupportedDiscoveryWindowHref: (next: string) =>
+    `/api/discovery-window/unsupported?next=${encodeURIComponent(next)}`,
+}));
+
 vi.mock("@/lib/api/endpoints", () => ({
   getDiscoveryHome: vi.fn(),
   getNetworkStats: vi.fn(),
@@ -11,6 +19,7 @@ vi.mock("@/lib/api/endpoints", () => ({
   getTrendingHashtags: vi.fn(),
   getTrendingNotes: vi.fn(),
   getTrendingProfiles: vi.fn(),
+  getTrendingMedia: vi.fn(async () => ({ events: [] })),
 }));
 
 vi.mock("@/lib/api/profile-hydration", () => ({
@@ -25,9 +34,11 @@ import {
   getStatsSeries,
   getTrendingDomains,
   getTrendingHashtags,
+  getTrendingMedia,
   getTrendingNotes,
   getTrendingProfiles,
 } from "@/lib/api/endpoints";
+import { lastDiscoveryWindow } from "@/lib/discover/window-fallback";
 import { attachPulseSeries, loadHomePageData } from "@/lib/home/load-home-page-data";
 
 describe("attachPulseSeries", () => {
@@ -82,6 +93,38 @@ describe("loadHomePageData", () => {
   afterEach(() => {
     vi.clearAllMocks();
     vi.restoreAllMocks();
+  });
+
+  it("starts media leaders without waiting for discovery", async () => {
+    let releaseHome: (value: unknown) => void = () => undefined;
+    vi.mocked(getDiscoveryHome).mockReturnValue(
+      new Promise((resolve) => {
+        releaseHome = resolve;
+      }) as never
+    );
+    vi.mocked(getNetworkStats).mockResolvedValue({} as never);
+    vi.mocked(getRelayStats).mockResolvedValue({} as never);
+    vi.mocked(getStatsSeries).mockResolvedValue({ points: [] } as never);
+    vi.mocked(getTrendingMedia).mockResolvedValue({ events: [] } as never);
+
+    const pending = loadHomePageData({});
+    try {
+      await vi.waitFor(() => {
+        expect(getTrendingMedia).toHaveBeenCalled();
+      });
+      expect(getDiscoveryHome).toHaveBeenCalled();
+      const homeSettled = await Promise.race([pending.then(() => true), Promise.resolve(false)]);
+      expect(homeSettled).toBe(false);
+    } finally {
+      releaseHome({
+        notes: [{ id: "a".repeat(64), content: "hello" }],
+        profiles: [{ pubkey: "b".repeat(64), display_name: "Ada" }],
+        rising_profiles: [{ pubkey: "c".repeat(64) }],
+        hashtags: [{ hashtag: "nostr" }],
+        domains: [{ domain: "example.com" }],
+      });
+      await pending;
+    }
   });
 
   it("loads discovery + network stats in a single parallel stage for 24h", async () => {
@@ -167,9 +210,60 @@ describe("loadHomePageData", () => {
     const data = await loadHomePageData({ window: "7d" });
 
     expect(data.window).toBe("7d");
+    expect(data.discoveryWindowRedirect).toBeNull();
     expect(data.homeNotes[0]?.content).toBe("trend");
+    expect(getDiscoveryHome).toHaveBeenCalledWith("shortTtl", { window: "7d" });
+    expect(getRelayStats).toHaveBeenCalledWith("shortTtl", "7d");
+    expect(getStatsSeries).toHaveBeenCalledWith("note_volume", "7d", "shortTtl");
     expect(getTrendingNotes).toHaveBeenCalledOnce();
     expect(getTrendingProfiles).toHaveBeenCalledOnce();
+  });
+
+  it("requests 30d discovery data and keeps relay stats on 24h", async () => {
+    vi.mocked(getDiscoveryHome).mockResolvedValue({
+      notes: [{ id: "a".repeat(64), content: "month" }],
+      profiles: [{ pubkey: "b".repeat(64) }],
+      hashtags: [{ hashtag: "nostr" }],
+      domains: [{ domain: "example.com" }],
+    } as never);
+    vi.mocked(getNetworkStats).mockResolvedValue({} as never);
+    vi.mocked(getRelayStats).mockResolvedValue({} as never);
+    vi.mocked(getStatsSeries).mockResolvedValue({ points: [] } as never);
+
+    const data = await loadHomePageData({ window: "30d" });
+
+    expect(data.window).toBe("30d");
+    expect(data.discoveryWindowRedirect).toBeNull();
+    expect(data.homeNotes[0]?.content).toBe("month");
+    expect(getDiscoveryHome).toHaveBeenCalledWith("shortTtl", { window: "30d" });
+    expect(getRelayStats).toHaveBeenCalledWith("shortTtl", "24h");
+    expect(getNetworkStats).toHaveBeenCalledWith("shortTtl");
+    expect(getStatsSeries).toHaveBeenCalledWith("note_volume", "7d", "shortTtl");
+    expect(getStatsSeries).toHaveBeenCalledWith("active_authors", "7d", "shortTtl");
+    expect(getStatsSeries).toHaveBeenCalledWith("relay_events", "7d", "shortTtl");
+    expect(getTrendingNotes).not.toHaveBeenCalled();
+  });
+
+  it("hides 30d and points at the previous range when discovery rejects it", async () => {
+    vi.mocked(lastDiscoveryWindow).mockResolvedValue("7d");
+    vi.mocked(getDiscoveryHome).mockRejectedValue(
+      new ApiError({
+        status: 400,
+        message: "window must be one of: 24h, 7d",
+        path: "/api/v1/discovery/home",
+      })
+    );
+    vi.mocked(getNetworkStats).mockResolvedValue({} as never);
+    vi.mocked(getRelayStats).mockResolvedValue({} as never);
+    vi.mocked(getStatsSeries).mockResolvedValue({ points: [] } as never);
+
+    const data = await loadHomePageData({ window: "30d" });
+
+    expect(data.discoveryWindowRedirect).toBe(
+      "/api/discovery-window/unsupported?next=%2F%3Fwindow%3D7d"
+    );
+    expect(getTrendingNotes).not.toHaveBeenCalled();
+    expect(getRelayStats).toHaveBeenCalledWith("shortTtl", "24h");
   });
 
   it("degrades with an error message when upstream discovery fails", async () => {

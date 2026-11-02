@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { NotesList } from "@/components/data/renderers";
-import { RankedListPage } from "@/components/explorer/ranked-list-page";
+import {
+  RankedListResults,
+  RankedListStatus,
+  RankedListStream,
+} from "@/components/explorer/ranked-list-page";
+import { NotesListSkeleton } from "@/components/ui/skeleton";
 import { getTrendingNotes } from "@/lib/api/endpoints";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { loadMoreRanking } from "@/lib/explorer/load-more-ranking";
@@ -11,9 +15,13 @@ import {
   rankedPageContinuation,
   readRankedOffset,
 } from "@/lib/explorer/ranked-pagination";
-import { loadRankedListPayload, readRankedListContext } from "@/lib/explorer/ranked-list";
+import {
+  loadRankedListPayload,
+  readRankedListContext,
+  startRankedLoad,
+} from "@/lib/explorer/ranked-list";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
-import { buildLanguageHref, readLanguage } from "@/lib/search-params/language";
+import { readLanguage } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
@@ -41,12 +49,61 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
   const path = "/trending/notes";
   const resolvedSearchParams = await searchParams;
   const language = await applyDiscoverLanguage(path, resolvedSearchParams);
-  const { window, currentSearchParams } = readRankedListContext(resolvedSearchParams, path);
-  const offset = readRankedOffset(resolvedSearchParams);
-  const { payload, errorMessage, semantics } = await loadRankedListPayload(
-    () => getTrendingNotes("shortTtl", rankedListRequest(window, language, offset)),
-    "Failed to load trending notes."
+  const { window, windows, currentSearchParams } = await readRankedListContext(
+    resolvedSearchParams,
+    path
   );
+  const offset = readRankedOffset(resolvedSearchParams);
+  const data = startRankedLoad(
+    loadRankedListPayload(
+      () => getTrendingNotes("shortTtl", rankedListRequest(window, language, offset)),
+      "Failed to load trending notes.",
+      { window, path, params: currentSearchParams }
+    )
+  );
+
+  return (
+    <RankedListStream
+      data={data}
+      discoverView="notes"
+      eyebrow=""
+      title="Notes"
+      subtitle="The notes leading the network."
+      path={path}
+      searchParams={currentSearchParams}
+      window={window}
+      windows={windows}
+      language={language}
+      fallback={<NotesListSkeleton />}
+    >
+      <TrendingNotesBody
+        data={data}
+        path={path}
+        searchParams={currentSearchParams}
+        window={window}
+        language={language}
+        offset={offset}
+      />
+    </RankedListStream>
+  );
+}
+
+async function TrendingNotesBody({
+  data,
+  path,
+  searchParams,
+  window,
+  language,
+  offset,
+}: {
+  data: ReturnType<typeof loadRankedListPayload<Awaited<ReturnType<typeof getTrendingNotes>>>>;
+  path: string;
+  searchParams: URLSearchParams;
+  window: Awaited<ReturnType<typeof readRankedListContext>>["window"];
+  language?: string;
+  offset: number;
+}) {
+  const { payload, errorMessage, semantics } = await data;
   const notes = payload?.notes ?? [];
   const continuation = rankedPageContinuation("notes", notes, offset);
 
@@ -70,64 +127,40 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
     .filter(Boolean);
 
   return (
-    <RankedListPage
-      discoverView="notes"
-      eyebrow=""
-      title="Notes"
-      subtitle="The notes leading the network."
-      path={path}
-      searchParams={currentSearchParams}
-      window={window}
-      language={language}
-      topLanguages={payload?.top_languages}
-      semantics={semantics}
-      errorMessage={errorMessage}
-      emptyTitle="No ranked notes yet"
-      emptyMessage="Ranked notes have not populated for this window."
-      hasItems={notes.length > 0}
-      loadMore={loadMoreRanking.bind(null, "notes", window, language ?? "")}
-      loadMoreCursor={continuation.token}
-      continuationHref={
-        continuation.nextOffset != null
-          ? buildContinuationHref(
-              path,
-              currentSearchParams,
-              "offset",
-              String(continuation.nextOffset)
-            )
-          : undefined
-      }
-      continuationLabel="Load more notes"
-      itemListUrls={itemListUrls}
-      footer={
-        <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          <Link
-            href={buildLanguageHref(
-              "/discovery/conversations/hot",
-              new URLSearchParams(),
-              language
-            )}
-            className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
-          >
-            Open hot conversations
-          </Link>
-          <Link
-            href={buildLanguageHref("/trending/long-form", new URLSearchParams(), language)}
-            className="border-edge-strong text-ink-dim hover:text-ink rounded-full border px-2.5 py-1"
-          >
-            Open trending long-form
-          </Link>
-        </div>
-      }
-      debugPayload={payload ?? {}}
-    >
-      <NotesList
-        notes={notes}
-        authorsByPubkey={authorsByPubkey}
-        ranked
-        discoverySignals
-        rankOffset={offset}
+    <>
+      <RankedListStatus
+        errorMessage={errorMessage}
+        hasItems={notes.length > 0}
+        path={path}
+        searchParams={searchParams}
       />
-    </RankedListPage>
+      <RankedListResults
+        title="Notes"
+        language={language}
+        semantics={semantics}
+        errorMessage={errorMessage}
+        emptyTitle="No ranked notes yet"
+        emptyMessage="Ranked notes have not populated for this window."
+        hasItems={notes.length > 0}
+        loadMore={loadMoreRanking.bind(null, "notes", window, language ?? "")}
+        loadMoreCursor={continuation.token}
+        continuationHref={
+          continuation.nextOffset != null
+            ? buildContinuationHref(path, searchParams, "offset", String(continuation.nextOffset))
+            : undefined
+        }
+        continuationLabel="Load more notes"
+        itemListUrls={itemListUrls}
+        debugPayload={payload ?? {}}
+      >
+        <NotesList
+          notes={notes}
+          authorsByPubkey={authorsByPubkey}
+          ranked
+          discoverySignals
+          rankOffset={offset}
+        />
+      </RankedListResults>
+    </>
   );
 }

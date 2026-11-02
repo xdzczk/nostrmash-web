@@ -1,4 +1,8 @@
-import { partitionRelayHealth, type RelayHealthSummary } from "@/components/explorer/stats-utils";
+import {
+  partitionRelayHealth,
+  relayCheckpointIsStale,
+  type RelayHealthSummary,
+} from "@/components/explorer/stats-utils";
 
 export type IngestFailureKind =
   "handshake" | "dns" | "certificate" | "refused" | "timeout" | "unreachable" | "other";
@@ -38,8 +42,8 @@ const FAILURE_COPY: Record<
     summary: "The ingest check failed.",
   },
   stale: {
-    label: "Stale checkpoint",
-    summary: "A healthy check older than a day. The index has not read it recently.",
+    label: "Last check succeeded",
+    summary: "The last ingest check succeeded, and it is older than a day.",
   },
   unknown: {
     label: "No status",
@@ -98,17 +102,9 @@ function groupId(row: RelayHealthSummary): AttentionGroupId {
   return kind === "none" ? "other" : kind;
 }
 
-/**
- * Fresh hosts first. Failures are grouped by kind and ordered by size.
- * Stale and unknown follow, so a long stale list does not lead the page.
- */
-export function groupRelayAttention(
-  rows: RelayHealthSummary[],
-  nowMs: number
-): { fresh: RelayHealthSummary[]; groups: AttentionGroup[] } {
-  const { attention, current } = partitionRelayHealth(rows, nowMs);
+function bucketAttention(rows: RelayHealthSummary[], archival: boolean): AttentionGroup[] {
   const buckets = new Map<AttentionGroupId, RelayHealthSummary[]>();
-  for (const row of attention) {
+  for (const row of rows) {
     const id = groupId(row);
     const list = buckets.get(id) ?? [];
     list.push(row);
@@ -122,12 +118,31 @@ export function groupRelayAttention(
     .map((id) => ({ id, ...ingestFailureCopy(id), rows: buckets.get(id) ?? [] }))
     .sort((left, right) => right.rows.length - left.rows.length);
 
-  const groups: AttentionGroup[] = [...failing];
+  const resting: AttentionGroup[] = [];
   for (const id of ["stale", "unknown"] as const) {
     const grouped = buckets.get(id);
     if (!grouped || grouped.length === 0) continue;
-    groups.push({ id, ...ingestFailureCopy(id), rows: grouped });
+    resting.push({ id, ...ingestFailureCopy(id), rows: grouped });
   }
 
-  return { fresh: current, groups };
+  return archival ? [...resting, ...failing] : [...failing, ...resting];
+}
+
+/**
+ * Fresh hosts first. Current failures are grouped by kind.
+ * Older checks, healthy or not, stay in the record so they do not read as a live outage.
+ */
+export function groupRelayAttention(
+  rows: RelayHealthSummary[],
+  nowMs: number
+): { fresh: RelayHealthSummary[]; groups: AttentionGroup[]; earlierGroups: AttentionGroup[] } {
+  const { attention, current } = partitionRelayHealth(rows, nowMs);
+  const currentAttention = attention.filter((row) => !relayCheckpointIsStale(row, nowMs));
+  const earlier = attention.filter((row) => relayCheckpointIsStale(row, nowMs));
+
+  return {
+    fresh: current,
+    groups: bucketAttention(currentAttention, false),
+    earlierGroups: bucketAttention(earlier, true),
+  };
 }

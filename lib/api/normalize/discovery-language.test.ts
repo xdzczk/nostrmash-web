@@ -55,4 +55,42 @@ describe("discovery language normalisation", () => {
     expect(normalized.language).toBe("ja");
     expect(normalized.top_languages?.["7d"]).toEqual([{ language: "ja", count: 2 }]);
   });
+
+  it("keeps the 30d language bucket and reads that domain trend window", () => {
+    const normalized = normalizeDiscoveryHomeResponse({
+      window: "30d",
+      sections: {
+        network_summary: {
+          top_languages: {
+            "24h": [{ language: "en", count: 1 }],
+            "30d": [{ language: "de", count: 9 }],
+          },
+          top_hashtags: {
+            "30d": [{ hashtag: "nostr", count: 4 }],
+          },
+        },
+        trending_domains: [
+          {
+            domain: "youtube.com",
+            link_count: 1,
+            note_count: 1,
+            trend_windows: {
+              "24h": { link_count: 10, note_count: 8 },
+              "30d": { link_count: 90, note_count: 70, unique_authors: 12 },
+            },
+          },
+        ],
+      },
+    });
+
+    expect(normalized.top_languages?.["30d"]).toEqual([{ language: "de", count: 9 }]);
+    expect(normalized.hashtags?.[0]).toMatchObject({ hashtag: "nostr", count: 4 });
+    expect(normalized.domains?.[0]).toMatchObject({
+      domain: "youtube.com",
+      link_count: 90,
+      note_count: 70,
+      event_count: 70,
+      unique_authors: 12,
+    });
+  });
 });

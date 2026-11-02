@@ -10,11 +10,16 @@ import {
 import { LanguageSelector } from "@/components/explorer/language-selector";
 import { JsonLd } from "@/components/seo/json-ld";
 import { DiscoverOverviewBodySkeleton } from "@/components/ui/skeleton";
+import { isDiscovery30dHidden, syncDiscoveryWindow } from "@/lib/discover/window-fallback";
 import { loadHomePageData } from "@/lib/home/load-home-page-data";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { readLanguage } from "@/lib/search-params/language";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
-import { readStatsWindow } from "@/lib/search-params/window";
+import {
+  formatDiscoveryWindowEyebrow,
+  readStatsWindow,
+  selectableStatsWindows,
+} from "@/lib/search-params/window";
 import { absoluteUrl, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -46,7 +51,9 @@ export const revalidate = 60;
 export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
   const resolvedSearchParams = await searchParams;
   const language = await applyDiscoverLanguage("/", resolvedSearchParams);
+  await syncDiscoveryWindow("/", resolvedSearchParams);
   const window = readStatsWindow(resolvedSearchParams);
+  const windows = selectableStatsWindows(!(await isDiscovery30dHidden()));
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   const query = currentSearchParams.toString();
   // Kick off the fan-out without awaiting: the hero and tabs render in the
@@ -76,6 +83,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         path="/"
         searchParams={currentSearchParams}
         window={window}
+        windows={windows}
         language={language}
         languageControl={
           <Suspense
@@ -97,7 +105,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
             <HomeFreshness data={home} />
           </Suspense>
         }
-        eyebrow={window === "7d" ? "This week" : "Today"}
+        eyebrow={formatDiscoveryWindowEyebrow(window)}
         title="What has the network’s attention."
         subtitle="A calm, ranked briefing on the notes, people, and ideas moving through Nostr—with the evidence behind their momentum."
       >

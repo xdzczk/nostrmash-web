@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { LoadMoreList } from "@/components/data/load-more-list";
 import { ProfileRelatedRail } from "@/components/profile/profile-related-rail";
@@ -9,6 +9,7 @@ import { isRecord } from "@/components/explorer/utils";
 import { mapRelatedProfileReasons } from "@/components/explorer/why-now";
 import { ProfileActivityTabs } from "@/components/profile/profile-activity-tabs";
 import { Pill } from "@/components/ui/pill";
+import { ErrorPanel } from "@/components/ui/status-panels";
 import { SectionCard } from "@/components/ui/section-card";
 import { loadMoreProfileActivity } from "@/app/profiles/[pubkeyOrNpub]/actions";
 import {
@@ -45,6 +46,7 @@ function ActivityEmpty({
         target && targetLabel ? (
           <Link
             href={target.href}
+            prefetch
             className="nm-pressable border-edge-strong text-ink-soft hover:bg-surface-hover inline-flex min-h-9 items-center rounded-lg border px-3 py-1.5 text-xs font-medium"
           >
             View {targetLabel.toLowerCase()}
@@ -81,7 +83,9 @@ export async function DeferredProfileActivity({
 }) {
   const data = await loadProfileActivityData(
     { lookupKey, profile, profileRoute, summaryRecord },
-    searchParams
+    searchParams,
+    // One list per request. The notes feed is not reused by the other tabs.
+    { focused: true }
   );
   const stats = readSummaryStats(summaryRecord);
   const hasItems = profileActivityHasItems(data);
@@ -97,7 +101,13 @@ export async function DeferredProfileActivity({
         <div className="space-y-4">
           <ProfileActivityTabs activeTab={data.activityTab} tabs={data.activityTabs}>
             <div className="space-y-4">
-              {hasItems ? (
+              {data.activeTabError && !hasItems ? (
+                <ErrorPanel
+                  message={data.activeTabError}
+                  title="Couldn't load this activity"
+                  retryHref={profileRoute}
+                />
+              ) : hasItems ? (
                 <ProfileActivityFeed data={data} />
               ) : (
                 <ActivityEmpty tab={data.activityTab} tabs={data.activityTabs} stats={stats} />

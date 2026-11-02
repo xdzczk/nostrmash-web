@@ -34,6 +34,18 @@ export function hasRichIdentity(profile: Profile | undefined): boolean {
   return fields.some((value) => typeof value === "string" && value.trim().length > 0);
 }
 
+export function hasProfilePicture(profile: Profile | undefined): boolean {
+  return typeof profile?.picture === "string" && profile.picture.trim().length > 0;
+}
+
+/**
+ * Search rows often already have a name, which counts as a rich identity, while
+ * the picture still lives only on the profile service. Avatars need that fetch.
+ */
+function needsProfileHydration(profile: Profile): boolean {
+  return !hasRichIdentity(profile) || !hasProfilePicture(profile);
+}
+
 export async function fetchProfilesByPubkey(
   pubkeys: Array<string | null | undefined>,
   cacheClass: CacheClass = "shortTtl"
@@ -68,7 +80,7 @@ export async function hydrateProfiles(
   cacheClass: CacheClass = "shortTtl"
 ): Promise<Profile[]> {
   if (profiles.length === 0) return [];
-  const sparseProfiles = profiles.filter((profile) => !hasRichIdentity(profile));
+  const sparseProfiles = profiles.filter((profile) => needsProfileHydration(profile));
   if (sparseProfiles.length === 0) {
     return profiles;
   }
@@ -116,6 +128,27 @@ export async function hydrateProfiles(
       (key ? hydratedByPubkey[key] : undefined) ?? (npubKey ? hydratedByNpub[npubKey] : undefined);
     return mergeHydratedProfile(profile, hydrated);
   });
+}
+
+const RANKING_METRIC_KEYS = [
+  "score",
+  "follower_count",
+  "capped_sats",
+  "sats_received",
+  "supporter_count",
+  "recent_zap_volume_msats",
+] as const satisfies readonly (keyof Profile)[];
+
+/**
+ * Identity hydration must not replace the numbers the ranking sorted by.
+ * A profile-service row can carry a different follower count or zap total.
+ */
+export function restoreRankingMetrics(ranked: Profile, hydrated: Profile): Profile {
+  const next: Profile = { ...hydrated, ranking: ranked.ranking ?? hydrated.ranking };
+  for (const key of RANKING_METRIC_KEYS) {
+    if (ranked[key] !== undefined) next[key] = ranked[key];
+  }
+  return next;
 }
 
 /**

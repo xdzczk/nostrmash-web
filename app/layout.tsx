@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
+import { LiveSessionProvider } from "@/components/live/live-session";
 import { SiteShell } from "@/components/layout/site-shell";
 import { WebVitals } from "@/components/telemetry/web-vitals";
 import { ToastProvider } from "@/components/ui/toast";
@@ -94,7 +95,9 @@ export default async function RootLayout({
       <body className="bg-background text-foreground flex min-h-full flex-col">
         <WebVitals />
         <ToastProvider>
-          <SiteShell>{children}</SiteShell>
+          <LiveSessionProvider>
+            <SiteShell>{children}</SiteShell>
+          </LiveSessionProvider>
         </ToastProvider>
       </body>
     </html>

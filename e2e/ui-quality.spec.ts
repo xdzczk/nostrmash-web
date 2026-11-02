@@ -11,8 +11,12 @@ test.describe("global product shell", () => {
     await globalSearch.fill("bitcoin");
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/search\?q=bitcoin&tab=all/);
-    await expect(globalSearch).toHaveValue("");
-    await expect(page.getByRole("main").getByRole("combobox")).toHaveValue("bitcoin");
+    await expect(globalSearch).toHaveCount(0);
+    await expect(
+      page.getByRole("combobox", {
+        name: "Search notes, profiles, hashtags, relays, and event IDs",
+      })
+    ).toHaveValue("bitcoin");
 
     await page
       .getByRole("navigation", { name: "Primary" })
@@ -59,7 +63,7 @@ test.describe("global product shell", () => {
     await page.goto("/trending/long-form?window=7d");
 
     const categories = page.getByRole("navigation", { name: "Discover categories" });
-    await expect(categories.getByRole("link", { name: "Notes" })).toHaveAttribute(
+    await expect(categories.getByRole("link", { name: "Articles" })).toHaveAttribute(
       "aria-current",
       "page"
     );
@@ -67,11 +71,54 @@ test.describe("global product shell", () => {
       "href",
       "/trending/profiles?window=7d"
     );
-    await expect(
-      page.getByRole("navigation", { name: "notes modes" }).getByRole("link", {
-        name: "Long-form",
-      })
-    ).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("navigation", { name: "notes modes" })).toHaveCount(0);
+
+    await page.goto("/trending/notes?window=7d&lang=ja");
+    await expect(categories.getByRole("link", { name: "Notes" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+    const noteModes = page.getByRole("navigation", { name: "notes modes" });
+    await expect(noteModes.getByRole("link", { name: "Most zapped" })).toHaveAttribute(
+      "href",
+      "/discovery/notes/zapped?window=7d&lang=ja"
+    );
+    await expect(noteModes.getByRole("link", { name: "Conversations" })).toHaveAttribute(
+      "href",
+      "/discovery/conversations/hot?window=7d&lang=ja"
+    );
+    await expect(noteModes.getByRole("link", { name: "Most bookmarked" })).toHaveAttribute(
+      "href",
+      "/discovery/notes/bookmarked?lang=ja"
+    );
+
+    await page.goto("/trending/profiles?window=7d&lang=ja");
+    const peopleModes = page.getByRole("navigation", { name: "people modes" });
+    await expect(peopleModes.getByRole("link", { name: "Up and coming" })).toHaveAttribute(
+      "href",
+      "/discovery/profiles/rising?window=7d&lang=ja"
+    );
+    await expect(peopleModes.getByRole("link", { name: "Most followed" })).toHaveAttribute(
+      "href",
+      "/discovery/profiles/followed"
+    );
+    await expect(peopleModes.getByRole("link", { name: "Most supported" })).toHaveAttribute(
+      "href",
+      "/discovery/profiles/supported?window=7d"
+    );
+
+    await page.goto("/live");
+    await expect(categories.getByRole("link", { name: "Media" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+    const mediaModes = page.getByRole("navigation", { name: "media modes" });
+    await expect(mediaModes.getByRole("link", { name: "Live" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+    await expect(mediaModes.getByRole("link", { name: "Live" })).toHaveAttribute("href", "/live");
+    await expect(page.getByRole("group", { name: "Ranking window" })).toHaveCount(0);
   });
 
   test("entity pages use contextual return navigation instead of category chrome", async ({

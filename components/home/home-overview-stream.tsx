@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 import { FreshnessBadge } from "@/components/discover/discover-shell";
 import { EditorialOverview } from "@/components/discover/overview/editorial-overview";
 import { EmptyState } from "@/components/explorer/empty-state";
@@ -16,8 +18,13 @@ import { formatUpdatedRelative } from "@/lib/time/freshness";
  * blocks first paint.
  */
 
+function redirectRejectedDiscoveryWindow(href: string | null) {
+  if (href) redirect(href);
+}
+
 export async function HomeFreshness({ data }: { data: Promise<HomePageData> }) {
   const home = await data;
+  redirectRejectedDiscoveryWindow(home.discoveryWindowRedirect);
   const label = formatUpdatedRelative(home.computedAt);
   return label ? <FreshnessBadge label={label} /> : null;
 }
@@ -36,20 +43,24 @@ export async function HomeLanguageSelector({
   window: StatsWindow;
 }) {
   const home = await data;
+  redirectRejectedDiscoveryWindow(home.discoveryWindowRedirect);
   return (
     <LanguageSelector
       path={path}
       query={query}
       activeLanguage={language ?? home.language}
       options={home.topLanguages?.[window] ?? []}
+      prefetchLanguages
     />
   );
 }
 
 export async function HomeOverviewBody({ data }: { data: Promise<HomePageData> }) {
   const home = await data;
+  redirectRejectedDiscoveryWindow(home.discoveryWindowRedirect);
   const hasContent =
     home.homeNotes.length > 0 ||
+    Boolean(home.mediaLeaders.pictures || home.mediaLeaders.videos || home.mediaLeaders.shorts) ||
     home.hydratedHomeProfiles.length > 0 ||
     home.hydratedHomeRisingProfiles.length > 0 ||
     home.homeHashtags.length > 0 ||
@@ -70,6 +81,7 @@ export async function HomeOverviewBody({ data }: { data: Promise<HomePageData> }
       {hasContent ? (
         <EditorialOverview
           notes={home.homeNotes}
+          mediaLeaders={home.mediaLeaders}
           profiles={home.hydratedHomeProfiles}
           risingProfiles={home.hydratedHomeRisingProfiles}
           hashtags={home.homeHashtags}

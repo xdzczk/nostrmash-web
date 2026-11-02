@@ -107,6 +107,13 @@ describe("profile identity presentation", () => {
     expect(profileSecondaryLabel(profile) ?? "").not.toContain("bad identity");
   });
 
+  it("uses a NIP-05 local part before a truncated npub", () => {
+    expect(profileLabel({ pubkey: "c".repeat(64), nip05: "merc@example.com" })).toBe("merc");
+    const root = profileLabel({ pubkey: "c".repeat(64), nip05: "_@example.com" });
+    expect(root.startsWith("npub1")).toBe(true);
+    expect(root).not.toBe("_");
+  });
+
   it("preserves readable unicode names and drops emoji shortcodes", () => {
     expect(profileLabel({ pubkey: "b".repeat(64), display_name: "Иван ⚡" })).toBe("Иван ⚡");
     expect(profileLabel({ pubkey: "b".repeat(64), display_name: ":israel_burn:Ada" })).toBe("Ada");

@@ -11,12 +11,18 @@ export {
   HOME_INDEX_LIMIT,
   getDiscoveryHome,
   getTrendingNotes,
+  getBookmarkedNotes,
+  getMostZappedNotes,
   getTrendingLongForm,
+  getTrendingMedia,
   getTrendingProfiles,
   getHotConversations,
   getRisingProfiles,
+  getMostFollowedProfiles,
+  getMostSupportedProfiles,
   getTrendingHashtags,
   getTrendingDomains,
+  getLiveActivities,
 } from "@/lib/api/endpoints/discovery";
 export { getSearch } from "@/lib/api/endpoints/search";
 export {
@@ -26,6 +32,10 @@ export {
   getUserLongForm,
   getUserBookmarks,
   getUserHighlights,
+  getUserMedia,
+  getUserLiveActivities,
+  getUserPins,
+  getUserReports,
   getUserMuteList,
   getUserMutedBy,
   getRelatedProfiles,
@@ -36,6 +46,8 @@ export {
 } from "@/lib/api/endpoints/profiles";
 export {
   getEvent,
+  getEventComments,
+  getEventReports,
   getEventsBatch,
   getEventSeenOn,
   getEventCounts,
@@ -65,4 +77,9 @@ export type {
   StatsSeriesWindow,
   StatsSeriesResponse,
 } from "@/lib/api/endpoints/stats";
-export { getRelayHealth, getPopularRelays, getRelayProbeHealth } from "@/lib/api/endpoints/relays";
+export {
+  getRelayHealth,
+  getPopularRelays,
+  getRelayInfo,
+  getRelayProbeHealth,
+} from "@/lib/api/endpoints/relays";

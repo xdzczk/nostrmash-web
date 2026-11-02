@@ -2,6 +2,7 @@ import type { SearchResponse } from "@/lib/types/api";
 import { ApiError, isApiTimeoutError } from "@/lib/api/http";
 import { normalizeEventRecord, normalizeEventRecords } from "@/lib/api/normalize";
 import { npubToHex } from "@/lib/nostr/npub";
+import { isStatsWindow } from "@/lib/search-params/window";
 
 export type SearchTab = "all" | "notes" | "profiles" | "hashtags" | "relays";
 export type SearchWindow = "24h" | "7d" | "30d" | "all";
@@ -40,6 +41,11 @@ export const nativeApiV1Routes = {
     `/api/v1/users/${encodeURIComponent(pubkey)}/bookmarks`,
   userHighlightsByPubkey: (pubkey: string) =>
     `/api/v1/users/${encodeURIComponent(pubkey)}/highlights`,
+  userMediaByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/media`,
+  userLiveByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/live`,
+  userPinsByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/pins`,
+  userReportsByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/reports`,
+  liveActivities: "/api/v1/live",
   userMuteListByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/mute-list`,
   userMutedByByPubkey: (pubkey: string) => `/api/v1/users/${encodeURIComponent(pubkey)}/muted-by`,
   relatedProfilesByPubkey: (pubkey: string) =>
@@ -57,6 +63,8 @@ export const nativeApiV1Routes = {
   eventRepliesById: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/replies`,
   eventSeenOnById: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/seen-on`,
   eventCountsById: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/counts`,
+  eventCommentsById: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/comments`,
+  eventReportsById: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/reports`,
   threadByEventId: (eventId: string) => `/api/v1/threads/${encodeURIComponent(eventId)}`,
   threadSummaryByRootEventId: (rootEventId: string) =>
     `/api/v1/threads/${encodeURIComponent(rootEventId)}/summary`,
@@ -65,10 +73,15 @@ export const nativeApiV1Routes = {
   noteSummaryByEventId: (eventId: string) => `/api/v1/notes/${encodeURIComponent(eventId)}/summary`,
   noteRelatedByEventId: (eventId: string) => `/api/v1/notes/${encodeURIComponent(eventId)}/related`,
   trendingNotes: "/api/v1/discovery/notes/trending",
+  bookmarkedNotes: "/api/v1/discovery/notes/bookmarked",
+  zappedNotes: "/api/v1/discovery/notes/zapped",
   trendingLongForm: "/api/v1/discovery/long-form/trending",
+  trendingMedia: "/api/v1/discovery/media/trending",
   trendingProfiles: "/api/v1/discovery/profiles/trending",
   hotConversations: "/api/v1/discovery/conversations/hot",
   risingProfiles: "/api/v1/discovery/profiles/rising",
+  followedProfiles: "/api/v1/discovery/profiles/followed",
+  supportedProfiles: "/api/v1/discovery/profiles/supported",
   trendingHashtags: "/api/v1/discovery/hashtags/trending",
   trendingDomains: "/api/v1/discovery/domains/trending",
   hashtagByName: (hashtag: string) => `/api/v1/discovery/hashtags/${encodeURIComponent(hashtag)}`,
@@ -85,6 +98,7 @@ export const nativeApiV1Routes = {
   statsSeries: "/api/v1/discovery/stats/series",
   relayHealth: "/api/v1/relays/health",
   relayPopular: "/api/v1/relays/popular",
+  relayInfo: "/api/v1/relays/info",
   relayProbeHealth: "/api/v1/relays/probe-health",
 } as const;
 
@@ -269,6 +283,22 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/** Replies shown on a hot-conversation row follow the selected range. */
+export function applyConversationReplyWindow<T extends Record<string, unknown>>(
+  notes: T[],
+  window: string | undefined
+): T[] {
+  if (!isStatsWindow(window)) return notes;
+  const key = `replies_${window}`;
+  return notes.map((note) => {
+    const activity = note.activity;
+    if (!isRecord(activity)) return note;
+    const value = activity[key];
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return note;
+    return { ...note, reply_count: Math.round(value) };
+  });
+}
+
 export function normalizeHotConversationNotes(
   value: unknown
 ): ReturnType<typeof normalizeEventRecords> {
@@ -296,6 +326,7 @@ export function normalizeHotConversationNotes(
           id: candidate.id ?? entry.root_event_id ?? entry.event_id ?? entry.id,
           event_id: candidate.event_id ?? entry.root_event_id ?? entry.event_id,
           pubkey: candidate.pubkey ?? entry.pubkey ?? entry.author_pubkey,
+          activity: isRecord(candidate.activity) ? candidate.activity : entry.activity,
           reply_count: candidate.reply_count ?? entry.reply_count,
           repost_count: candidate.repost_count ?? entry.repost_count,
           reaction_count: candidate.reaction_count ?? entry.reaction_count,

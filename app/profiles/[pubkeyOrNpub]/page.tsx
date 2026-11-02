@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Link from "@/components/app-link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
@@ -25,6 +25,7 @@ import {
   DeferredProfileActivity,
   DeferredProfileDiscovery,
 } from "@/components/profile/deferred-profile-sections";
+import { ProfileReports } from "@/components/profile/profile-reports";
 import { ProfileCover } from "@/components/profile/profile-banner-backdrop";
 import { ProfileHeroSignals } from "@/components/profile/profile-hero-signals";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -92,6 +93,64 @@ function normalizeHeroActions(value: unknown): HeroAction[] {
     })
     .filter((entry): entry is HeroAction => Boolean(entry))
     .filter((entry) => entry.id !== "rising_profiles" && entry.label !== "Up and coming");
+}
+
+function counterActivityHref(route: string, key: string): string | undefined {
+  if (key === "note_count") return `${route}?activity=notes`;
+  if (key === "reply_count") return `${route}?activity=replies`;
+  return undefined;
+}
+
+/** Percent-encoded values and long raw URLs stay in the identity disclosure. */
+function isReadableHeroFieldValue(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 80) return false;
+  if (/%[0-9a-f]{2}/i.test(trimmed)) return false;
+  if (/^https?:\/\//i.test(trimmed)) {
+    const display = trimmed.replace(/^https?:\/\//i, "").replace(/\/$/, "");
+    if (display.length > 40 || /[?#%]/.test(display)) return false;
+  }
+  return true;
+}
+
+function readPositiveCount(source: object | null | undefined, key: string): number | null {
+  if (!source) return null;
+  const value = (source as Record<string, unknown>)[key];
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+/** One line from counts already on the profile. No invented ranking reason. */
+function profileEvidenceLine(
+  profile: Profile | null,
+  stats: ProfileStats | undefined
+): string | null {
+  const followers =
+    readPositiveCount(profile, "recent_new_followers") ??
+    readPositiveCount(stats, "recent_new_followers");
+  const posts =
+    readPositiveCount(profile, "recent_post_count") ??
+    readPositiveCount(stats, "recent_post_count");
+  const engagement =
+    readPositiveCount(profile, "recent_engagement_received") ??
+    readPositiveCount(stats, "recent_engagement_received");
+  const parts: string[] = [];
+  if (followers) parts.push(`${followers.toLocaleString()} new followers`);
+  if (engagement) parts.push(`${engagement.toLocaleString()} recent interactions`);
+  else if (posts) parts.push(`${posts.toLocaleString()} recent notes`);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function routeIdentityLabel(pubkeyOrNpub: string, pubkeyHex: string | null): string {
+  if (pubkeyOrNpub.startsWith("npub1")) {
+    return truncateIdentifier(pubkeyOrNpub, "npub", "primary");
+  }
+  if (pubkeyHex) {
+    const npub = hexToNpub(pubkeyHex);
+    return npub
+      ? truncateIdentifier(npub, "npub", "primary")
+      : truncateIdentifier(pubkeyHex, "pubkey", "primary");
+  }
+  return "Profile";
 }
 
 function toCounterRows(
@@ -300,6 +359,9 @@ export default async function ProfilePage({
     notFound();
   }
 
+  const activityParam = resolvedSearchParams.activity;
+  const currentActivity =
+    typeof activityParam === "string" && activityParam.length > 0 ? activityParam : "notes";
   const hero = isRecord(summaryRecord?.hero) ? summaryRecord.hero : null;
   const heroMetadata = isRecord(hero?.metadata) ? hero.metadata : null;
   const heroCounters = toCounterRows(
@@ -356,8 +418,12 @@ export default async function ProfilePage({
       );
   })();
   const heroFieldLimit = 3;
-  const heroFields = (profile?.fields ?? []).slice(0, heroFieldLimit);
-  const overflowFields = (profile?.fields ?? []).slice(heroFieldLimit);
+  const profileFields = profile?.fields ?? [];
+  const readableHeroFields = profileFields.filter(
+    (field) => typeof field[1] === "string" && isReadableHeroFieldValue(field[1])
+  );
+  const heroFields = readableHeroFields.slice(0, heroFieldLimit);
+  const overflowFields = profileFields.filter((field) => !heroFields.includes(field));
   const identityDetails = appendOverflowProfileFields(
     presentIdentityDetails(
       identityDetailsFromSummary.length > 0
@@ -374,18 +440,16 @@ export default async function ProfilePage({
     (pubkeyHex ? hexToNpub(pubkeyHex) : null) ||
     pubkeyOrNpub;
 
-  const heroDisplayName =
-    (typeof hero?.display_name === "string" ? hero.display_name : undefined) ??
-    profile?.display_name ??
-    profile?.name ??
-    (profile?.pubkey
-      ? (() => {
-          const npub = hexToNpub(profile.pubkey);
-          return npub
-            ? truncateIdentifier(npub, "npub", "primary")
-            : truncateIdentifier(profile.pubkey, "pubkey", "primary");
-        })()
-      : "Profile");
+  const heroDisplayName = profile
+    ? profileLabel({
+        ...profile,
+        display_name:
+          (typeof hero?.display_name === "string" && hero.display_name.trim().length > 0
+            ? hero.display_name
+            : undefined) ?? profile.display_name,
+      })
+    : routeIdentityLabel(pubkeyOrNpub, pubkeyHex);
+  const evidenceLine = profileEvidenceLine(profile, summary?.stats);
   const heroHandleRaw =
     (typeof hero?.handle === "string" ? hero.handle : undefined) ??
     profile?.nip05 ??
@@ -420,27 +484,28 @@ export default async function ProfilePage({
         profile ? (
           <SoftRefreshNote message={errorMessage} />
         ) : (
-          <ErrorPanel message={errorMessage} />
+          <ErrorPanel message={errorMessage} retryHref={profileRoute} />
         )
       ) : null}
 
-      <section className="nm-signal-rule relative pt-6 pb-1 sm:pt-8 sm:pb-2">
-        <div className="mb-5 flex justify-end">
+      <section className="nm-signal-rule relative pt-4 pb-1 sm:pt-6 sm:pb-2">
+        <div className="mb-3 flex justify-end">
           <EntityContextNav view="people" compact />
         </div>
         {bannerSrc ? <ProfileCover src={bannerSrc} /> : null}
-        <div className={bannerSrc ? "relative z-10 -mt-8 sm:-mt-10" : undefined}>
+        <div className={bannerSrc ? "relative z-10 mt-3" : undefined}>
           <div className="flex min-w-0 items-start gap-4 sm:gap-5">
             <ProfileAvatar
               profile={avatarProfile}
               size={112}
               alt={profile ? profileLabel(profile) : heroDisplayName}
               enlarge
+              priority
               className={`bg-surface h-16 w-16 rounded-full object-cover sm:h-24 sm:w-24 ${
-                bannerSrc ? "ring-background ring-4" : "border-edge border"
+                bannerSrc ? "ring-background -mt-8 ring-4 sm:-mt-10" : "border-edge border"
               }`}
             />
-            <div className="min-w-0 flex-1 space-y-2 pt-1 sm:pt-3">
+            <div className="min-w-0 flex-1 space-y-1.5">
               <h1 className="nm-display-lg text-ink-strong truncate" title={heroDisplayName}>
                 {heroDisplayName}
               </h1>
@@ -489,7 +554,7 @@ export default async function ProfilePage({
               {rawHeroBio ? (
                 <RichInlineText
                   text={rawHeroBio}
-                  className="text-ink-dim line-clamp-2 max-w-3xl text-sm leading-6 [overflow-wrap:anywhere] sm:text-base sm:leading-7"
+                  className="text-ink-dim line-clamp-2 max-w-3xl text-sm leading-6 break-words sm:text-base sm:leading-7"
                   resolution={contentResolution}
                 />
               ) : null}
@@ -505,23 +570,38 @@ export default async function ProfilePage({
           </div>
         </div>
 
-        <div className="border-edge/60 mt-7 grid gap-5 border-t pt-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="mt-4 flex flex-nowrap items-end justify-between gap-3">
           {heroCounters.length > 0 ? (
-            <dl className="grid grid-cols-2 gap-x-8 gap-y-4 sm:flex sm:flex-wrap sm:gap-10">
-              {heroCounters.map((counter) => (
-                <div key={counter.key} className="min-w-20">
-                  <dt className="text-ink-faint text-xs">{counter.label}</dt>
-                  <dd className="text-ink mt-1 text-lg font-medium tabular-nums">
-                    {counter.value.toLocaleString()}
-                  </dd>
-                </div>
-              ))}
+            <dl className="flex min-w-0 flex-nowrap gap-x-2 sm:gap-x-5">
+              {heroCounters.map((counter) => {
+                const href = counterActivityHref(profileRoute, counter.key);
+                const value = counter.value.toLocaleString();
+                return (
+                  <div key={counter.key} className="min-w-0">
+                    <dt className="text-ink-faint text-xs">{counter.label}</dt>
+                    <dd className="text-ink mt-0.5 text-base font-medium tabular-nums">
+                      {href ? (
+                        <Link
+                          href={href}
+                          prefetch={!href.endsWith(`activity=${currentActivity}`)}
+                          className="hover:text-ink-strong"
+                          aria-label={`${value} ${counter.label.toLowerCase()}`}
+                        >
+                          {value}
+                        </Link>
+                      ) : (
+                        value
+                      )}
+                    </dd>
+                  </div>
+                );
+              })}
             </dl>
           ) : (
             <div />
           )}
 
-          <div data-testid="profile-actions" className="lg:justify-self-end">
+          <div data-testid="profile-actions" className="shrink-0">
             <EntityActions
               kind="profile"
               layout="menu"
@@ -532,11 +612,13 @@ export default async function ProfilePage({
             />
           </div>
         </div>
+        {evidenceLine ? <p className="text-ink-muted mt-3 text-sm">{evidenceLine}</p> : null}
 
         <Disclosure
           title="Identity and protocol details"
           description="Keys, verification, and metadata event for this profile."
-          className="mt-6"
+          descriptionClassName="hidden sm:block"
+          className="mt-4"
         >
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
@@ -564,7 +646,7 @@ export default async function ProfilePage({
                       className="bg-surface-sunken/40 hover:bg-surface-sunken/60 rounded-lg p-3 transition-colors"
                     >
                       <div className="mb-1 flex items-center justify-between gap-2">
-                        <p className="text-ink-faint text-[11px]">{field.label}</p>
+                        <p className="text-ink-faint text-xs">{field.label}</p>
                         {field.value.copyable && raw ? <CopyValueButton value={raw} /> : null}
                       </div>
                       {safeUrl ? (
@@ -611,24 +693,31 @@ export default async function ProfilePage({
         }}
       />
 
-      <Suspense fallback={<Skeleton className="h-48 w-full rounded-xl" />}>
-        <DeferredProfileActivity
-          lookupKey={lookupKey}
-          profile={profile}
-          profileRoute={profileRoute}
-          summaryRecord={summaryRecord}
-          searchParams={resolvedSearchParams}
-        />
-      </Suspense>
+      {profile || !errorMessage ? (
+        <>
+          <Suspense fallback={null}>
+            <ProfileReports pubkey={lookupKey} />
+          </Suspense>
+          <Suspense fallback={<Skeleton className="h-48 w-full rounded-xl" />}>
+            <DeferredProfileActivity
+              lookupKey={lookupKey}
+              profile={profile}
+              profileRoute={profileRoute}
+              summaryRecord={summaryRecord}
+              searchParams={resolvedSearchParams}
+            />
+          </Suspense>
 
-      <Suspense fallback={<Skeleton className="h-28 w-full rounded-xl" />}>
-        <DeferredProfileDiscovery
-          lookupKey={lookupKey}
-          profileRoute={profileRoute}
-          summaryRecord={summaryRecord}
-          searchParams={resolvedSearchParams}
-        />
-      </Suspense>
+          <Suspense fallback={<Skeleton className="h-28 w-full rounded-xl" />}>
+            <DeferredProfileDiscovery
+              lookupKey={lookupKey}
+              profileRoute={profileRoute}
+              summaryRecord={summaryRecord}
+              searchParams={resolvedSearchParams}
+            />
+          </Suspense>
+        </>
+      ) : null}
 
       <AboutThisData semantics={semantics} />
 

@@ -63,8 +63,11 @@ export function normalizeEventRecord(value: unknown): EventRecord | null {
       asNumber(counts?.reaction_count),
     repost_count:
       asNumber(record.repost_count) ?? asNumber(record.reposts) ?? asNumber(counts?.repost_count),
+    quote_count:
+      asNumber(record.quote_count) ?? asNumber(record.quotes) ?? asNumber(counts?.quote_count),
     zap_count: asNumber(record.zap_count) ?? asNumber(record.zaps) ?? asNumber(counts?.zap_count),
     zap_msats: asNumber(record.zap_msats) ?? asNumber(counts?.zap_msats),
+    bookmark_count: asNumber(record.bookmark_count),
     ranking: normalizeDiscoveryRanking(record.ranking),
   } satisfies EventRecord;
 
@@ -82,8 +85,8 @@ export function normalizeEventRecord(value: unknown): EventRecord | null {
  * NIP-78 app data, Blossom/server lists.
  */
 export const HIDDEN_NOTE_KINDS = new Set([
-  3, 5, 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10009, 10012, 10015, 10030, 10050,
-  10063, 10096, 30000, 30001, 30002, 30003, 30004, 30005, 30007, 30015, 30030, 30078,
+  3, 5, 1111, 1984, 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10009, 10012, 10015,
+  10030, 10050, 10063, 10096, 30000, 30001, 30002, 30003, 30004, 30005, 30007, 30015, 30030, 30078,
 ]);
 
 export function isHiddenNoteKind(event: { kind?: number } | null | undefined): boolean {
@@ -278,6 +281,12 @@ export function normalizeProfile(value: unknown): Profile | null {
     bot: asBoolean(asProfileRecord.bot),
     fields: normalizeProfileFields(asProfileRecord.fields),
     ranking: normalizeDiscoveryRanking(asProfileRecord.ranking),
+    score: asNumber(asProfileRecord.score),
+    follower_count: asNumber(asProfileRecord.follower_count),
+    capped_sats: asNumber(asProfileRecord.capped_sats),
+    sats_received: asNumber(asProfileRecord.sats_received),
+    supporter_count: asNumber(asProfileRecord.supporter_count),
+    recent_zap_volume_msats: asNumber(asProfileRecord.recent_zap_volume_msats),
   };
 
   if (!normalized.pubkey) return null;

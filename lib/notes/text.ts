@@ -1,6 +1,8 @@
 /** Shared URL / hashtag extraction so tokenize, previews, and footer chips agree. */
 
 export const URL_PATTERN = /https?:\/\/[^\s<>"'`]+/gi;
+/** Relay URLs stay one token so a host is not split after the scheme. */
+export const RELAY_URL_PATTERN = /wss?:\/\/[^\s<>"'`]+/gi;
 export const HASHTAG_PATTERN = /(?<![\w/])#([a-zA-Z0-9_]{1,64})\b/g;
 /** Host + optional path/query, not preceded by `@`, `/`, or a word character. */
 export const BARE_HOST_PATTERN =

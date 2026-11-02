@@ -19,11 +19,13 @@ export {
 
 export {
   normalizeTrendingLongFormResponse,
+  normalizeTrendingMediaResponse,
   normalizeHashtagDetailResponse,
   normalizeHashtagNotesResponse,
   normalizeRelatedHashtagsResponse,
   normalizeDomainDetailResponse,
   normalizeDomainNotesResponse,
+  applyDomainTrendWindows,
   normalizeDiscoveryHomeResponse,
   normalizeDiscoveryLanguageFields,
   normalizeTopLanguages,
@@ -44,6 +46,15 @@ export {
 } from "@/lib/api/normalize/profiles";
 
 export { normalizeRelayHealthResponse } from "@/lib/api/normalize/relays";
+
+export {
+  normalizeUserMediaResponse,
+  normalizeUserLiveActivitiesResponse,
+  normalizeUserPinsResponse,
+  normalizeLiveActivitiesResponse,
+  normalizeEventCommentsResponse,
+  normalizeReportsResponse,
+} from "@/lib/api/normalize/social";
 
 export {
   normalizeThreadResponse,

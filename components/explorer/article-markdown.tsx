@@ -3,6 +3,7 @@ import Markdown from "react-markdown";
 
 import { RichInlineText, type NoteContentResolution } from "@/components/explorer/note-content";
 import { isNextImageCompatibleSrc, normalizeImageSrc } from "@/components/explorer/utils";
+import { BlossomImage } from "@/components/ui/blossom-image";
 import { EnlargeableImage } from "@/components/ui/image-lightbox";
 import { markdownHref } from "@/lib/notes/markdown-href";
 
@@ -101,8 +102,7 @@ export function ArticleMarkdown({
               alt={imageAlt}
               className="my-6 block w-full cursor-zoom-in"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <BlossomImage
                 src={imageSrc}
                 alt={imageAlt}
                 loading="lazy"

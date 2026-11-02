@@ -1,11 +1,9 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 import type { ReactNode } from "react";
 
-import {
-  CardHitTarget,
-  cardHitTargetClassName,
-  DiscoveryStatPills,
-} from "@/components/explorer/card-grammar";
+import { CardHitTarget, cardHitTargetClassName } from "@/components/explorer/card-grammar";
+import { PostEngagement } from "@/components/explorer/post-engagement";
+import { TopZap } from "@/components/explorer/top-zap";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
@@ -13,14 +11,14 @@ import {
   mapHashtagWhyNow,
   mapNoteWhyNow,
   mapProfileWhyNow,
-  statsCitedByReasons,
   type WhyNowReason,
 } from "@/components/explorer/why-now";
 import { selectSupportingNotes } from "@/lib/discover/lead-notes";
+import { MEDIA_RANKINGS, type MediaLeaders } from "@/lib/discover/media-rankings";
 import { buildDiscoverHref, LANGUAGE_EMPTY_MESSAGE } from "@/lib/search-params/language";
 import { SourceFigure } from "@/components/explorer/source-figure";
 import {
-  extractEngagementStats,
+  postEngagementStats,
   formatCompactNumber,
   formatProfileSecondary,
   normalizeDomainLabel,
@@ -31,10 +29,14 @@ import {
   profileSecondaryLabel,
   truncateProfileLabel,
 } from "@/components/explorer/utils";
+import { EventKindSwitch } from "@/components/explorer/event-kind-switch";
+import { isLongFormEvent } from "@/components/explorer/article-meta";
 import { NoteLinkPreviews } from "@/components/explorer/note-link-previews";
 import { NoteMedia } from "@/components/explorer/note-media";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { getEditorialNoteText } from "@/components/explorer/note-preview";
+import { isHiddenNoteKind } from "@/lib/api/normalize";
+import { GENERIC_REPOST_KIND, isLiveActivityKind, isMediaKind } from "@/lib/notes/kinds";
 import {
   belowVolumeFloor,
   listedVolume,
@@ -190,7 +192,27 @@ function EditorialNote({
   lead?: boolean;
   contentResolution?: NoteContentResolution;
 }) {
+  if (isHiddenNoteKind(note)) return null;
   const author = noteAuthor(note, authorsByPubkey);
+  if (
+    isMediaKind(note.kind) ||
+    isLiveActivityKind(note.kind) ||
+    note.kind === 6 ||
+    note.kind === GENERIC_REPOST_KIND ||
+    isLongFormEvent(note)
+  ) {
+    return (
+      <EventKindSwitch
+        event={note}
+        author={author}
+        surface="list"
+        rank={rank}
+        contentResolution={contentResolution}
+        profilesByPubkey={authorsByPubkey}
+        showUtilityLinks={false}
+      />
+    );
+  }
   const id = noteId(note);
   const editorialText = getEditorialNoteText(note, contentResolution);
   const authorLabel = authorName(note, author);
@@ -251,11 +273,8 @@ function EditorialNote({
           </>
         ) : null}
         <EvidenceLine reasons={mapNoteWhyNow(note)} ranking={note.ranking} />
-        <DiscoveryStatPills
-          stats={extractEngagementStats(note)}
-          omitLabels={statsCitedByReasons(mapNoteWhyNow(note))}
-          className="mt-2.5"
-        />
+        <PostEngagement stats={postEngagementStats(note)} className="mt-2.5" />
+        <TopZap source={note} />
         {noteHref ? (
           <Link
             href={noteHref}
@@ -298,11 +317,8 @@ function EditorialNote({
       ) : null}
       <div className="col-span-2">
         <EvidenceLine reasons={mapNoteWhyNow(note)} ranking={note.ranking} />
-        <DiscoveryStatPills
-          stats={extractEngagementStats(note)}
-          omitLabels={statsCitedByReasons(mapNoteWhyNow(note))}
-          className="mt-2.5"
-        />
+        <PostEngagement stats={postEngagementStats(note)} className="mt-2.5" />
+        <TopZap source={note} />
       </div>
       {noteHref ? <CardHitTarget href={noteHref} label={`Open note by ${authorLabel}`} /> : null}
     </article>
@@ -670,8 +686,65 @@ function SupportingNotes({
   );
 }
 
+function MediaLeadersSection({
+  leaders,
+  authorsByPubkey,
+  window,
+  lang,
+  contentResolution,
+}: {
+  leaders: MediaLeaders;
+  authorsByPubkey: Record<string, Profile>;
+  window: StatsWindow;
+  lang?: string;
+  contentResolution?: NoteContentResolution;
+}) {
+  const columns = MEDIA_RANKINGS.flatMap((ranking) => {
+    const event = leaders[ranking.format];
+    return event ? [{ ...ranking, event }] : [];
+  });
+  if (columns.length === 0) return null;
+
+  return (
+    <section aria-labelledby="media-leaders">
+      <SectionHeader kicker="Media" title="Leading each format" headingId="media-leaders" />
+      <div
+        className={`mt-6 grid items-start gap-10 ${columns.length > 1 ? "lg:grid-cols-2" : ""} ${
+          columns.length > 2 ? "xl:grid-cols-3" : ""
+        }`}
+      >
+        {columns.map((column) => {
+          const pubkey =
+            typeof column.event.pubkey === "string" ? column.event.pubkey.toLowerCase() : "";
+          return (
+            <div key={column.format} className="min-w-0">
+              <div className="mb-3 flex items-end justify-between gap-3">
+                <h3 className="nm-kicker">{column.label}</h3>
+                <Link
+                  href={buildDiscoverHref(column.path, { window, lang })}
+                  className="nm-action-link"
+                >
+                  Ranking
+                </Link>
+              </div>
+              <EventKindSwitch
+                event={column.event}
+                author={pubkey ? authorsByPubkey[pubkey] : undefined}
+                surface="list"
+                showUtilityLinks={false}
+                contentResolution={contentResolution}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export async function EditorialOverview({
   notes,
+  mediaLeaders,
   profiles,
   risingProfiles,
   hashtags,
@@ -683,6 +756,7 @@ export async function EditorialOverview({
   lang,
 }: {
   notes: EventRecord[];
+  mediaLeaders: MediaLeaders;
   profiles: Profile[];
   risingProfiles: Profile[];
   hashtags: HashtagEntry[];
@@ -703,9 +777,12 @@ export async function EditorialOverview({
   const followups = selectSupportingNotes(notes);
   const visibleHashtags = sectionFailures.hashtags ? [] : hashtags;
   const visibleDomains = sectionFailures.domains ? [] : domains;
-  const contentResolution = await resolveContentReferences(lead ? [lead, ...followups] : []).catch(
-    () => undefined
-  );
+  const mediaEvents = MEDIA_RANKINGS.flatMap((ranking) => {
+    const event = mediaLeaders[ranking.format];
+    return event ? [event] : [];
+  });
+  const previewEvents = [...(lead ? [lead, ...followups] : []), ...mediaEvents];
+  const contentResolution = await resolveContentReferences(previewEvents).catch(() => undefined);
   if (contentResolution) {
     contentResolution.profilesByPubkey = {
       ...contentResolution.profilesByPubkey,
@@ -736,6 +813,14 @@ export async function EditorialOverview({
           contentResolution={contentResolution}
         />
       </section>
+
+      <MediaLeadersSection
+        leaders={mediaLeaders}
+        authorsByPubkey={authorsByPubkey}
+        window={window}
+        lang={lang}
+        contentResolution={contentResolution}
+      />
 
       <div className="grid items-start gap-14 lg:grid-cols-2 lg:gap-16 xl:gap-20">
         <ProfileRanking

@@ -1,9 +1,13 @@
-import Link from "next/link";
+"use client";
 
+import Link from "@/components/app-link";
+
+import { serializeDiscoveryWindowPreferenceCookie } from "@/lib/discover/discovery-window-session";
 import {
   DEFAULT_STATS_WINDOW,
   STATS_WINDOWS,
   formatStatsWindowLabel,
+  isStatsWindow,
 } from "@/lib/search-params/window";
 
 export function WindowSelector({
@@ -12,16 +16,30 @@ export function WindowSelector({
   activeWindow,
   windows = STATS_WINDOWS,
   defaultWindow = DEFAULT_STATS_WINDOW,
-  labelFor,
+  labels,
   ariaLabel = "Ranking window",
+  /**
+   * These routes read cookies, so Next only prefetches the loading skeleton
+   * unless a link asks for the full payload. The other ranges then paint from
+   * the client cache instead of waiting on a fresh server render.
+   */
+  prefetch = true,
+  /**
+   * Write the choice before navigation. Discover uses this so 24h clears the
+   * saved range before the URL that omits `window` is requested. Search and
+   * relay ranges stay local to those pages.
+   */
+  persist = false,
 }: {
   path: string;
   searchParams: URLSearchParams;
   activeWindow: string;
   windows?: readonly string[];
   defaultWindow?: string;
-  labelFor?: (window: string) => string;
+  labels?: Record<string, string>;
   ariaLabel?: string;
+  prefetch?: boolean;
+  persist?: boolean;
 }) {
   return (
     <div
@@ -35,16 +53,18 @@ export function WindowSelector({
           <Link
             key={window}
             href={windowChoiceHref(path, searchParams, window, defaultWindow)}
+            prefetch={persist && window === defaultWindow ? false : prefetch}
+            onClick={() => {
+              if (!persist || !isStatsWindow(window)) return;
+              document.cookie = serializeDiscoveryWindowPreferenceCookie(window);
+            }}
             aria-current={isActive ? "true" : undefined}
             className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
               isActive ? "bg-surface text-ink shadow-sm" : "text-ink-muted hover:text-ink"
             }`}
           >
-            {labelFor
-              ? labelFor(window)
-              : window === "24h" || window === "7d"
-                ? formatStatsWindowLabel(window, "short")
-                : window}
+            {labels?.[window] ??
+              (isStatsWindow(window) ? formatStatsWindowLabel(window, "short") : window)}
           </Link>
         );
       })}

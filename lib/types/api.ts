@@ -26,7 +26,7 @@ export interface DiscoveryItemRanking {
 }
 
 export interface DiscoveryListMeta {
-  window?: "24h" | "7d" | string;
+  window?: "24h" | "7d" | "30d" | string;
   computed_at?: string;
   ranking_version?: string;
   confidence?: DiscoveryConfidence;
@@ -41,6 +41,7 @@ export interface LanguageCount {
 export interface TopLanguages {
   "24h"?: LanguageCount[];
   "7d"?: LanguageCount[];
+  "30d"?: LanguageCount[];
 }
 
 export interface NativeApiSemantics {
@@ -99,6 +100,12 @@ export interface Profile {
   recent_active_days?: number;
   recent_activity_at?: number;
   follower_count?: number;
+  /** Sats received in the window after each sender is capped. The supported-profile rank. */
+  capped_sats?: number;
+  /** Uncapped sats received in the window. Not the supported-profile rank. */
+  sats_received?: number;
+  /** Distinct senders behind `capped_sats`. */
+  supporter_count?: number;
   ranking?: DiscoveryItemRanking;
   /** Related-profile signals (only present on `/related` results). */
   reasons?: string[];
@@ -137,6 +144,8 @@ export interface EventRecord {
   created_at?: number;
   content?: string;
   tags?: string[][];
+  /** Distinct people who currently have this note on a public bookmark list. */
+  bookmark_count?: number;
   ranking?: DiscoveryItemRanking;
   preview?: {
     mode?: string;
@@ -216,6 +225,12 @@ export interface HashtagEntry {
   [key: string]: unknown;
 }
 
+export interface DomainTrendWindow {
+  link_count?: number;
+  note_count?: number;
+  unique_authors?: number;
+}
+
 export interface DomainEntry {
   domain?: string;
   count?: number;
@@ -225,6 +240,12 @@ export interface DomainEntry {
   /** Distinct notes linking to this domain in the window. */
   note_count?: number;
   unique_authors?: number;
+  /** Per-range counts. `30d` is optional until every payload includes it. */
+  trend_windows?: {
+    "24h"?: DomainTrendWindow;
+    "7d"?: DomainTrendWindow;
+    "30d"?: DomainTrendWindow;
+  };
   ranking?: DiscoveryItemRanking;
   [key: string]: unknown;
 }
@@ -247,6 +268,17 @@ export interface TrendingNotesResponse extends NativeApiSemantics {
 
 export interface TrendingProfilesResponse extends NativeApiSemantics {
   profiles?: Profile[];
+  [key: string]: unknown;
+}
+
+export interface TrendingMediaResponse extends NativeApiSemantics {
+  surface?: string;
+  format?: string;
+  window?: string;
+  events?: EventRecord[];
+  offset?: number;
+  next_offset?: number;
+  total?: number;
   [key: string]: unknown;
 }
 
@@ -281,6 +313,59 @@ export interface UserHighlightsResponse extends NativeApiSemantics {
   [key: string]: unknown;
 }
 
+export interface UserMediaResponse extends NativeApiSemantics {
+  pubkey?: string;
+  events?: EventRecord[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface UserLiveActivitiesResponse extends NativeApiSemantics {
+  pubkey?: string;
+  events?: EventRecord[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export interface PinItem {
+  tag: "e" | "a";
+  value: string;
+}
+
+export interface UserPinsResponse extends NativeApiSemantics {
+  pubkey?: string;
+  items?: PinItem[];
+  [key: string]: unknown;
+}
+
+export interface LiveActivitiesResponse extends NativeApiSemantics {
+  events?: EventRecord[];
+  [key: string]: unknown;
+}
+
+export interface EventCommentsResponse extends NativeApiSemantics {
+  event_id?: string;
+  comments?: EventRecord[];
+  [key: string]: unknown;
+}
+
+export interface ReportTarget {
+  id?: string;
+  reporter_pubkey?: string;
+  report_type?: string;
+  content?: string;
+  created_at?: number;
+  target_event_id?: string;
+  target_pubkey?: string;
+}
+
+export interface ReportsResponse extends NativeApiSemantics {
+  reports?: ReportTarget[];
+  event_id?: string;
+  pubkey?: string;
+  [key: string]: unknown;
+}
+
 export interface UserMuteListResponse extends NativeApiSemantics {
   pubkey?: string;
   profiles?: Profile[];
@@ -311,6 +396,7 @@ export interface ConversationHotspot extends EventRecord {
   last_activity_at?: number;
   replies_24h?: number;
   replies_7d?: number;
+  replies_30d?: number;
   velocity_score?: number;
   reply_count?: number;
   repost_count?: number;
@@ -320,6 +406,7 @@ export interface ConversationHotspot extends EventRecord {
   activity?: {
     replies_24h?: number;
     replies_7d?: number;
+    replies_30d?: number;
     [key: string]: unknown;
   };
 }
@@ -333,6 +420,12 @@ export interface HotConversationsResponse extends NativeApiSemantics {
 export interface RisingProfilesResponse extends NativeApiSemantics {
   profiles?: Profile[];
   [key: string]: unknown;
+}
+
+export interface SupportedProfilesResponse extends RisingProfilesResponse {
+  /** Cap applied to each sender before sats count toward the rank. */
+  sender_cap_sats?: number;
+  surface?: string;
 }
 
 export interface HashtagDetailResponse extends NativeApiSemantics {
@@ -628,9 +721,16 @@ export type HashtagNotesApiResponse = NativeApiSemantics & Record<string, unknow
 export type RelatedHashtagsApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type TrendingDomainsApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type TrendingLongFormApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type TrendingMediaApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type UserLongFormApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type UserBookmarksApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type UserHighlightsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type UserMediaApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type UserLiveActivitiesApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type UserPinsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type LiveActivitiesApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type EventCommentsApiResponse = NativeApiSemantics & Record<string, unknown>;
+export type ReportsApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type UserMuteListApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type UserMutedByApiResponse = NativeApiSemantics & Record<string, unknown>;
 export type DomainDetailApiResponse = NativeApiSemantics & Record<string, unknown>;
@@ -641,6 +741,17 @@ export interface PopularRelayEntry {
   distinct_users: number;
   in_registry: boolean;
   admission_state?: string;
+  /** Present when the relay published a name in its stored NIP-11 document. */
+  name?: string;
+  /** Present when the relay published an icon URL. */
+  icon?: string;
+  /**
+   * Present only when the relay stated `limitation.auth_required`.
+   * `false` means the relay said no. A missing field means it said nothing.
+   */
+  auth_required?: boolean;
+  /** Present only when the relay stated `limitation.payment_required`. */
+  payment_required?: boolean;
 }
 
 export interface PopularRelaysResponse {
@@ -668,4 +779,92 @@ export interface RelayProbeHealthResponse {
   /** Registry relays that have been probed. `relays` is the page after `limit`. */
   total?: number;
   limit?: number;
+}
+
+export interface Nip11Fee {
+  amount: number;
+  unit: string;
+  period?: number;
+  kinds?: number[];
+}
+
+export interface Nip11Fees {
+  admission?: Nip11Fee[];
+  subscription?: Nip11Fee[];
+  publication?: Nip11Fee[];
+}
+
+/** A kind number, or an inclusive two-element range. */
+export type Nip11Kind = number | [number, number];
+
+export interface Nip11RetentionRule {
+  kinds?: Nip11Kind[];
+  time?: number;
+  count?: number;
+}
+
+export interface Nip11Limitation {
+  auth_required?: boolean;
+  payment_required?: boolean;
+  restricted_writes?: boolean;
+  max_message_length?: number;
+  max_subscriptions?: number;
+  max_filters?: number;
+  max_limit?: number;
+  max_subid_length?: number;
+  max_event_tags?: number;
+  max_content_length?: number;
+  min_pow_difficulty?: number;
+  created_at_lower_limit?: number;
+  created_at_upper_limit?: number;
+}
+
+/** Fields the relay published. Every property is optional. */
+export interface Nip11Info {
+  name?: string;
+  description?: string;
+  icon?: string;
+  banner?: string;
+  pubkey?: string;
+  contact?: string;
+  supported_nips?: number[];
+  software?: string;
+  version?: string;
+  limitation?: Nip11Limitation;
+  fees?: Nip11Fees;
+  retention?: Nip11RetentionRule[];
+}
+
+export interface Nip11Document {
+  fetched_at: string;
+  ok: boolean;
+  /** Set when `ok` is false. One of the fetcher codes, including `http_<status>`. */
+  error?: string;
+  info?: Nip11Info;
+}
+
+export interface RelayInfoProbe {
+  last_probe_at?: string | null;
+  last_probe_status?: string;
+  probe_fail_rate?: number;
+  avg_connect_latency_ms?: number | null;
+  avg_eose_latency_ms?: number | null;
+  last_connect_ok?: boolean | null;
+  last_subscribe_ok?: boolean | null;
+  last_eose_ok?: boolean | null;
+}
+
+export interface RelayInfoActivity {
+  event_count_24h?: number;
+  event_count_7d?: number;
+}
+
+export interface RelayInfoResponse {
+  relay_url: string;
+  distinct_users: number;
+  score: number;
+  probe: RelayInfoProbe;
+  activity: RelayInfoActivity;
+  /** Null until a background fetch has completed. */
+  nip11: Nip11Document | null;
 }

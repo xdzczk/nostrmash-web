@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { Timestamp } from "@/components/explorer/timestamp";
 import { highlightSource, type HighlightSource } from "@/lib/profile/highlight-source";

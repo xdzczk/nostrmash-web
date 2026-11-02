@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import type { NoteCardDensity } from "@/components/explorer/note-card";
 import { NoteCard } from "@/components/explorer/note-card";

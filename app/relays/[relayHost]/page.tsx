@@ -6,6 +6,7 @@ import {
   normalizeRelayHost,
   rankRelayActivity,
   readMetricNumber,
+  relayCheckpointIsStale,
   selectRelayHealthForHost,
 } from "@/components/explorer/stats-utils";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
@@ -15,39 +16,58 @@ import { PageHero } from "@/components/explorer/page-hero";
 import { NetworkNav } from "@/components/explorer/network-nav";
 import { WindowSelector } from "@/components/explorer/window-selector";
 import { RelayLink } from "@/components/relays/relay-link";
+import { RelayPublishedIcon } from "@/components/relays/relay-rank-row";
+import { RelayPublishedInfo } from "@/components/relays/relay-published-info";
 import { RelaySummaryCard } from "@/components/relays/relay-summary-card";
 import { SectionCard } from "@/components/ui/section-card";
 import { LoadErrors } from "@/components/ui/status-panels";
-import {
-  getPopularRelays,
-  getRelayHealth,
-  getRelayProbeHealth,
-  getRelayStats,
-} from "@/lib/api/endpoints";
+import { getRelayStats } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
+import { loadRelayDirectorySnapshot } from "@/lib/relays/load-relay-page";
+import {
+  httpUrl,
+  publishedInfo,
+  publishedRelayMarksByHost,
+  relayDocumentTitle,
+  relayMetaDescription,
+  relayRankingDetail,
+  withPublishedNames,
+} from "@/lib/relays/nip11";
 import { displayProbeStatus, probeStatusLabel } from "@/lib/relays/probe-status";
 import { getRequestNowMs } from "@/lib/time/request-now";
 import { isValidRelayHostParam, normalizeValidatedRelayHost } from "@/lib/routing/params";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
-import { formatStatsWindowLabel, readStatsWindow } from "@/lib/search-params/window";
+import {
+  RELAY_STATS_WINDOWS,
+  formatStatsWindowLabel,
+  readRelayStatsWindow,
+} from "@/lib/search-params/window";
 import { buildEntityMetadata } from "@/lib/seo/metadata";
 
 type Params = Promise<{ relayHost: string }>;
 
-function relayWebsocketUrl(relay: string | undefined, host: string): string {
-  if (relay && /^wss?:\/\//i.test(relay.trim())) return relay.trim();
-  return `wss://${host}`;
-}
-
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { relayHost } = await params;
   const label = normalizeValidatedRelayHost(relayHost) ?? relayHost;
-  return buildEntityMetadata({
+  const fallback = buildEntityMetadata({
     title: label,
-    description: `Indexed rank, listed rank, and current status for the Nostr relay ${label}.`,
+    description: relayMetaDescription(label),
     path: `/relays/${encodeURIComponent(label)}`,
   });
+  if (!isValidRelayHostParam(relayHost)) return fallback;
+  const host = normalizeValidatedRelayHost(relayHost) ?? label;
+  try {
+    const snapshot = await loadRelayDirectorySnapshot(host);
+    const info = publishedInfo(snapshot.info?.nip11);
+    return buildEntityMetadata({
+      title: relayDocumentTitle(host, info?.name),
+      description: relayMetaDescription(host, info?.description),
+      path: `/relays/${encodeURIComponent(host)}`,
+    });
+  } catch {
+    return fallback;
+  }
 }
 
 export default async function RelayPage({
@@ -59,7 +79,7 @@ export default async function RelayPage({
 }) {
   const { relayHost } = await params;
   const resolvedSearchParams = await searchParams;
-  const window = readStatsWindow(resolvedSearchParams);
+  const window = readRelayStatsWindow(resolvedSearchParams);
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   if (!isValidRelayHostParam(relayHost)) {
     notFound();
@@ -70,35 +90,35 @@ export default async function RelayPage({
     relayHost.toLowerCase();
   const errors: string[] = [];
   let payload: Awaited<ReturnType<typeof getRelayStats>> | null = null;
-  let healthPayload: Awaited<ReturnType<typeof getRelayHealth>> | null = null;
-  let popular: Awaited<ReturnType<typeof getPopularRelays>> | null = null;
-  let probes: Awaited<ReturnType<typeof getRelayProbeHealth>> | null = null;
 
-  const [statsResult, healthResult, popularResult, probeResult] = await Promise.allSettled([
-    getRelayStats("shortTtl", window),
-    getRelayHealth("shortTtl"),
-    getPopularRelays("shortTtl", { limit: 100 }),
-    getRelayProbeHealth("shortTtl", { limit: 200 }),
+  const [statsResult, snapshot] = await Promise.all([
+    getRelayStats("shortTtl", window).then(
+      (value) => ({ status: "fulfilled" as const, value }),
+      (reason: unknown) => ({ status: "rejected" as const, reason })
+    ),
+    loadRelayDirectorySnapshot(normalizedRelayHost),
   ]);
   if (statsResult.status === "fulfilled") {
     payload = statsResult.value;
   } else {
     errors.push(toUserFacingErrorMessage(statsResult.reason, "Failed to load relay stats."));
   }
-  if (healthResult.status === "fulfilled") {
-    healthPayload = healthResult.value;
-  } else {
-    errors.push(toUserFacingErrorMessage(healthResult.reason, "Failed to load relay health."));
+  const healthPayload = snapshot.health;
+  const popular = snapshot.popular;
+  const probes = snapshot.probes;
+  if (snapshot.healthError) {
+    errors.push(toUserFacingErrorMessage(snapshot.healthError, "Failed to load relay health."));
   }
-  if (popularResult.status === "fulfilled") {
-    popular = popularResult.value;
-  } else {
-    errors.push(toUserFacingErrorMessage(popularResult.reason, "Failed to load listed relays."));
+  if (snapshot.popularError) {
+    errors.push(toUserFacingErrorMessage(snapshot.popularError, "Failed to load listed relays."));
   }
-  if (probeResult.status === "fulfilled") {
-    probes = probeResult.value;
-  } else {
-    errors.push(toUserFacingErrorMessage(probeResult.reason, "Failed to load connection checks."));
+  if (snapshot.probeError) {
+    errors.push(toUserFacingErrorMessage(snapshot.probeError, "Failed to load connection checks."));
+  }
+  if (snapshot.infoError) {
+    errors.push(
+      toUserFacingErrorMessage(snapshot.infoError, "Failed to load the relay description.")
+    );
   }
 
   const rankedActivity = rankRelayActivity(payload, 200, window);
@@ -128,26 +148,40 @@ export default async function RelayPage({
 
   const listedIndex =
     popular?.relays.findIndex(
-      (relay) => normalizeRelayHost(relay.normalized_url) === normalizedRelayHost
+      (relay) => normalizeRelayHost(relay.normalized_url ?? "") === normalizedRelayHost
     ) ?? -1;
   const listed = listedIndex >= 0 ? popular?.relays[listedIndex] : undefined;
   const probe =
     probes?.relays.find(
-      (relay) => normalizeRelayHost(relay.normalized_url) === normalizedRelayHost
+      (relay) => normalizeRelayHost(relay.normalized_url ?? "") === normalizedRelayHost
     ) ?? null;
+  const publishedByHost = publishedRelayMarksByHost(popular?.relays);
+  const published = publishedInfo(snapshot.info?.nip11);
+  const publishedName = published?.name?.trim() || undefined;
+  const iconSrc = httpUrl(published?.icon);
+  const bannerSrc = httpUrl(published?.banner);
+  const rankingSentence = `Indexed rank, who lists it, and whether we could read it over ${formatStatsWindowLabel(window).toLowerCase()}.`;
 
   return (
     <div className="space-y-8">
       <PageHero
         eyebrow="Relay"
-        title={normalizedRelayHost}
-        subtitle={`Indexed rank, who lists it, and whether we could read it over ${formatStatsWindowLabel(window).toLowerCase()}.`}
+        title={publishedName ?? normalizedRelayHost}
+        subtitle={publishedName ? normalizedRelayHost : rankingSentence}
+        icon={iconSrc ? { src: iconSrc, alt: publishedName ? "" : "Relay icon" } : undefined}
+        bannerSrc={bannerSrc ?? undefined}
         badges={
           <WindowSelector
             path={`/relays/${encodeURIComponent(normalizedRelayHost)}`}
             searchParams={currentSearchParams}
             activeWindow={window}
+            windows={RELAY_STATS_WINDOWS}
           />
+        }
+        support={
+          publishedName ? (
+            <p className="text-ink-muted max-w-[46rem] text-sm leading-6">{rankingSentence}</p>
+          ) : null
         }
       />
       <NetworkNav />
@@ -164,36 +198,54 @@ export default async function RelayPage({
         listedUsers={listed?.distinct_users ?? null}
         listedKnown={popular !== null}
         healthy={relayHealth ? healthy : null}
+        inCurrentRead={relayHealth ? !relayCheckpointIsStale(relayHealth, nowMs) : false}
         checkpointAt={relayHealth?.latestCheckpointAt ?? relayHealth?.lastSeenAt}
         lastError={relayHealth?.lastError}
         observationCount={selectedHealth.count}
         connectLabel={probe ? probeStatusLabel(displayProbeStatus(probe)) : null}
         connectLatencyMs={probe?.avg_connect_latency_ms}
-        relayUrl={relayWebsocketUrl(relayHealth?.relay, normalizedRelayHost)}
+        relayUrl={snapshot.relayUrl}
         window={window}
       />
 
+      <RelayPublishedInfo nip11={snapshot.info?.nip11 ?? null} />
+
       <SectionCard
         title={relayActivity ? "Adjacent in this ranking" : "Highest volume relays"}
-        description={
+        description={withPublishedNames(
           relayActivity
             ? "Relays within three ranks of this one, by indexed event volume."
-            : "This host is outside the current ranking. These are the relays at the top of it."
-        }
+            : "This host is outside the current ranking. These are the relays at the top of it.",
+          neighboringRelays.some((entry) => publishedByHost.has(entry.host)),
+          "indexed"
+        )}
       >
         {neighboringRelays.length > 0 ? (
           <ul className="divide-edge/70 divide-y">
-            {neighboringRelays.map((entry) => (
-              <li key={entry.host} className="py-2">
-                <RelayLink host={entry.host} rank={entry.rank} window={window} />
-                <p className="text-ink-muted text-sm">
-                  {entry.activityScore.toLocaleString()} events
-                  {activityTotal > 0
-                    ? ` · ${((entry.activityScore / activityTotal) * 100).toFixed(1)}% of this ranking`
-                    : ""}
-                </p>
-              </li>
-            ))}
+            {neighboringRelays.map((entry) => {
+              const mark = publishedByHost.get(entry.host);
+              const share =
+                activityTotal > 0
+                  ? `${((entry.activityScore / activityTotal) * 100).toFixed(1)}% of this ranking`
+                  : null;
+              return (
+                <li key={entry.host} className="py-2">
+                  <RelayLink
+                    host={entry.host}
+                    rank={entry.rank}
+                    window={window}
+                    label={mark?.name}
+                    icon={mark?.iconSrc ? <RelayPublishedIcon src={mark.iconSrc} /> : undefined}
+                  />
+                  <p className="text-ink-muted text-sm">
+                    {relayRankingDetail(entry.host, mark?.name, [
+                      `${entry.activityScore.toLocaleString()} events`,
+                      share,
+                    ])}
+                  </p>
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <EmptyState message="No other relay rows were found in this response." />
@@ -205,9 +257,13 @@ export default async function RelayPage({
         Activity rank uses indexed event volume for {formatStatsWindowLabel(window).toLowerCase()}.
         This page is the hostname, so every URL on that host is listed here. Ingest is the
         checkpoint the status page lists first. The connection check is the latest probe for this
-        host.
+        host. When the relay has published a description, that text is its own account of itself and
+        is separate from both.
       </AboutThisData>
       <DebugDisclosure title="Debug payload: relay health" data={healthPayload ?? {}} />
+      {snapshot.info ? (
+        <DebugDisclosure title="Debug payload: relay description" data={snapshot.info} />
+      ) : null}
     </div>
   );
 }

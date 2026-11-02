@@ -2,14 +2,38 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { ApiError, fetchApiJson } from "@/lib/api/http";
+import { normalizeProfiles } from "@/lib/api/normalize";
+import { hydrateProfiles } from "@/lib/api/profile-hydration";
 import {
   clampSuggestLimit,
   clampSuggestQuery,
   clientIpFromRequest,
   forwardableClientIp,
 } from "@/lib/api/search-suggest-params";
-import { searchSuggestResponseSchema } from "@/lib/api/schemas/core";
+import {
+  searchSuggestResponseSchema,
+  type SearchSuggestResponseSchema,
+} from "@/lib/api/schemas/core";
 import { nativeApiV1Routes } from "@/lib/api/endpoints/shared";
+import type { Profile } from "@/lib/types/api";
+
+const PICTURE_HYDRATION_BUDGET_MS = 1_200;
+
+async function profilesWithPictures(profiles: Profile[]): Promise<Profile[]> {
+  if (profiles.length === 0) return profiles;
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(profiles), PICTURE_HYDRATION_BUDGET_MS);
+    hydrateProfiles(profiles)
+      .then((hydrated) => {
+        clearTimeout(timer);
+        resolve(hydrated);
+      })
+      .catch(() => {
+        clearTimeout(timer);
+        resolve(profiles);
+      });
+  });
+}
 
 type RateLimiter = {
   limit: (options: { key: string }) => Promise<{ success: boolean }>;
@@ -51,24 +75,31 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const body = await fetchApiJson(nativeApiV1Routes.searchSuggest, {
-      // Typed-in autocomplete text is effectively unbounded, so durable R2
-      // caching here buys almost no hit rate while paying a write per
-      // keystroke; the response's own Cache-Control below already covers
-      // short-lived client/edge reuse.
-      cacheClass: "requestTime",
-      timeoutMs: 5_000,
-      query: { q, limit },
-      schema: searchSuggestResponseSchema,
-      init: forwardedIp
-        ? {
-            headers: {
-              "X-Forwarded-For": forwardedIp,
-              "CF-Connecting-IP": forwardedIp,
-            },
-          }
-        : undefined,
-    });
+    const suggested = await fetchApiJson<SearchSuggestResponseSchema>(
+      nativeApiV1Routes.searchSuggest,
+      {
+        // Typed-in autocomplete text is effectively unbounded, so durable R2
+        // caching here buys almost no hit rate while paying a write per
+        // keystroke; the response's own Cache-Control below already covers
+        // short-lived client/edge reuse.
+        cacheClass: "requestTime",
+        timeoutMs: 5_000,
+        query: { q, limit },
+        schema: searchSuggestResponseSchema,
+        init: forwardedIp
+          ? {
+              headers: {
+                "X-Forwarded-For": forwardedIp,
+                "CF-Connecting-IP": forwardedIp,
+              },
+            }
+          : undefined,
+      }
+    );
+
+    const rawProfiles = suggested.profiles ?? suggested.suggested_profiles;
+    const profiles = await profilesWithPictures(normalizeProfiles(rawProfiles));
+    const body = profiles.length > 0 ? { ...suggested, profiles } : suggested;
 
     return NextResponse.json(body, {
       headers: { "Cache-Control": "public, max-age=10, stale-while-revalidate=20" },

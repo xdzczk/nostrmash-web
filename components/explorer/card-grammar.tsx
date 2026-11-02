@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/app-link";
 
 import { Pill, type PillTone } from "@/components/ui/pill";
 import { formatMetricLabel, formatValue, truncateMiddle } from "@/components/explorer/utils";
@@ -22,9 +22,12 @@ export function cardTierClassName(tier: CardTier): string {
   return TIER_SURFACE[tier];
 }
 
-/** Raise nested controls above `CardHitTarget` so they stay clickable. */
+/**
+ * Raise nested controls above `CardHitTarget` so they stay clickable.
+ * Overlay controls keep their own position (a picture carousel's arrows).
+ */
 export const cardHitTargetClassName =
-  "relative cursor-pointer [&_a:not([data-card-hit-target])]:relative [&_a:not([data-card-hit-target])]:z-[2] [&_button]:relative [&_button]:z-[2] [&_video]:relative [&_video]:z-[2] [&_audio]:relative [&_audio]:z-[2] [&_iframe]:relative [&_iframe]:z-[2]";
+  "relative cursor-pointer [&_a:not([data-card-hit-target])]:relative [&_a:not([data-card-hit-target])]:z-[2] [&_button:not([data-overlay-control])]:relative [&_button:not([data-overlay-control])]:z-[2] [&_video]:relative [&_video]:z-[2] [&_audio]:relative [&_audio]:z-[2] [&_iframe]:relative [&_iframe]:z-[2]";
 
 export function CardHitTarget({ href, label }: { href: string; label: string }) {
   return (

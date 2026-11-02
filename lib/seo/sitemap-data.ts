@@ -21,13 +21,21 @@ const STATIC_PATHS = [
   "/trending/hashtags",
   "/trending/domains",
   "/trending/long-form",
+  "/trending/pictures",
+  "/trending/videos",
+  "/trending/shorts",
   "/stats",
   "/relays",
   "/relays/health",
   "/relays/popular",
   "/methodology",
   "/discovery/conversations/hot",
+  "/discovery/notes/zapped",
+  "/discovery/notes/bookmarked",
   "/discovery/profiles/rising",
+  "/discovery/profiles/followed",
+  "/discovery/profiles/supported",
+  "/live",
 ];
 
 export async function buildSitemapEntries(): Promise<MetadataRoute.Sitemap> {

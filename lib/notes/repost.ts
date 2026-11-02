@@ -10,6 +10,8 @@ export type RepostTarget = {
   targetId?: string;
   /** Pubkey of the reposted event's author when known. */
   targetPubkey?: string;
+  /** Addressable coordinate from the `a` tag (`kind:pubkey:d`). */
+  targetAddress?: string;
 };
 
 export function isRepostEvent(event: EventRecord | null | undefined): boolean {
@@ -35,25 +37,28 @@ export function parseRepostTarget(event: EventRecord): RepostTarget {
   if (!isRepostEvent(event)) return {};
   const targetId = firstTagValue(event, "e")?.toLowerCase();
   const targetPubkey = firstTagValue(event, "p")?.toLowerCase();
+  const targetAddress = firstTagValue(event, "a");
+  const withAddress = (target: RepostTarget): RepostTarget =>
+    targetAddress ? { ...target, targetAddress } : target;
 
   if (typeof event.content === "string" && event.content.trim().startsWith("{")) {
     try {
       const parsed: unknown = JSON.parse(event.content);
       const embedded = normalizeEventRecord(parsed);
       if (embedded && typeof embedded.id === "string" && embedded.id.length > 0) {
-        return {
+        return withAddress({
           embedded,
           targetId: embedded.id.toLowerCase(),
           targetPubkey:
             typeof embedded.pubkey === "string" ? embedded.pubkey.toLowerCase() : targetPubkey,
-        };
+        });
       }
     } catch {
       // Not JSON; fall through to tag-based resolution.
     }
   }
 
-  return { targetId, targetPubkey };
+  return withAddress({ targetId, targetPubkey });
 }
 
 /** Event ids that reposts in `events` reference without embedding them. */
