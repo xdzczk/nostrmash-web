@@ -106,4 +106,64 @@ describe("picture carousel", () => {
     expect(container.querySelector(".grid")).not.toBeNull();
     expect(container.querySelectorAll("img[src^='https://media.example/']")).toHaveLength(2);
   });
+
+  it("plays a video file and keeps its cover as the poster", () => {
+    const { container } = render(
+      <MediaCard
+        event={{
+          id: "d".repeat(64),
+          pubkey: PUBKEY,
+          kind: 21,
+          created_at: 1_700_000_000,
+          content: "A hosted video",
+          tags: [
+            [
+              "imeta",
+              "url https://media.example/episode.mp4",
+              "m video/mp4",
+              "image https://media.example/episode.jpg",
+            ],
+          ],
+        }}
+      />
+    );
+
+    expect(container.querySelector("video")).toHaveAttribute(
+      "poster",
+      "https://media.example/episode.jpg"
+    );
+    expect(container.querySelector("img[src='https://media.example/episode.jpg']")).toBeNull();
+    expect(container.querySelector(".grid")).toBeNull();
+  });
+
+  it("plays a YouTube video instead of laying its thumbnail beside a broken image", () => {
+    const { container } = render(
+      <MediaCard
+        event={{
+          id: "c".repeat(64),
+          pubkey: PUBKEY,
+          kind: 21,
+          created_at: 1_700_000_000,
+          content: "Watch the episode",
+          tags: [
+            ["title", "Tuttle Twins"],
+            [
+              "imeta",
+              "url https://www.youtube.com/watch?v=H02x_Vpqh9c",
+              "image https://i.ytimg.com/vi/H02x_Vpqh9c/hqdefault.jpg",
+              "m image/jpeg",
+            ],
+          ],
+        }}
+      />
+    );
+
+    expect(container.querySelector("iframe")).toHaveAttribute(
+      "src",
+      "https://www.youtube-nocookie.com/embed/H02x_Vpqh9c?rel=0"
+    );
+    expect(container.querySelector("img[src*='ytimg.com']")).toBeNull();
+    expect(container.querySelector("img[src*='youtube.com']")).toBeNull();
+    expect(container.querySelector(".grid")).toBeNull();
+  });
 });

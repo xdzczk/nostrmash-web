@@ -110,6 +110,25 @@ describe("NoteMediaReveal", () => {
     expect(videoPreviewSrc(`${url}#other`)).toBe("https://media.example/clip.mp4#t=0.001");
   });
 
+  it("embeds a YouTube watch URL instead of treating it as a file", () => {
+    const { container } = render(
+      <NoteMediaReveal
+        url="https://www.youtube.com/watch?v=H02x_Vpqh9c"
+        kind="video"
+        alt="Tuttle Twins"
+      />
+    );
+
+    const frame = container.querySelector("iframe");
+    expect(frame).toHaveAttribute(
+      "src",
+      "https://www.youtube-nocookie.com/embed/H02x_Vpqh9c?rel=0"
+    );
+    expect(frame).toHaveAttribute("title", "Tuttle Twins");
+    expect(container.querySelector("video")).toBeNull();
+    expect(frame?.parentElement).toHaveClass("aspect-video");
+  });
+
   it("letterboxes lead videos instead of cropping the frame", () => {
     const { container } = render(
       <NoteMediaReveal url="https://media.example/clip.mp4" kind="video" variant="lead" />

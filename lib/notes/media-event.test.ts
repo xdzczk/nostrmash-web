@@ -13,6 +13,19 @@ describe("extractImetaAttachments", () => {
     ).toEqual([{ url: "https://blossom.example/abc", kind: "image", alt: "Harbor" }]);
   });
 
+  it("keeps a YouTube video when the imeta mime describes the thumbnail", () => {
+    expect(
+      extractImetaAttachments([
+        [
+          "imeta",
+          "url https://www.youtube.com/watch?v=H02x_Vpqh9c",
+          "image https://i.ytimg.com/vi/H02x_Vpqh9c/hqdefault.jpg",
+          "m image/jpeg",
+        ],
+      ])
+    ).toEqual([{ url: "https://www.youtube.com/watch?v=H02x_Vpqh9c", kind: "video" }]);
+  });
+
   it("keeps a video without also attaching its poster", () => {
     expect(
       extractImetaAttachments([
@@ -68,6 +81,49 @@ describe("getMediaPresentation", () => {
     expect(presentation?.videoUrl).toBe("https://media.example.invalid/cliff.mp4");
     expect(presentation?.posterUrl).toBe("https://media.example.invalid/cliff.jpg");
     expect(presentation?.durationLabel).toBe("0:12");
+  });
+
+  it("plays a YouTube watch URL and keeps the thumbnail as the poster", () => {
+    const presentation = getMediaPresentation({
+      id: "d".repeat(64),
+      pubkey: PUBKEY,
+      kind: 21,
+      content: "Watch the episode",
+      tags: [
+        ["title", "Tuttle Twins"],
+        [
+          "imeta",
+          "url https://www.youtube.com/watch?v=H02x_Vpqh9c",
+          "image https://i.ytimg.com/vi/H02x_Vpqh9c/hqdefault.jpg",
+          "m image/jpeg",
+        ],
+      ],
+    });
+    expect(presentation?.variant).toBe("video");
+    expect(presentation?.videoUrl).toBe("https://www.youtube.com/watch?v=H02x_Vpqh9c");
+    expect(presentation?.posterUrl).toBe("https://i.ytimg.com/vi/H02x_Vpqh9c/hqdefault.jpg");
+    expect(presentation?.images.map((image) => image.url)).not.toContain(
+      "https://www.youtube.com/watch?v=H02x_Vpqh9c"
+    );
+  });
+
+  it("keeps a video file when its cover is tagged with an image mime", () => {
+    const presentation = getMediaPresentation({
+      id: "e".repeat(64),
+      pubkey: PUBKEY,
+      kind: 21,
+      content: "A hosted video",
+      tags: [
+        [
+          "imeta",
+          "url https://media.example.invalid/episode.mp4",
+          "m image/jpeg",
+          "image https://media.example.invalid/episode.jpg",
+        ],
+      ],
+    });
+    expect(presentation?.videoUrl).toBe("https://media.example.invalid/episode.mp4");
+    expect(presentation?.posterUrl).toBe("https://media.example.invalid/episode.jpg");
   });
 
   it("builds an naddr for an addressable video", () => {

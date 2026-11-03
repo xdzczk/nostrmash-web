@@ -1,4 +1,5 @@
 import { encodeNaddr } from "@/lib/nostr/nip19";
+import { parseYoutubeVideoId } from "@/lib/notes/embeds";
 import {
   classifyNoteMediaUrl,
   type NoteMediaAttachment,
@@ -97,6 +98,9 @@ function parseImeta(parts: string[]): ImetaFields {
 }
 
 function attachmentKind(url: string, mime: string | undefined): NoteMediaKind | null {
+  // The URL wins over `m`. Clients put the thumbnail mime (`image/jpeg`) on the
+  // same imeta as a YouTube watch URL or a video file.
+  if (parseYoutubeVideoId(url) || classifyNoteMediaUrl(url) === "video") return "video";
   if (mime?.startsWith("image/")) return "image";
   if (mime?.startsWith("video/")) return "video";
   if (mime?.startsWith("audio/")) return "audio";
@@ -133,14 +137,16 @@ export function extractImetaAttachments(tags: unknown): NoteMediaAttachment[] {
 }
 
 function looksLikeVideo(url: string, mime: string | undefined): boolean {
-  if (mime?.startsWith("video/")) return true;
+  if (parseYoutubeVideoId(url) || classifyNoteMediaUrl(url) === "video") return true;
   if (mime?.startsWith("image/") || mime?.startsWith("audio/")) return false;
-  return classifyNoteMediaUrl(url) === "video";
+  if (mime?.startsWith("video/")) return true;
+  return false;
 }
 
 function looksLikeImage(url: string, mime: string | undefined): boolean {
-  if (mime?.startsWith("image/")) return true;
+  if (parseYoutubeVideoId(url) || classifyNoteMediaUrl(url) === "video") return false;
   if (mime?.startsWith("video/") || mime?.startsWith("audio/")) return false;
+  if (mime?.startsWith("image/")) return true;
   return classifyNoteMediaUrl(url) === "image";
 }
 

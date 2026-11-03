@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 
 import { BlossomImage } from "@/components/ui/blossom-image";
 import { EnlargeableImage } from "@/components/ui/image-lightbox";
+import { parseYoutubeVideoId, youtubeEmbedSrc } from "@/lib/notes/embeds";
 
 type MediaKind = "image" | "video" | "audio";
 
@@ -152,11 +153,14 @@ export function NoteMediaReveal({
       </span>
     ) : null;
 
-  const frameWidthClass = fill
-    ? `${fixedRatio}${variant === "portrait" ? " w-full" : ""}`
-    : kind === "audio"
-      ? "w-full"
-      : "w-fit max-w-full";
+  const youtubeId = kind === "video" ? parseYoutubeVideoId(url) : null;
+  const frameWidthClass = youtubeId
+    ? `w-full ${variant === "portrait" ? "aspect-[9/16]" : "aspect-video"}`
+    : fill
+      ? `${fixedRatio}${variant === "portrait" ? " w-full" : ""}`
+      : kind === "audio"
+        ? "w-full"
+        : "w-fit max-w-full";
 
   return (
     <div
@@ -180,7 +184,20 @@ export function NoteMediaReveal({
           />
         </EnlargeableImage>
       ) : null}
-      {kind === "video" ? <NoteVideo url={url} poster={poster} className={videoClass} /> : null}
+      {youtubeId ? (
+        <iframe
+          src={youtubeEmbedSrc(youtubeId)}
+          title={alt === "Image attached to note" ? "YouTube video" : alt}
+          loading="lazy"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
+          className="absolute inset-0 h-full w-full border-0"
+        />
+      ) : null}
+      {kind === "video" && !youtubeId ? (
+        <NoteVideo url={url} poster={poster} className={videoClass} />
+      ) : null}
       {kind === "audio" ? (
         <div className={fill ? "flex h-full items-center p-3" : "p-3"}>
           <audio src={url} controls preload="metadata" className="w-full" />
