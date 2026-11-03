@@ -58,10 +58,16 @@ export function LoadMoreList({
   const inFlight = useRef(false);
   const cursorRef = useRef(cursor);
   const loadMoreRef = useRef(loadMore);
-  // A render while a page is in flight still has the previous cursor in state.
-  // Leave the ref on the cursor that request captured until that request finishes.
-  if (!inFlight.current) cursorRef.current = cursor;
-  loadMoreRef.current = loadMore;
+
+  useEffect(() => {
+    loadMoreRef.current = loadMore;
+  }, [loadMore]);
+
+  useEffect(() => {
+    // A render while a page is in flight still has the previous cursor in state.
+    // Leave the ref on the cursor that request captured until that request finishes.
+    if (!inFlight.current) cursorRef.current = cursor;
+  }, [cursor]);
 
   const requestNext = useCallback(() => {
     const currentCursor = cursorRef.current;
