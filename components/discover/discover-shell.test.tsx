@@ -139,6 +139,12 @@ describe("Discover category and mode prefetch", () => {
     expect(screen.queryByRole("group", { name: "Ranking window" })).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     const followed = within(screen.getByRole("navigation", { name: "people modes" }));
+    expect(followed.getAllByRole("link").map((link) => link.textContent)).toEqual([
+      "Trending",
+      "Up and coming",
+      "Most supported",
+      "Most followed",
+    ]);
     expect(followed.getByRole("link", { name: "Most followed" })).toHaveAttribute(
       "href",
       "/discovery/profiles/followed"

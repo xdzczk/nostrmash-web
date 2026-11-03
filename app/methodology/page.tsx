@@ -89,18 +89,18 @@ const RANKINGS = [
       "A larger audience has to move further to appear. Two new followers or fewer, and a single interaction, count as noise and do not hold a place.",
   },
   {
-    href: "/discovery/profiles/followed",
-    title: "Most followed",
-    order: "How many people follow the account.",
-    context:
-      "The account needs a profile. Dormant accounts stay in the list, and so do accounts with fewer than 1,000 followers. Language does not change the order.",
-  },
-  {
     href: "/discovery/profiles/supported",
     title: "Most supported",
     order: "Sats received in the window, with each sender capped at 100,000 sats.",
     context:
       "Three people sending 50,000 outrank one person sending 500,000, because that sender stops counting at 100,000. The line under the name is the capped amount. A self-zap does not count. The list is rewritten with most zapped notes.",
+  },
+  {
+    href: "/discovery/profiles/followed",
+    title: "Most followed",
+    order: "How many people follow the account.",
+    context:
+      "The account needs a profile. Dormant accounts stay in the list, and so do accounts with fewer than 1,000 followers. Language does not change the order.",
   },
   {
     href: "/trending/hashtags",

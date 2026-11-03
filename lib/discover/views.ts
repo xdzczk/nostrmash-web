@@ -74,16 +74,16 @@ export const DISCOVER_MODE_LINKS: Partial<Record<DiscoverView, DiscoverModeLink[
     { mode: "default", label: "Trending", href: "/trending/profiles" },
     { mode: "rising", label: "Up and coming", href: "/discovery/profiles/rising" },
     {
-      mode: "followed",
-      label: "Most followed",
-      href: "/discovery/profiles/followed",
-      windowed: false,
-    },
-    {
       mode: "supported",
       label: "Most supported",
       href: "/discovery/profiles/supported",
       carryLanguage: false,
+    },
+    {
+      mode: "followed",
+      label: "Most followed",
+      href: "/discovery/profiles/followed",
+      windowed: false,
     },
   ],
 };
