@@ -202,13 +202,19 @@ export function NoteLinkPreviews({ content, limit = 1 }: { content: string; limi
   const urlKey = fetchUrls.join("\n");
   const [previews, setPreviews] = useState<Record<string, LinkPreviewResult | null>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [requestKey, setRequestKey] = useState(urlKey);
+  if (requestKey !== urlKey) {
+    setRequestKey(urlKey);
+    const nextTargets = urlKey.length > 0 ? urlKey.split("\n") : [];
+    if (nextTargets.length > 0) {
+      setLoading(Object.fromEntries(nextTargets.map((url) => [url, true])));
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
     const targets = urlKey.length > 0 ? urlKey.split("\n") : [];
     if (targets.length === 0) return;
-
-    setLoading(Object.fromEntries(targets.map((url) => [url, true])));
 
     void Promise.all(
       targets.map(async (url) => {

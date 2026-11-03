@@ -8,6 +8,11 @@ import type { StreamSource } from "@/lib/notes/live-playback";
 
 const PLAYBACK_ERROR = "This stream can't be played in the browser.";
 
+function unmuteAndPlay(media: HTMLMediaElement) {
+  media.muted = false;
+  return media.play();
+}
+
 async function startPlayback(media: HTMLMediaElement, onNeedGesture: () => void) {
   try {
     media.muted = false;
@@ -175,9 +180,8 @@ function PlayableMedia({
 
   const unmute = () => {
     if (!mediaElement) return;
-    mediaElement.muted = false;
     setNeedsUnmute(false);
-    void mediaElement.play().catch(() => setNeedsUnmute(true));
+    void unmuteAndPlay(mediaElement).catch(() => setNeedsUnmute(true));
   };
 
   return (
