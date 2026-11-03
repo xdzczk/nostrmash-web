@@ -1,0 +1,3 @@
+# pnpm rewrites this file in its own style. Formatting it rewrites thousands of
+# quotes and fails dependency update pull requests.
+pnpm-lock.yaml
