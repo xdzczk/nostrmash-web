@@ -1,3 +1,4 @@
+import { COMMENT_KIND } from "@/lib/notes/kinds";
 import { LONG_FORM_KIND } from "@/lib/types/api";
 import type {
   ArticleRecord,
@@ -80,9 +81,10 @@ export function normalizeEventRecord(value: unknown): EventRecord | null {
 
 /**
  * List / metadata kinds that store their payload in tags (or empty content)
- * and must not appear as notes in lists, search, or detail pages.
+ * and must not appear as notes in feeds or search.
  * NIP-02 contacts, NIP-51 lists/sets, NIP-65 relays, NIP-17 DM relays,
- * NIP-78 app data, Blossom/server lists.
+ * NIP-78 app data, Blossom/server lists. Kind 1111 stays out of those feeds
+ * and is still opened from a conversation.
  */
 export const HIDDEN_NOTE_KINDS = new Set([
   3, 5, 1111, 1984, 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10009, 10012, 10015,
@@ -91,6 +93,11 @@ export const HIDDEN_NOTE_KINDS = new Set([
 
 export function isHiddenNoteKind(event: { kind?: number } | null | undefined): boolean {
   return typeof event?.kind === "number" && HIDDEN_NOTE_KINDS.has(event.kind);
+}
+
+/** Feeds hide comments. A comment still has a note page and a reply card. */
+export function isReadableNoteKind(event: { kind?: number } | null | undefined): boolean {
+  return !isHiddenNoteKind(event) || event?.kind === COMMENT_KIND;
 }
 
 export function normalizeEventRecords(value: unknown): EventRecord[] {

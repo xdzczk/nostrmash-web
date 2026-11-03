@@ -10,14 +10,20 @@ import { NoteCard, type NoteCardDensity } from "@/components/explorer/note-card"
 import type { NoteContentSize, NoteContentResolution } from "@/components/explorer/note-content";
 import type { NoteMediaVariant } from "@/components/explorer/note-media";
 import { isHiddenNoteKind } from "@/lib/api/normalize";
-import { GENERIC_REPOST_KIND, isLiveActivityKind, isMediaKind } from "@/lib/notes/kinds";
+import {
+  COMMENT_KIND,
+  GENERIC_REPOST_KIND,
+  isLiveActivityKind,
+  isMediaKind,
+} from "@/lib/notes/kinds";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
 export type EventSurface = "list" | "detail" | "reply";
 
 /**
  * One kind switch for feeds, search, embeds, and the note page.
- * Kind 1111 and 1984 never render here. Kind 6 keeps the note repost card.
+ * Kind 1984 never renders here. Kind 1111 uses the note card outside feeds.
+ * Kind 6 keeps the note repost card.
  */
 export function EventKindSwitch({
   event,
@@ -65,7 +71,9 @@ export function EventKindSwitch({
   /** Kind 16 unwraps once. The inner event does not unwrap again. */
   unwrapReposts?: boolean;
 }) {
-  if (isHiddenNoteKind(event)) return null;
+  if (isHiddenNoteKind(event) && !(event.kind === COMMENT_KIND && surface !== "list")) {
+    return null;
+  }
 
   const density: NoteCardDensity =
     surface === "list" ? "list" : surface === "reply" ? "reply" : "detail";

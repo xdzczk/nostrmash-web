@@ -72,6 +72,44 @@ describe("EventKindSwitch", () => {
     expect(screen.getByText("1 person")).toBeInTheDocument();
   });
 
+  it("renders a comment with the same post stats as a reply", () => {
+    render(
+      <EventKindSwitch
+        surface="reply"
+        event={{
+          id: "e".repeat(64),
+          pubkey: AUTHOR,
+          kind: 1111,
+          content: "A comment with stats",
+          created_at: 1_700_000_000,
+          reply_count: 2,
+          reaction_count: 0,
+          repost_count: 0,
+          zap_count: 0,
+        }}
+      />
+    );
+    expect(screen.getByText("A comment with stats")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "2 replies" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "0 reactions" })).toBeInTheDocument();
+  });
+
+  it("keeps comments out of list feeds", () => {
+    const { container } = render(
+      <EventKindSwitch
+        surface="list"
+        event={{
+          id: "e".repeat(64),
+          pubkey: AUTHOR,
+          kind: 1111,
+          content: "hidden in lists",
+        }}
+      />
+    );
+    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByText("hidden in lists")).not.toBeInTheDocument();
+  });
+
   it("does not render a report as a note", () => {
     const { container } = render(
       <EventKindSwitch

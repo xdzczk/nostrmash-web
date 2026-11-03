@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { EventReadingSurface } from "@/components/explorer/event-reading-surface";
 import { applyEngagementStats, isRecord } from "@/components/explorer/utils";
-import { isHiddenNoteKind } from "@/lib/api/normalize";
+import { isReadableNoteKind } from "@/lib/api/normalize";
 import { getNoteSummaryCached } from "@/lib/notes/load-note-page-data";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import { isValidEventIdParam, resolveEventIdParam } from "@/lib/routing/params";
@@ -22,7 +22,7 @@ export default async function EmbedNotePage({ params }: { params: Params }) {
   try {
     const summary = await getNoteSummaryCached(resolvedId);
     const baseNote = summary.note ?? null;
-    if (isHiddenNoteKind(baseNote)) notFound();
+    if (baseNote && !isReadableNoteKind(baseNote)) notFound();
     note = baseNote
       ? applyEngagementStats(
           baseNote,

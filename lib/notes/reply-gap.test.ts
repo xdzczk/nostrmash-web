@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { accountedReplyCount, formatUnindexedReplyLine, unindexedReplyCount } from "./reply-gap";
+import {
+  accountedConversationCount,
+  accountedReplyCount,
+  formatUnindexedReplyLine,
+  unindexedReplyCount,
+} from "./reply-gap";
 
 describe("reply gap", () => {
   it("counts a direct reply and the branch the reader can still open", () => {
@@ -11,6 +16,29 @@ describe("reply gap", () => {
         { id: "c", counts: { reply_count: 2 } },
       ])
     ).toBe(6);
+  });
+
+  it("counts a top-level comment and skips one nested under a listed reply", () => {
+    const focal = "f".repeat(64);
+    const replyId = "a".repeat(64);
+    expect(
+      accountedConversationCount(
+        [{ id: replyId, reply_count: 1 }],
+        [
+          {
+            id: "b".repeat(64),
+            kind: 1111,
+            tags: [["e", focal, "", "p".repeat(64)]],
+          },
+          {
+            id: "c".repeat(64),
+            kind: 1111,
+            tags: [["e", replyId, "", "p".repeat(64)]],
+          },
+        ],
+        focal
+      )
+    ).toBe(3);
   });
 
   it("describes only the replies that are neither listed nor expandable", () => {

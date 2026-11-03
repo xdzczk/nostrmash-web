@@ -1,84 +1,162 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getEventComments } from "@/lib/api/endpoints";
-import { fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
+import { ThreadView } from "@/components/thread/thread-view";
+import {
+  loadNoteComments,
+  loadNoteThreadData,
+  loadThreadActivityStats,
+} from "@/lib/notes/load-note-page-data";
 import { hexToNote } from "@/lib/nostr/nip19";
-import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 
-import { EventComments } from "./event-comments";
+import { DeferredNoteThread } from "./deferred-note-sections";
 
-vi.mock("@/lib/api/endpoints", async (importOriginal) => {
-  const actual = await importOriginal();
-  return { ...(actual as object), getEventComments: vi.fn() };
-});
+vi.mock("@/app/notes/[eventId]/actions", () => ({
+  loadDirectReplies: vi.fn(),
+  loadMoreReplies: vi.fn(),
+  loadQuotes: vi.fn(),
+}));
 
-vi.mock("@/lib/api/profile-hydration", async (importOriginal) => {
-  const actual = await importOriginal();
-  return { ...(actual as object), fetchProfilesByPubkey: vi.fn() };
-});
-
-vi.mock("@/lib/notes/resolve-content-refs", () => ({
-  resolveContentReferences: vi.fn(),
+vi.mock("@/lib/notes/load-note-page-data", () => ({
+  loadNoteThreadData: vi.fn(),
+  loadThreadActivityStats: vi.fn(),
+  loadNoteComments: vi.fn(),
+  loadNoteRelatedData: vi.fn(),
+  mergeNoteContentResolution: (
+    base?: { profilesByPubkey?: object; eventsById?: object },
+    extra?: { profilesByPubkey?: object; eventsById?: object }
+  ) => ({
+    profilesByPubkey: { ...base?.profilesByPubkey, ...extra?.profilesByPubkey },
+    eventsById: { ...base?.eventsById, ...extra?.eventsById },
+  }),
 }));
 
 const AUTHOR = "a".repeat(64);
 const QUOTED = "b".repeat(64);
 const EVENT_ID = "d".repeat(64);
 const COMMENT_ID = "c".repeat(64);
+const REPLY_ID = "e".repeat(64);
 const NOTE = hexToNote(EVENT_ID)!;
 
-describe("EventComments", () => {
+describe("comment thread rendering", () => {
+  it("shows a comment in the reply card, including media and post stats", () => {
+    const { container } = render(
+      <ThreadView
+        focalEventId={"f".repeat(64)}
+        replies={[
+          {
+            id: COMMENT_ID,
+            pubkey: AUTHOR,
+            kind: 1111,
+            content: `Look\nhttps://cdn.example/pic.webp\n${NOTE}`,
+            created_at: 1_700_000_000,
+            reply_count: 3,
+            reaction_count: 1,
+            repost_count: 0,
+            zap_count: 2,
+            zap_msats: 21_000,
+          },
+        ]}
+        authorsByPubkey={{
+          [AUTHOR]: { pubkey: AUTHOR, display_name: "Moravian" },
+        }}
+        contentResolution={{
+          profilesByPubkey: {
+            [AUTHOR]: { pubkey: AUTHOR, display_name: "Moravian" },
+            [QUOTED]: { pubkey: QUOTED, display_name: "Cigar" },
+          },
+          eventsById: {
+            [EVENT_ID]: {
+              id: EVENT_ID,
+              pubkey: QUOTED,
+              kind: 1,
+              content: "Stash",
+              tags: [["imeta", "url https://cdn.example/stash.jpg", "m image/jpeg", "alt Stash"]],
+            },
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByRole("article", { name: "Reply" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Comments" })).not.toBeInTheDocument();
+    expect(screen.getByText("Look")).toBeInTheDocument();
+    expect(screen.getByText("Stash")).toBeInTheDocument();
+    expect(screen.getByText("Cigar")).toBeInTheDocument();
+    expect(screen.getByText("Moravian")).toBeInTheDocument();
+    expect(screen.queryByText(/pic\.webp/)).not.toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "3 replies" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "1 reaction" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "2 zaps, 21 sats" })).toBeInTheDocument();
+    expect(container.querySelector('img[src="https://cdn.example/pic.webp"]')).toBeTruthy();
+    expect(container.querySelector('img[src="https://cdn.example/stash.jpg"]')).toBeTruthy();
+  });
+});
+
+describe("DeferredNoteThread", () => {
   beforeEach(() => {
-    vi.mocked(getEventComments).mockReset();
-    vi.mocked(fetchProfilesByPubkey).mockReset();
-    vi.mocked(resolveContentReferences).mockReset();
+    vi.mocked(loadNoteThreadData).mockReset();
+    vi.mocked(loadNoteComments).mockReset();
+    vi.mocked(loadThreadActivityStats).mockReset();
   });
 
-  it("renders media links and the image inside a quoted note", async () => {
-    vi.mocked(getEventComments).mockResolvedValue({
+  it("lists replies and comments under one heading", async () => {
+    vi.mocked(loadNoteThreadData).mockResolvedValue({
+      ancestors: [],
+      authorsByPubkey: { [AUTHOR]: { pubkey: AUTHOR, display_name: "Ada" } },
+      contentResolution: { profilesByPubkey: {}, eventsById: {} },
+      errorMessage: "",
+      missingAncestorIds: [],
+      replies: [
+        {
+          id: REPLY_ID,
+          pubkey: AUTHOR,
+          kind: 1,
+          content: "A reply",
+          created_at: 10,
+          reply_count: 0,
+          reaction_count: 0,
+          repost_count: 0,
+          zap_count: 0,
+        },
+      ],
+      repliesNextCursor: undefined,
+    } as unknown as Awaited<ReturnType<typeof loadNoteThreadData>>);
+    vi.mocked(loadThreadActivityStats).mockResolvedValue({
+      replies24h: undefined,
+      replies7d: undefined,
+      participantCount: undefined,
+    });
+    vi.mocked(loadNoteComments).mockResolvedValue({
       comments: [
         {
           id: COMMENT_ID,
           pubkey: AUTHOR,
           kind: 1111,
-          content: `Look\nhttps://cdn.example/pic.webp\n${NOTE}`,
-          created_at: 1_700_000_000,
+          content: "A comment",
+          created_at: 20,
+          reply_count: 1,
+          reaction_count: 0,
+          repost_count: 0,
+          zap_count: 0,
         },
       ],
-    });
-    vi.mocked(resolveContentReferences).mockResolvedValue({
-      profilesByPubkey: {},
-      eventsById: {
-        [EVENT_ID]: {
-          id: EVENT_ID,
-          pubkey: QUOTED,
-          kind: 1,
-          content: "Stash",
-          tags: [["imeta", "url https://cdn.example/stash.jpg", "m image/jpeg", "alt Stash"]],
-        },
-      },
-    });
-    vi.mocked(fetchProfilesByPubkey).mockImplementation(async (pubkeys) => {
-      const profiles: Record<string, { pubkey: string; display_name: string }> = {};
-      for (const pubkey of pubkeys) {
-        if (typeof pubkey !== "string") continue;
-        const key = pubkey.toLowerCase();
-        if (key === AUTHOR) profiles[key] = { pubkey: AUTHOR, display_name: "Moravian" };
-        if (key === QUOTED) profiles[key] = { pubkey: QUOTED, display_name: "Cigar" };
-      }
-      return profiles;
+      authorsByPubkey: { [AUTHOR]: { pubkey: AUTHOR, display_name: "Ada" } },
+      contentResolution: { profilesByPubkey: {}, eventsById: {} },
     });
 
-    const view = await EventComments({ eventId: "e".repeat(64) });
-    const { container } = render(view);
+    const view = await DeferredNoteThread({
+      eventId: EVENT_ID,
+      rootEventId: EVENT_ID,
+      searchParams: {},
+      replyCount: 2,
+    });
+    render(view);
 
-    expect(screen.getByRole("article", { name: "Comment by Moravian" })).toBeInTheDocument();
-    expect(screen.getByText("Look")).toBeInTheDocument();
-    expect(screen.getByText("Stash")).toBeInTheDocument();
-    expect(screen.getByText("Cigar")).toBeInTheDocument();
-    expect(screen.queryByText(/pic\.webp/)).not.toBeInTheDocument();
-    expect(container.querySelector('img[src="https://cdn.example/pic.webp"]')).toBeTruthy();
-    expect(container.querySelector('img[src="https://cdn.example/stash.jpg"]')).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "2 replies" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Comments" })).not.toBeInTheDocument();
+    expect(screen.getByText("A reply")).toBeInTheDocument();
+    expect(screen.getByText("A comment")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "1 reply" })).toBeInTheDocument();
   });
 });

@@ -5,10 +5,15 @@ import { NoteCard } from "@/components/explorer/note-card";
 import { profileLabel } from "@/components/explorer/utils";
 import { ThreadReplies } from "@/components/thread/thread-view";
 import { fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
-import { loadNoteRelatedData, loadRepliesPage } from "@/lib/notes/load-note-page-data";
 import { formatRepostRollup, partitionRelatedNotes } from "@/lib/notes/related-notes";
-import { accountedReplyCount } from "@/lib/notes/reply-gap";
-import { buildReplyTree } from "@/lib/notes/thread-tree";
+import {
+  loadNoteComments,
+  loadNoteRelatedData,
+  loadRepliesPage,
+  mergeNoteContentResolution,
+} from "@/lib/notes/load-note-page-data";
+import { accountedConversationCount } from "@/lib/notes/reply-gap";
+import { buildReplyTree, mergeConversationEvents } from "@/lib/notes/thread-tree";
 import { isValidEventIdParam, resolveEventIdParam } from "@/lib/routing/params";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import type { EventRecord, Profile } from "@/lib/types/api";
@@ -77,9 +82,10 @@ function replyChunk(
   page: Awaited<ReturnType<typeof loadRepliesPage>>,
   focalEventId: string,
   depth: number,
-  flattenUnderPubkey?: string
+  flattenUnderPubkey?: string,
+  comments: EventRecord[] = []
 ): LoadMoreChunk {
-  let nodes = buildReplyTree(page.replies, focalEventId);
+  let nodes = buildReplyTree(mergeConversationEvents(page.replies, comments), focalEventId);
   if (flattenUnderPubkey) {
     nodes = nodes.map((node) => ({
       ...node,
@@ -102,7 +108,7 @@ function replyChunk(
       typeof page.repliesNextCursor === "string" && page.repliesNextCursor.length > 0
         ? page.repliesNextCursor
         : undefined,
-    indexedCount: accountedReplyCount(page.replies),
+    indexedCount: accountedConversationCount(page.replies, comments, focalEventId),
   };
 }
 
@@ -133,9 +139,15 @@ export async function loadDirectReplies(
       ? flattenUnderPubkey.toLowerCase()
       : undefined;
 
-  const page = await loadRepliesPage(id, cursorResult.cursor);
+  const [page, commentPage] = await Promise.all([
+    loadRepliesPage(id, cursorResult.cursor),
+    cursorResult.cursor ? Promise.resolve(null) : loadNoteComments(id),
+  ]);
   // The parent author isn't on this page of replies, but the line says who it answers.
-  let authorsByPubkey = page.authorsByPubkey;
+  let authorsByPubkey = {
+    ...page.authorsByPubkey,
+    ...commentPage?.authorsByPubkey,
+  };
   if (flatten && !authorsByPubkey[flatten]) {
     try {
       authorsByPubkey = {
@@ -143,10 +155,26 @@ export async function loadDirectReplies(
         ...(await fetchProfilesByPubkey([flatten], "shortTtl")),
       };
     } catch {
-      authorsByPubkey = page.authorsByPubkey;
+      authorsByPubkey = {
+        ...page.authorsByPubkey,
+        ...commentPage?.authorsByPubkey,
+      };
     }
   }
-  return replyChunk({ ...page, authorsByPubkey }, id, 1, flatten);
+  return replyChunk(
+    {
+      ...page,
+      authorsByPubkey,
+      contentResolution: mergeNoteContentResolution(
+        page.contentResolution,
+        commentPage?.contentResolution
+      ),
+    },
+    id,
+    1,
+    flatten,
+    commentPage?.comments ?? []
+  );
 }
 
 export async function loadRepostRollup(eventId: unknown, total: unknown): Promise<LoadMoreChunk> {

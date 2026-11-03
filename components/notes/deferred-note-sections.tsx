@@ -10,15 +10,18 @@ import { ThreadView } from "@/components/thread/thread-view";
 import { SectionCard } from "@/components/ui/section-card";
 import { partitionRelatedNotes } from "@/lib/notes/related-notes";
 import {
-  accountedReplyCount,
+  accountedConversationCount,
   formatUnindexedReplyLine,
   unindexedReplyCount,
 } from "@/lib/notes/reply-gap";
+import { mergeConversationEvents } from "@/lib/notes/thread-tree";
 import { formatThreadActivityLine } from "@/lib/notes/thread-activity";
 import {
+  loadNoteComments,
   loadNoteRelatedData,
   loadNoteThreadData,
   loadThreadActivityStats,
+  mergeNoteContentResolution,
 } from "@/lib/notes/load-note-page-data";
 
 /** Ancestors and replies come from one fetch; both boundaries share it per request. */
@@ -59,28 +62,36 @@ export async function DeferredNoteThread({
   // Activity counts describe the whole thread, so they sit beside the heading
   // only when this page is the root. A reply's own "1 reply" is a different scope.
   const isThreadRoot = eventId.toLowerCase() === rootEventId.toLowerCase();
-  const [data, stats] = await Promise.all([
+  const [data, stats, commentPage] = await Promise.all([
     loadThreadOnce(eventId, searchParams),
     isThreadRoot ? loadThreadActivityStats(rootEventId) : Promise.resolve(null),
+    loadNoteComments(eventId),
   ]);
   const nextCursor =
     typeof data.repliesNextCursor === "string" && data.repliesNextCursor.length > 0
       ? data.repliesNextCursor
       : undefined;
   const loadMore = loadMoreReplies.bind(null, eventId);
+  const comments = commentPage.comments;
   const title =
     typeof replyCount === "number" && replyCount > 0
       ? `${replyCount.toLocaleString()} ${replyCount === 1 ? "reply" : "replies"}`
-      : data.replies.length > 0
+      : data.replies.length > 0 || comments.length > 0
         ? "Replies"
         : null;
   const activityLine = stats ? formatThreadActivityLine(stats) : null;
-  const accounted = accountedReplyCount(data.replies);
+  const accounted = accountedConversationCount(data.replies, comments, eventId);
   const missingLine = nextCursor
     ? null
     : formatUnindexedReplyLine(unindexedReplyCount(accounted, replyCount));
 
-  if (!title && !activityLine && data.replies.length === 0 && !data.errorMessage) {
+  if (
+    !title &&
+    !activityLine &&
+    data.replies.length === 0 &&
+    comments.length === 0 &&
+    !data.errorMessage
+  ) {
     return <p className="text-ink-dim py-4 text-sm">No replies yet.</p>;
   }
 
@@ -94,14 +105,17 @@ export async function DeferredNoteThread({
           ) : null}
         </h2>
       ) : null}
-      {data.errorMessage && data.replies.length === 0 ? (
+      {data.errorMessage && data.replies.length === 0 && comments.length === 0 ? (
         <EmptyState message={data.errorMessage} />
       ) : (
         <ThreadView
           focalEventId={eventId}
-          replies={data.replies}
-          authorsByPubkey={data.authorsByPubkey}
-          contentResolution={data.contentResolution}
+          replies={mergeConversationEvents(data.replies, comments)}
+          authorsByPubkey={{ ...data.authorsByPubkey, ...commentPage.authorsByPubkey }}
+          contentResolution={mergeNoteContentResolution(
+            data.contentResolution,
+            commentPage.contentResolution
+          )}
           loadDirectReplies={loadDirectReplies}
           continuation={
             nextCursor ? (

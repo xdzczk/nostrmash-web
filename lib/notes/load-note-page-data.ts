@@ -1,9 +1,12 @@
 import { cache } from "react";
 
+import type { NoteContentResolution } from "@/components/explorer/note-content";
+import { applyEngagementStats } from "@/components/explorer/utils";
 import { isRecord } from "@/lib/api/normalize/helpers";
 import {
   getEventAncestors,
   getEvent,
+  getEventComments,
   getEventCounts,
   getEventReplies,
   getEventSeenOn,
@@ -251,6 +254,117 @@ export async function loadNoteThreadData(
     repliesPayload,
     rootEventId,
     threadPayload,
+  };
+}
+
+const EMPTY_RESOLUTION: NoteContentResolution = { profilesByPubkey: {}, eventsById: {} };
+
+export function mergeNoteContentResolution(
+  base?: NoteContentResolution,
+  extra?: NoteContentResolution
+): NoteContentResolution {
+  return {
+    profilesByPubkey: { ...base?.profilesByPubkey, ...extra?.profilesByPubkey },
+    eventsById: { ...base?.eventsById, ...extra?.eventsById },
+  };
+}
+
+async function attachCommentCounts(comments: EventRecord[]): Promise<EventRecord[]> {
+  const missing = comments.filter(
+    (comment) =>
+      typeof comment.id === "string" &&
+      comment.id.length > 0 &&
+      typeof comment.reply_count !== "number"
+  );
+  if (missing.length === 0) return [...comments];
+  const loaded = await Promise.all(
+    missing.map(async (comment) => {
+      const id = comment.id as string;
+      try {
+        const counts = await getEventCounts(id, "shortTtl");
+        return [id.toLowerCase(), counts] as const;
+      } catch {
+        return null;
+      }
+    })
+  );
+  const byId = new Map(
+    loaded.filter(
+      (entry): entry is readonly [string, Awaited<ReturnType<typeof getEventCounts>>] =>
+        entry !== null
+    )
+  );
+  if (byId.size === 0) return [...comments];
+  return comments.map((comment) => {
+    const id = typeof comment.id === "string" ? comment.id.toLowerCase() : "";
+    const counts = byId.get(id);
+    return counts ? applyEngagementStats(comment, counts) : comment;
+  });
+}
+
+/**
+ * Kind 1111 comments on this event, with the same engagement counters a reply
+ * carries. Missing counts are filled from the counts route until the comments
+ * payload includes them. Failures leave the conversation on replies alone.
+ */
+export async function loadNoteComments(eventId: string): Promise<{
+  comments: EventRecord[];
+  authorsByPubkey: Record<string, Profile>;
+  contentResolution: NoteContentResolution;
+}> {
+  const empty = {
+    comments: [] as EventRecord[],
+    authorsByPubkey: {} as Record<string, Profile>,
+    contentResolution: EMPTY_RESOLUTION,
+  };
+  const focal = eventId.toLowerCase();
+  let comments: EventRecord[] = [];
+  try {
+    const payload = await getEventComments(eventId, "shortTtl");
+    comments = (payload.comments ?? []).filter((comment) => {
+      const id = typeof comment.id === "string" ? comment.id.toLowerCase() : "";
+      return id.length > 0 && id !== focal;
+    });
+  } catch {
+    return empty;
+  }
+  if (comments.length === 0) return empty;
+
+  const [authorsByPubkey, contentResolution, withCounts] = await Promise.all([
+    fetchProfilesByPubkey(
+      listHydratablePubkeys(comments.flatMap((note) => (note.pubkey ? [note.pubkey] : []))),
+      "shortTtl"
+    ).catch(() => ({}) as Record<string, Profile>),
+    resolveContentReferences(comments).catch(() => EMPTY_RESOLUTION),
+    attachCommentCounts(comments),
+  ]);
+
+  const known = new Set(
+    [...Object.keys(authorsByPubkey), ...Object.keys(contentResolution.profilesByPubkey ?? {})].map(
+      (key) => key.toLowerCase()
+    )
+  );
+  const quotedAuthorPubkeys = Object.values(contentResolution.eventsById ?? {})
+    .map((event) => (typeof event?.pubkey === "string" ? event.pubkey : ""))
+    .filter((pubkey) => pubkey.length > 0 && !known.has(pubkey.toLowerCase()));
+  const quotedAuthors =
+    quotedAuthorPubkeys.length > 0
+      ? await fetchProfilesByPubkey(quotedAuthorPubkeys, "shortTtl").catch(
+          () => ({}) as Record<string, Profile>
+        )
+      : {};
+
+  return {
+    comments: withCounts,
+    authorsByPubkey,
+    contentResolution: {
+      profilesByPubkey: {
+        ...contentResolution.profilesByPubkey,
+        ...authorsByPubkey,
+        ...quotedAuthors,
+      },
+      eventsById: contentResolution.eventsById,
+    },
   };
 }
 

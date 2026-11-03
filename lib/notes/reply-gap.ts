@@ -1,3 +1,4 @@
+import { resolveReplyParent } from "@/lib/notes/thread-tree";
 import type { EventRecord } from "@/lib/types/api";
 
 function nestedReplyCount(reply: EventRecord): number {
@@ -23,6 +24,35 @@ export function accountedReplyCount(replies: readonly EventRecord[]): number {
     total += 1 + nestedReplyCount(reply);
   }
   return total;
+}
+
+function eventId(event: EventRecord): string {
+  return typeof event.id === "string" ? event.id.toLowerCase() : "";
+}
+
+/**
+ * Reply totals already include kind 1111 comments. Count a comment here when
+ * it is visible on its own, and skip one nested under a reply on this page:
+ * that reply's count already includes it.
+ */
+export function accountedConversationCount(
+  replies: readonly EventRecord[],
+  comments: readonly EventRecord[],
+  focalEventId: string
+): number {
+  const focal = focalEventId.toLowerCase();
+  const replyIds = new Set(replies.map(eventId).filter((id) => id.length > 0));
+  const seen = new Set(replyIds);
+  let extra = 0;
+  for (const comment of comments) {
+    const id = eventId(comment);
+    if (!id || id === focal || seen.has(id)) continue;
+    seen.add(id);
+    const parent = resolveReplyParent(comment)?.toLowerCase();
+    if (parent && replyIds.has(parent)) continue;
+    extra += 1;
+  }
+  return accountedReplyCount(replies) + extra;
 }
 
 /** How many counted replies are neither listed nor expandable from this list. */

@@ -5,7 +5,7 @@ import type { NoteCardDensity } from "@/components/explorer/note-card";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
-/** Full reading surface. Kind selects the card; kind 1111 and 1984 stay off this page. */
+/** Full reading surface. Kind selects the card. Reports stay off this page. */
 export function EventReadingSurface({
   event,
   author,

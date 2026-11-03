@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   filterAuthoredNotes,
   isHiddenNoteKind,
+  isReadableNoteKind,
   normalizeEventRecord,
   normalizeEventRecords,
   normalizeHashtagDetailResponse,
@@ -161,6 +162,9 @@ describe("isHiddenNoteKind", () => {
     expect(isHiddenNoteKind({ kind: 30001 })).toBe(true);
     expect(isHiddenNoteKind({ kind: 1111 })).toBe(true);
     expect(isHiddenNoteKind({ kind: 1984 })).toBe(true);
+    expect(isReadableNoteKind({ kind: 1111 })).toBe(true);
+    expect(isReadableNoteKind({ kind: 1 })).toBe(true);
+    expect(isReadableNoteKind({ kind: 1984 })).toBe(false);
     expect(isHiddenNoteKind({ kind: 1 })).toBe(false);
     expect(isHiddenNoteKind({ kind: 30023 })).toBe(false);
     expect(isHiddenNoteKind(null)).toBe(false);

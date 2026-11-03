@@ -17,6 +17,7 @@ vi.mock("@/lib/api/endpoints", () => ({
   getEvent: vi.fn(),
   getEventSeenOn: vi.fn(),
   getEventCounts: vi.fn(),
+  getEventComments: vi.fn(),
   getThreadSummary: vi.fn(),
   getThreadActivity: vi.fn(),
 }));
@@ -29,6 +30,7 @@ vi.mock("@/lib/api/profile-hydration", () => ({
 import {
   getEvent,
   getEventAncestors,
+  getEventComments,
   getEventCounts,
   getEventReplies,
   getEventSeenOn,
@@ -38,7 +40,7 @@ import {
   getThreadActivity,
   getThreadSummary,
 } from "@/lib/api/endpoints";
-import { loadNotePageData } from "@/lib/notes/load-note-page-data";
+import { loadNoteComments, loadNotePageData } from "@/lib/notes/load-note-page-data";
 
 const mocked = {
   getNoteSummary: vi.mocked(getNoteSummary),
@@ -49,6 +51,7 @@ const mocked = {
   getEvent: vi.mocked(getEvent),
   getEventSeenOn: vi.mocked(getEventSeenOn),
   getEventCounts: vi.mocked(getEventCounts),
+  getEventComments: vi.mocked(getEventComments),
   getThreadSummary: vi.mocked(getThreadSummary),
   getThreadActivity: vi.mocked(getThreadActivity),
 };
@@ -112,5 +115,62 @@ describe("loadNotePageData", () => {
 
     expect(data.focal).toBeUndefined();
     expect(data.errorMessage.length).toBeGreaterThan(0);
+  });
+});
+
+describe("loadNoteComments", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("fills engagement counters when the comments payload omits them", async () => {
+    const eventId = "a".repeat(64);
+    const commentId = "c".repeat(64);
+    mocked.getEventComments.mockResolvedValue({
+      comments: [
+        {
+          id: commentId,
+          pubkey: "b".repeat(64),
+          kind: 1111,
+          content: "hi",
+          created_at: 1,
+        },
+      ],
+    });
+    mocked.getEventCounts.mockResolvedValue({
+      reply_count: 2,
+      reaction_count: 4,
+      repost_count: 0,
+      zap_count: 1,
+      zap_msats: 1000,
+    });
+
+    const page = await loadNoteComments(eventId);
+
+    expect(page.comments).toHaveLength(1);
+    expect(page.comments[0]?.reply_count).toBe(2);
+    expect(page.comments[0]?.reaction_count).toBe(4);
+    expect(page.comments[0]?.zap_count).toBe(1);
+    expect(mocked.getEventCounts).toHaveBeenCalledWith(commentId, "shortTtl");
+  });
+
+  it("keeps counters already attached to a comment", async () => {
+    mocked.getEventComments.mockResolvedValue({
+      comments: [
+        {
+          id: "c".repeat(64),
+          pubkey: "b".repeat(64),
+          kind: 1111,
+          content: "hi",
+          created_at: 1,
+          reply_count: 5,
+        },
+      ],
+    });
+
+    const page = await loadNoteComments("a".repeat(64));
+
+    expect(page.comments[0]?.reply_count).toBe(5);
+    expect(mocked.getEventCounts).not.toHaveBeenCalled();
   });
 });

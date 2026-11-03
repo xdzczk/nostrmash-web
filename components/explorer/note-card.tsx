@@ -9,6 +9,7 @@ import {
 import { NoteLinkPreviews } from "@/components/explorer/note-link-previews";
 import { NoteMedia, type NoteMediaVariant } from "@/components/explorer/note-media";
 import { extractNoteMediaAttachments } from "@/lib/notes/media";
+import { extractImetaAttachments } from "@/lib/notes/media-event";
 import { getNotePreviewPresentation } from "@/components/explorer/note-preview";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
@@ -219,12 +220,17 @@ function NoteCardBody({
     typeof note.pubkey === "string" ? note.pubkey : undefined
   );
   const rawContent = typeof note.content === "string" ? note.content : "";
+  const hasMedia =
+    extractNoteMediaAttachments(rawContent).length > 0 ||
+    extractImetaAttachments(note.tags).length > 0;
   const content =
     rawContent.length > 0
       ? showFullContent
         ? rawContent
         : collapsePreviewWhitespace(rawContent)
-      : "(no content)";
+      : hasMedia
+        ? ""
+        : "(no content)";
   const preview = getNotePreviewPresentation(note);
   const linkPreviewLimit = showFullContent ? 2 : 1;
   const linkPreviewUrls =
@@ -261,10 +267,7 @@ function NoteCardBody({
       }));
   const reasonCandidates = mapNoteWhyNow(note);
   const listThumb =
-    !showFullContent &&
-    density === "list" &&
-    mediaVariant === "compact" &&
-    extractNoteMediaAttachments(rawContent).length > 0;
+    !showFullContent && density === "list" && mediaVariant === "compact" && hasMedia;
   const rankLabel = typeof rank === "number" ? String(rank).padStart(2, "0") : null;
   const contentSize = contentSizeProp ?? (isDetail ? "detail" : isReply ? "reply" : "list");
   const metaTextClass = density === "list" ? "text-xs" : "text-[13px]";
@@ -400,47 +403,74 @@ function NoteCardBody({
         {listThumb ? (
           <div className="mt-2.5 flex items-start gap-3">
             <div className="min-w-0 flex-1">
+              {content.length > 0 ? (
+                <NoteContent
+                  tokens={tokenizeNoteContent(content, { tags: note.tags })}
+                  className={clampClassName}
+                  showQuotes={showFullContent}
+                  resolution={contentResolution}
+                  hideLinkPreviewUrls={linkPreviewUrls}
+                  size={contentSize}
+                  highlightTerms={highlightTerms}
+                />
+              ) : null}
+              {suppressEmbeds ? null : (
+                <NoteLinkPreviews content={note.content ?? ""} limit={linkPreviewLimit} />
+              )}
+            </div>
+            <NoteMedia
+              content={note.content ?? ""}
+              tags={note.tags}
+              priority={priorityMedia}
+              variant="compact"
+            />
+          </div>
+        ) : (
+          <>
+            {rawContent.length === 0 && hasMedia ? (
+              <NoteMedia
+                content=""
+                tags={note.tags}
+                priority={priorityMedia}
+                variant={mediaVariant}
+              />
+            ) : null}
+            {preview.prefersMediaFirst &&
+            typeof note.content === "string" &&
+            note.content.length > 0 ? (
+              <>
+                <NoteMedia
+                  content={note.content ?? ""}
+                  tags={note.tags}
+                  priority={priorityMedia}
+                  variant={mediaVariant}
+                />
+                {suppressEmbeds ? null : (
+                  <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
+                )}
+              </>
+            ) : null}
+            {content.length > 0 ? (
               <NoteContent
                 tokens={tokenizeNoteContent(content, { tags: note.tags })}
-                className={clampClassName}
+                className={`${isDetail ? "mt-4" : "mt-2.5"} ${clampClassName}`}
                 showQuotes={showFullContent}
                 resolution={contentResolution}
                 hideLinkPreviewUrls={linkPreviewUrls}
                 size={contentSize}
                 highlightTerms={highlightTerms}
               />
-              {suppressEmbeds ? null : (
-                <NoteLinkPreviews content={note.content ?? ""} limit={linkPreviewLimit} />
-              )}
-            </div>
-            <NoteMedia content={note.content ?? ""} priority={priorityMedia} variant="compact" />
-          </div>
-        ) : (
-          <>
-            {preview.prefersMediaFirst &&
-            typeof note.content === "string" &&
-            note.content.length > 0 ? (
-              <>
-                <NoteMedia content={note.content} priority={priorityMedia} variant={mediaVariant} />
-                {suppressEmbeds ? null : (
-                  <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
-                )}
-              </>
             ) : null}
-            <NoteContent
-              tokens={tokenizeNoteContent(content, { tags: note.tags })}
-              className={`${isDetail ? "mt-4" : "mt-2.5"} ${clampClassName}`}
-              showQuotes={showFullContent}
-              resolution={contentResolution}
-              hideLinkPreviewUrls={linkPreviewUrls}
-              size={contentSize}
-              highlightTerms={highlightTerms}
-            />
             {!preview.prefersMediaFirst &&
             typeof note.content === "string" &&
             note.content.length > 0 ? (
               <>
-                <NoteMedia content={note.content} priority={priorityMedia} variant={mediaVariant} />
+                <NoteMedia
+                  content={note.content ?? ""}
+                  tags={note.tags}
+                  priority={priorityMedia}
+                  variant={mediaVariant}
+                />
                 {suppressEmbeds ? null : (
                   <NoteLinkPreviews content={note.content} limit={linkPreviewLimit} />
                 )}

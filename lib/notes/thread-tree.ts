@@ -192,3 +192,25 @@ export function buildReplyTree(replies: EventRecord[], focalEventId: string): Re
 export function countReplyNodes(nodes: ReplyNode[]): number {
   return nodes.reduce((sum, node) => sum + node.duplicateCount + countReplyNodes(node.children), 0);
 }
+
+/**
+ * Kind 1 replies and kind 1111 comments are one conversation. Replies win when
+ * an id is in both lists, because that payload already carries engagement.
+ */
+export function mergeConversationEvents(
+  replies: readonly EventRecord[],
+  comments: readonly EventRecord[]
+): EventRecord[] {
+  if (comments.length === 0) return [...replies];
+  const seen = new Set<string>();
+  const merged: EventRecord[] = [];
+  for (const event of [...replies, ...comments]) {
+    const id = eventId(event);
+    if (id) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+    }
+    merged.push(event);
+  }
+  return merged;
+}

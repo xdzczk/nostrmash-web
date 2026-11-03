@@ -6,6 +6,7 @@ export {
   normalizeArticleRecord,
   normalizeArticleRecords,
   isHiddenNoteKind,
+  isReadableNoteKind,
   isAuthoredReplyEvent,
   filterAuthoredNotes,
   normalizeProfile,

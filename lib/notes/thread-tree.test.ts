@@ -4,6 +4,7 @@ import {
   buildReplyTree,
   collapseDuplicateReplies,
   countReplyNodes,
+  mergeConversationEvents,
   resolveReplyParent,
   resolveReplyRoot,
 } from "./thread-tree";
@@ -45,6 +46,15 @@ describe("resolveReplyParent", () => {
 
   it("returns undefined without e tags", () => {
     expect(resolveReplyParent(reply("a", "p", "x", 1, [["p", "zz"]]))).toBeUndefined();
+  });
+
+  it("uses the lowercase NIP-22 parent when the marker slot is a pubkey", () => {
+    const parent = "b".repeat(64);
+    const event = reply("a", "p", "x", 1, [
+      ["E", FOCAL, "", "c".repeat(64)],
+      ["e", parent, "", "d".repeat(64)],
+    ]);
+    expect(resolveReplyParent(event)).toBe(parent);
   });
 });
 
@@ -113,6 +123,29 @@ describe("buildReplyTree", () => {
     expect(tree).toHaveLength(2);
     expect(tree[0]?.duplicateCount).toBe(3);
     expect(countReplyNodes(tree)).toBe(4);
+  });
+});
+
+describe("mergeConversationEvents", () => {
+  it("keeps a reply when a comment reuses its id and nests the comment under that reply", () => {
+    const parent = "1".repeat(64);
+    const replyEvent = reply(parent, "alice", "First", 10, [["e", FOCAL, "", "root"]]);
+    replyEvent.reply_count = 4;
+    const comment = reply("c".repeat(64), "bob", "From NIP-22", 15, [
+      ["E", FOCAL, "", "a".repeat(64)],
+      ["e", parent, "", "alice"],
+    ]);
+    comment.kind = 1111;
+    const duplicate = reply(parent, "alice", "stale comment copy", 10, []);
+    duplicate.kind = 1111;
+
+    const merged = mergeConversationEvents([replyEvent], [comment, duplicate]);
+    expect(merged.map((event) => event.id)).toEqual([parent, comment.id]);
+    expect(merged[0]?.reply_count).toBe(4);
+
+    const tree = buildReplyTree(merged, FOCAL);
+    expect(tree.map((node) => node.reply.id)).toEqual([parent]);
+    expect(tree[0]?.children.map((node) => node.reply.content)).toEqual(["From NIP-22"]);
   });
 });
 

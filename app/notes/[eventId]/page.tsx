@@ -28,16 +28,15 @@ import {
   DeferredNoteRelated,
   DeferredNoteThread,
 } from "@/components/notes/deferred-note-sections";
-import { EventComments } from "@/components/notes/event-comments";
 import { EventReports } from "@/components/notes/event-reports";
 import { RepostRollup } from "@/components/notes/repost-rollup";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Disclosure } from "@/components/ui/disclosure";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
-import { isHiddenNoteKind } from "@/lib/api/normalize";
+import { isReadableNoteKind } from "@/lib/api/normalize";
 import { encodeNevent, hexToNote } from "@/lib/nostr/nip19";
-import { noteKindLabel } from "@/lib/notes/kinds";
+import { COMMENT_KIND, noteKindLabel } from "@/lib/notes/kinds";
 import { isRepostEvent } from "@/lib/notes/repost";
 import { liveActivityNaddr } from "@/lib/notes/live-activity";
 import { addressableMediaNaddr } from "@/lib/notes/media-event";
@@ -88,7 +87,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   try {
     const payload = await getNoteSummaryCached(resolvedId);
     const note = payload.note;
-    if (isHiddenNoteKind(note)) {
+    if (note && !isReadableNoteKind(note)) {
       return {
         title: "Note not found",
         description: "This event is not shown as a note.",
@@ -106,7 +105,13 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
         (typeof threadContext.root_event_id === "string" &&
           threadContext.root_event_id !== resolvedId) ||
         (note ? Boolean(resolveReplyParent(note)) : false));
-    const kindLabel = repost ? "Repost" : isReply ? "Reply" : "Note";
+    const kindLabel = repost
+      ? "Repost"
+      : note?.kind === COMMENT_KIND
+        ? "Comment"
+        : isReply
+          ? "Reply"
+          : "Note";
     const title = article
       ? article.title
       : authorLabel
@@ -165,7 +170,7 @@ export default async function NotePage({
     semantics,
     summaryProvenance,
   } = await loadNoteFocalData(eventId);
-  if (isHiddenNoteKind(focal)) {
+  if (focal && !isReadableNoteKind(focal)) {
     notFound();
   }
   const articlePresentation =
@@ -398,9 +403,6 @@ export default async function NotePage({
                   searchParams={resolvedSearchParams}
                   replyCount={replyCount}
                 />
-              </Suspense>
-              <Suspense fallback={null}>
-                <EventComments eventId={eventId} />
               </Suspense>
               <Suspense fallback={null}>
                 <EventReports eventId={eventId} />
