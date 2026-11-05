@@ -15,13 +15,43 @@ import { NotesListSkeleton } from "@/components/ui/skeleton";
 import { TabBar, TabLinkContent } from "@/components/ui/tabs";
 import { tabLinkPrefetch, type TabBarOverflow, type TabItem } from "@/components/ui/tab-styles";
 
+const SITE_HEADER_SELECTOR = "header.sticky";
+/** py-2 + the min-h-11 header row + border, until the header is measured. */
+const SITE_HEADER_OFFSET_FALLBACK = "calc(3.75rem + 1px)";
+
+function useSiteHeaderOffset(): string {
+  const [offset, setOffset] = useState(SITE_HEADER_OFFSET_FALLBACK);
+
+  useLayoutEffect(() => {
+    const header = document.querySelector(SITE_HEADER_SELECTOR);
+    if (!(header instanceof HTMLElement)) return;
+
+    const apply = () => {
+      const height = header.getBoundingClientRect().height;
+      if (height <= 0) return;
+      const dpr = window.devicePixelRatio || 1;
+      // Snap up to a device pixel so a fraction cannot leave a slit.
+      const snapped = Math.ceil(height * dpr) / dpr;
+      const next = `${snapped}px`;
+      setOffset((current) => (current === next ? current : next));
+    };
+
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
+
+  return offset;
+}
+
 function restoreProfileTabScroll(savedY: number) {
   const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
   const y = Math.min(savedY, maxY);
   if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y);
 
   const section = document.getElementById("profile-activity");
-  const header = document.querySelector("header.sticky");
+  const header = document.querySelector(SITE_HEADER_SELECTOR);
   if (section && savedY > maxY + 8 && header instanceof HTMLElement) {
     const headerBottom = header.getBoundingClientRect().bottom;
     const sectionTop = section.getBoundingClientRect().top;
@@ -75,6 +105,7 @@ export function ProfileActivityTabBar({
   children: ReactNode;
 }) {
   const router = useRouter();
+  const headerOffset = useSiteHeaderOffset();
   const [isPending, startTransition] = useTransition();
   const [optimisticKey, setOptimisticKey] = useState<string | null>(null);
   const savedScrollY = useRef<number | null>(null);
@@ -116,7 +147,11 @@ export function ProfileActivityTabBar({
 
   return (
     <>
-      <div data-testid="profile-activity-tab-bar" className="bg-background sticky top-16 z-30">
+      <div
+        data-testid="profile-activity-tab-bar"
+        className="bg-background sticky z-30"
+        style={{ top: headerOffset }}
+      >
         <TabBar
           ariaLabel={ariaLabel}
           items={decorate(items)}

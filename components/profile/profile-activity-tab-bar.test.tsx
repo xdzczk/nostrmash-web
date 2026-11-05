@@ -117,6 +117,45 @@ describe("ProfileActivityTabBar", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it("sticks the tab bar flush with the measured site header", () => {
+    const previousDpr = window.devicePixelRatio;
+    Object.defineProperty(window, "devicePixelRatio", { configurable: true, value: 2 });
+    const header = document.createElement("header");
+    header.className = "sticky";
+    header.getBoundingClientRect = () =>
+      ({
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: 800,
+        bottom: 61.25,
+        width: 800,
+        height: 61.25,
+        toJSON() {
+          return {};
+        },
+      }) as DOMRect;
+    document.body.append(header);
+
+    try {
+      render(
+        <ProfileActivityTabBar items={items} activeKey="notes">
+          <p>Notes panel</p>
+        </ProfileActivityTabBar>
+      );
+
+      // 61.25px at 2x snaps up to the next device pixel (61.5px).
+      expect(screen.getByTestId("profile-activity-tab-bar").style.top).toBe("61.5px");
+    } finally {
+      header.remove();
+      Object.defineProperty(window, "devicePixelRatio", {
+        configurable: true,
+        value: previousDpr,
+      });
+    }
+  });
+
   it("shows the active secondary tab as the overflow trigger label", () => {
     render(
       <ProfileActivityTabBar
