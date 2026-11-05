@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "@/components/app-link";
+import { Suspense } from "react";
 
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EntityContextNav } from "@/components/discover/entity-context-nav";
@@ -11,7 +12,13 @@ import { StatCard } from "@/components/explorer/stat-card";
 import { HashtagsList, NotesList } from "@/components/data/renderers";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel, LoadErrors } from "@/components/ui/status-panels";
-import { getHashtagDetail, getHashtagNotes, getRelatedHashtags } from "@/lib/api/endpoints";
+import {
+  getHashtagDetail,
+  getHashtagHistory,
+  getHashtagNotes,
+  getRelatedHashtags,
+} from "@/lib/api/endpoints";
+import { HashtagHistorySection } from "@/components/stats/surface-sections";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { isValidHashtag } from "@/lib/hashtags";
@@ -181,10 +188,21 @@ export default async function HashtagPage({ params }: { params: Params }) {
         {typeof uniqueAuthors === "number" ? (
           <StatCard label="unique_authors" value={uniqueAuthors} />
         ) : null}
+        {typeof hashtagDetailPayload?.interest_followers === "number" ? (
+          <StatCard
+            plain
+            label="Interest followers"
+            value={hashtagDetailPayload.interest_followers}
+          />
+        ) : null}
         {typeof hashtagNotesPayload?.total === "number" ? (
           <StatCard label="notes_total" value={hashtagNotesPayload.total} />
         ) : null}
       </section>
+
+      <Suspense fallback={null}>
+        <HashtagHistoryLoader tag={normalizedHashtag} />
+      </Suspense>
 
       <SectionCard title="Notes snapshot" description="A preview of notes using this hashtag.">
         {notes.length > 0 ? (
@@ -218,4 +236,14 @@ export default async function HashtagPage({ params }: { params: Params }) {
       </div>
     </div>
   );
+}
+
+async function HashtagHistoryLoader({ tag }: { tag: string }) {
+  let history: Awaited<ReturnType<typeof getHashtagHistory>> | null = null;
+  try {
+    history = await getHashtagHistory(tag);
+  } catch {
+    history = null;
+  }
+  return <HashtagHistorySection data={history} />;
 }

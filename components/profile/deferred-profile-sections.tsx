@@ -18,7 +18,12 @@ import {
   profileActivityHasItems,
 } from "@/lib/profile/activity-continuation";
 import { activityEmptyCopy, suggestActivityTab } from "@/lib/profile/activity-empty-state";
-import { PROFILE_ACTIVITY_TABS, type ProfileActivityTab } from "@/lib/profile/activity-tabs";
+import {
+  isProfileSurfaceTab,
+  PROFILE_ACTIVITY_TABS,
+  type ProfileActivityTab,
+} from "@/lib/profile/activity-tabs";
+import { ProfileSurfacePanel } from "@/components/profile/profile-surfaces";
 import {
   loadProfileActivityData,
   loadProfileDiscoveryData,
@@ -101,7 +106,9 @@ export async function DeferredProfileActivity({
         <div className="space-y-4">
           <ProfileActivityTabs activeTab={data.activityTab} tabs={data.activityTabs}>
             <div className="space-y-4">
-              {data.activeTabError && !hasItems ? (
+              {isProfileSurfaceTab(data.activityTab) ? (
+                <ProfileSurfacePanel tab={data.activityTab} pubkey={lookupKey} />
+              ) : data.activeTabError && !hasItems ? (
                 <ErrorPanel
                   message={data.activeTabError}
                   title="Couldn't load this activity"
@@ -112,7 +119,7 @@ export async function DeferredProfileActivity({
               ) : (
                 <ActivityEmpty tab={data.activityTab} tabs={data.activityTabs} stats={stats} />
               )}
-              {continuationToken ? (
+              {continuationToken && !isProfileSurfaceTab(data.activityTab) ? (
                 <>
                   <LoadMoreList
                     key={`${data.activityTab}:${continuationToken}`}

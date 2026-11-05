@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import {
   extractRelayHealthRows,
@@ -21,7 +22,9 @@ import { RelayPublishedInfo } from "@/components/relays/relay-published-info";
 import { RelaySummaryCard } from "@/components/relays/relay-summary-card";
 import { SectionCard } from "@/components/ui/section-card";
 import { LoadErrors } from "@/components/ui/status-panels";
-import { getRelayStats } from "@/lib/api/endpoints";
+import { GroupList } from "@/components/explorer/group-list";
+import { RelayHealthHistorySection } from "@/components/stats/surface-sections";
+import { getRelayGroups, getRelayHealthHistory, getRelayStats } from "@/lib/api/endpoints";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import { loadRelayDirectorySnapshot } from "@/lib/relays/load-relay-page";
@@ -252,6 +255,13 @@ export default async function RelayPage({
         )}
       </SectionCard>
 
+      <Suspense fallback={null}>
+        <RelayHealthHistoryLoader host={normalizedRelayHost} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <RelayGroupsLoader host={normalizedRelayHost} />
+      </Suspense>
+
       <DebugDisclosure title="Debug payload: relay stats aggregate" data={payload ?? {}} />
       <AboutThisData semantics={semantics} sections={readStatsSections(payload)}>
         Activity rank uses indexed event volume for {formatStatsWindowLabel(window).toLowerCase()}.
@@ -265,5 +275,32 @@ export default async function RelayPage({
         <DebugDisclosure title="Debug payload: relay description" data={snapshot.info} />
       ) : null}
     </div>
+  );
+}
+
+async function RelayHealthHistoryLoader({ host }: { host: string }) {
+  let history: Awaited<ReturnType<typeof getRelayHealthHistory>> | null = null;
+  try {
+    history = await getRelayHealthHistory(host);
+  } catch {
+    history = null;
+  }
+  return <RelayHealthHistorySection data={history} />;
+}
+
+async function RelayGroupsLoader({ host }: { host: string }) {
+  let groups: Awaited<ReturnType<typeof getRelayGroups>>["groups"] = [];
+  try {
+    groups = (await getRelayGroups(host)).groups ?? [];
+  } catch {
+    groups = [];
+  }
+  return (
+    <SectionCard
+      title="Groups on this relay"
+      description="Groups whose metadata was seen on this host."
+    >
+      <GroupList groups={groups} />
+    </SectionCard>
   );
 }

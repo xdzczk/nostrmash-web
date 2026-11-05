@@ -5,6 +5,8 @@ export const GENERIC_REPOST_KIND = 16;
 export const COMMENT_KIND = 1111;
 export const REPORT_KIND = 1984;
 export const LIVE_ACTIVITY_KIND = 30311;
+export const POLL_KIND = 1068;
+export const GOAL_KIND = 9041;
 export const ADDRESSABLE_VIDEO_KIND = 34235;
 export const ADDRESSABLE_SHORT_KIND = 34236;
 

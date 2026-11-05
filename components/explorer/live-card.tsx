@@ -140,6 +140,17 @@ export function LiveCard({
             {presentation.currentParticipants === 1 ? "viewer" : "viewers"}
           </span>
         ) : null}
+        {typeof event.chat_count === "number" ? (
+          <span>
+            {event.chat_count.toLocaleString()}{" "}
+            {event.chat_count === 1 ? "chat message" : "chat messages"}
+          </span>
+        ) : null}
+        {typeof event.chatters === "number" ? (
+          <span>
+            {event.chatters.toLocaleString()} {event.chatters === 1 ? "chatter" : "chatters"}
+          </span>
+        ) : null}
         {presentation.recording ? (
           <a
             href={presentation.recording}

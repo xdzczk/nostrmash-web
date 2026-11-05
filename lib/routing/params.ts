@@ -88,6 +88,15 @@ export function normalizeValidatedDomain(value: string): string | null {
   }
 }
 
+/** Route params keep `%3A` literal, so colon addresses need one decode. */
+export function decodeRouteParam(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export function normalizeValidatedRelayHost(value: string): string | null {
   if (!isValidRelayHostParam(value)) return null;
   return decodeURIComponent(value)

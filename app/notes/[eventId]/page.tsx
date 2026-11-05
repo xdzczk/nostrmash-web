@@ -12,6 +12,7 @@ import { IdBadge } from "@/components/explorer/id-badge";
 import { MetadataList } from "@/components/explorer/metadata-list";
 import { getArticlePresentation, isLongFormEvent } from "@/components/explorer/article-meta";
 import { EventReadingSurface } from "@/components/explorer/event-reading-surface";
+import { EventSurfaces } from "@/components/explorer/event-surfaces";
 import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
 import { ProfileCard } from "@/components/explorer/profile-card";
 import { normalizeRelayHost } from "@/components/explorer/stats-utils";
@@ -30,6 +31,7 @@ import {
 } from "@/components/notes/deferred-note-sections";
 import { EventReports } from "@/components/notes/event-reports";
 import { readReactionBreakdown } from "@/lib/notes/reaction-breakdown";
+import { readTrustedEngagementShare } from "@/lib/api/normalize/surfaces";
 import { RepostRollup } from "@/components/notes/repost-rollup";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Disclosure } from "@/components/ui/disclosure";
@@ -387,6 +389,12 @@ export default async function NotePage({
                     priorityMedia
                     repostsControl={repostsControl}
                   />
+                  <Suspense fallback={null}>
+                    <EventSurfaces
+                      event={focalWithEngagement}
+                      trustedShare={readTrustedEngagementShare(eventCountsPayload)}
+                    />
+                  </Suspense>
                   <EntityActions
                     kind="note"
                     compact

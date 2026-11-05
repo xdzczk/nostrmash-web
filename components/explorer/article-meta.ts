@@ -11,6 +11,8 @@ export interface ArticlePresentation {
   publishedAt?: number;
   hashtags: string[];
   readingMinutes?: number;
+  /** Author-supplied subject, shown when it is not the same text as the title. */
+  subject?: string;
 }
 
 export function isLongFormEvent(note: EventRecord | null | undefined): boolean {
@@ -190,6 +192,19 @@ export function getArticlePresentation(
     publishedAt:
       asNumber(record.published_at) ?? asNumber(tagValue(note, "published_at")) ?? note.created_at,
     hashtags: extractHashtags(note, options?.hashtagLimit ?? 4),
-    readingMinutes: estimateReadingMinutes(strippedContent),
+    readingMinutes: readingMinutesFromPayload(record.reading_time_s, strippedContent),
+    subject: articleSubject(asString(record.subject), title),
   };
+}
+
+function readingMinutesFromPayload(value: unknown, strippedContent: string): number | undefined {
+  const seconds = asNumber(value);
+  if (typeof seconds === "number" && seconds > 0) return Math.max(1, Math.round(seconds / 60));
+  return estimateReadingMinutes(strippedContent);
+}
+
+function articleSubject(value: string | undefined, title: string): string | undefined {
+  const subject = value?.trim();
+  if (!subject || subject.toLowerCase() === title.trim().toLowerCase()) return undefined;
+  return subject;
 }

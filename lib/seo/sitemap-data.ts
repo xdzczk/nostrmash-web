@@ -36,6 +36,10 @@ const STATIC_PATHS = [
   "/discovery/profiles/followed",
   "/discovery/profiles/supported",
   "/live",
+  "/groups",
+  "/polls",
+  "/goals",
+  "/curation-sets",
 ];
 
 export async function buildSitemapEntries(): Promise<MetadataRoute.Sitemap> {

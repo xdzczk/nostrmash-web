@@ -136,5 +136,12 @@ export async function ProfileActivityFeed({ data }: { data: ActivityData }) {
       return data.mutedByProfiles.length > 0 ? (
         <ProfilesList profiles={data.mutedByProfiles} />
       ) : null;
+    case "interests":
+    case "lists":
+    case "labels":
+    case "identities":
+    case "moderation":
+    case "graph":
+      return null;
   }
 }

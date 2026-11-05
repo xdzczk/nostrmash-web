@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { hexToNote, hexToNpub } from "@/lib/nostr/nip19";
 import {
+  decodeRouteParam,
   isValidDomainParam,
   isValidEventIdParam,
   isValidPubkeyOrNpubParam,
@@ -44,6 +45,14 @@ describe("route param validators", () => {
     expect(isValidDomainParam("sub.example.co.uk")).toBe(true);
     expect(isValidDomainParam("https://example.com/path")).toBe(false);
     expect(isValidDomainParam("not a domain")).toBe(false);
+  });
+
+  it("decodes colon addresses that arrive percent-encoded", () => {
+    const address =
+      "30004:5630bb4ef2eba090c052826f9724b7b358c49cea4fcd165e0e86959c117f3390:bitcoin-news-es";
+    expect(decodeRouteParam(encodeURIComponent(address))).toBe(address);
+    expect(decodeRouteParam(address)).toBe(address);
+    expect(decodeRouteParam("%")).toBe("%");
   });
 
   it("accepts relay hosts with optional ports", () => {

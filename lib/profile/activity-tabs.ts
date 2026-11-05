@@ -17,9 +17,28 @@ export const PROFILE_ACTIVITY_TABS = [
   { id: "pins", label: "Pins", secondary: true },
   { id: "mute_list", label: "Mute list", secondary: true },
   { id: "muted_by", label: "Muted by", secondary: true },
+  { id: "interests", label: "Interests", secondary: true },
+  { id: "lists", label: "Lists", secondary: true },
+  { id: "labels", label: "Labels", secondary: true },
+  { id: "identities", label: "Identities", secondary: true },
+  { id: "moderation", label: "Moderation", secondary: true },
+  { id: "graph", label: "Graph", secondary: true },
 ] as const;
 
 export type ProfileActivityTab = (typeof PROFILE_ACTIVITY_TABS)[number]["id"];
+
+const PROFILE_SURFACE_TABS = new Set<ProfileActivityTab>([
+  "interests",
+  "lists",
+  "labels",
+  "identities",
+  "moderation",
+  "graph",
+]);
+
+export function isProfileSurfaceTab(tab: ProfileActivityTab): boolean {
+  return PROFILE_SURFACE_TABS.has(tab);
+}
 
 export function isSecondaryProfileActivityTab(tab: ProfileActivityTab): boolean {
   return PROFILE_ACTIVITY_TABS.find((entry) => entry.id === tab)?.secondary ?? false;
@@ -60,6 +79,18 @@ export function profileActivityCursorKey(tab: ProfileActivityTab): string {
       return "mute_list_cursor";
     case "muted_by":
       return "muted_by_cursor";
+    case "interests":
+      return "interests_cursor";
+    case "lists":
+      return "lists_cursor";
+    case "labels":
+      return "labels_cursor";
+    case "identities":
+      return "identities_cursor";
+    case "moderation":
+      return "moderation_cursor";
+    case "graph":
+      return "graph_cursor";
   }
 }
 

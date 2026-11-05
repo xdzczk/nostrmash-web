@@ -17,6 +17,12 @@ describe("PROFILE_ACTIVITY_TABS", () => {
       ["pins", "Pins", true],
       ["mute_list", "Mute list", true],
       ["muted_by", "Muted by", true],
+      ["interests", "Interests", true],
+      ["lists", "Lists", true],
+      ["labels", "Labels", true],
+      ["identities", "Identities", true],
+      ["moderation", "Moderation", true],
+      ["graph", "Graph", true],
     ]);
   });
 });

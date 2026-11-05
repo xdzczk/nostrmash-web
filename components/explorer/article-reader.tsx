@@ -69,6 +69,11 @@ export function ArticleReader({
       <h1 className="nm-display-lg text-ink-strong mt-4 [overflow-wrap:anywhere]">
         {presentation.title}
       </h1>
+      {presentation.subject ? (
+        <p className="text-ink-muted mt-2 text-sm [overflow-wrap:anywhere]">
+          {presentation.subject}
+        </p>
+      ) : null}
 
       {presentation.dek ? (
         <p className="text-ink-dim mt-3 max-w-3xl text-base leading-7 [overflow-wrap:anywhere]">

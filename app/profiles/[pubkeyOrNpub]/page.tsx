@@ -33,6 +33,7 @@ import {
 import { ProfileReports } from "@/components/profile/profile-reports";
 import { ProfileCover } from "@/components/profile/profile-banner-backdrop";
 import { ProfileHeroSignals } from "@/components/profile/profile-hero-signals";
+import { ProfileBadgesRow, ProfileStatusChip } from "@/components/profile/profile-surfaces";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Disclosure } from "@/components/ui/disclosure";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -514,6 +515,9 @@ export default async function ProfilePage({
               <h1 className="nm-display-lg text-ink-strong truncate" title={heroDisplayName}>
                 {heroDisplayName}
               </h1>
+              <Suspense fallback={null}>
+                <ProfileStatusChip pubkey={pubkeyHex ?? lookupKey} />
+              </Suspense>
               {showHeroHandle && heroHandle ? (
                 <p className="text-ink-muted truncate text-sm sm:text-base" title={heroHandleRaw}>
                   {heroHandle}
@@ -571,6 +575,9 @@ export default async function ProfilePage({
                 fields={heroFields}
                 className="pt-1"
               />
+              <Suspense fallback={null}>
+                <ProfileBadgesRow pubkey={pubkeyHex ?? lookupKey} />
+              </Suspense>
             </div>
           </div>
         </div>

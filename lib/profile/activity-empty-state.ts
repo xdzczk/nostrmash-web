@@ -60,6 +60,33 @@ export function activityEmptyCopy(tab: ProfileActivityTab): ActivityEmptyCopy {
       };
     case "muted_by":
       return { message: "No indexed accounts publicly mute this profile." };
+    case "interests":
+      return {
+        message: "This profile has no public interest lists in the index.",
+        hint: "Interests are hashtags from NIP-51 interest lists.",
+      };
+    case "lists":
+      return {
+        message: "This profile has no public relay lists in the index.",
+        hint: "These are relay sets, blocked relays, search relays, and favorite relays.",
+      };
+    case "labels":
+      return {
+        message: "No labels attached to this profile are in the index.",
+        hint: "Labels are NIP-32 L and l tags other people, or this profile, published.",
+      };
+    case "identities":
+      return {
+        message: "This profile has no external identities in the index.",
+        hint: "External identities are platform names with an optional proof URL.",
+      };
+    case "moderation":
+      return { message: "No public reports or mute counts are recorded for this profile." };
+    case "graph":
+      return {
+        message: "Follow-graph stats are not available for this profile yet.",
+        hint: "Mutual follows, reciprocity, and recent follower change appear after the graph rollup.",
+      };
   }
 }
 

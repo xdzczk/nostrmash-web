@@ -34,6 +34,7 @@ import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user
 import {
   buildProfileActivityContinuationHref,
   buildProfileActivityTabHref,
+  isProfileSurfaceTab,
   parseProfileActivityTab,
   PROFILE_ACTIVITY_TABS,
   type ProfileActivityTab,
@@ -210,7 +211,9 @@ export async function loadProfileActivityData(
   options?: { focused?: boolean }
 ) {
   const params = readActivitySearchParams(resolvedSearchParams);
-  const shouldLoadNotes = options?.focused !== true || params.activityTab === "notes";
+  const shouldLoadNotes =
+    !isProfileSurfaceTab(params.activityTab) &&
+    (options?.focused !== true || params.activityTab === "notes");
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   const errors: string[] = [];
 
@@ -401,6 +404,12 @@ export async function loadProfileActivityData(
     pins: pinsNextCursor,
     mute_list: muteListNextCursor,
     muted_by: mutedByNextCursor,
+    interests: undefined,
+    lists: undefined,
+    labels: undefined,
+    identities: undefined,
+    moderation: undefined,
+    graph: undefined,
   };
   const activityContinuationByTab: Record<ProfileActivityTab, string> = {
     notes: buildProfileActivityContinuationHref(
@@ -475,6 +484,20 @@ export async function loadProfileActivityData(
       "muted_by",
       mutedByNextCursor
     ),
+    interests: buildProfileActivityContinuationHref(profileRoute, currentSearchParams, "interests"),
+    lists: buildProfileActivityContinuationHref(profileRoute, currentSearchParams, "lists"),
+    labels: buildProfileActivityContinuationHref(profileRoute, currentSearchParams, "labels"),
+    identities: buildProfileActivityContinuationHref(
+      profileRoute,
+      currentSearchParams,
+      "identities"
+    ),
+    moderation: buildProfileActivityContinuationHref(
+      profileRoute,
+      currentSearchParams,
+      "moderation"
+    ),
+    graph: buildProfileActivityContinuationHref(profileRoute, currentSearchParams, "graph"),
   };
 
   const targetEventIds = [...reactions, ...zaps].flatMap((entry) => {
@@ -576,6 +599,13 @@ export async function loadProfileActivityData(
           params.shouldLoadMutedBy,
           "Failed to load muted-by accounts."
         );
+      case "interests":
+      case "lists":
+      case "labels":
+      case "identities":
+      case "moderation":
+      case "graph":
+        return null;
     }
   })();
 

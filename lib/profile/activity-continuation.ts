@@ -72,6 +72,13 @@ export function profileActivityHasItems(data: ActivitySlice): boolean {
       return data.mutedProfiles.length > 0;
     case "muted_by":
       return data.mutedByProfiles.length > 0;
+    case "interests":
+    case "lists":
+    case "labels":
+    case "identities":
+    case "moderation":
+    case "graph":
+      return false;
   }
 }
 
@@ -101,5 +108,12 @@ export function profileActivityAnchor(data: ActivitySlice): string {
       return data.mutedProfiles[0]?.pubkey ?? "";
     case "muted_by":
       return data.mutedByProfiles[0]?.pubkey ?? "";
+    case "interests":
+    case "lists":
+    case "labels":
+    case "identities":
+    case "moderation":
+    case "graph":
+      return "";
   }
 }
