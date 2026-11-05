@@ -8,6 +8,7 @@ import {
   DiscoveryPill,
 } from "@/components/explorer/card-grammar";
 import { PostEngagement } from "@/components/explorer/post-engagement";
+import { readReactionBreakdown } from "@/lib/notes/reaction-breakdown";
 import { TopZap } from "@/components/explorer/top-zap";
 import { EventByline } from "@/components/explorer/event-byline";
 import { NoteMediaReveal } from "@/components/explorer/note-media-reveal";
@@ -163,6 +164,7 @@ export function MediaCard({
         stats={postEngagementStats(event)}
         className="mt-2.5 sm:mt-3"
         size={isDetail ? "md" : "sm"}
+        reactionBreakdown={surface === "list" ? undefined : readReactionBreakdown(event)}
       />
       <TopZap source={event} size={isDetail ? "md" : "sm"} />
 

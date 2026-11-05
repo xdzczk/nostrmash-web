@@ -102,6 +102,16 @@ export function formatDiscoveryWindowEyebrow(window: StatsWindow): string {
   return "Today";
 }
 
+/**
+ * Propagation and overlap are completed UTC days.
+ * `24h` is yesterday. `7d` and `30d` are that many completed days.
+ */
+export function formatCompletedDayWindow(window: StatsWindow): string {
+  if (window === "24h") return "Yesterday";
+  if (window === "30d") return "Last 30 days";
+  return "Last 7 days";
+}
+
 /** "24 hours" / "7 days" / "30 days" for sentences that name the range. */
 export function formatStatsWindowLength(window: StatsWindow): string {
   if (window === "7d") return "7 days";

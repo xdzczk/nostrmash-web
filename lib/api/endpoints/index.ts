@@ -43,6 +43,9 @@ export {
   getAuthorReplies,
   getAuthorReactions,
   getAuthorZaps,
+  getAuthorZapAnalytics,
+  getAuthorAnalyticsSummary,
+  getProfileIdentity,
 } from "@/lib/api/endpoints/profiles";
 export {
   getEvent,
@@ -70,6 +73,10 @@ export {
   getContentStats,
   getRelayStats,
   getStatsSeries,
+  getClientStats,
+  getIdentityStats,
+  getZapStats,
+  getAccountStats,
   normalizeSeriesPoints,
 } from "@/lib/api/endpoints/stats";
 export type {
@@ -78,8 +85,17 @@ export type {
   StatsSeriesResponse,
 } from "@/lib/api/endpoints/stats";
 export {
+  DEFAULT_STATS_SERIES_METRIC,
+  STATS_SERIES_METRIC_LABELS,
+  STATS_SERIES_METRICS,
+  isStatsSeriesMetric,
+  parseStatsSeriesMetric,
+} from "@/lib/api/endpoints/stats";
+export {
   getRelayHealth,
   getPopularRelays,
   getRelayInfo,
   getRelayProbeHealth,
+  getRelayPropagation,
+  getRelayOverlap,
 } from "@/lib/api/endpoints/relays";

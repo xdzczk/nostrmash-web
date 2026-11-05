@@ -19,6 +19,7 @@ import {
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { fetchProfilesByPubkey, listHydratablePubkeys } from "@/lib/api/profile-hydration";
 import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
+import { readReactionBreakdown } from "@/lib/notes/reaction-breakdown";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import type { ThreadActivityStats } from "@/lib/notes/thread-activity";
 import { isRepostEvent } from "@/lib/notes/repost";
@@ -74,7 +75,9 @@ export async function loadNoteFocalData(eventId: string) {
   const focalFromPrimary = noteSummary?.note;
   const shouldFetchCanonicalEvent = !hasCanonicalPayloadFields(focalFromPrimary, eventId);
   const shouldFetchCounts =
-    !isRecord(noteSummary?.counts) || Object.keys(noteSummary.counts).length === 0;
+    !isRecord(noteSummary?.counts) ||
+    Object.keys(noteSummary.counts).length === 0 ||
+    readReactionBreakdown(noteSummary).length === 0;
   const summaryProvenance = isRecord(noteSummary?.provenance) ? noteSummary.provenance : undefined;
   const summaryRelayHints =
     (isRecord(noteSummary) && Array.isArray((noteSummary as Record<string, unknown>).seen_on)) ||
@@ -298,7 +301,12 @@ async function attachCommentCounts(comments: EventRecord[]): Promise<EventRecord
   return comments.map((comment) => {
     const id = typeof comment.id === "string" ? comment.id.toLowerCase() : "";
     const counts = byId.get(id);
-    return counts ? applyEngagementStats(comment, counts) : comment;
+    if (!counts) return comment;
+    const reactionBreakdown = readReactionBreakdown(counts);
+    return {
+      ...applyEngagementStats(comment, counts),
+      ...(reactionBreakdown.length > 0 ? { reaction_breakdown: reactionBreakdown } : {}),
+    };
   });
 }
 

@@ -7,6 +7,7 @@ import {
   DiscoveryPill,
 } from "@/components/explorer/card-grammar";
 import { PostEngagement } from "@/components/explorer/post-engagement";
+import { readReactionBreakdown } from "@/lib/notes/reaction-breakdown";
 import { TopZap } from "@/components/explorer/top-zap";
 import { EventByline } from "@/components/explorer/event-byline";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
@@ -151,7 +152,12 @@ export function LiveCard({
         ) : null}
       </div>
 
-      <PostEngagement stats={postEngagementStats(event)} className="mt-2.5" size="sm" />
+      <PostEngagement
+        stats={postEngagementStats(event)}
+        className="mt-2.5"
+        size="sm"
+        reactionBreakdown={surface === "list" ? undefined : readReactionBreakdown(event)}
+      />
       <TopZap source={event} />
 
       {presentation.participants.length > 0 ? (

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
+import { ReactionChips } from "@/components/explorer/reaction-chips";
 import type { EngagementStat, EngagementStatKey } from "@/components/explorer/utils";
+import type { ReactionBreakdownItem } from "@/lib/types/api";
 
 const STAT_SIZE = {
   sm: "text-[13px]",
@@ -122,12 +124,15 @@ export function PostEngagement({
   className = "",
   size = "sm",
   replacements,
+  reactionBreakdown,
 }: {
   stats: EngagementStat[];
   className?: string;
   size?: keyof typeof STAT_SIZE;
   /** Swap one stat, keyed by its label, for a control such as the repost rollup. */
   replacements?: Partial<Record<EngagementStatKey, ReactNode>>;
+  /** Emoji chips shown beside the reaction count on note and thread views. */
+  reactionBreakdown?: ReactionBreakdownItem[];
 }) {
   if (stats.length === 0) return null;
   return (
@@ -141,6 +146,14 @@ export function PostEngagement({
           return (
             <span key={stat.label} className="contents">
               {replacement}
+            </span>
+          );
+        }
+        if (stat.label === "reaction_count" && reactionBreakdown && reactionBreakdown.length > 0) {
+          return (
+            <span key={stat.label} className="inline-flex flex-wrap items-center gap-1.5">
+              <EngagementStatView stat={stat} />
+              <ReactionChips items={reactionBreakdown} />
             </span>
           );
         }

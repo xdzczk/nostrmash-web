@@ -2014,7 +2014,7 @@ export interface paths {
     };
     /**
      * Notes and articles ranked by sats received in the window
-     * @description Ranks root kind-1 notes and kind-30023 articles by sats received inside the window. Replies are omitted. A zap the author sent to their own note does not count. `zap_msats` and `zap_count` are the window totals, and `score` is the window sats. The default window is 7d. The worker refreshes this list every few minutes. `reasons[0].code` is `zap_volume`.
+     * @description Ranks root kind-1 notes and kind-30023 articles that were published inside the window by sats other people zapped onto them during that same window. An older note zapped today is not on the 24h list. Replies are omitted. A zap the author sent to their own note does not count. `zap_msats` and `zap_count` are the window totals, and `score` is the window sats. The default window is 7d. The worker refreshes this list every few minutes. `reasons[0].code` is `zap_volume`.
      */
     get: {
       parameters: {
@@ -2198,8 +2198,8 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * Accounts ranked by follower count
-     * @description Directory of accounts that have a profile, largest follower count first. Dormant accounts stay in the list. `window` is `all`. `lang` is accepted and ignored. `score` and `follower_count` are the same number. `reasons[0].code` is `audience_size`.
+     * Accounts ranked by trusted follower count
+     * @description Directory of accounts that have a profile, ordered by how many followers are in the published trust graph (`trusted_follower_count`), then pubkey. Dormant accounts and accounts under 1000 raw followers stay in the list when that count is positive. A trusted count of zero does not rank. `window` is `all`. `lang` is accepted and ignored. `follower_count` is everyone on a latest contact list. `score`, `trusted_follower_count`, and the `reasons[0]` evidence value are the trust-graph count. `reasons[0].code` is `audience_size` and the unit is `followers`.
      */
     get: {
       parameters: {
@@ -2213,7 +2213,7 @@ export interface paths {
       };
       requestBody?: never;
       responses: {
-        /** @description Profiles ranked by follower count */
+        /** @description Profiles ranked by trusted follower count */
         200: {
           headers: {
             [name: string]: unknown;
@@ -2712,6 +2712,298 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/discovery/stats/clients": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Client, bridge, content-warning, and proof-of-work mix */
+    get: {
+      parameters: {
+        query?: {
+          window?: "24h" | "7d" | "30d";
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Daily client and content-flag rollups */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        400: components["responses"]["Error"];
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/discovery/stats/identity": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Profile identity and NIP-05 verification coverage */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Decomposed kind-0 field prevalence and provider domains */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/discovery/stats/zaps": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Lightning and nutzap volume */
+    get: {
+      parameters: {
+        query?: {
+          window?: "24h" | "7d" | "30d";
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Daily zap and nutzap totals, histogram, and participant counts */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        400: components["responses"]["Error"];
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/discovery/stats/accounts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** New and active author counts */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description First-seen authors by day and recent active authors */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/relays/propagation": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Per-relay first-seen, exclusivity, and latency */
+    get: {
+      parameters: {
+        query?: {
+          window?: "24h" | "7d" | "30d";
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Completed UTC-day relay propagation rollups */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        400: components["responses"]["Error"];
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/relays/overlap": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Pairwise event overlap for admitted relays */
+    get: {
+      parameters: {
+        query?: {
+          window?: "24h" | "7d" | "30d";
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Shared-event counts for admitted relay pairs */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        400: components["responses"]["Error"];
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/authors/{pubkey}/analytics/zaps": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Zap and nutzap series for one author */
+    get: {
+      parameters: {
+        query?: {
+          window?: "24h" | "7d" | "30d";
+        };
+        header?: never;
+        path: {
+          pubkey: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Daily sent and received zap totals */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        400: components["responses"]["Error"];
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/profiles/{pubkey}/identity": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Decomposed profile fields and NIP-05 verification status */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          pubkey: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Identity fields, verification status, and nutzap acceptance */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        404: components["responses"]["Error"];
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/discovery/stats/series": {
     parameters: {
       query?: never;
@@ -2723,7 +3015,15 @@ export interface paths {
     get: {
       parameters: {
         query: {
-          metric: "note_volume" | "active_authors" | "relay_events";
+          metric:
+            | "note_volume"
+            | "active_authors"
+            | "relay_events"
+            | "zap_count_24h"
+            | "sats_24h"
+            | "new_authors_24h"
+            | "nip17_dm_count_24h"
+            | "bridged_share_bps";
           /** @description How much hourly history to return. Each point is a rolling 24-hour total sampled once per UTC hour, not an hourly increment. */
           window?: "24h" | "7d" | "30d";
         };

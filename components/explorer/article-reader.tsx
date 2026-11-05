@@ -4,6 +4,7 @@ import { ArticleMarkdown } from "@/components/explorer/article-markdown";
 import { getArticlePresentation } from "@/components/explorer/article-meta";
 import { DiscoveryPill } from "@/components/explorer/card-grammar";
 import { PostEngagement } from "@/components/explorer/post-engagement";
+import { readReactionBreakdown } from "@/lib/notes/reaction-breakdown";
 import { TopZap } from "@/components/explorer/top-zap";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
@@ -147,7 +148,12 @@ export function ArticleReader({
         <ArticleMarkdown markdown={presentation.body} resolution={contentResolution} />
       </div>
 
-      <PostEngagement stats={metrics} className="mt-8" size="md" />
+      <PostEngagement
+        stats={metrics}
+        className="mt-8"
+        size="md"
+        reactionBreakdown={readReactionBreakdown(article)}
+      />
       <TopZap source={article} size="md" />
     </article>
   );

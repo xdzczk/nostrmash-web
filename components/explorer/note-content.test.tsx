@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { NoteContent } from "@/components/explorer/note-content";
+import { MentionedNoteCards, NoteContent } from "@/components/explorer/note-content";
 import { formatUrlForDisplay, truncateIdentifier } from "@/components/explorer/utils";
 import { encodeNaddr, hexToNpub, hexToNote } from "@/lib/nostr/nip19";
 import { tokenizeNoteContent } from "@/lib/notes/tokenize";
@@ -65,6 +65,34 @@ describe("NoteContent", () => {
     expect(noteLink).toHaveAttribute("href", `/notes/${encodeURIComponent(EVENT_ID)}`);
     expect(noteLink).toHaveAttribute("title", EVENT_ID);
     expect(screen.queryByRole("link", { name: "note" })).not.toBeInTheDocument();
+  });
+
+  it("renders a loaded note mention as its own card", () => {
+    render(
+      <MentionedNoteCards
+        content={`see nostr:${NOTE}`}
+        resolution={{
+          eventsById: {
+            [EVENT_ID]: {
+              id: EVENT_ID,
+              pubkey: PUBKEY,
+              content: "Quoted body",
+              kind: 1,
+            },
+          },
+          profilesByPubkey: {
+            [PUBKEY]: { pubkey: PUBKEY, display_name: "Alice" },
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+    expect(screen.getByText("Quoted body")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Alice" })).toHaveAttribute(
+      "href",
+      `/notes/${encodeURIComponent(EVENT_ID)}`
+    );
   });
 
   it("uses the quote as the link when the quote card is hidden", () => {

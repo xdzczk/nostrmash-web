@@ -29,6 +29,7 @@ import {
   DeferredNoteThread,
 } from "@/components/notes/deferred-note-sections";
 import { EventReports } from "@/components/notes/event-reports";
+import { readReactionBreakdown } from "@/lib/notes/reaction-breakdown";
 import { RepostRollup } from "@/components/notes/repost-rollup";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Disclosure } from "@/components/ui/disclosure";
@@ -205,13 +206,17 @@ export default async function NotePage({
     delete focalForStats.zap_count;
     delete focalForStats.zap_msats;
   }
+  const reactionBreakdown = readReactionBreakdown(eventCountsPayload, countsRecord, focal);
   const focalWithEngagement = focalForStats
-    ? applyEngagementStats(
-        focalForStats,
-        countsRecord,
-        isRecord(noteSummary?.summary) ? noteSummary.summary : {},
-        focal
-      )
+    ? {
+        ...applyEngagementStats(
+          focalForStats,
+          countsRecord,
+          isRecord(noteSummary?.summary) ? noteSummary.summary : {},
+          focal
+        ),
+        ...(reactionBreakdown.length > 0 ? { reaction_breakdown: reactionBreakdown } : {}),
+      }
     : null;
   const provenanceDetails = buildMetadataEntries(
     {

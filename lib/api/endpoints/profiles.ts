@@ -31,8 +31,11 @@ import type {
   UserMuteListResponse,
   UserMutedByApiResponse,
   UserMutedByResponse,
+  AuthorAnalyticsSummary,
+  AuthorZapAnalytics,
+  ProfileIdentity,
 } from "@/lib/types/api";
-import { fetchApiJson } from "@/lib/api/http";
+import { ApiError, fetchApiJson } from "@/lib/api/http";
 import {
   normalizeAuthorEventsResponse,
   normalizeAuthorReactionsResponse,
@@ -52,7 +55,18 @@ import {
   normalizeUserMuteListResponse,
   normalizeUserMutedByResponse,
 } from "@/lib/api/normalize";
+import {
+  normalizeAuthorAnalyticsSummary,
+  normalizeAuthorZapAnalytics,
+  normalizeProfileIdentity,
+} from "@/lib/api/normalize/ecosystem";
+import {
+  authorAnalyticsSummarySchema,
+  authorZapAnalyticsSchema,
+  profileIdentitySchema,
+} from "@/lib/api/schemas/ecosystem";
 import type { CacheClass } from "@/lib/caching/policies";
+import type { StatsWindow } from "@/lib/search-params/window";
 import {
   buildCursorQuery,
   type CursorQuery,
@@ -403,4 +417,69 @@ export async function getAuthorZaps(
     },
     "Author zaps lookup failed."
   );
+}
+
+export async function getAuthorZapAnalytics(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime",
+  window?: StatsWindow
+): Promise<AuthorZapAnalytics> {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
+      const response = await fetchApiJson<unknown>(
+        nativeApiV1Routes.authorZapAnalytics(candidate),
+        {
+          cacheClass,
+          query: window ? { window } : undefined,
+          schema: authorZapAnalyticsSchema,
+        }
+      );
+      return normalizeAuthorZapAnalytics(response);
+    },
+    "Author zap analytics lookup failed."
+  );
+}
+
+export async function getAuthorAnalyticsSummary(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime"
+): Promise<AuthorAnalyticsSummary> {
+  return withPubkeyCandidates(
+    pubkey,
+    async (candidate) => {
+      const response = await fetchApiJson<unknown>(
+        nativeApiV1Routes.authorAnalyticsSummary(candidate),
+        {
+          cacheClass,
+          schema: authorAnalyticsSummarySchema,
+        }
+      );
+      return normalizeAuthorAnalyticsSummary(response);
+    },
+    "Author analytics lookup failed."
+  );
+}
+
+/** 404 means the profile has no projected identity yet. Callers hide that section. */
+export async function getProfileIdentity(
+  pubkey: string,
+  cacheClass: CacheClass = "requestTime"
+): Promise<ProfileIdentity | null> {
+  try {
+    return await withPubkeyCandidates(
+      pubkey,
+      async (candidate) => {
+        const response = await fetchApiJson<unknown>(nativeApiV1Routes.profileIdentity(candidate), {
+          cacheClass,
+          schema: profileIdentitySchema,
+        });
+        return normalizeProfileIdentity(response);
+      },
+      "Profile identity lookup failed."
+    );
+  } catch (error) {
+    if (error instanceof ApiError && error.isNotFound) return null;
+    throw error;
+  }
 }

@@ -15,10 +15,12 @@ import {
   truncateIdentifier,
 } from "@/components/explorer/utils";
 import { extractNoteMediaAttachments, isNoteMediaUrl, stripNoteMediaUrls } from "@/lib/notes/media";
+import { readReactionBreakdown } from "@/lib/notes/reaction-breakdown";
 import { extractImetaAttachments } from "@/lib/notes/media-event";
 import { hexToNpub } from "@/lib/nostr/nip19";
 import { tokenizeNoteContent, type NoteToken } from "@/lib/notes/tokenize";
 import { HighlightedText } from "@/components/search/highlighted-text";
+import { isHiddenNoteKind } from "@/lib/api/normalize";
 import { buildProfileActivityTabHref } from "@/lib/profile/activity-tabs";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
@@ -97,10 +99,44 @@ function QuoteCard({
         </p>
       )}
       {hasMedia ? <NoteMedia content={raw} tags={event.tags} variant="thread" /> : null}
-      <PostEngagement stats={postEngagementStats(event)} className="mt-2" />
+      <PostEngagement
+        stats={postEngagementStats(event)}
+        reactionBreakdown={readReactionBreakdown(event)}
+        className="mt-2"
+      />
       <TopZap source={event} />
     </div>
   );
+}
+
+/** Notes this text points at, once each, when the event was loaded. */
+export function MentionedNoteCards({
+  content,
+  tags,
+  resolution,
+  className = "",
+}: {
+  content: string;
+  tags?: unknown;
+  resolution?: NoteContentResolution;
+  className?: string;
+}) {
+  const seen = new Set<string>();
+  const cards = tokenizeNoteContent(content, { tags }).flatMap((token) => {
+    if (token.type !== "event") return [];
+    const id = token.id.toLowerCase();
+    if (seen.has(id)) return [];
+    const event = resolution?.eventsById?.[token.id] ?? resolution?.eventsById?.[id];
+    if (!event || isHiddenNoteKind(event)) return [];
+    seen.add(id);
+    const author =
+      typeof event.pubkey === "string"
+        ? lookupProfileByPubkey(event.pubkey, resolution?.profilesByPubkey)
+        : undefined;
+    return [<QuoteCard key={id} event={event} author={author} resolution={resolution} />];
+  });
+  if (cards.length === 0) return null;
+  return <div className={className}>{cards}</div>;
 }
 
 export type NoteContentSize = "list" | "reply" | "detail" | "profile";

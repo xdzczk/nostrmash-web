@@ -15,6 +15,7 @@ import { discoveryWindowPreferenceHref } from "@/lib/discover/window-fallback";
 import {
   buildWindowHref,
   fallbackAfterRejected30d,
+  formatCompletedDayWindow,
   formatDiscoveryWindowEyebrow,
   parseStatsWindow,
   preferredMetricKeysForWindow,
@@ -30,6 +31,14 @@ describe("rankingWindowChoice", () => {
     expect(rankingWindowChoice(undefined, "7d")).toBe("7d");
     expect(rankingWindowChoice("all", "30d")).toBe("30d");
     expect(rankingWindowChoice(undefined, "30d", ["24h", "7d"])).toBe("24h");
+  });
+});
+
+describe("formatCompletedDayWindow", () => {
+  it("labels 24h as yesterday", () => {
+    expect(formatCompletedDayWindow("24h")).toBe("Yesterday");
+    expect(formatCompletedDayWindow("7d")).toBe("Last 7 days");
+    expect(formatCompletedDayWindow("30d")).toBe("Last 30 days");
   });
 });
 

@@ -490,8 +490,14 @@ export interface EventSeenOnResponse extends NativeApiSemantics {
   [key: string]: unknown;
 }
 
+export interface ReactionBreakdownItem {
+  content: string;
+  count: number;
+}
+
 export interface EventCountsResponse extends NativeApiSemantics {
   counts?: Record<string, unknown>;
+  reaction_breakdown?: ReactionBreakdownItem[];
   [key: string]: unknown;
 }
 
@@ -654,6 +660,159 @@ export interface RelayHealthResponse extends NativeApiSemantics {
 
 export interface StatsResponse extends NativeApiSemantics {
   [key: string]: unknown;
+}
+
+export interface DomainCount {
+  domain: string;
+  count?: number;
+}
+
+export interface ClientStat {
+  client: string;
+  event_count?: number;
+  unique_authors?: number;
+}
+
+export interface ContentFlagStats {
+  events?: number;
+  bridged_share?: number;
+  content_warning_share?: number;
+  pow_share?: number;
+}
+
+export interface ClientStatsResponse extends NativeApiSemantics {
+  window?: string;
+  clients?: ClientStat[];
+  content_flags?: ContentFlagStats;
+}
+
+export interface IdentityStatsResponse extends NativeApiSemantics {
+  profiles?: number;
+  nip05_present?: number;
+  nip05_verified?: number;
+  lud16_present?: number;
+  lud06_present?: number;
+  bot_flagged?: number;
+  avg_completeness?: number;
+  nip05_domains?: DomainCount[];
+  lud16_domains?: DomainCount[];
+}
+
+export const ZAP_HISTOGRAM_KEYS = [
+  "lt21",
+  "21_100",
+  "101_1k",
+  "1k_10k",
+  "10k_100k",
+  "gt100k",
+] as const;
+
+export type ZapHistogramKey = (typeof ZAP_HISTOGRAM_KEYS)[number];
+
+export type ZapHistogram = Partial<Record<ZapHistogramKey, number>>;
+
+export interface ZapDayStat {
+  day: string;
+  zap_count?: number;
+  sats_total?: number;
+  self_zap_count?: number;
+  nutzap_count?: number;
+  nutzap_sats?: number;
+  histogram?: ZapHistogram;
+}
+
+export interface ZapStatsResponse extends NativeApiSemantics {
+  window?: string;
+  series?: ZapDayStat[];
+  unique_senders?: number;
+  unique_receivers?: number;
+}
+
+export interface AccountDayStat {
+  day: string;
+  count?: number;
+}
+
+export interface AccountStatsResponse extends NativeApiSemantics {
+  new_authors?: AccountDayStat[];
+  active_authors_1d?: number;
+  active_authors_7d?: number;
+}
+
+export interface RelayPropagationRow {
+  relay_url: string;
+  events_seen?: number;
+  first_seen_share?: number;
+  exclusive_share?: number;
+  latency_p50_ms?: number;
+  untrusted_share?: number;
+}
+
+export interface RelayPropagationResponse extends NativeApiSemantics {
+  window?: string;
+  relays?: RelayPropagationRow[];
+}
+
+export interface RelayOverlapPair {
+  relay_a: string;
+  relay_b: string;
+  shared_events?: number;
+  jaccard?: number;
+}
+
+export interface RelayOverlapResponse extends NativeApiSemantics {
+  window?: string;
+  pairs?: RelayOverlapPair[];
+}
+
+export interface AuthorZapDay {
+  day: string;
+  received_count?: number;
+  received_sats?: number;
+  sent_count?: number;
+  sent_sats?: number;
+  nutzap_received_count?: number;
+  nutzap_received_sats?: number;
+}
+
+export interface AuthorZapAnalytics extends NativeApiSemantics {
+  pubkey?: string;
+  window?: string;
+  series?: AuthorZapDay[];
+  inbound_zaps?: number;
+  inbound_sats?: number;
+  repeat_zappers?: number;
+}
+
+export interface ProfileIdentity extends NativeApiSemantics {
+  pubkey?: string;
+  name?: string;
+  display_name?: string;
+  nip05?: string;
+  nip05_domain?: string;
+  nip05_verified?: boolean;
+  nip05_status?: string;
+  nip05_checked_at?: number;
+  lud16?: string;
+  lud16_domain?: string;
+  website_domain?: string;
+  has_picture?: boolean;
+  has_banner?: boolean;
+  has_about?: boolean;
+  is_bot?: boolean;
+  has_lud06?: boolean;
+  completeness_score?: number;
+  accepts_nutzaps?: boolean;
+}
+
+export interface AuthorAnalyticsWindow {
+  window?: string;
+  engagement_rate_per_post?: number;
+}
+
+export interface AuthorAnalyticsSummary extends NativeApiSemantics {
+  pubkey?: string;
+  windows?: AuthorAnalyticsWindow[];
 }
 
 export interface SearchNotesApiResponse extends NativeApiSemantics {

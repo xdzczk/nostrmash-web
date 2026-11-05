@@ -295,8 +295,13 @@ function resolveEditorialTokens(
             ? formatMentionLabel(profile.pubkey, resolution?.profilesByPubkey)
             : token.value;
         }
-        case "event":
+        case "event": {
+          const quoted =
+            resolution?.eventsById?.[token.id] ?? resolution?.eventsById?.[token.id.toLowerCase()];
+          // The overview renders the note itself; the id would only repeat it.
+          if (quoted) return "";
           return truncateIdentifier(token.value.replace(/^nostr:/i, ""), "note", "primary");
+        }
         case "address":
           return formatNaddrLabel(token, resolution?.profilesByPubkey);
         case "redacted":
@@ -347,7 +352,11 @@ export function getEditorialNoteText(
   const content = typeof note.content === "string" ? note.content : "";
   const preview = getNotePreviewPresentation(note);
   const stripped = stripEmbeddedUrls(content || preview.contentForCard, preview.rawContent, 1);
-  const resolved = resolveEditorialTokens(stripped, resolution, { tags: note.tags });
+  const resolved = resolveEditorialTokens(stripped, resolution, { tags: note.tags })
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
   if (!preview.containsRaw) return resolved;
 
   return resolved

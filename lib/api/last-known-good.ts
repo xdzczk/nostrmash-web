@@ -83,9 +83,15 @@ const BOUNDED_CACHE_PATHS = new Set<string>([
   "/api/v1/discovery/stats/content",
   "/api/v1/discovery/stats/relays",
   "/api/v1/discovery/stats/series",
+  "/api/v1/discovery/stats/clients",
+  "/api/v1/discovery/stats/identity",
+  "/api/v1/discovery/stats/zaps",
+  "/api/v1/discovery/stats/accounts",
   "/api/v1/relays/health",
   "/api/v1/relays/popular",
   "/api/v1/relays/probe-health",
+  "/api/v1/relays/propagation",
+  "/api/v1/relays/overlap",
   "/api/v1/live",
 ]);
 

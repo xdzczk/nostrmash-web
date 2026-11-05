@@ -88,6 +88,10 @@ describe("loadNotePageData", () => {
       next_cursor: "next-replies",
     });
     mocked.getRelatedNotes.mockResolvedValue({ related: [] });
+    mocked.getEventCounts.mockResolvedValue({
+      reaction_count: 3,
+      reaction_breakdown: [{ content: "+", count: 2 }],
+    });
 
     const data = await loadNotePageData(eventId, {});
 
@@ -98,6 +102,29 @@ describe("loadNotePageData", () => {
     expect(data.resolvedAuthor?.display_name).toBe("Ada");
     expect(mocked.getEvent).not.toHaveBeenCalled();
     expect(mocked.getEventSeenOn).not.toHaveBeenCalled();
+    expect(mocked.getEventCounts).toHaveBeenCalledWith(eventId, "shortTtl");
+  });
+
+  it("skips the counts request when the summary already includes a reaction breakdown", async () => {
+    const eventId = "a".repeat(64);
+    mocked.getNoteSummary.mockResolvedValue({
+      note: {
+        id: eventId,
+        pubkey: "b".repeat(64),
+        kind: 1,
+        created_at: 1_700_000_000,
+        content: "hello",
+      },
+      counts: { reply_count: 1 },
+      reaction_breakdown: [{ content: "❤️", count: 1 }],
+      provenance: { relays: ["wss://relay.example"] },
+    });
+    mocked.getThread.mockResolvedValue({ replies: [] });
+    mocked.getEventReplies.mockResolvedValue({ replies: [] });
+    mocked.getRelatedNotes.mockResolvedValue({ related: [] });
+
+    await loadNotePageData(eventId, {});
+
     expect(mocked.getEventCounts).not.toHaveBeenCalled();
   });
 

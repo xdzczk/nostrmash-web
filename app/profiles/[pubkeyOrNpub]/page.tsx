@@ -25,6 +25,11 @@ import {
   DeferredProfileActivity,
   DeferredProfileDiscovery,
 } from "@/components/profile/deferred-profile-sections";
+import {
+  ProfileEngagementSection,
+  ProfileIdentitySection,
+  ProfileZapAnalyticsSection,
+} from "@/components/profile/profile-ecosystem-sections";
 import { ProfileReports } from "@/components/profile/profile-reports";
 import { ProfileCover } from "@/components/profile/profile-banner-backdrop";
 import { ProfileHeroSignals } from "@/components/profile/profile-hero-signals";
@@ -680,6 +685,20 @@ export default async function ProfilePage({
           </div>
         </Disclosure>
       </section>
+
+      <Suspense fallback={null}>
+        <ProfileIdentitySection pubkey={pubkeyHex ?? lookupKey} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <ProfileEngagementSection pubkey={pubkeyHex ?? lookupKey} />
+      </Suspense>
+      <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+        <ProfileZapAnalyticsSection
+          pubkey={pubkeyHex ?? lookupKey}
+          route={profileRoute}
+          searchParams={resolvedSearchParams}
+        />
+      </Suspense>
 
       <JsonLd
         data={{

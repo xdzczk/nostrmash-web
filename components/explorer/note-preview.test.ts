@@ -62,6 +62,24 @@ describe("getEditorialNoteText", () => {
     expect(resolved.length).toBeLessThan(npub.length + note.length);
   });
 
+  it("omits an event mention once that note is loaded", () => {
+    const note = hexToNote(EVENT_ID)!;
+    const text = getEditorialNoteText(
+      {
+        id: "a".repeat(64),
+        content: `See this\n\nnostr:${note}`,
+      },
+      {
+        eventsById: {
+          [EVENT_ID]: { id: EVENT_ID, content: "Quoted body", kind: 1 },
+        },
+      }
+    );
+
+    expect(text).toBe("See this");
+    expect(text).not.toContain(note);
+  });
+
   it("truncates leftover identifier-heavy tokens", () => {
     const text = getEditorialNoteText({
       id: "a".repeat(64),

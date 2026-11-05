@@ -23,6 +23,7 @@ import {
   normalizeProfile,
   normalizeProfileStats,
 } from "@/lib/api/normalize/entities";
+import { normalizeReactionBreakdown } from "@/lib/api/normalize/ecosystem";
 import { normalizeRelayObservation } from "@/lib/api/normalize/relays";
 
 export function normalizeThreadResponse(value: unknown): ThreadResponse {
@@ -187,11 +188,23 @@ export function normalizeEventSeenOnResponse(value: unknown): EventSeenOnRespons
 export function normalizeEventCountsResponse(value: unknown): EventCountsResponse {
   const record = asRecord(value) ?? {};
   const countsRecord = asRecord(record.counts);
-  if (countsRecord) {
-    return {
+  const reactionBreakdown = normalizeReactionBreakdown(
+    record.reaction_breakdown ?? countsRecord?.reaction_breakdown
+  );
+  const withBreakdown = (counts: Record<string, unknown> | undefined): EventCountsResponse => {
+    const next: EventCountsResponse = {
       ...record,
-      counts: countsRecord,
+      counts,
     };
+    if (reactionBreakdown.length > 0) next.reaction_breakdown = reactionBreakdown;
+    else delete next.reaction_breakdown;
+    return next;
+  };
+
+  if (countsRecord) {
+    const counts = { ...countsRecord };
+    delete counts.reaction_breakdown;
+    return withBreakdown(counts);
   }
 
   const counts = compactDefined({
@@ -203,8 +216,5 @@ export function normalizeEventCountsResponse(value: unknown): EventCountsRespons
     quote_count: asNumber(record.quote_count) ?? asNumber(record.quotes),
   });
 
-  return {
-    ...record,
-    counts: Object.keys(counts).length > 0 ? counts : undefined,
-  };
+  return withBreakdown(Object.keys(counts).length > 0 ? counts : undefined);
 }

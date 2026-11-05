@@ -19,7 +19,14 @@ import { CheckComposition } from "@/components/relays/check-composition";
 import { RelayRankRow } from "@/components/relays/relay-rank-row";
 import { SectionCard } from "@/components/ui/section-card";
 import { LoadErrors, SoftRefreshNote } from "@/components/ui/status-panels";
-import { getPopularRelays, getRelayHealth, getRelayStats } from "@/lib/api/endpoints";
+import {
+  getPopularRelays,
+  getRelayHealth,
+  getRelayOverlap,
+  getRelayPropagation,
+  getRelayStats,
+} from "@/lib/api/endpoints";
+import { RelayOverlapSection, RelayPropagationSection } from "@/components/relays/relay-ecosystem";
 import { getStaleDataNotice } from "@/lib/api/http";
 import { getRequestNowMs } from "@/lib/time/request-now";
 import { readSearchParam, toUrlSearchParams } from "@/lib/search-params/pagination";
@@ -55,12 +62,17 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
   let relayStats: Awaited<ReturnType<typeof getRelayStats>> | null = null;
   let relayHealth: Awaited<ReturnType<typeof getRelayHealth>> | null = null;
   let popular: Awaited<ReturnType<typeof getPopularRelays>> | null = null;
+  let propagation: Awaited<ReturnType<typeof getRelayPropagation>> | null = null;
+  let overlap: Awaited<ReturnType<typeof getRelayOverlap>> | null = null;
 
-  const [statsResult, healthResult, popularResult] = await Promise.allSettled([
-    getRelayStats("shortTtl", window),
-    getRelayHealth("shortTtl", { cursor: healthCursor }),
-    getPopularRelays("shortTtl", { limit: 100 }),
-  ]);
+  const [statsResult, healthResult, popularResult, propagationResult, overlapResult] =
+    await Promise.allSettled([
+      getRelayStats("shortTtl", window),
+      getRelayHealth("shortTtl", { cursor: healthCursor }),
+      getPopularRelays("shortTtl", { limit: 100 }),
+      getRelayPropagation("shortTtl", window),
+      getRelayOverlap("shortTtl", window),
+    ]);
   if (statsResult.status === "fulfilled") {
     relayStats = statsResult.value;
   } else {
@@ -75,6 +87,16 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
     popular = popularResult.value;
   } else {
     errors.push(toUserFacingErrorMessage(popularResult.reason, "Popular relays failed."));
+  }
+  if (propagationResult.status === "fulfilled") {
+    propagation = propagationResult.value;
+  } else {
+    errors.push(toUserFacingErrorMessage(propagationResult.reason, "Relay propagation failed."));
+  }
+  if (overlapResult.status === "fulfilled") {
+    overlap = overlapResult.value;
+  } else {
+    errors.push(toUserFacingErrorMessage(overlapResult.reason, "Relay overlap failed."));
   }
   const staleNotice = getStaleDataNotice();
 
@@ -251,6 +273,9 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
           )}
         </SectionCard>
       </div>
+
+      <RelayPropagationSection data={propagation} window={window} />
+      <RelayOverlapSection data={overlap} window={window} />
 
       <DebugDisclosure title="Debug payload: relay stats" data={relayStats ?? {}} />
       <AboutThisData semantics={semantics} sections={readStatsSections(relayStats)}>

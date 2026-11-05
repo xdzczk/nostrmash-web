@@ -96,10 +96,21 @@ export const nativeApiV1Routes = {
   contentStats: "/api/v1/discovery/stats/content",
   relayStats: "/api/v1/discovery/stats/relays",
   statsSeries: "/api/v1/discovery/stats/series",
+  clientStats: "/api/v1/discovery/stats/clients",
+  identityStats: "/api/v1/discovery/stats/identity",
+  zapStats: "/api/v1/discovery/stats/zaps",
+  accountStats: "/api/v1/discovery/stats/accounts",
   relayHealth: "/api/v1/relays/health",
   relayPopular: "/api/v1/relays/popular",
   relayInfo: "/api/v1/relays/info",
   relayProbeHealth: "/api/v1/relays/probe-health",
+  relayPropagation: "/api/v1/relays/propagation",
+  relayOverlap: "/api/v1/relays/overlap",
+  authorAnalyticsSummary: (pubkey: string) =>
+    `/api/v1/authors/${encodeURIComponent(pubkey)}/analytics/summary`,
+  authorZapAnalytics: (pubkey: string) =>
+    `/api/v1/authors/${encodeURIComponent(pubkey)}/analytics/zaps`,
+  profileIdentity: (pubkey: string) => `/api/v1/profiles/${encodeURIComponent(pubkey)}/identity`,
 } as const;
 
 export interface CursorQuery {

@@ -33,7 +33,8 @@ import { EventKindSwitch } from "@/components/explorer/event-kind-switch";
 import { isLongFormEvent } from "@/components/explorer/article-meta";
 import { NoteLinkPreviews } from "@/components/explorer/note-link-previews";
 import { NoteMedia } from "@/components/explorer/note-media";
-import type { NoteContentResolution } from "@/components/explorer/note-content";
+import { MentionedNoteCards, type NoteContentResolution } from "@/components/explorer/note-content";
+import { fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { getEditorialNoteText } from "@/components/explorer/note-preview";
 import { isHiddenNoteKind } from "@/lib/api/normalize";
 import { GENERIC_REPOST_KIND, isLiveActivityKind, isMediaKind } from "@/lib/notes/kinds";
@@ -272,6 +273,14 @@ function EditorialNote({
             <NoteLinkPreviews content={note.content as string} limit={1} />
           </>
         ) : null}
+        {hasContent ? (
+          <MentionedNoteCards
+            content={note.content as string}
+            tags={note.tags}
+            resolution={contentResolution}
+            className="mt-5 max-w-[44rem]"
+          />
+        ) : null}
         <EvidenceLine reasons={mapNoteWhyNow(note)} ranking={note.ranking} />
         <PostEngagement stats={postEngagementStats(note)} className="mt-2.5" />
         <TopZap source={note} />
@@ -308,6 +317,14 @@ function EditorialNote({
           <p className="text-ink-dim mt-3 line-clamp-3 text-[15px] leading-6 [overflow-wrap:anywhere]">
             {collapsePreviewWhitespace(editorialText)}
           </p>
+        ) : null}
+        {hasContent ? (
+          <MentionedNoteCards
+            content={note.content as string}
+            tags={note.tags}
+            resolution={contentResolution}
+            className="mt-3"
+          />
         ) : null}
       </div>
       {hasContent ? (
@@ -784,8 +801,19 @@ export async function EditorialOverview({
   const previewEvents = [...(lead ? [lead, ...followups] : []), ...mediaEvents];
   const contentResolution = await resolveContentReferences(previewEvents).catch(() => undefined);
   if (contentResolution) {
+    const knownProfiles = contentResolution.profilesByPubkey ?? {};
+    const quotedPubkeys = Object.values(contentResolution.eventsById ?? {})
+      .map((event) => (typeof event?.pubkey === "string" ? event.pubkey : ""))
+      .filter((pubkey) => pubkey.length > 0 && !knownProfiles[pubkey.toLowerCase()]);
+    const quotedAuthors =
+      quotedPubkeys.length > 0
+        ? await fetchProfilesByPubkey(quotedPubkeys, "shortTtl").catch(
+            () => ({}) as Record<string, Profile>
+          )
+        : {};
     contentResolution.profilesByPubkey = {
-      ...contentResolution.profilesByPubkey,
+      ...knownProfiles,
+      ...quotedAuthors,
       ...authorsByPubkey,
     };
   }
