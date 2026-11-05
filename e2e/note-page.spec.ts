@@ -72,9 +72,11 @@ test.describe("note page thread", () => {
     await expect(thread.getByRole("heading", { name: /69 people/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "Show thread activity" })).toHaveCount(0);
 
-    // Direct replies only. The branch under the first reply loads in place.
+    // Direct replies, plus the kind 1111 comment on this note. The branch under
+    // the first reply loads in place.
     const topLevel = thread.getByRole("article", { name: "Reply", exact: true });
-    await expect(topLevel).toHaveCount(2);
+    await expect(topLevel).toHaveCount(3);
+    await expect(thread.getByText("A quiet comment on the focal note")).toBeVisible();
     await expect(thread.getByText("Nested reply to the first reply")).toHaveCount(0);
     await thread.getByRole("button", { name: "Show 1 reply" }).click();
     await expect(thread.getByText("Nested reply to the first reply")).toBeVisible();
