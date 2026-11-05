@@ -36,6 +36,7 @@ import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import {
   buildLanguageHref,
   LANGUAGE_EMPTY_MESSAGE,
+  readExcludeBridged,
   readLanguage,
 } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
@@ -143,7 +144,10 @@ async function loadHotConversations(
 ): Promise<{ payload: HotConversationsResponse | null; errorMessage: string }> {
   try {
     const payload = await requestDiscovery(window, path, searchParams, (activeWindow) =>
-      getHotConversations("shortTtl", rankedListRequest(activeWindow, language, offset))
+      getHotConversations(
+        "shortTtl",
+        rankedListRequest(activeWindow, language, offset, readExcludeBridged(searchParams))
+      )
     );
     return { payload, errorMessage: "" };
   } catch (error) {
@@ -238,7 +242,13 @@ async function HotConversationsBody({
               key={continuation.token}
               auto
               initialCursor={continuation.token}
-              loadMore={loadMoreRanking.bind(null, "conversations", window, language ?? "")}
+              loadMore={loadMoreRanking.bind(
+                null,
+                "conversations",
+                window,
+                language ?? "",
+                readExcludeBridged(searchParams)
+              )}
               label="Load more conversations"
             />
             {continuationHref ? (

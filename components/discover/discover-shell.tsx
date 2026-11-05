@@ -17,7 +17,7 @@ import {
   type DiscoverView,
 } from "@/lib/discover/views";
 import { formatDiscoverEyebrow } from "@/lib/i18n/language-names";
-import { buildDiscoverHref } from "@/lib/search-params/language";
+import { buildDiscoverHref, buildExcludeBridgedHref } from "@/lib/search-params/language";
 import { DEFAULT_STATS_WINDOW, STATS_WINDOWS, type StatsWindow } from "@/lib/search-params/window";
 import type { TopLanguages } from "@/lib/types/api";
 
@@ -107,8 +107,9 @@ export function DiscoverShell({
   const showWindow = showWindowControl ?? rankingControls;
   const showLanguage = showLanguageControl ?? rankingControls;
   const carriedWindow = linkedWindow === null ? undefined : (linkedWindow ?? window);
+  const excludeBridged = searchParams.get("exclude_bridged") === "true";
   const showRankingBadges =
-    showWindow || showLanguage || Boolean(freshness) || Boolean(freshnessLabel);
+    showWindow || showLanguage || Boolean(freshness) || Boolean(freshnessLabel) || rankingControls;
 
   return (
     <div className="min-w-0 space-y-6 sm:space-y-7">
@@ -148,6 +149,19 @@ export function DiscoverShell({
                     : null}
                 </>
               ) : null}
+              {rankingControls ? (
+                <Link
+                  href={buildExcludeBridgedHref(path, searchParams)}
+                  aria-pressed={excludeBridged}
+                  className={`inline-flex min-h-6 items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                    excludeBridged
+                      ? "border-accent/50 bg-surface text-ink"
+                      : "border-edge-strong text-ink-muted hover:text-ink"
+                  }`}
+                >
+                  Exclude bridged
+                </Link>
+              ) : null}
               {freshness ?? (freshnessLabel ? <FreshnessBadge label={freshnessLabel} /> : null)}
             </div>
           ) : undefined
@@ -156,7 +170,12 @@ export function DiscoverShell({
       />
 
       <div className="space-y-2.5">
-        <DiscoverNav active={view} window={carriedWindow} lang={language} />
+        <DiscoverNav
+          active={view}
+          window={carriedWindow}
+          lang={language}
+          excludeBridged={excludeBridged}
+        />
         {modeLinks.length > 1 ? (
           <nav aria-label={`${view} modes`} className="flex flex-wrap items-center gap-4">
             {modeLinks.map((item) => {
@@ -167,6 +186,7 @@ export function DiscoverShell({
                   href={buildDiscoverHref(item.href, {
                     window: carries.window ? carriedWindow : undefined,
                     lang: carries.language ? language : undefined,
+                    excludeBridged,
                   })}
                   prefetch={tabLinkPrefetch(true, item.mode === mode)}
                   aria-current={item.mode === mode ? "page" : undefined}

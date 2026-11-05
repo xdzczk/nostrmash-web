@@ -1,5 +1,6 @@
 import Link from "@/components/app-link";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { readStatNumber } from "@/components/explorer/stats-utils";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
@@ -22,6 +23,8 @@ import {
   ZapStatsSection,
 } from "@/components/stats/ecosystem-sections";
 import { SeriesMetricSelector } from "@/components/stats/series-metric-selector";
+import { DiscoverySurfaceStats } from "@/components/stats/discovery-surface-stats";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   getAccountStats,
   getClientStats,
@@ -352,6 +355,9 @@ export default async function StatsPage({
       <ZapStatsSection data={zaps} window={window} />
       <AccountStatsSection data={accounts} />
       <IdentityStatsSection data={identity} />
+      <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+        <DiscoverySurfaceStats window={window} searchParams={currentSearchParams} />
+      </Suspense>
 
       <div className="space-y-3">
         <DebugDisclosure title="Debug payload: network stats" data={network ?? {}} />

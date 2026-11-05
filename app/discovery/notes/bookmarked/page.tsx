@@ -21,7 +21,7 @@ import {
   startRankedLoad,
 } from "@/lib/explorer/ranked-list";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
-import { readLanguage } from "@/lib/search-params/language";
+import { readExcludeBridged, readLanguage } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
@@ -58,7 +58,11 @@ export default async function MostBookmarkedNotesPage({
   const offset = readRankedOffset(resolvedSearchParams);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () => getBookmarkedNotes("shortTtl", rankedListRequest(undefined, language, offset)),
+      () =>
+        getBookmarkedNotes(
+          "shortTtl",
+          rankedListRequest(undefined, language, offset, readExcludeBridged(resolvedSearchParams))
+        ),
       "Failed to load bookmarked notes."
     )
   );
@@ -142,7 +146,13 @@ async function MostBookmarkedNotesBody({
         emptyTitle="No public bookmarks yet"
         emptyMessage="Saves are current with ingest. Nothing is publicly bookmarked right now."
         hasItems={notes.length > 0}
-        loadMore={loadMoreRanking.bind(null, "bookmarked", "", language ?? "")}
+        loadMore={loadMoreRanking.bind(
+          null,
+          "bookmarked",
+          "",
+          language ?? "",
+          readExcludeBridged(searchParams)
+        )}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

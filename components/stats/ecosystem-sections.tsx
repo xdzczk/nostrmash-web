@@ -1,10 +1,12 @@
 import { BarChart } from "@/components/charts/bar-chart";
+import { AccountAgeList } from "@/components/stats/surface-sections";
 import { ShareBar } from "@/components/relays/share-bar";
 import { StatCard } from "@/components/explorer/stat-card";
 import { SectionCard } from "@/components/ui/section-card";
 import {
   clientLabel,
   dailyCountPoints,
+  formatBasisPointsAsPercent,
   formatUnitShare,
   sumOptional,
   summedHistogram,
@@ -162,17 +164,29 @@ export function ZapStatsSection({
   const nutzapCount = sumOptional(series.map((day) => day.nutzap_count));
   const nutzapSats = sumOptional(series.map((day) => day.nutzap_sats));
   const selfZaps = sumOptional(series.map((day) => day.self_zap_count));
+  const latestAmounts = [...series]
+    .reverse()
+    .find(
+      (day) =>
+        typeof day.amount_p50_sats === "number" ||
+        typeof day.amount_p90_sats === "number" ||
+        typeof day.amount_mean_sats === "number" ||
+        typeof day.gini_bps === "number" ||
+        typeof day.ttfz_p50_s === "number"
+    );
   const hasSeries = satsPoints.length > 0 || countPoints.length > 0;
   const hasParticipants =
     (typeof data?.unique_senders === "number" && data.unique_senders > 0) ||
     (typeof data?.unique_receivers === "number" && data.unique_receivers > 0);
   const hasNutzaps = (nutzapCount ?? 0) > 0 || (nutzapSats ?? 0) > 0;
-  if (!hasSeries && !hasParticipants && !hasNutzaps && histogram.length === 0) return null;
+  if (!hasSeries && !hasParticipants && !hasNutzaps && histogram.length === 0 && !latestAmounts) {
+    return null;
+  }
   const range = formatStatsWindowLength(window);
 
   return (
     <SectionCard id="zaps" title="Zaps" description={`Zap receipts over the last ${range}.`}>
-      {hasParticipants || hasNutzaps || (selfZaps ?? 0) > 0 ? (
+      {hasParticipants || hasNutzaps || (selfZaps ?? 0) > 0 || latestAmounts ? (
         <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {typeof data?.unique_senders === "number" ? (
             <StatCard plain label="Unique senders" value={data.unique_senders} />
@@ -188,6 +202,25 @@ export function ZapStatsSection({
           ) : null}
           {selfZaps !== null && selfZaps > 0 ? (
             <StatCard plain label="Self-zaps" value={selfZaps} />
+          ) : null}
+          {typeof latestAmounts?.amount_p50_sats === "number" ? (
+            <StatCard plain label="Median zap, sats" value={latestAmounts.amount_p50_sats} />
+          ) : null}
+          {typeof latestAmounts?.amount_p90_sats === "number" ? (
+            <StatCard plain label="90th percentile, sats" value={latestAmounts.amount_p90_sats} />
+          ) : null}
+          {typeof latestAmounts?.amount_mean_sats === "number" ? (
+            <StatCard plain label="Mean zap, sats" value={latestAmounts.amount_mean_sats} />
+          ) : null}
+          {typeof latestAmounts?.gini_bps === "number" ? (
+            <StatCard
+              plain
+              label="Gini"
+              value={formatBasisPointsAsPercent(latestAmounts.gini_bps)}
+            />
+          ) : null}
+          {typeof latestAmounts?.ttfz_p50_s === "number" ? (
+            <StatCard plain label="Median seconds to first zap" value={latestAmounts.ttfz_p50_s} />
           ) : null}
         </div>
       ) : null}
@@ -237,24 +270,46 @@ export function AccountStatsSection({ data }: { data: AccountStatsResponse | nul
   const days = data?.new_authors ?? [];
   const points = dailyCountPoints(days, (day) => ("count" in day ? day.count : undefined));
   const hasActive =
-    typeof data?.active_authors_1d === "number" || typeof data?.active_authors_7d === "number";
-  if (points.length === 0 && !hasActive) return null;
+    typeof data?.active_authors_1d === "number" ||
+    typeof data?.active_authors_7d === "number" ||
+    typeof data?.active_authors_30d === "number" ||
+    typeof data?.dormant_30d === "number" ||
+    typeof data?.unfollow_rate_bps === "number";
+  const ages = data?.account_age ?? [];
+  if (points.length === 0 && !hasActive && ages.length === 0) return null;
   return (
     <SectionCard
       id="accounts"
       title="Accounts"
-      description="New authors are first-seen counts over 30 days. Active authors posted in the last 1 day and the last 7 days."
+      description="New authors are first-seen counts over 30 days. Active authors posted in the last 1, 7, or 30 days."
     >
       {hasActive ? (
-        <div className="mb-6 grid gap-3 sm:grid-cols-2">
+        <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {typeof data?.active_authors_1d === "number" ? (
             <StatCard plain label="Active authors, 1 day" value={data.active_authors_1d} />
           ) : null}
           {typeof data?.active_authors_7d === "number" ? (
             <StatCard plain label="Active authors, 7 days" value={data.active_authors_7d} />
           ) : null}
+          {typeof data?.active_authors_30d === "number" ? (
+            <StatCard plain label="Active authors, 30 days" value={data.active_authors_30d} />
+          ) : null}
+          {typeof data?.dormant_30d === "number" ? (
+            <StatCard plain label="Dormant, 30 days" value={data.dormant_30d} />
+          ) : null}
+          {typeof data?.unfollow_rate_bps === "number" ? (
+            <StatCard
+              plain
+              label="Unfollow rate"
+              value={formatBasisPointsAsPercent(data.unfollow_rate_bps)}
+            />
+          ) : null}
         </div>
       ) : null}
+      <div className="mb-6">
+        <h3 className="text-ink mb-3 text-sm font-medium">Account age</h3>
+        <AccountAgeList buckets={ages} />
+      </div>
       {points.length > 0 ? (
         <div>
           <p className="text-ink-faint mb-2 text-xs">New authors per day</p>

@@ -27,6 +27,25 @@ export function readLanguage(params: RouteSearchParams): string | undefined {
   return parseLanguage(readSearchParam(params, "lang"));
 }
 
+/** Trending endpoints only honor the literal string `true`. */
+export function readExcludeBridged(params: RouteSearchParams | URLSearchParams): boolean {
+  const value =
+    params instanceof URLSearchParams
+      ? (params.get("exclude_bridged") ?? undefined)
+      : readSearchParam(params, "exclude_bridged");
+  return value === "true";
+}
+
+export function buildExcludeBridgedHref(path: string, current: URLSearchParams): string {
+  const next = new URLSearchParams(current);
+  if (next.get("exclude_bridged") === "true") next.delete("exclude_bridged");
+  else next.set("exclude_bridged", "true");
+  next.delete("cursor");
+  next.delete("offset");
+  const query = next.toString();
+  return query.length > 0 ? `${path}?${query}` : path;
+}
+
 export function buildLanguageHref(
   path: string,
   current: URLSearchParams,
@@ -48,11 +67,12 @@ export function buildLanguageHref(
  */
 export function buildDiscoverHref(
   path: string,
-  options: { window?: StatsWindow; lang?: string }
+  options: { window?: StatsWindow; lang?: string; excludeBridged?: boolean }
 ): string {
   const next = new URLSearchParams();
   if (options.window) next.set("window", options.window);
   if (options.lang) next.set("lang", options.lang);
+  if (options.excludeBridged) next.set("exclude_bridged", "true");
   const query = next.toString();
   return query.length > 0 ? `${path}?${query}` : path;
 }

@@ -23,7 +23,7 @@ import {
 } from "@/lib/explorer/ranked-list";
 import { hexToNpub } from "@/lib/nostr/nip19";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
-import { buildLanguageHref, readLanguage } from "@/lib/search-params/language";
+import { buildLanguageHref, readExcludeBridged, readLanguage } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { StatsWindow } from "@/lib/search-params/window";
@@ -62,7 +62,11 @@ export default async function TrendingProfilesPage({
   const offset = readRankedOffset(resolvedSearchParams);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () => getTrendingProfiles("shortTtl", rankedListRequest(window, language, offset)),
+      () =>
+        getTrendingProfiles(
+          "shortTtl",
+          rankedListRequest(window, language, offset, readExcludeBridged(resolvedSearchParams))
+        ),
       "Failed to load trending profiles.",
       { window, path, params: currentSearchParams }
     )
@@ -148,7 +152,13 @@ async function TrendingProfilesBody({
         emptyTitle="No ranked profiles yet"
         emptyMessage="Ranked profiles have not populated for this window."
         hasItems={hydratedProfiles.length > 0}
-        loadMore={loadMoreRanking.bind(null, "profiles", window, language ?? "")}
+        loadMore={loadMoreRanking.bind(
+          null,
+          "profiles",
+          window,
+          language ?? "",
+          readExcludeBridged(searchParams)
+        )}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

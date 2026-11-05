@@ -7,7 +7,8 @@ import {
   RankedListStream,
 } from "@/components/explorer/ranked-list-page";
 import { ChipGridSkeleton } from "@/components/ui/skeleton";
-import { getTrendingHashtags } from "@/lib/api/endpoints";
+import { getEmergingHashtags, getTrendingHashtags } from "@/lib/api/endpoints";
+import { EmergingHashtagsSection } from "@/components/stats/surface-sections";
 import { loadMoreRanking } from "@/lib/explorer/load-more-ranking";
 import {
   rankedListRequest,
@@ -20,7 +21,7 @@ import {
   startRankedLoad,
 } from "@/lib/explorer/ranked-list";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
-import { readLanguage } from "@/lib/search-params/language";
+import { readExcludeBridged, readLanguage } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { StatsWindow } from "@/lib/search-params/window";
@@ -58,9 +59,14 @@ export default async function TrendingHashtagsPage({
     path
   );
   const offset = readRankedOffset(resolvedSearchParams);
+  const emerging = getEmergingHashtags().catch(() => null);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () => getTrendingHashtags("shortTtl", rankedListRequest(window, language, offset)),
+      () =>
+        getTrendingHashtags(
+          "shortTtl",
+          rankedListRequest(window, language, offset, readExcludeBridged(resolvedSearchParams))
+        ),
       "Failed to load topics.",
       { window, path, params: currentSearchParams }
     )
@@ -82,6 +88,7 @@ export default async function TrendingHashtagsPage({
     >
       <TrendingHashtagsBody
         data={data}
+        emerging={emerging}
         path={path}
         searchParams={currentSearchParams}
         window={window}
@@ -94,6 +101,7 @@ export default async function TrendingHashtagsPage({
 
 async function TrendingHashtagsBody({
   data,
+  emerging,
   path,
   searchParams,
   window,
@@ -101,13 +109,17 @@ async function TrendingHashtagsBody({
   offset,
 }: {
   data: ReturnType<typeof loadRankedListPayload<Awaited<ReturnType<typeof getTrendingHashtags>>>>;
+  emerging: Promise<Awaited<ReturnType<typeof getEmergingHashtags>> | null>;
   path: string;
   searchParams: URLSearchParams;
   window: StatsWindow;
   language?: string;
   offset: number;
 }) {
-  const { payload, errorMessage, semantics } = await data;
+  const [{ payload, errorMessage, semantics }, emergingPayload] = await Promise.all([
+    data,
+    emerging,
+  ]);
   const hashtags = payload?.hashtags ?? [];
   const continuation = rankedPageContinuation("hashtags", hashtags, offset);
   const itemListUrls = hashtags
@@ -120,6 +132,7 @@ async function TrendingHashtagsBody({
 
   return (
     <>
+      <EmergingHashtagsSection items={emergingPayload?.items ?? []} />
       <RankedListStatus
         errorMessage={errorMessage}
         hasItems={hashtags.length > 0}
@@ -134,7 +147,13 @@ async function TrendingHashtagsBody({
         emptyTitle="No ranked hashtags yet"
         emptyMessage="Ranked hashtags have not populated for this window."
         hasItems={hashtags.length > 0}
-        loadMore={loadMoreRanking.bind(null, "hashtags", window, language ?? "")}
+        loadMore={loadMoreRanking.bind(
+          null,
+          "hashtags",
+          window,
+          language ?? "",
+          readExcludeBridged(searchParams)
+        )}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

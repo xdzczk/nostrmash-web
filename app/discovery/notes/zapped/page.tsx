@@ -21,7 +21,7 @@ import {
   startRankedLoad,
 } from "@/lib/explorer/ranked-list";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
-import { readLanguage } from "@/lib/search-params/language";
+import { readExcludeBridged, readLanguage } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { formatStatsWindowSpan, type StatsWindow } from "@/lib/search-params/window";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
@@ -59,7 +59,11 @@ export default async function MostZappedNotesPage({
   const offset = readRankedOffset(resolvedSearchParams);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () => getMostZappedNotes("shortTtl", rankedListRequest(window, language, offset)),
+      () =>
+        getMostZappedNotes(
+          "shortTtl",
+          rankedListRequest(window, language, offset, readExcludeBridged(resolvedSearchParams))
+        ),
       "Failed to load most zapped notes.",
       { window, path: PATH, params: currentSearchParams }
     )
@@ -147,7 +151,13 @@ async function MostZappedNotesBody({
         emptyTitle="No zapped notes yet"
         emptyMessage="This list stays empty until the worker rewrites it, once at startup and then about every 5 minutes."
         hasItems={notes.length > 0}
-        loadMore={loadMoreRanking.bind(null, "zapped", window, language ?? "")}
+        loadMore={loadMoreRanking.bind(
+          null,
+          "zapped",
+          window,
+          language ?? "",
+          readExcludeBridged(searchParams)
+        )}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

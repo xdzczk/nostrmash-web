@@ -25,6 +25,19 @@ function RelayName({ url, window }: { url: string; window: StatsWindow }) {
   return <RelayLink host={host} window={window} />;
 }
 
+function KindMix({ mix }: { mix: Record<string, number> }) {
+  const entries = Object.entries(mix)
+    .sort((left, right) => right[1] - left[1] || Number(left[0]) - Number(right[0]))
+    .slice(0, 8);
+  const hidden = Object.keys(mix).length - entries.length;
+  return (
+    <p className="text-ink-muted mt-2 text-xs">
+      {entries.map(([kind, count]) => `kind ${kind} ${count.toLocaleString()}`).join(" · ")}
+      {hidden > 0 ? ` · and ${hidden.toLocaleString()} more` : ""}
+    </p>
+  );
+}
+
 function heatClass(jaccard: number | undefined): string {
   if (typeof jaccard !== "number") return "";
   if (jaccard >= 0.75) return "bg-accent/20";
@@ -44,6 +57,7 @@ export function RelayPropagationSection({
   if (relays.length === 0) return null;
   const shown = relays.slice(0, PROPAGATION_LIMIT);
   const range = formatCompletedDayWindow(window);
+  const showFuture = shown.some((relay) => typeof relay.future_dated_share === "number");
   return (
     <SectionCard
       id="propagation"
@@ -54,7 +68,9 @@ export function RelayPropagationSection({
         {shown.map((relay) => (
           <li key={relay.relay_url} className="py-3">
             <RelayName url={relay.relay_url} window={window} />
-            <dl className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <dl
+              className={`mt-2 grid grid-cols-2 gap-3 ${showFuture ? "sm:grid-cols-3 lg:grid-cols-6" : "sm:grid-cols-5"}`}
+            >
               <Metric
                 label="Events"
                 value={
@@ -93,7 +109,11 @@ export function RelayPropagationSection({
                     : null
                 }
               />
+              {typeof relay.future_dated_share === "number" ? (
+                <Metric label="Future dated" value={formatUnitShare(relay.future_dated_share)} />
+              ) : null}
             </dl>
+            {relay.kind_mix ? <KindMix mix={relay.kind_mix} /> : null}
           </li>
         ))}
       </ul>

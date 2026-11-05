@@ -7,7 +7,7 @@ import { LanguageSelector } from "@/components/explorer/language-selector";
 import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
 import { getStaleDataNotice } from "@/lib/api/http";
 import type { HomePageData } from "@/lib/home/load-home-page-data";
-import { LANGUAGE_EMPTY_MESSAGE } from "@/lib/search-params/language";
+import { LANGUAGE_EMPTY_MESSAGE, readExcludeBridged } from "@/lib/search-params/language";
 import type { StatsWindow } from "@/lib/search-params/window";
 import { formatUpdatedRelative } from "@/lib/time/freshness";
 
@@ -91,6 +91,7 @@ export async function HomeOverviewBody({ data }: { data: Promise<HomePageData> }
           sectionFailures={home.sectionFailures}
           window={home.window}
           lang={home.language}
+          excludeBridged={readExcludeBridged(home.currentSearchParams)}
         />
       ) : home.language && !home.errorMessage ? (
         <EmptyState message={LANGUAGE_EMPTY_MESSAGE} />

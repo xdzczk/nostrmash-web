@@ -21,7 +21,7 @@ import {
   startRankedLoad,
 } from "@/lib/explorer/ranked-list";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
-import { readLanguage } from "@/lib/search-params/language";
+import { readExcludeBridged, readLanguage } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
@@ -56,7 +56,11 @@ export default async function TrendingNotesPage({ searchParams }: { searchParams
   const offset = readRankedOffset(resolvedSearchParams);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () => getTrendingNotes("shortTtl", rankedListRequest(window, language, offset)),
+      () =>
+        getTrendingNotes(
+          "shortTtl",
+          rankedListRequest(window, language, offset, readExcludeBridged(resolvedSearchParams))
+        ),
       "Failed to load trending notes.",
       { window, path, params: currentSearchParams }
     )
@@ -142,7 +146,13 @@ async function TrendingNotesBody({
         emptyTitle="No ranked notes yet"
         emptyMessage="Ranked notes have not populated for this window."
         hasItems={notes.length > 0}
-        loadMore={loadMoreRanking.bind(null, "notes", window, language ?? "")}
+        loadMore={loadMoreRanking.bind(
+          null,
+          "notes",
+          window,
+          language ?? "",
+          readExcludeBridged(searchParams)
+        )}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

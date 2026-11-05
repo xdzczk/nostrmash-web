@@ -49,7 +49,11 @@ export async function ProfileIdentitySection({ pubkey }: { pubkey: string }) {
   if (errorMessage) return <ErrorPanel message={errorMessage} />;
   if (!identity) return null;
   const fields = visibleIdentityFields(identity);
-  if (fields.length === 0) return null;
+  const activeStatuses =
+    typeof identity.active_statuses === "number" && identity.active_statuses > 0
+      ? identity.active_statuses
+      : null;
+  if (fields.length === 0 && activeStatuses === null) return null;
   return (
     <SectionCard id="profile-identity" title="Identity">
       <dl className="grid gap-3 sm:grid-cols-2">
@@ -63,6 +67,11 @@ export async function ProfileIdentitySection({ pubkey }: { pubkey: string }) {
           </div>
         ))}
       </dl>
+      {activeStatuses !== null ? (
+        <p className="text-ink-muted mt-3 text-sm">
+          {activeStatuses.toLocaleString()} active {activeStatuses === 1 ? "status" : "statuses"}
+        </p>
+      ) : null}
     </SectionCard>
   );
 }
@@ -114,9 +123,13 @@ function zapSectionHasContent(data: AuthorZapAnalytics): boolean {
     ].some((value) => typeof value === "number" && value > 0)
   );
   if (hasDay) return true;
-  return [data.inbound_zaps, data.inbound_sats, data.repeat_zappers].some(
-    (value) => typeof value === "number" && value > 0
-  );
+  return [
+    data.inbound_zaps,
+    data.inbound_sats,
+    data.repeat_zappers,
+    data.sats_per_1k_followers,
+    data.zap_to_reaction_ratio,
+  ].some((value) => typeof value === "number" && value > 0);
 }
 
 export async function ProfileZapAnalyticsSection({
@@ -179,6 +192,16 @@ export async function ProfileZapAnalyticsSection({
         ) : null}
         {nutzapSats !== null && nutzapSats > 0 ? (
           <StatCard plain label="Nutzap sats received" value={nutzapSats} />
+        ) : null}
+        {typeof data.sats_per_1k_followers === "number" && data.sats_per_1k_followers > 0 ? (
+          <StatCard plain label="Sats per 1k followers" value={data.sats_per_1k_followers} />
+        ) : null}
+        {typeof data.zap_to_reaction_ratio === "number" && data.zap_to_reaction_ratio > 0 ? (
+          <StatCard
+            plain
+            label="Zaps per reaction"
+            value={formatRate(data.zap_to_reaction_ratio)}
+          />
         ) : null}
       </div>
       {receivedSats.length > 0 || sentSats.length > 0 ? (

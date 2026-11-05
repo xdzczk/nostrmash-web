@@ -21,6 +21,7 @@ import {
   startRankedLoad,
 } from "@/lib/explorer/ranked-list";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
+import { readExcludeBridged } from "@/lib/search-params/language";
 import { formatStatsWindowSpan, type StatsWindow } from "@/lib/search-params/window";
 import type { Profile } from "@/lib/types/api";
 
@@ -47,7 +48,11 @@ export default async function MostSupportedProfilesPage({
   const offset = readRankedOffset(resolvedSearchParams);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () => getMostSupportedProfiles("shortTtl", rankedListRequest(window, undefined, offset)),
+      () =>
+        getMostSupportedProfiles(
+          "shortTtl",
+          rankedListRequest(window, undefined, offset, readExcludeBridged(resolvedSearchParams))
+        ),
       "Failed to load most supported profiles.",
       { window, path: PATH, params: currentSearchParams }
     )
@@ -115,7 +120,13 @@ async function MostSupportedProfilesBody({
         emptyTitle="No supported accounts yet"
         emptyMessage="This list stays empty until the worker rewrites it, once at startup and then about every 5 minutes."
         hasItems={profiles.length > 0}
-        loadMore={loadMoreRanking.bind(null, "supported", window, "")}
+        loadMore={loadMoreRanking.bind(
+          null,
+          "supported",
+          window,
+          "",
+          readExcludeBridged(searchParams)
+        )}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null
