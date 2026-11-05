@@ -111,6 +111,49 @@ export const nativeApiV1Routes = {
   authorZapAnalytics: (pubkey: string) =>
     `/api/v1/authors/${encodeURIComponent(pubkey)}/analytics/zaps`,
   profileIdentity: (pubkey: string) => `/api/v1/profiles/${encodeURIComponent(pubkey)}/identity`,
+  eventLabels: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/labels`,
+  eventPoll: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/poll`,
+  eventGoal: (eventId: string) => `/api/v1/events/${encodeURIComponent(eventId)}/goal`,
+  groups: "/api/v1/groups",
+  group: (relayHost: string, groupId: string) =>
+    `/api/v1/groups/${encodeURIComponent(relayHost)}/${encodeURIComponent(groupId)}`,
+  groupMessages: (relayHost: string, groupId: string) =>
+    `/api/v1/groups/${encodeURIComponent(relayHost)}/${encodeURIComponent(groupId)}/messages`,
+  relayGroups: (relayHost: string) => `/api/v1/relays/${encodeURIComponent(relayHost)}/groups`,
+  groupStats: "/api/v1/discovery/stats/groups",
+  liveChat: (address: string) => `/api/v1/live/${encodeURIComponent(address)}/chat`,
+  polls: "/api/v1/discovery/polls",
+  pollStats: "/api/v1/discovery/stats/polls",
+  profileBadges: (pubkey: string) => `/api/v1/profiles/${encodeURIComponent(pubkey)}/badges`,
+  badge: (address: string) => `/api/v1/badges/${encodeURIComponent(address)}`,
+  badgeStats: "/api/v1/discovery/stats/badges",
+  goals: "/api/v1/discovery/goals",
+  profileStatus: (pubkey: string) => `/api/v1/profiles/${encodeURIComponent(pubkey)}/status`,
+  curationSets: "/api/v1/discovery/curation-sets",
+  curationSet: (address: string) => `/api/v1/curation-sets/${encodeURIComponent(address)}`,
+  profileInterests: (pubkey: string) => `/api/v1/profiles/${encodeURIComponent(pubkey)}/interests`,
+  profileLists: (pubkey: string) => `/api/v1/profiles/${encodeURIComponent(pubkey)}/lists`,
+  profileLabels: (pubkey: string) => `/api/v1/profiles/${encodeURIComponent(pubkey)}/labels`,
+  profileExternalIdentities: (pubkey: string) =>
+    `/api/v1/profiles/${encodeURIComponent(pubkey)}/external-identities`,
+  profileModeration: (pubkey: string) =>
+    `/api/v1/profiles/${encodeURIComponent(pubkey)}/moderation`,
+  kindStats: "/api/v1/discovery/stats/kinds",
+  conversationStats: "/api/v1/discovery/stats/conversations",
+  zapLeaderboard: "/api/v1/discovery/zaps/leaderboard",
+  zapHeatmap: "/api/v1/discovery/stats/zaps/heatmap",
+  emergingHashtags: "/api/v1/hashtags/emerging",
+  hashtagHistory: (tag: string) => `/api/v1/hashtags/${encodeURIComponent(tag)}/history`,
+  deletionStats: "/api/v1/discovery/stats/deletions",
+  moderationStats: "/api/v1/discovery/stats/moderation",
+  spamStats: "/api/v1/discovery/stats/spam",
+  relayListStats: "/api/v1/discovery/stats/relay-lists",
+  relayHealthHistory: (relayHost: string) =>
+    `/api/v1/relays/${encodeURIComponent(relayHost)}/health/history`,
+  relaySoftwareStats: "/api/v1/discovery/stats/relay-software",
+  mediaHostStats: "/api/v1/discovery/stats/media-hosts",
+  labelStats: "/api/v1/discovery/stats/labels",
+  emojiStats: "/api/v1/discovery/stats/emoji",
 } as const;
 
 export interface CursorQuery {
@@ -122,6 +165,8 @@ export interface CursorQuery {
   lang?: string;
   /** Optional Nostr kind filter (e.g. 1 for short text notes). */
   kind?: number;
+  /** Drop events that arrived through a bridge. */
+  excludeBridged?: boolean;
 }
 
 export interface OffsetQuery {
@@ -130,6 +175,8 @@ export interface OffsetQuery {
   window?: string;
   /** Lowercase ISO 639-1/639-2 code. Omitted means all languages. */
   lang?: string;
+  /** Drop events that arrived through a bridge. */
+  excludeBridged?: boolean;
 }
 
 export function buildOffsetQuery(
@@ -141,6 +188,7 @@ export function buildOffsetQuery(
     offset: query.offset,
     window: query.window,
     ...(query.lang ? { lang: query.lang } : {}),
+    ...(query.excludeBridged ? { exclude_bridged: "true" } : {}),
   };
 }
 
@@ -364,5 +412,6 @@ export function buildCursorQuery(
     window: query.window,
     kind: query.kind,
     ...(query.lang ? { lang: query.lang } : {}),
+    ...(query.excludeBridged ? { exclude_bridged: "true" } : {}),
   };
 }

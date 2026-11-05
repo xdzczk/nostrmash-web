@@ -49,6 +49,7 @@ export type DiscoveryHomeQuery = {
   domains_limit?: number;
   notes_limit?: number;
   lang?: string;
+  excludeBridged?: boolean;
 };
 
 export async function getDiscoveryHome(
@@ -64,6 +65,7 @@ export async function getDiscoveryHome(
           domains_limit: query.domains_limit,
           notes_limit: query.notes_limit,
           ...(query.lang ? { lang: query.lang } : {}),
+          ...(query.excludeBridged ? { exclude_bridged: "true" } : {}),
         }
       : undefined,
   });
@@ -71,7 +73,14 @@ export async function getDiscoveryHome(
 }
 function discoveryListQuery(
   query:
-    | { limit?: number; offset?: number; cursor?: string; window?: string; lang?: string }
+    | {
+        limit?: number;
+        offset?: number;
+        cursor?: string;
+        window?: string;
+        lang?: string;
+        excludeBridged?: boolean;
+      }
     | undefined,
   options: { window?: boolean; lang?: boolean }
 ) {
@@ -84,6 +93,7 @@ function discoveryListQuery(
     ...(query.cursor ? { cursor: query.cursor } : {}),
     ...(window ? { window } : {}),
     ...(options.lang && query.lang ? { lang: query.lang } : {}),
+    ...(query.excludeBridged ? { exclude_bridged: "true" } : {}),
   };
 }
 

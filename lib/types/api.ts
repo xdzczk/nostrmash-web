@@ -169,6 +169,8 @@ export interface ArticleRecord extends EventRecord {
   image?: string;
   language?: string;
   published_at?: number;
+  subject?: string;
+  reading_time_s?: number;
   score?: number;
   author?: Profile;
 }
@@ -433,6 +435,7 @@ export interface HashtagDetailResponse extends NativeApiSemantics {
   count?: number;
   event_count?: number;
   unique_authors?: number;
+  interest_followers?: number;
   related?: HashtagEntry[];
   notes?: EventRecord[];
   total?: number;
@@ -498,6 +501,8 @@ export interface ReactionBreakdownItem {
 export interface EventCountsResponse extends NativeApiSemantics {
   counts?: Record<string, unknown>;
   reaction_breakdown?: ReactionBreakdownItem[];
+  /** Present when reactions, reposts, or zaps exist. A fraction from 0 to 1. */
+  trusted_engagement_share?: number;
   [key: string]: unknown;
 }
 
@@ -719,6 +724,11 @@ export interface ZapDayStat {
   nutzap_count?: number;
   nutzap_sats?: number;
   histogram?: ZapHistogram;
+  amount_p50_sats?: number;
+  amount_p90_sats?: number;
+  amount_mean_sats?: number;
+  gini_bps?: number;
+  ttfz_p50_s?: number;
 }
 
 export interface ZapStatsResponse extends NativeApiSemantics {
@@ -737,6 +747,11 @@ export interface AccountStatsResponse extends NativeApiSemantics {
   new_authors?: AccountDayStat[];
   active_authors_1d?: number;
   active_authors_7d?: number;
+  active_authors_30d?: number;
+  dormant_30d?: number;
+  unfollow_rate_bps?: number;
+  /** width_bucket indices 0–5 over 1, 7, 30, 90, and 365 days. */
+  account_age?: Array<{ bucket: number; authors?: number }>;
 }
 
 export interface RelayPropagationRow {
@@ -746,6 +761,10 @@ export interface RelayPropagationRow {
   exclusive_share?: number;
   latency_p50_ms?: number;
   untrusted_share?: number;
+  /** Fraction from 0 to 1 of events dated in the future. */
+  future_dated_share?: number;
+  /** Kind number (as a string key) to event count. Present when the API sends it. */
+  kind_mix?: Record<string, number>;
 }
 
 export interface RelayPropagationResponse extends NativeApiSemantics {
@@ -782,6 +801,8 @@ export interface AuthorZapAnalytics extends NativeApiSemantics {
   inbound_zaps?: number;
   inbound_sats?: number;
   repeat_zappers?: number;
+  sats_per_1k_followers?: number;
+  zap_to_reaction_ratio?: number;
 }
 
 export interface ProfileIdentity extends NativeApiSemantics {
@@ -803,6 +824,13 @@ export interface ProfileIdentity extends NativeApiSemantics {
   has_lud06?: boolean;
   completeness_score?: number;
   accepts_nutzaps?: boolean;
+  active_statuses?: number;
+  graph?: {
+    mutual_count?: number;
+    reciprocity_bps?: number;
+    follow_back_rate_bps?: number;
+    ghost_follower_bps?: number;
+  };
 }
 
 export interface AuthorAnalyticsWindow {
@@ -813,6 +841,15 @@ export interface AuthorAnalyticsWindow {
 export interface AuthorAnalyticsSummary extends NativeApiSemantics {
   pubkey?: string;
   windows?: AuthorAnalyticsWindow[];
+  graph?: {
+    mutual_count?: number;
+    reciprocity_bps?: number;
+    follow_back_rate_bps?: number;
+    ghost_follower_bps?: number;
+  };
+  downvote_ratio_bps?: number;
+  net_follower_change_7d?: number;
+  net_follower_change_30d?: number;
 }
 
 export interface SearchNotesApiResponse extends NativeApiSemantics {

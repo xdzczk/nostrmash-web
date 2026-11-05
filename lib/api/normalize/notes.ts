@@ -24,6 +24,7 @@ import {
   normalizeProfileStats,
 } from "@/lib/api/normalize/entities";
 import { normalizeReactionBreakdown } from "@/lib/api/normalize/ecosystem";
+import { readTrustedEngagementShare } from "@/lib/api/normalize/surfaces";
 import { normalizeRelayObservation } from "@/lib/api/normalize/relays";
 
 export function normalizeThreadResponse(value: unknown): ThreadResponse {
@@ -198,6 +199,9 @@ export function normalizeEventCountsResponse(value: unknown): EventCountsRespons
     };
     if (reactionBreakdown.length > 0) next.reaction_breakdown = reactionBreakdown;
     else delete next.reaction_breakdown;
+    const trusted = readTrustedEngagementShare(record);
+    if (trusted === undefined) delete next.trusted_engagement_share;
+    else next.trusted_engagement_share = trusted;
     return next;
   };
 

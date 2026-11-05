@@ -323,6 +323,13 @@ describe("ecosystem normalizers", () => {
       "new_authors_24h",
       "nip17_dm_count_24h",
       "bridged_share_bps",
+      "group_messages_24h",
+      "poll_votes_24h",
+      "live_chat_24h",
+      "reports_24h",
+      "deletions_24h",
+      "labels_24h",
+      "census_events_24h",
     ]);
   });
 });

@@ -169,6 +169,7 @@ export function normalizeHashtagDetailResponse(value: unknown): HashtagDetailRes
     asNumber(record.unique_authors) ??
     asNumber(record.unique_profiles) ??
     asNumber(allActivity?.unique_authors);
+  const interestFollowers = asNumber(record.interest_followers);
   const total = asNumber(record.total) ?? (notes.length > 0 ? notes.length : undefined);
 
   return compactDefined({
@@ -177,6 +178,7 @@ export function normalizeHashtagDetailResponse(value: unknown): HashtagDetailRes
     count,
     event_count: count,
     unique_authors: uniqueAuthors,
+    interest_followers: interestFollowers,
     related: related.length > 0 ? related : undefined,
     notes: notes.length > 0 ? notes : undefined,
     total,

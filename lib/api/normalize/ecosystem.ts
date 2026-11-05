@@ -1,6 +1,11 @@
 import type { z } from "zod";
 
 import { asArray, asBoolean, asRecord, asString } from "@/lib/api/normalize/helpers";
+import {
+  normalizeAccountAge,
+  normalizeKindMix,
+  normalizeProfileGraph,
+} from "@/lib/api/normalize/surfaces";
 import { softParseApiPayload } from "@/lib/api/schemas/parse";
 import {
   accountStatsSchema,
@@ -172,6 +177,11 @@ function zapDay(value: unknown): ZapDayStat | null {
     self_zap_count: nonNegative(record?.self_zap_count),
     nutzap_count: nonNegative(record?.nutzap_count),
     nutzap_sats: nonNegative(record?.nutzap_sats),
+    amount_p50_sats: nonNegative(record?.amount_p50_sats),
+    amount_p90_sats: nonNegative(record?.amount_p90_sats),
+    amount_mean_sats: nonNegative(record?.amount_mean_sats),
+    gini_bps: nonNegative(record?.gini_bps),
+    ttfz_p50_s: nonNegative(record?.ttfz_p50_s),
   };
   return {
     day,
@@ -180,6 +190,11 @@ function zapDay(value: unknown): ZapDayStat | null {
     ...(fields.self_zap_count === undefined ? {} : { self_zap_count: fields.self_zap_count }),
     ...(fields.nutzap_count === undefined ? {} : { nutzap_count: fields.nutzap_count }),
     ...(fields.nutzap_sats === undefined ? {} : { nutzap_sats: fields.nutzap_sats }),
+    ...(fields.amount_p50_sats === undefined ? {} : { amount_p50_sats: fields.amount_p50_sats }),
+    ...(fields.amount_p90_sats === undefined ? {} : { amount_p90_sats: fields.amount_p90_sats }),
+    ...(fields.amount_mean_sats === undefined ? {} : { amount_mean_sats: fields.amount_mean_sats }),
+    ...(fields.gini_bps === undefined ? {} : { gini_bps: fields.gini_bps }),
+    ...(fields.ttfz_p50_s === undefined ? {} : { ttfz_p50_s: fields.ttfz_p50_s }),
     ...(histogram ? { histogram } : {}),
   };
 }
@@ -216,12 +231,20 @@ export function normalizeAccountStats(value: unknown): AccountStatsResponse {
   });
   const active1d = nonNegative(record.active_authors_1d);
   const active7d = nonNegative(record.active_authors_7d);
+  const active30d = nonNegative(record.active_authors_30d);
+  const dormant = nonNegative(record.dormant_30d);
+  const unfollow = nonNegative(record.unfollow_rate_bps);
+  const accountAge = normalizeAccountAge(record.account_age);
   const consistency = consistencyOf(record);
   return {
     ...(consistency ? { consistency } : {}),
     ...(newAuthors.length > 0 ? { new_authors: newAuthors } : {}),
     ...(active1d === undefined ? {} : { active_authors_1d: active1d }),
     ...(active7d === undefined ? {} : { active_authors_7d: active7d }),
+    ...(active30d === undefined ? {} : { active_authors_30d: active30d }),
+    ...(dormant === undefined ? {} : { dormant_30d: dormant }),
+    ...(unfollow === undefined ? {} : { unfollow_rate_bps: unfollow }),
+    ...(accountAge.length > 0 ? { account_age: accountAge } : {}),
   };
 }
 
@@ -237,6 +260,8 @@ export function normalizeRelayPropagation(value: unknown): RelayPropagationRespo
     const exclusive = nonNegative(row?.exclusive_share);
     const latency = nonNegative(row?.latency_p50_ms);
     const untrusted = nonNegative(row?.untrusted_share);
+    const futureDated = nonNegative(row?.future_dated_share);
+    const kindMix = normalizeKindMix(row?.kind_mix);
     return [
       {
         relay_url: relayUrl,
@@ -245,6 +270,8 @@ export function normalizeRelayPropagation(value: unknown): RelayPropagationRespo
         ...(exclusive === undefined ? {} : { exclusive_share: exclusive }),
         ...(latency === undefined ? {} : { latency_p50_ms: latency }),
         ...(untrusted === undefined ? {} : { untrusted_share: untrusted }),
+        ...(futureDated === undefined ? {} : { future_dated_share: futureDated }),
+        ...(kindMix ? { kind_mix: kindMix } : {}),
       },
     ];
   });
@@ -316,6 +343,8 @@ export function normalizeAuthorZapAnalytics(value: unknown): AuthorZapAnalytics 
   const inboundZaps = nonNegative(record.inbound_zaps);
   const inboundSats = nonNegative(record.inbound_sats);
   const repeatZappers = nonNegative(record.repeat_zappers);
+  const satsPerThousand = nonNegative(record.sats_per_1k_followers);
+  const zapReaction = finite(record.zap_to_reaction_ratio);
   const pubkey = text(record.pubkey);
   const window = statsWindow(record.window);
   const consistency = consistencyOf(record);
@@ -327,6 +356,8 @@ export function normalizeAuthorZapAnalytics(value: unknown): AuthorZapAnalytics 
     ...(inboundZaps === undefined ? {} : { inbound_zaps: inboundZaps }),
     ...(inboundSats === undefined ? {} : { inbound_sats: inboundSats }),
     ...(repeatZappers === undefined ? {} : { repeat_zappers: repeatZappers }),
+    ...(satsPerThousand === undefined ? {} : { sats_per_1k_followers: satsPerThousand }),
+    ...(zapReaction === undefined || zapReaction < 0 ? {} : { zap_to_reaction_ratio: zapReaction }),
   };
 }
 
@@ -338,6 +369,8 @@ export function normalizeProfileIdentity(value: unknown): ProfileIdentity {
   const score = finite(record.completeness_score);
   const accepts = asBoolean(record.accepts_nutzaps);
   const status = typeof record.nip05_status === "string" ? record.nip05_status : undefined;
+  const activeStatuses = nonNegative(record.active_statuses);
+  const graph = normalizeProfileGraph(record.graph);
   const consistency = consistencyOf(record);
   const bool = (key: string) => {
     const value = asBoolean(record[key]);
@@ -363,6 +396,8 @@ export function normalizeProfileIdentity(value: unknown): ProfileIdentity {
     ...bool("has_lud06"),
     ...(score === undefined ? {} : { completeness_score: score }),
     ...(accepts === undefined ? {} : { accepts_nutzaps: accepts }),
+    ...(activeStatuses === undefined ? {} : { active_statuses: activeStatuses }),
+    ...(graph ? { graph } : {}),
   };
 }
 
@@ -383,11 +418,19 @@ export function normalizeAuthorAnalyticsSummary(value: unknown): AuthorAnalytics
     ];
   });
   const pubkey = text(record.pubkey);
+  const graph = normalizeProfileGraph(record.graph);
+  const downvote = nonNegative(record.downvote_ratio_bps);
+  const net7 = finite(record.net_follower_change_7d);
+  const net30 = finite(record.net_follower_change_30d);
   const consistency = consistencyOf(record);
   return {
     ...(consistency ? { consistency } : {}),
     ...(pubkey ? { pubkey } : {}),
     ...(windows.length > 0 ? { windows } : {}),
+    ...(graph ? { graph } : {}),
+    ...(downvote === undefined ? {} : { downvote_ratio_bps: downvote }),
+    ...(net7 === undefined ? {} : { net_follower_change_7d: net7 }),
+    ...(net30 === undefined ? {} : { net_follower_change_30d: net30 }),
   };
 }
 
