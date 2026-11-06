@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Link from "@/components/app-link";
 
 import {
-  NoteContent,
+  NoteBody,
   type NoteContentResolution,
   type NoteContentSize,
 } from "@/components/explorer/note-content";
@@ -41,7 +41,6 @@ import {
 import { extractNoteLinkUrls } from "@/lib/notes/links";
 import { collapsePreviewWhitespace } from "@/lib/notes/summary-text";
 import { isRepostEvent } from "@/lib/notes/repost";
-import { tokenizeNoteContent } from "@/lib/notes/tokenize";
 import type { EventRecord, Profile } from "@/lib/types/api";
 
 import { RepostCard } from "./repost-card";
@@ -405,8 +404,9 @@ function NoteCardBody({
           <div className="mt-2.5 flex items-start gap-3">
             <div className="min-w-0 flex-1">
               {content.length > 0 ? (
-                <NoteContent
-                  tokens={tokenizeNoteContent(content, { tags: note.tags })}
+                <NoteBody
+                  content={content}
+                  tags={note.tags}
                   className={clampClassName}
                   showQuotes={showFullContent}
                   resolution={contentResolution}
@@ -452,8 +452,9 @@ function NoteCardBody({
               </>
             ) : null}
             {content.length > 0 ? (
-              <NoteContent
-                tokens={tokenizeNoteContent(content, { tags: note.tags })}
+              <NoteBody
+                content={content}
+                tags={note.tags}
                 className={`${isDetail ? "mt-4" : "mt-2.5"} ${clampClassName}`}
                 showQuotes={showFullContent}
                 resolution={contentResolution}

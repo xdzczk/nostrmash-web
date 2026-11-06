@@ -33,7 +33,11 @@ import { EventKindSwitch } from "@/components/explorer/event-kind-switch";
 import { isLongFormEvent } from "@/components/explorer/article-meta";
 import { NoteLinkPreviews } from "@/components/explorer/note-link-previews";
 import { NoteMedia } from "@/components/explorer/note-media";
-import { MentionedNoteCards, type NoteContentResolution } from "@/components/explorer/note-content";
+import {
+  MentionedNoteCards,
+  NoteBody,
+  type NoteContentResolution,
+} from "@/components/explorer/note-content";
 import { fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { getEditorialNoteText } from "@/components/explorer/note-preview";
 import { isHiddenNoteKind } from "@/lib/api/normalize";
@@ -45,7 +49,6 @@ import {
   reasonsBesideSourceFigure,
 } from "@/lib/discover/reasons";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
-import { collapsePreviewWhitespace } from "@/lib/notes/summary-text";
 import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
 import type { StatsWindow } from "@/lib/search-params/window";
 import type {
@@ -263,9 +266,13 @@ function EditorialNote({
       >
         {authorRow}
         {editorialText ? (
-          <p className="text-ink-strong mt-5 line-clamp-8 max-w-[44rem] text-[clamp(1.35rem,1rem+1.15vw,2rem)] leading-[1.38] tracking-[-0.028em] [overflow-wrap:anywhere] whitespace-pre-wrap">
-            {editorialText}
-          </p>
+          <NoteBody
+            content={editorialText}
+            tags={note.tags}
+            resolution={contentResolution}
+            className="text-ink-strong mt-5 line-clamp-8 max-w-[44rem] text-[clamp(1.35rem,1rem+1.15vw,2rem)] leading-[1.38] tracking-[-0.028em] [overflow-wrap:anywhere]"
+            size="detail"
+          />
         ) : null}
         {hasContent ? (
           <>
@@ -314,9 +321,12 @@ function EditorialNote({
         </span>
         <div className="mt-3">{authorRow}</div>
         {editorialText ? (
-          <p className="text-ink-dim mt-3 line-clamp-3 text-[15px] leading-6 [overflow-wrap:anywhere]">
-            {collapsePreviewWhitespace(editorialText)}
-          </p>
+          <NoteBody
+            content={editorialText}
+            tags={note.tags}
+            resolution={contentResolution}
+            className="text-ink-dim mt-3 line-clamp-3 text-[15px] leading-6 [overflow-wrap:anywhere]"
+          />
         ) : null}
         {hasContent ? (
           <MentionedNoteCards

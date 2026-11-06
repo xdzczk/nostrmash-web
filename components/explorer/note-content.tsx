@@ -18,6 +18,7 @@ import { extractNoteMediaAttachments, isNoteMediaUrl, stripNoteMediaUrls } from 
 import { readReactionBreakdown } from "@/lib/notes/reaction-breakdown";
 import { extractImetaAttachments } from "@/lib/notes/media-event";
 import { hexToNpub } from "@/lib/nostr/nip19";
+import { splitNoteBlocks } from "@/lib/notes/lightweight-markdown";
 import { tokenizeNoteContent, type NoteToken } from "@/lib/notes/tokenize";
 import { HighlightedText } from "@/components/search/highlighted-text";
 import { isHiddenNoteKind } from "@/lib/api/normalize";
@@ -231,6 +232,7 @@ export function NoteContent({
             if (isNoteMediaUrl(token.href) || hiddenLinks.has(token.href)) return null;
             const href = sanitizeExternalHref(token.href);
             if (!href) return <span key={key}>{token.value}</span>;
+            const label = token.label?.trim() || formatUrlForDisplay(token.href, "secondary");
             return (
               <a
                 key={key}
@@ -240,7 +242,7 @@ export function NoteContent({
                 rel="noopener noreferrer nofollow"
                 className="text-link hover:text-link-hover underline-offset-2 hover:underline"
               >
-                {formatUrlForDisplay(token.href, "secondary")}
+                {label}
               </a>
             );
           }
@@ -335,6 +337,62 @@ export function NoteContent({
         }
       })}
     </Tag>
+  );
+}
+
+/** Kind-1 body: headings are bold, quotes are quoted, markdown links are anchors. */
+export function NoteBody({
+  content,
+  tags,
+  className = "",
+  resolution,
+  hideLinkPreviewUrls,
+  size = "list",
+  highlightTerms,
+  showQuotes = false,
+}: {
+  content: string;
+  tags?: unknown;
+  className?: string;
+  resolution?: NoteContentResolution;
+  hideLinkPreviewUrls?: string[];
+  size?: NoteContentSize;
+  highlightTerms?: string[];
+  showQuotes?: boolean;
+}) {
+  const blocks = splitNoteBlocks(content);
+  return (
+    <div className={`space-y-2 ${className}`}>
+      {blocks.map((block, index) => {
+        const tokens = tokenizeNoteContent(block.text, { tags });
+        const body = (
+          <NoteContent
+            tokens={tokens}
+            showQuotes={showQuotes}
+            resolution={resolution}
+            hideLinkPreviewUrls={hideLinkPreviewUrls}
+            size={size}
+            highlightTerms={highlightTerms}
+            as="div"
+          />
+        );
+        if (block.kind === "heading") {
+          return (
+            <div key={index} className="font-semibold">
+              {body}
+            </div>
+          );
+        }
+        if (block.kind === "quote") {
+          return (
+            <blockquote key={index} className="border-edge text-ink-soft border-l-2 pl-3">
+              {body}
+            </blockquote>
+          );
+        }
+        return <div key={index}>{body}</div>;
+      })}
+    </div>
   );
 }
 

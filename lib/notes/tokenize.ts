@@ -10,7 +10,7 @@ import {
 
 export type NoteToken =
   | { type: "text"; value: string }
-  | { type: "url"; value: string; href: string }
+  | { type: "url"; value: string; href: string; label?: string }
   | { type: "hashtag"; value: string; tag: string }
   | { type: "mention"; value: string; pubkey: string; relays?: string[] }
   | { type: "handle"; value: string; handle: string }
@@ -128,8 +128,40 @@ function tagToToken(tag: string[] | undefined, raw: string): NoteToken | null {
   return null;
 }
 
+const MARKDOWN_LINK_PATTERN = /\[([^\]\n]{1,180})\]\(\s*([^)\n]*)\s*\)/g;
+
+function markdownLinkHref(raw: string): string | null {
+  const trimmed = raw.trim().replace(/^<|>$/g, "").replace(/^\\?"/, "").replace(/\\?"$/, "").trim();
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 function collectMatches(content: string, tags: string[][]): Match[] {
   const matches: Match[] = [];
+
+  for (const match of content.matchAll(new RegExp(MARKDOWN_LINK_PATTERN.source, "g"))) {
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    const label = (match[1] ?? "").trim();
+    const href = markdownLinkHref(match[2] ?? "");
+    if (href && label) {
+      matches.push({
+        start,
+        end,
+        token: { type: "url", value: href, href, label },
+      });
+      continue;
+    }
+    if (label) {
+      matches.push({ start, end, token: { type: "text", value: label } });
+    }
+  }
 
   for (const match of content.matchAll(new RegExp(URL_PATTERN.source, URL_PATTERN.flags))) {
     const start = match.index ?? 0;
