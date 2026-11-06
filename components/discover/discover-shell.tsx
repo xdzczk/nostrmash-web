@@ -169,7 +169,7 @@ export function DiscoverShell({
         support={heroSupport}
       />
 
-      <div className="space-y-2.5">
+      <div className="min-w-0 space-y-2.5">
         <DiscoverNav
           active={view}
           window={carriedWindow}

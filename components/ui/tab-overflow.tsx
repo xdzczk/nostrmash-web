@@ -54,7 +54,7 @@ export function TabOverflow({ className, children }: { className?: string; child
   }, []);
 
   return (
-    <div ref={ref} data-overflow="none" className={className}>
+    <div ref={ref} data-overflow="end" className={className}>
       {children}
     </div>
   );
