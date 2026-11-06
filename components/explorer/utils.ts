@@ -888,13 +888,13 @@ export function profileSecondaryLabel(profile: Profile): string | null {
     !/\s|[\u0000-\u001f\u007f-\u009f\ufffd]/u.test(nip05Candidate)
       ? nip05Candidate
       : null;
-  if (displayName && name && stripEmojiShortcodes(displayName) !== stripEmojiShortcodes(name)) {
-    const handle = stripEmojiShortcodes(name);
-    if (handle.length > 0) return handle;
-  }
   if (nip05) {
     // NIP-05 root identifiers (`_@domain`) are conventionally shown as the bare domain.
     return nip05.startsWith("_@") ? nip05.slice(2) : nip05;
+  }
+  if (displayName && name && stripEmojiShortcodes(displayName) !== stripEmojiShortcodes(name)) {
+    const handle = stripEmojiShortcodes(name);
+    if (handle.length > 0) return handle;
   }
   // A name with no NIP-05 does not get a hex pubkey on the line underneath.
   return null;

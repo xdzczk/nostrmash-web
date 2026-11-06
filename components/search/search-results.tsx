@@ -90,6 +90,22 @@ function filterParams(query: SearchQuery): URLSearchParams {
   return new URLSearchParams(searchHref(query, {}).slice("/search?".length));
 }
 
+/** Hashtag-stuffed notes stay in the result set, below notes that are mostly prose. */
+function preferProseNotes<T extends { content?: unknown }>(notes: T[]): T[] {
+  const prose: T[] = [];
+  const stuffed: T[] = [];
+  for (const note of notes) {
+    const content = typeof note.content === "string" ? note.content : "";
+    const tags = content.match(/#[\p{L}\p{N}_]{1,64}/gu) ?? [];
+    const tagged = tags.reduce((sum, tag) => sum + tag.length, 0);
+    const body = content.replace(/\s+/g, "");
+    const share = body.length === 0 ? 0 : tagged / body.length;
+    if (share > 0.6) stuffed.push(note);
+    else prose.push(note);
+  }
+  return prose.length > 0 && stuffed.length > 0 ? [...prose, ...stuffed] : notes;
+}
+
 function tabFigures(
   source: SearchResponse["totals_source"],
   apiCount: number | undefined,
@@ -176,6 +192,7 @@ export async function SearchResults({ query }: { query: SearchQuery }) {
 
   const firstPage = activeTab === "all" && !query.cursor && !(query.offset && query.offset > 0);
   const collapsed = firstPage ? collapseRepeatedAuthors(notes) : { notes, extras: [] };
+  collapsed.notes = preferProseNotes(collapsed.notes);
   const terms = highlightTermsForQuery(payload.corrected_query || query.q);
   const notesToken = continuationToken(
     payload.surface_cursors?.notes ?? (activeTab === "notes" ? payload.next_cursor : undefined),
