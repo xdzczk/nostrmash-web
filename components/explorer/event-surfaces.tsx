@@ -1,5 +1,6 @@
 import Link from "@/components/app-link";
 
+import { EventLabelSummary } from "@/components/explorer/event-label-summary";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { Timestamp } from "@/components/explorer/timestamp";
 import { ShareBar } from "@/components/relays/share-bar";
@@ -170,23 +171,7 @@ export async function EventSurfaces({
         </p>
       ) : null}
       {labelsError ? <ErrorPanel message={labelsError} title="Couldn't load labels" /> : null}
-      {labels.length > 0 ? (
-        <SectionCard title="Labels">
-          <ul className="flex flex-wrap gap-2">
-            {labels.map((label, index) => (
-              <li
-                key={`${label.namespace ?? ""}-${label.label}-${index}`}
-                className="border-edge-strong rounded-full border px-2.5 py-1 text-xs"
-              >
-                <span className="text-ink">{label.label}</span>
-                {label.namespace ? (
-                  <span className="text-ink-faint ml-2">{label.namespace}</span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </SectionCard>
-      ) : null}
+      {labels.length > 0 ? <EventLabelSummary labels={labels} /> : null}
       {kind === POLL_KIND ? (
         pollError ? (
           <ErrorPanel message={pollError} title="Couldn't load this poll" />
