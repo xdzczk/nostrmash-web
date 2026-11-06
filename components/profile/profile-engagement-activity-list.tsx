@@ -162,6 +162,13 @@ export function ProfileReactionsActivityList({
                     alt={display.text}
                     className="h-5 w-5 object-contain"
                   />
+                ) : display.named ? (
+                  <span
+                    aria-label={display.text}
+                    className="border-edge text-ink-soft inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] leading-none"
+                  >
+                    {display.text}
+                  </span>
                 ) : (
                   <span aria-label={display.text}>{display.text}</span>
                 )
