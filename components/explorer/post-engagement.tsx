@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { ReactionChips } from "@/components/explorer/reaction-chips";
 import type { EngagementStat, EngagementStatKey } from "@/components/explorer/utils";
 import type { ReactionBreakdownItem } from "@/lib/types/api";
+import { formatUnitShare } from "@/lib/stats/ecosystem-display";
 
 const STAT_SIZE = {
   sm: "text-[13px]",
@@ -125,6 +126,7 @@ export function PostEngagement({
   size = "sm",
   replacements,
   reactionBreakdown,
+  trustedShare,
 }: {
   stats: EngagementStat[];
   className?: string;
@@ -133,6 +135,8 @@ export function PostEngagement({
   replacements?: Partial<Record<EngagementStatKey, ReactNode>>;
   /** Emoji chips shown beside the reaction count on note and thread views. */
   reactionBreakdown?: ReactionBreakdownItem[];
+  /** Share of engagement from accounts in the trust set, 0–1. */
+  trustedShare?: number;
 }) {
   if (stats.length === 0) return null;
   return (
@@ -159,6 +163,19 @@ export function PostEngagement({
         }
         return <EngagementStatView key={stat.label} stat={stat} />;
       })}
+      {typeof trustedShare === "number" ? (
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <span
+            title="Share of engagement from accounts in the trust set"
+            className="border-edge-strong text-ink-soft rounded-full border px-2 py-0.5 text-xs"
+          >
+            {formatUnitShare(trustedShare)} trusted
+          </span>
+          <span className="text-ink-muted basis-full text-xs sm:sr-only">
+            {formatUnitShare(trustedShare)} of engagement came from accounts in the trust set
+          </span>
+        </span>
+      ) : null}
     </div>
   );
 }

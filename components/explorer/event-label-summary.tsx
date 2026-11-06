@@ -59,8 +59,9 @@ export function EventLabelSummary({ labels }: { labels: EventLabel[] }) {
 
   return (
     <SectionCard
+      id="labels"
       title="Labels"
-      description="Labels attached to this note by other users and services (NIP-32)."
+      description={`Labels attached to this note by other users and services (NIP-32). ${grouped.length.toLocaleString()} distinct ${grouped.length === 1 ? "label" : "labels"}.`}
     >
       {visible.length > 0 ? (
         <ul className="flex flex-wrap gap-2">

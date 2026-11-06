@@ -11,7 +11,6 @@ import { getEventGoal, getEventLabels, getEventPoll, getLiveChat } from "@/lib/a
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import { GOAL_KIND, LIVE_ACTIVITY_KIND, POLL_KIND } from "@/lib/notes/kinds";
 import { getLivePresentation } from "@/lib/notes/live-activity";
-import { formatUnitShare } from "@/lib/stats/ecosystem-display";
 import { goalSats, pollTypeLabel } from "@/lib/stats/surface-display";
 import type { EventRecord } from "@/lib/types/api";
 import type {
@@ -122,13 +121,27 @@ function GoalCard({ goal }: { goal: ZapGoal }) {
   );
 }
 
-export async function EventSurfaces({
-  event,
-  trustedShare,
-}: {
-  event: EventRecord;
-  trustedShare?: number;
-}) {
+export async function ProvenanceLabelCount({ eventId }: { eventId: string }) {
+  let count = 0;
+  try {
+    const payload = await getEventLabels(eventId);
+    count = new Set(
+      (payload.labels ?? [])
+        .filter((label) => label.label.trim().length > 0)
+        .map((label) => `${label.namespace ?? ""}:${label.label.trim()}`)
+    ).size;
+  } catch {
+    return null;
+  }
+  if (count === 0) return null;
+  return (
+    <p className="text-ink-muted text-sm">
+      {count.toLocaleString()} distinct {count === 1 ? "label" : "labels"}
+    </p>
+  );
+}
+
+export async function EventSurfaces({ event }: { event: EventRecord }) {
   const id = eventIdOf(event);
   const kind = typeof event.kind === "number" ? event.kind : undefined;
   if (!id) return null;
@@ -165,11 +178,6 @@ export async function EventSurfaces({
 
   return (
     <div className="mt-4 space-y-4">
-      {typeof trustedShare === "number" ? (
-        <p className="text-ink-muted text-sm">
-          Trusted engagement share {formatUnitShare(trustedShare)}
-        </p>
-      ) : null}
       {labelsError ? <ErrorPanel message={labelsError} title="Couldn't load labels" /> : null}
       {labels.length > 0 ? <EventLabelSummary labels={labels} /> : null}
       {kind === POLL_KIND ? (

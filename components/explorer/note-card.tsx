@@ -75,6 +75,7 @@ export function NoteCard({
   bridgeToNote = false,
   highlightTerms,
   contentSize,
+  trustedShare,
 }: {
   note: EventRecord;
   author?: Profile;
@@ -109,6 +110,8 @@ export function NoteCard({
   highlightTerms?: string[];
   /** Profile lists read at 16px. Discover cards keep the compact list size. */
   contentSize?: NoteContentSize;
+  /** Share of engagement from the trust set, shown on the focal note. */
+  trustedShare?: number;
 }) {
   if (isRepostEvent(note)) {
     return (
@@ -139,6 +142,7 @@ export function NoteCard({
       showUtilityLinks={showUtilityLinks}
       mediaVariant={mediaVariant}
       suppressEmbeds={suppressEmbeds}
+      trustedShare={trustedShare}
       connectAbove={connectAbove}
       connectBelow={connectBelow}
       bridgeToNote={bridgeToNote}
@@ -169,6 +173,7 @@ function NoteCardBody({
   bridgeToNote,
   highlightTerms,
   contentSize: contentSizeProp,
+  trustedShare,
 }: {
   note: EventRecord;
   author?: Profile;
@@ -190,6 +195,7 @@ function NoteCardBody({
   bridgeToNote: boolean;
   highlightTerms?: string[];
   contentSize?: NoteContentSize;
+  trustedShare?: number;
 }) {
   const isReply = density === "reply";
   const isDetail = density === "detail";
@@ -546,6 +552,7 @@ function NoteCardBody({
 
         <PostEngagement
           stats={metrics}
+          trustedShare={trustedShare}
           className={isDetail ? "mt-4" : "mt-2.5 sm:mt-3"}
           size={isDetail ? "md" : "sm"}
           replacements={isDetail && repostsControl ? { repost_count: repostsControl } : undefined}

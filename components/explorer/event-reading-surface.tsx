@@ -13,6 +13,7 @@ export function EventReadingSurface({
   density = "detail",
   priorityMedia = false,
   repostsControl,
+  trustedShare,
   connectAbove = false,
   connectBelow = false,
   bridgeToNote = false,
@@ -24,6 +25,7 @@ export function EventReadingSurface({
   priorityMedia?: boolean;
   /** Replaces the Reposts stat on the focal note. */
   repostsControl?: ReactNode;
+  trustedShare?: number;
   /** Continue a thread line down from the note above. */
   connectAbove?: boolean;
   /** Draw the line through this note's avatar gutter, beside its text. */
@@ -39,6 +41,7 @@ export function EventReadingSurface({
       contentResolution={contentResolution}
       priorityMedia={priorityMedia}
       repostsControl={repostsControl}
+      trustedShare={trustedShare}
       connectAbove={connectAbove}
       connectBelow={connectBelow}
       bridgeToNote={bridgeToNote}

@@ -42,6 +42,7 @@ export function EventKindSwitch({
   priorityMedia = false,
   conversation = false,
   repostsControl,
+  trustedShare,
   connectAbove = false,
   connectBelow = false,
   bridgeToNote = false,
@@ -64,6 +65,7 @@ export function EventKindSwitch({
   priorityMedia?: boolean;
   conversation?: boolean;
   repostsControl?: ReactNode;
+  trustedShare?: number;
   connectAbove?: boolean;
   connectBelow?: boolean;
   bridgeToNote?: boolean;
@@ -159,6 +161,7 @@ export function EventKindSwitch({
       density={density}
       priorityMedia={priorityMedia}
       repostsControl={repostsControl}
+      trustedShare={trustedShare}
       conversation={conversation}
       showAuthor={showAuthor}
       showUtilityLinks={showUtilityLinks}

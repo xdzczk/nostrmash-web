@@ -12,7 +12,7 @@ import { IdBadge } from "@/components/explorer/id-badge";
 import { MetadataList } from "@/components/explorer/metadata-list";
 import { getArticlePresentation, isLongFormEvent } from "@/components/explorer/article-meta";
 import { EventReadingSurface } from "@/components/explorer/event-reading-surface";
-import { EventSurfaces } from "@/components/explorer/event-surfaces";
+import { EventSurfaces, ProvenanceLabelCount } from "@/components/explorer/event-surfaces";
 import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
 import { ProfileCard } from "@/components/explorer/profile-card";
 import { normalizeRelayHost } from "@/components/explorer/stats-utils";
@@ -386,14 +386,12 @@ export default async function NotePage({
                     }
                     contentResolution={contentResolution}
                     density="detail"
+                    trustedShare={readTrustedEngagementShare(eventCountsPayload)}
                     priorityMedia
                     repostsControl={repostsControl}
                   />
                   <Suspense fallback={null}>
-                    <EventSurfaces
-                      event={focalWithEngagement}
-                      trustedShare={readTrustedEngagementShare(eventCountsPayload)}
-                    />
+                    <EventSurfaces event={focalWithEngagement} />
                   </Suspense>
                   <EntityActions
                     kind="note"
@@ -488,6 +486,9 @@ export default async function NotePage({
                 {provenanceDetails.length > 0 ? (
                   <MetadataList items={provenanceDetails} columns={2} />
                 ) : null}
+                <Suspense fallback={null}>
+                  <ProvenanceLabelCount eventId={eventId} />
+                </Suspense>
                 {provenanceRelayLinks.length > 0 ? (
                   <ul className="space-y-2">
                     {provenanceRelayLinks.map((observation) => (
