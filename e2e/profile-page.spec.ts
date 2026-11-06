@@ -81,18 +81,14 @@ test.describe("profile page", () => {
     await expect(page.getByTestId("profile-cover")).toHaveCount(0);
   });
 
-  test("activity tabs switch in place without scrolling, with secondary tabs under More", async ({
-    page,
-  }) => {
+  test("activity tabs switch in place without scrolling", async ({ page }) => {
     await page.goto(`/profiles/${AUTHOR_PK}`);
-    const tabs = page.getByRole("navigation", { name: "Profile activity" });
+    const tabs = page.getByRole("navigation", { name: "Recent activity" });
     await expect(tabs.getByRole("link", { name: "Notes", exact: true })).toHaveAttribute(
       "aria-current",
       "page"
     );
-    // Secondary tabs are folded away.
-    await expect(tabs.getByRole("link", { name: "Highlights" })).toBeHidden();
-    await expect(tabs.getByText("More")).toBeVisible();
+    await expect(tabs.getByRole("link", { name: "Highlights" })).toBeVisible();
 
     await expect(page.getByTestId("profile-related-rail")).toBeVisible();
     await page.locator("#profile-activity").evaluate((el) => {
@@ -117,14 +113,12 @@ test.describe("profile page", () => {
     await expect(panel.getByText("Thanks for the note")).toBeVisible();
     await expect(panel.getByRole("link", { name: /Hello/ })).toBeVisible();
 
-    // Open the More menu and choose a secondary tab.
-    await tabs.getByText("More").click();
-    await tabs.getByRole("menuitem", { name: "Highlights" }).click();
+    await tabs.getByRole("link", { name: "Highlights", exact: true }).click();
     await expect(page).toHaveURL(/tab=highlights/);
-    await expect(page.getByTestId("tab-overflow-menu").locator("summary")).toContainText(
-      "Highlights"
+    await expect(tabs.getByRole("link", { name: "Highlights", exact: true })).toHaveAttribute(
+      "aria-current",
+      "page"
     );
-    await expect(page.getByTestId("tab-overflow-menu")).not.toHaveAttribute("open", "");
     await expect(panel.getByText(/passages the account clipped/)).toBeVisible();
   });
 
