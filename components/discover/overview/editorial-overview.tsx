@@ -504,6 +504,15 @@ function RankedIndex({ rows }: { rows: IndexRow[] }) {
               extra={row.extra}
               className="mt-1"
             />
+            {row.reasons[0] ? (
+              <p className="border-edge-strong text-ink-muted mt-2 inline-flex max-w-full rounded-full border px-2 py-0.5 text-xs">
+                Why now · {row.reasons[0].text}
+                {row.reasons[0].support ? ` · ${row.reasons[0].support}` : ""}
+                {typeof row.ranking?.rank_delta === "number" && row.ranking.rank_delta !== 0
+                  ? ` · ${row.ranking.rank_delta > 0 ? "+" : ""}${row.ranking.rank_delta} vs previous window`
+                  : ""}
+              </p>
+            ) : null}
           </div>
         </li>
       ))}
@@ -773,6 +782,11 @@ function MediaLeadersSection({
                 showUtilityLinks={false}
                 contentResolution={contentResolution}
               />
+              {postEngagementStats(column.event).every((stat) => stat.value === 0) ? (
+                <p className="text-ink-muted mt-2 text-xs">
+                  Why now · {mapNoteWhyNow(column.event)[0]?.text ?? "newest in a quiet window"}
+                </p>
+              ) : null}
             </div>
           );
         })}
