@@ -496,6 +496,8 @@ export interface EventSeenOnResponse extends NativeApiSemantics {
 export interface ReactionBreakdownItem {
   content: string;
   count: number;
+  /** https URL from a NIP-30 emoji tag, when the counts payload includes one. */
+  emoji_url?: string;
 }
 
 export interface EventCountsResponse extends NativeApiSemantics {

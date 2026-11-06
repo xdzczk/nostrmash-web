@@ -437,16 +437,25 @@ export function normalizeAuthorAnalyticsSummary(value: unknown): AuthorAnalytics
 export function normalizeReactionBreakdown(value: unknown): ReactionBreakdownItem[] {
   if (value === undefined || value === null) return [];
   softParse(reactionBreakdownSchema, value, "reactionBreakdown");
-  const totals = new Map<string, number>();
+  const totals = new Map<string, { count: number; emoji_url?: string }>();
   for (const entry of asArray(value)) {
     const record = asRecord(entry);
     const raw = text(record?.content)?.replace(/\s+/g, " ");
     const count = nonNegative(record?.count);
     if (!raw || raw.length > REACTION_CONTENT_MAX || count === undefined) continue;
-    totals.set(raw, (totals.get(raw) ?? 0) + count);
+    const previous = totals.get(raw);
+    const emoji = text(record?.emoji_url) ?? text(record?.url);
+    totals.set(raw, {
+      count: (previous?.count ?? 0) + count,
+      emoji_url: previous?.emoji_url ?? (emoji?.startsWith("https://") ? emoji : undefined),
+    });
   }
   return [...totals.entries()]
-    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .sort((left, right) => right[1].count - left[1].count || left[0].localeCompare(right[0]))
     .slice(0, REACTION_BREAKDOWN_MAX)
-    .map(([content, count]) => ({ content, count }));
+    .map(([content, value]) => ({
+      content,
+      count: value.count,
+      ...(value.emoji_url ? { emoji_url: value.emoji_url } : {}),
+    }));
 }
