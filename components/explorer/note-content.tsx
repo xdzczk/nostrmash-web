@@ -18,7 +18,7 @@ import { extractNoteMediaAttachments, isNoteMediaUrl, stripNoteMediaUrls } from 
 import { readReactionBreakdown } from "@/lib/notes/reaction-breakdown";
 import { extractImetaAttachments } from "@/lib/notes/media-event";
 import { hexToNpub } from "@/lib/nostr/nip19";
-import { splitNoteBlocks } from "@/lib/notes/lightweight-markdown";
+import { splitNoteBlocks, stripInlineMarkdown } from "@/lib/notes/lightweight-markdown";
 import { tokenizeNoteContent, type NoteToken } from "@/lib/notes/tokenize";
 import { HighlightedText } from "@/components/search/highlighted-text";
 import { isHiddenNoteKind } from "@/lib/api/normalize";
@@ -213,7 +213,7 @@ export function NoteContent({
         const key = `${token.type}-${index}`;
         switch (token.type) {
           case "text": {
-            const value = omitUnresolvedShortcodes(token.value);
+            const value = stripInlineMarkdown(omitUnresolvedShortcodes(token.value));
             if (value.length === 0) return null;
             return <HighlightedText key={key} value={value} terms={highlightTerms} />;
           }

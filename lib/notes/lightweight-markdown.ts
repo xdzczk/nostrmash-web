@@ -51,3 +51,13 @@ export function splitNoteBlocks(content: string): NoteBlock[] {
   flushQuote();
   return blocks.length > 0 ? blocks : [{ kind: "paragraph", text: content }];
 }
+
+/** Drop paired emphasis markers so kind-1 text never shows `**`, `__`, or backticks. */
+export function stripInlineMarkdown(value: string): string {
+  return value
+    .replace(/\*\*([^*\n]+)\*\*/g, "$1")
+    .replace(/__([^_\n]+)__/g, "$1")
+    .replace(/`([^`\n]+)`/g, "$1")
+    .replace(/(^|[\s(])\*([^*\n]+)\*(?=$|[\s).,!?:;])/g, "$1$2")
+    .replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,!?:;])/g, "$1$2");
+}

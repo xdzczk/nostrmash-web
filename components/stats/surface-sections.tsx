@@ -30,6 +30,10 @@ import {
 import type { StatsWindow } from "@/lib/search-params/window";
 import { formatStatsWindowLength } from "@/lib/search-params/window";
 import type { Profile } from "@/lib/types/api";
+
+function countNoun(count: number, singular: string, plural: string): string {
+  return `${count.toLocaleString()} ${count === 1 ? singular : plural}`;
+}
 import { CONTENT_LENGTH_BUCKETS } from "@/lib/types/surfaces";
 import type {
   AccountAgeBucket,
@@ -349,8 +353,8 @@ export function ModerationStatsSection({
                 entity,
                 value:
                   typeof people === "number"
-                    ? `${reports.toLocaleString()} reports from ${people.toLocaleString()} people`
-                    : `${reports.toLocaleString()} reports`,
+                    ? `${countNoun(reports, "report", "reports")} from ${countNoun(people, "person", "people")}`
+                    : countNoun(reports, "report", "reports"),
               };
             })}
           />

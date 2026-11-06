@@ -80,7 +80,11 @@ export function communitiesHeadline(data: GroupStatsResponse | null): string {
     typeof data.active_groups_1d === "number"
       ? `; ${data.active_groups_1d.toLocaleString()} posted in the last day`
       : "";
-  return `${formatCompactNumber(data.groups)} groups are indexed${active}.`;
+  const indexed =
+    data.groups === 1
+      ? "1 group is indexed"
+      : `${formatCompactNumber(data.groups)} groups are indexed`;
+  return `${indexed}${active}.`;
 }
 
 export function concentrationCaption(): string {

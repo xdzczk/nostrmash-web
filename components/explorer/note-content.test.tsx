@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { MentionedNoteCards, NoteContent } from "@/components/explorer/note-content";
+import { MentionedNoteCards, NoteBody, NoteContent } from "@/components/explorer/note-content";
 import { formatUrlForDisplay, truncateIdentifier } from "@/components/explorer/utils";
 import { encodeNaddr, hexToNpub, hexToNote } from "@/lib/nostr/nip19";
 import { tokenizeNoteContent } from "@/lib/notes/tokenize";
@@ -327,5 +327,11 @@ describe("NoteContent", () => {
 
     expect(screen.queryByText("(no content)")).not.toBeInTheDocument();
     expect(container.querySelector('img[src="https://cdn.example/only.jpg"]')).toBeTruthy();
+  });
+
+  it("drops emphasis markers from kind-1 text", () => {
+    render(<NoteBody content={"**In this week's issue:** a `fix` and *one* more"} />);
+    expect(screen.getByText("In this week's issue: a fix and one more")).toBeInTheDocument();
+    expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument();
   });
 });
