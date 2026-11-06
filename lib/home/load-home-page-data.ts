@@ -295,6 +295,26 @@ export async function loadHomePageData(
     }
   }
 
+  // An unscoped ranking is the default. When that view has no notes, the
+  // English ranking is the richest substitute. The header still says
+  // "All languages" because the visitor did not pick a language.
+  if (!lang && !homeTimedOut && homeNotes.length === 0) {
+    try {
+      const english = await getDiscoveryHome("shortTtl", { ...scopedQuery, lang: "en" });
+      upstreamCallCount += 1;
+      if ((english.notes ?? []).length > 0) {
+        homeNotes = english.notes ?? [];
+        if (homeProfiles.length === 0) homeProfiles = english.profiles ?? [];
+        if (homeRisingProfiles.length === 0) homeRisingProfiles = english.rising_profiles ?? [];
+        if (homeHashtags.length === 0) homeHashtags = english.hashtags ?? [];
+        if (homeDomains.length === 0) homeDomains = english.domains ?? [];
+        sectionFailures.notes = false;
+      }
+    } catch {
+      // Keep the empty unscoped result.
+    }
+  }
+
   if (networkResult.status === "fulfilled") {
     networkStats = networkResult.value;
   } else {

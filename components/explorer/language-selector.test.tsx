@@ -70,11 +70,11 @@ describe("LanguageSelector", () => {
     );
 
     fireEvent.change(screen.getByRole("combobox", { name: "Language" }), {
-      target: { value: "" },
+      target: { value: "all" },
     });
 
     expect(push).toHaveBeenCalledWith("/trending/notes?window=7d");
-    expect(writes.at(-1)).toBe(`${LANGUAGE_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`);
+    expect(writes.at(-1)).toContain(`${LANGUAGE_COOKIE}=all;`);
     cookie.mockRestore();
   });
 

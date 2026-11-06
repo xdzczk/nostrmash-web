@@ -5,9 +5,9 @@ import type { RouteSearchParams } from "@/lib/search-params/pagination";
 import { LANGUAGE_COOKIE, resolveLanguagePreference } from "@/lib/search-params/language";
 
 /**
- * Shared Discover entry point. Reads `lang`, otherwise redirects to the same
- * URL with the `nm_lang` cookie applied. Choosing "All languages" clears the
- * cookie in the selector before navigating back to a URL without `lang`.
+ * Shared Discover entry point. An explicit `lang` wins. `lang=all` drops the
+ * param. Otherwise a saved `nm_lang` language is written onto the URL.
+ * The visitor's Accept-Language header is ignored.
  */
 export async function applyDiscoverLanguage(
   path: string,

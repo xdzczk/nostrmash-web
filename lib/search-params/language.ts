@@ -7,6 +7,13 @@ import type { StatsWindow } from "@/lib/search-params/window";
 
 export const LANGUAGE_COOKIE = "nm_lang";
 
+/**
+ * Sentinel for "every language". The API ranks every language when `lang` is
+ * omitted, so this value is stored in the cookie and never sent upstream.
+ * Accept-Language is not consulted; only this explicit choice is.
+ */
+export const ALL_LANGUAGES = "all";
+
 /** One year, in seconds. */
 export const LANGUAGE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
@@ -17,10 +24,20 @@ export const EXCLUDED_LANGUAGE_CODES = new Set(["und", "und-uncertain"]);
 
 const LANGUAGE_PATTERN = /^[a-z]{2,3}$/;
 
+/** Codes that look like languages but are not selectable rankings. */
+const RESERVED_LANGUAGE_CODES = new Set([ALL_LANGUAGES, "und", "und-uncertain"]);
+
 export function parseLanguage(value: string | undefined): string | undefined {
   if (typeof value !== "string") return undefined;
-  const candidate = value.trim();
-  return LANGUAGE_PATTERN.test(candidate) ? candidate : undefined;
+  const candidate = value.trim().toLowerCase();
+  if (!LANGUAGE_PATTERN.test(candidate) || RESERVED_LANGUAGE_CODES.has(candidate)) {
+    return undefined;
+  }
+  return candidate;
+}
+
+export function isAllLanguagesValue(value: string | undefined): boolean {
+  return typeof value === "string" && value.trim().toLowerCase() === ALL_LANGUAGES;
 }
 
 export function readLanguage(params: RouteSearchParams): string | undefined {
@@ -52,7 +69,8 @@ export function buildLanguageHref(
   lang: string | undefined
 ): string {
   const next = new URLSearchParams(current);
-  if (lang) next.set("lang", lang);
+  const parsed = parseLanguage(lang);
+  if (parsed) next.set("lang", parsed);
   else next.delete("lang");
   next.delete("cursor");
   next.delete("health_cursor");
@@ -87,8 +105,23 @@ export type LanguageCookieMutation =
   | { action: "set"; name: string; value: string; options: LanguageCookieOptions }
   | { action: "clear"; name: string };
 
-/** Cookie write for a chosen language. `undefined` clears `nm_lang` ("All languages"). */
+/**
+ * Cookie write for a chosen language. "All languages" stores `all` so a later
+ * visit does not invent a language. Anything that is not a language code clears it.
+ */
 export function languageCookieMutation(lang: string | undefined): LanguageCookieMutation {
+  if (lang === undefined || isAllLanguagesValue(lang)) {
+    return {
+      action: "set",
+      name: LANGUAGE_COOKIE,
+      value: ALL_LANGUAGES,
+      options: {
+        maxAge: LANGUAGE_COOKIE_MAX_AGE,
+        sameSite: "lax",
+        path: "/",
+      },
+    };
+  }
   const parsed = parseLanguage(lang);
   if (!parsed) return { action: "clear", name: LANGUAGE_COOKIE };
   return {
@@ -118,18 +151,29 @@ export type LanguagePreference = {
 };
 
 /**
- * The query param wins. With no `lang` param, a valid `nm_lang` cookie redirects
- * to the same path and query plus `lang`. Pagination is preserved here; the
- * selector uses `buildLanguageHref`, which clears it.
+ * The query param wins. `lang=all` is the explicit every-language view and is
+ * canonicalized by dropping the param (the API omits `lang` for that ranking).
+ * With no `lang` param, a saved language cookie redirects to the same path.
+ * A missing cookie, or a cookie of `all`, stays on the unscoped URL.
+ * Accept-Language is never read.
  */
 export function resolveLanguagePreference(
   path: string,
   params: RouteSearchParams,
   cookieValue: string | undefined
 ): LanguagePreference {
-  const fromQuery = readLanguage(params);
+  const raw = readSearchParam(params, "lang");
+  if (isAllLanguagesValue(raw)) {
+    const next = toUrlSearchParams(params);
+    next.delete("lang");
+    const query = next.toString();
+    return { redirectTo: query.length > 0 ? `${path}?${query}` : path };
+  }
+
+  const fromQuery = parseLanguage(raw);
   if (fromQuery) return { language: fromQuery };
 
+  if (isAllLanguagesValue(cookieValue)) return {};
   const fromCookie = parseLanguage(cookieValue);
   if (!fromCookie) return {};
 

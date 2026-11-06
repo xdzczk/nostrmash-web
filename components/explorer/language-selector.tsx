@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { languageDisplayName } from "@/lib/i18n/language-names";
 import {
+  ALL_LANGUAGES,
   buildLanguageHref,
   parseLanguage,
   selectLanguageOptions,
@@ -43,12 +44,13 @@ export function LanguageSelector({
   preserved.delete("offset");
 
   useEffect(() => {
-    document.cookie = serializeLanguageCookie(activeLanguage);
+    document.cookie = serializeLanguageCookie(activeLanguage ?? ALL_LANGUAGES);
   }, [activeLanguage]);
 
   function onLanguageChange(event: ChangeEvent<HTMLSelectElement>) {
-    const next = parseLanguage(event.target.value);
-    document.cookie = serializeLanguageCookie(next);
+    const raw = event.target.value;
+    const next = raw === ALL_LANGUAGES ? undefined : parseLanguage(raw);
+    document.cookie = serializeLanguageCookie(raw === ALL_LANGUAGES ? ALL_LANGUAGES : next);
     router.push(buildLanguageHref(path, new URLSearchParams(query), next));
   }
 
@@ -69,11 +71,11 @@ export function LanguageSelector({
         <select
           id={selectId}
           name="lang"
-          value={activeLanguage ?? ""}
+          value={activeLanguage ?? ALL_LANGUAGES}
           onChange={onLanguageChange}
           className="text-ink focus-visible:ring-accent-soft/70 max-w-[11rem] cursor-pointer bg-transparent py-1 text-[11px] font-medium outline-none focus-visible:ring-2"
         >
-          <option value="">All languages</option>
+          <option value={ALL_LANGUAGES}>All languages</option>
           {listed.map((option) => (
             <option key={option.language} value={option.language}>
               {languageDisplayName(option.language)}

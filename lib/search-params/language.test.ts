@@ -19,8 +19,9 @@ describe("parseLanguage", () => {
     expect(parseLanguage("en")).toBe("en");
     expect(parseLanguage(" de ")).toBe("de");
     expect(parseLanguage("ja")).toBe("ja");
-    expect(parseLanguage("und")).toBe("und");
-    expect(parseLanguage("EN")).toBeUndefined();
+    expect(parseLanguage("und")).toBeUndefined();
+    expect(parseLanguage("all")).toBeUndefined();
+    expect(parseLanguage("EN")).toBe("en");
     expect(parseLanguage("e")).toBeUndefined();
     expect(parseLanguage("engl")).toBeUndefined();
     expect(parseLanguage("en-us")).toBeUndefined();
@@ -76,11 +77,16 @@ describe("language cookie helper", () => {
     );
   });
 
-  it("clears the cookie for all languages and invalid codes", () => {
-    expect(languageCookieMutation(undefined)).toEqual({ action: "clear", name: LANGUAGE_COOKIE });
+  it("stores all languages explicitly and clears invalid codes", () => {
+    expect(languageCookieMutation(undefined)).toMatchObject({
+      action: "set",
+      name: LANGUAGE_COOKIE,
+      value: "all",
+    });
+    expect(languageCookieMutation("all")).toMatchObject({ action: "set", value: "all" });
     expect(languageCookieMutation("und-uncertain").action).toBe("clear");
     expect(serializeLanguageCookie(undefined)).toBe(
-      `${LANGUAGE_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax`
+      `${LANGUAGE_COOKIE}=all; Max-Age=${LANGUAGE_COOKIE_MAX_AGE}; Path=/; SameSite=Lax`
     );
   });
 
@@ -102,6 +108,16 @@ describe("language cookie helper", () => {
     expect(resolveLanguagePreference("/", { lang: "nope" }, "fr")).toEqual({
       redirectTo: "/?lang=fr",
     });
+  });
+
+  it("treats lang=all as the unscoped ranking and does not keep the param", () => {
+    expect(resolveLanguagePreference("/", { lang: "all" }, "it")).toEqual({ redirectTo: "/" });
+    expect(
+      resolveLanguagePreference("/trending/notes", { lang: "ALL", window: "7d" }, "it")
+    ).toEqual({
+      redirectTo: "/trending/notes?window=7d",
+    });
+    expect(resolveLanguagePreference("/", {}, "all")).toEqual({});
   });
 });
 

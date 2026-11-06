@@ -51,7 +51,6 @@ export function languageDisplayName(code: string): string {
 }
 
 export function formatDiscoverEyebrow(eyebrow: string, language?: string): string {
-  if (!language) return eyebrow;
-  const name = languageDisplayName(language);
+  const name = language ? languageDisplayName(language) : "All languages";
   return eyebrow ? `${eyebrow} · ${name}` : name;
 }
