@@ -8,6 +8,19 @@ import type { EventLabel } from "@/lib/types/surfaces";
 const VISIBLE_LIMIT = 8;
 
 /** Trend markers are machine labels, not something a reader chose. */
+function hiddenLabelText(hiddenPeople: number, hiddenMachine: number): string {
+  const parts: string[] = [];
+  if (hiddenPeople > 0) {
+    parts.push(`${hiddenPeople.toLocaleString()} more ${hiddenPeople === 1 ? "label" : "labels"}`);
+  }
+  if (hiddenMachine > 0) {
+    parts.push(
+      `${hiddenMachine.toLocaleString()} machine ${hiddenMachine === 1 ? "label" : "labels"}`
+    );
+  }
+  return `Show ${parts.join(" and ")}`;
+}
+
 function isMachineNamespace(namespace: string | undefined): boolean {
   if (!namespace) return false;
   return /trend|algo|spam-score|classifier/i.test(namespace);
@@ -56,6 +69,9 @@ export function EventLabelSummary({ labels }: { labels: EventLabel[] }) {
   const hiddenMachine = machine.length;
   const hidden = showAll ? 0 : hiddenPeople + hiddenMachine;
   if (grouped.length === 0) return null;
+  // A machine-only note has a count in Details & provenance. The section
+  // itself would be a heading and a toggle with no chips.
+  if (!showAll && visible.length === 0) return null;
 
   return (
     <SectionCard
@@ -83,9 +99,9 @@ export function EventLabelSummary({ labels }: { labels: EventLabel[] }) {
       ) : null}
       {hidden > 0 ? (
         <button type="button" className="text-link mt-3 text-sm" onClick={() => setShowAll(true)}>
-          Show {hidden.toLocaleString()} more
+          {hiddenLabelText(hiddenPeople, hiddenMachine)}
         </button>
-      ) : showAll && grouped.length > VISIBLE_LIMIT ? (
+      ) : showAll && (people.length > VISIBLE_LIMIT || machine.length > 0) ? (
         <button type="button" className="text-link mt-3 text-sm" onClick={() => setShowAll(false)}>
           Show fewer
         </button>
