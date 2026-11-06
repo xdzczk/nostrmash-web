@@ -61,6 +61,8 @@ export const LIST_KIND_LABELS: Record<number, string> = {
   10006: "Blocked relays",
   10007: "Search relays",
   10012: "Favorite relays",
+  10013: "Private relays",
+  10096: "File storage servers",
   10015: "Interests",
   30002: "Relay sets",
   30004: "Article curation",
@@ -86,6 +88,25 @@ export const WEEKDAY_LABELS = [
 export function weekdayLabel(day: number): string {
   return WEEKDAY_LABELS[day] ?? `Day ${day}`;
 }
+
+/** Short UTC day, shared by series fallbacks and headlines ("Nov 6"). */
+export function formatUtcDay(timestampOrIso: number | string): string {
+  const ms =
+    typeof timestampOrIso === "number"
+      ? timestampOrIso < 1e12
+        ? timestampOrIso * 1000
+        : timestampOrIso
+      : Date.parse(`${timestampOrIso}T00:00:00Z`);
+  if (!Number.isFinite(ms)) return String(timestampOrIso);
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(ms));
+}
+
+/** The index began recording on this day. Partial charts say so instead of looking finished. */
+export const INDEX_COLLECTING_SINCE = "Collecting since Nov 5";
 
 export function momentumLabel(status: HashtagMomentumStatus | undefined): string {
   if (status === "emerging") return "Emerging";
