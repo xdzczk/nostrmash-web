@@ -30,11 +30,20 @@ export function formatBasisPointsAsPercent(bps: number): string {
   return `${percent.toLocaleString(undefined, { maximumFractionDigits: 2 })}%`;
 }
 
+/** Milliseconds as a short duration: 640 ms, 1.3 s, 4.2 min, 7.2 h. */
 export function formatLatencyMs(value: number): string {
-  if (value >= 1000) {
-    return `${(value / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} s`;
+  if (!Number.isFinite(value) || value < 0) return "";
+  if (value < 1000) return `${Math.round(value).toLocaleString()} ms`;
+  const seconds = value / 1000;
+  if (seconds < 60) {
+    return `${seconds.toLocaleString(undefined, { maximumFractionDigits: 1 })} s`;
   }
-  return `${Math.round(value).toLocaleString()} ms`;
+  const minutes = seconds / 60;
+  if (minutes < 60) {
+    return `${minutes.toLocaleString(undefined, { maximumFractionDigits: 1 })} min`;
+  }
+  const hours = minutes / 60;
+  return `${hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} h`;
 }
 
 export function formatRate(value: number): string {

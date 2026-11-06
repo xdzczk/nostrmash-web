@@ -13,6 +13,7 @@ import {
 } from "@/lib/relays/probe-status";
 import type { RelayProbeHealthEntry } from "@/lib/types/api";
 import { formatRelativeAge } from "@/lib/time/freshness";
+import { formatLatencyMs } from "@/lib/stats/ecosystem-display";
 
 function checkpointText(row: RelayHealthSummary, nowMs: number): string {
   const age = formatRelativeAge(row.latestCheckpointAt ?? row.lastSeenAt, nowMs);
@@ -27,7 +28,7 @@ function rowAnchor(row: RelayHealthSummary, seenHosts: Set<string>): string | un
 
 function formatLatency(ms: number | undefined): string | null {
   if (ms === undefined || ms === null || !Number.isFinite(ms)) return null;
-  return `${ms.toFixed(0)}ms`;
+  return formatLatencyMs(ms);
 }
 
 function IngestRow({

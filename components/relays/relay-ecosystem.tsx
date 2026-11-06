@@ -8,6 +8,21 @@ import type { RelayOverlapResponse, RelayPropagationResponse } from "@/lib/types
 
 const PROPAGATION_LIMIT = 40;
 const OVERLAP_LIMIT = 24;
+const INTERNAL_RELAY_HOSTS = new Set([
+  "fallback:relay",
+  "local.nostrmash",
+  "localhost",
+  "127.0.0.1",
+]);
+
+/** Public relay hostnames have a dot and are not index-internal endpoints. */
+export function isPublicRelayUrl(url: string): boolean {
+  const host = normalizeRelayHost(url) ?? url.trim().toLowerCase();
+  if (!host || INTERNAL_RELAY_HOSTS.has(host)) return false;
+  const hostname = host.split(":")[0] ?? host;
+  if (INTERNAL_RELAY_HOSTS.has(hostname)) return false;
+  return hostname.includes(".");
+}
 
 function Metric({ label, value }: { label: string; value: string | null }) {
   if (!value) return null;
@@ -53,7 +68,7 @@ export function RelayPropagationSection({
   data: RelayPropagationResponse | null;
   window: StatsWindow;
 }) {
-  const relays = data?.relays ?? [];
+  const relays = (data?.relays ?? []).filter((relay) => isPublicRelayUrl(relay.relay_url));
   if (relays.length === 0) return null;
   const shown = relays.slice(0, PROPAGATION_LIMIT);
   const range = formatCompletedDayWindow(window);
