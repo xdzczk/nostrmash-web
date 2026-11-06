@@ -5,6 +5,7 @@ import { useState } from "react";
 import { KindChip } from "@/components/explorer/entity-chips";
 import { AdjacentValue } from "@/components/stats/ranked-list";
 import { ShareBar } from "@/components/relays/share-bar";
+import { countNoun } from "@/lib/stats/plural";
 import { kindFamilyLabel } from "@/lib/stats/surface-display";
 import type { KindFamilyStats } from "@/lib/types/surfaces";
 
@@ -49,7 +50,7 @@ function Family({ family, total }: { family: KindFamilyStats; total: number }) {
                 <>
                   {(kind.event_count ?? 0).toLocaleString()}
                   {typeof kind.unique_authors === "number"
-                    ? ` · ${kind.unique_authors.toLocaleString()} authors`
+                    ? ` · ${countNoun(kind.unique_authors, "author", "authors")}`
                     : ""}
                 </>
               }

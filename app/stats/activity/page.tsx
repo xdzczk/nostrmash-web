@@ -23,6 +23,7 @@ import {
   readContentShape,
 } from "@/lib/api/endpoints";
 import { activityHeadline } from "@/lib/stats/headlines";
+import { labelStatsVisible } from "@/lib/stats/label-groups";
 import { settle } from "@/lib/stats/settle";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import { formatStatsWindowSpan, readStatsWindow } from "@/lib/search-params/window";
@@ -73,7 +74,11 @@ export default async function ActivityStatsPage({
           { id: "labels", label: "Labels" },
           { id: "emoji", label: "Emoji" },
           { id: "media-hosts", label: "Media hosts" },
-        ]}
+        ].filter((item) => {
+          if (item.id === "deletions") return (deletions.value?.items?.length ?? 0) > 0;
+          if (item.id === "labels") return labelStatsVisible(labels.value);
+          return true;
+        })}
       >
         <LoadErrors errors={errors} />
         <KindStatsSection data={kinds.value} window={window} />

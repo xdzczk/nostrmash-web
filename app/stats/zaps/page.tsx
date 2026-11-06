@@ -56,7 +56,11 @@ export default async function ZapStatsPage({
           { id: "zaps", label: "Zaps" },
           { id: "zap-heatmap", label: "Zap timing" },
           { id: "zap-leaderboard", label: "Leaderboard" },
-        ]}
+        ].filter(
+          (item) =>
+            item.id !== "zap-heatmap" ||
+            (heatmap.value?.cells ?? []).some((cell) => (cell.zap_count ?? 0) > 0)
+        )}
       >
         <LoadErrors errors={errors} />
         <ZapStatsSection data={zaps.value} window={window} />
