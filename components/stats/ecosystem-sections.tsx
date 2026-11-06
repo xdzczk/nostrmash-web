@@ -1,7 +1,8 @@
-import { BarChart } from "@/components/charts/bar-chart";
 import { AccountAgeList } from "@/components/stats/surface-sections";
 import { ShareBar } from "@/components/relays/share-bar";
-import { StatCard } from "@/components/explorer/stat-card";
+import { StatCard, StatGrid } from "@/components/explorer/stat-card";
+import { BarSeries } from "@/components/stats/bar-series";
+import { concentrationCaption, formatZapLatency } from "@/lib/stats/headlines";
 import { SectionCard } from "@/components/ui/section-card";
 import {
   clientLabel,
@@ -187,12 +188,22 @@ export function ZapStatsSection({
   return (
     <SectionCard id="zaps" title="Zaps" description={`Zap receipts over the last ${range}.`}>
       {hasParticipants || hasNutzaps || (selfZaps ?? 0) > 0 || latestAmounts ? (
-        <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatGrid>
           {typeof data?.unique_senders === "number" ? (
-            <StatCard plain label="Unique senders" value={data.unique_senders} />
+            <StatCard
+              plain
+              label="Senders"
+              value={data.unique_senders}
+              description="People who sent a zap in this window."
+            />
           ) : null}
           {typeof data?.unique_receivers === "number" ? (
-            <StatCard plain label="Unique receivers" value={data.unique_receivers} />
+            <StatCard
+              plain
+              label="Receivers"
+              value={data.unique_receivers}
+              description="People who received a zap in this window."
+            />
           ) : null}
           {hasNutzaps && nutzapCount !== null ? (
             <StatCard plain label="Nutzaps" value={nutzapCount} />
@@ -215,29 +226,25 @@ export function ZapStatsSection({
           {typeof latestAmounts?.gini_bps === "number" ? (
             <StatCard
               plain
-              label="Gini"
+              label="Concentration"
               value={formatBasisPointsAsPercent(latestAmounts.gini_bps)}
+              description={concentrationCaption()}
             />
           ) : null}
           {typeof latestAmounts?.ttfz_p50_s === "number" ? (
-            <StatCard plain label="Median seconds to first zap" value={latestAmounts.ttfz_p50_s} />
+            <StatCard
+              plain
+              label="Time to first zap"
+              value={formatZapLatency(latestAmounts.ttfz_p50_s)}
+              description="Median time from a note to its first zap, on the latest day with a figure."
+            />
           ) : null}
-        </div>
+        </StatGrid>
       ) : null}
       {hasSeries ? (
         <div className="grid gap-8 lg:grid-cols-2">
-          {satsPoints.length > 0 ? (
-            <div>
-              <p className="text-ink-faint mb-2 text-xs">Sats per day</p>
-              <BarChart points={satsPoints} label="Sats per day" />
-            </div>
-          ) : null}
-          {countPoints.length > 0 ? (
-            <div>
-              <p className="text-ink-faint mb-2 text-xs">Zaps per day</p>
-              <BarChart points={countPoints} label="Zaps per day" />
-            </div>
-          ) : null}
+          {satsPoints.length > 0 ? <BarSeries points={satsPoints} label="Sats per day" /> : null}
+          {countPoints.length > 0 ? <BarSeries points={countPoints} label="Zaps per day" /> : null}
         </div>
       ) : null}
       {histogram.length > 0 ? (
@@ -284,27 +291,48 @@ export function AccountStatsSection({ data }: { data: AccountStatsResponse | nul
       description="New authors are first-seen counts over 30 days. Active authors posted in the last 1, 7, or 30 days."
     >
       {hasActive ? (
-        <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <StatGrid>
           {typeof data?.active_authors_1d === "number" ? (
-            <StatCard plain label="Active authors, 1 day" value={data.active_authors_1d} />
+            <StatCard
+              plain
+              label="Active, 1 day"
+              value={data.active_authors_1d}
+              description="People who posted in the last day."
+            />
           ) : null}
           {typeof data?.active_authors_7d === "number" ? (
-            <StatCard plain label="Active authors, 7 days" value={data.active_authors_7d} />
+            <StatCard
+              plain
+              label="Active, 7 days"
+              value={data.active_authors_7d}
+              description="People who posted in the last 7 days."
+            />
           ) : null}
           {typeof data?.active_authors_30d === "number" ? (
-            <StatCard plain label="Active authors, 30 days" value={data.active_authors_30d} />
+            <StatCard
+              plain
+              label="Active, 30 days"
+              value={data.active_authors_30d}
+              description="People who posted in the last 30 days."
+            />
           ) : null}
           {typeof data?.dormant_30d === "number" ? (
-            <StatCard plain label="Dormant, 30 days" value={data.dormant_30d} />
+            <StatCard
+              plain
+              label="Dormant"
+              value={data.dormant_30d}
+              description="Accounts with no post in the last 30 days."
+            />
           ) : null}
           {typeof data?.unfollow_rate_bps === "number" ? (
             <StatCard
               plain
               label="Unfollow rate"
               value={formatBasisPointsAsPercent(data.unfollow_rate_bps)}
+              description="Share of follow changes in the last 7 days that were unfollows."
             />
           ) : null}
-        </div>
+        </StatGrid>
       ) : null}
       <div className="mb-6">
         <h3 className="text-ink mb-3 text-sm font-medium">Account age</h3>
@@ -312,8 +340,7 @@ export function AccountStatsSection({ data }: { data: AccountStatsResponse | nul
       </div>
       {points.length > 0 ? (
         <div>
-          <p className="text-ink-faint mb-2 text-xs">New authors per day</p>
-          <BarChart points={points} label="New authors per day" />
+          <BarSeries points={points} label="New authors per day" />
         </div>
       ) : null}
     </SectionCard>

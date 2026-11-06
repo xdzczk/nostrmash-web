@@ -2,12 +2,12 @@ import type { ContentLengthBucket, HashtagMomentumStatus } from "@/lib/types/sur
 
 /** width_bucket indices 0–5 over thresholds 1, 7, 30, 90, and 365 days. */
 export const ACCOUNT_AGE_LABELS = [
-  "Under 1 day",
+  "<1 day",
   "1–7 days",
   "7–30 days",
   "30–90 days",
   "90–365 days",
-  "1 year or more",
+  "1 year+",
 ] as const;
 
 export function accountAgeLabel(bucket: number): string {
@@ -22,12 +22,12 @@ export const CONTENT_LENGTH_LABELS: Record<ContentLengthBucket, string> = {
 };
 
 export const GROUP_SIZE_LABELS: Record<string, string> = {
-  "0": "No members",
-  "1_9": "1–9 members",
-  "10_49": "10–49 members",
-  "50_199": "50–199 members",
-  "200_999": "200–999 members",
-  "1000_plus": "1,000 or more members",
+  "0": "0",
+  "1_9": "1–9",
+  "10_49": "10–49",
+  "50_199": "50–199",
+  "200_999": "200–999",
+  "1000_plus": "1000+",
 };
 
 export const KIND_FAMILY_LABELS: Record<string, string> = {

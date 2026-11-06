@@ -1,12 +1,15 @@
 import Link from "@/components/app-link";
 
-import { BarChart } from "@/components/charts/bar-chart";
 import type { SeriesPoint } from "@/components/charts/sparkline";
+import { BarSeries } from "@/components/stats/bar-series";
+import { KindFamilyList } from "@/components/stats/kind-family-list";
+import { AdjacentValue, RankedList } from "@/components/stats/ranked-list";
+import { SpamClusters } from "@/components/stats/spam-clusters";
+import { ProfileChip } from "@/components/explorer/entity-chips";
 import { EmptyState } from "@/components/explorer/empty-state";
-import { StatCard } from "@/components/explorer/stat-card";
+import { StatCard, StatGrid } from "@/components/explorer/stat-card";
 import { ShareBar } from "@/components/relays/share-bar";
 import { SectionCard } from "@/components/ui/section-card";
-import { profileLabel } from "@/components/explorer/utils";
 import {
   dailyCountPoints,
   formatBasisPointsAsPercent,
@@ -21,7 +24,6 @@ import {
   accountAgeLabel,
   formatDurationSeconds,
   formatScaledHundredths,
-  kindFamilyLabel,
   momentumLabel,
   weekdayLabel,
 } from "@/lib/stats/surface-display";
@@ -60,22 +62,7 @@ function ChartOrEmpty({
   label: string;
   message?: string;
 }) {
-  if (points.length === 0) return <EmptyState message={message} />;
-  return (
-    <div>
-      <p className="text-ink-faint mb-2 text-xs">{label}</p>
-      <BarChart points={points} label={label} />
-    </div>
-  );
-}
-
-function PubkeyLink({ pubkey, name }: { pubkey: string; name?: string }) {
-  const hex = pubkey.toLowerCase();
-  return (
-    <Link href={`/profiles/${hex}`} className="text-link hover:text-link-hover break-all">
-      {name && name.length > 0 ? name : `${hex.slice(0, 8)}…${hex.slice(-4)}`}
-    </Link>
-  );
+  return <BarSeries points={points} label={label} empty={message} />;
 }
 
 export function GroupStatsSection({ data }: { data: GroupStatsResponse | null }) {
@@ -95,20 +82,40 @@ export function GroupStatsSection({ data }: { data: GroupStatsResponse | null })
       description="Group messages and groups that posted, by UTC day."
     >
       {hasCards ? (
-        <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatGrid>
           {typeof data?.groups === "number" ? (
-            <StatCard plain label="Groups" value={data.groups} />
+            <StatCard
+              plain
+              label="Groups"
+              value={data.groups}
+              description="Groups this index has seen."
+            />
           ) : null}
           {typeof data?.active_groups_1d === "number" ? (
-            <StatCard plain label="Active, 1 day" value={data.active_groups_1d} />
+            <StatCard
+              plain
+              label="Active, 1 day"
+              value={data.active_groups_1d}
+              description="Groups with a message in the last day."
+            />
           ) : null}
           {typeof data?.active_groups_7d === "number" ? (
-            <StatCard plain label="Active, 7 days" value={data.active_groups_7d} />
+            <StatCard
+              plain
+              label="Active, 7 days"
+              value={data.active_groups_7d}
+              description="Groups with a message in the last 7 days."
+            />
           ) : null}
           {typeof data?.messages_1d === "number" ? (
-            <StatCard plain label="Messages, 1 day" value={data.messages_1d} />
+            <StatCard
+              plain
+              label="Messages, 1 day"
+              value={data.messages_1d}
+              description="Group messages indexed in the last day."
+            />
           ) : null}
-        </div>
+        </StatGrid>
       ) : null}
       {messages.length === 0 && active.length === 0 ? (
         <EmptyState message={SERIES_EMPTY_MESSAGE} />
@@ -121,11 +128,11 @@ export function GroupStatsSection({ data }: { data: GroupStatsResponse | null })
       {histogram.length > 0 ? (
         <ul className="mt-6 space-y-2">
           {histogram.map((bucket) => (
-            <li key={bucket.members} className="flex justify-between gap-4 text-sm">
-              <span className="text-ink-soft">
-                {GROUP_SIZE_LABELS[bucket.members] ?? bucket.members}
-              </span>
-              <span className="text-ink tabular-nums">{(bucket.groups ?? 0).toLocaleString()}</span>
+            <li key={bucket.members}>
+              <AdjacentValue
+                label={GROUP_SIZE_LABELS[bucket.members] ?? bucket.members}
+                value={(bucket.groups ?? 0).toLocaleString()}
+              />
             </li>
           ))}
         </ul>
@@ -158,38 +165,7 @@ export function KindStatsSection({
       {families.length === 0 ? (
         <EmptyState message="No kind totals are recorded for this window yet." />
       ) : (
-        <ul className="space-y-5">
-          {families.map((family) => (
-            <li key={family.family}>
-              <div className="flex justify-between gap-4">
-                <span className="text-ink text-sm font-medium">
-                  {kindFamilyLabel(family.family)}
-                </span>
-                <span className="text-ink text-sm tabular-nums">
-                  {(family.event_count ?? 0).toLocaleString()}
-                </span>
-              </div>
-              <ul className="mt-2 space-y-1">
-                {[...(family.kinds ?? [])]
-                  .sort((left, right) => (right.event_count ?? 0) - (left.event_count ?? 0))
-                  .map((kind) => (
-                    <li
-                      key={kind.kind}
-                      className="text-ink-muted flex justify-between gap-4 text-xs"
-                    >
-                      <span>Kind {kind.kind}</span>
-                      <span className="tabular-nums">
-                        {(kind.event_count ?? 0).toLocaleString()}
-                        {typeof kind.unique_authors === "number"
-                          ? ` · ${kind.unique_authors.toLocaleString()} authors`
-                          : ""}
-                      </span>
-                    </li>
-                  ))}
-              </ul>
-            </li>
-          ))}
-        </ul>
+        <KindFamilyList families={families} />
       )}
     </SectionCard>
   );
@@ -278,15 +254,39 @@ export function DeletionStatsSection({ data }: { data: DeletionStatsResponse | n
   );
 }
 
-export function ModerationStatsSection({ data }: { data: ModerationStatsResponse | null }) {
-  const volume = data?.volume ?? [];
-  const reported = data?.most_reported ?? [];
+const REPORT_TYPES = ["spam", "illegal", "nudity", "impersonation", "malware", "other"] as const;
+
+function reportBucket(type: string | undefined): (typeof REPORT_TYPES)[number] {
+  const key = (type ?? "other").toLowerCase();
+  return (REPORT_TYPES as readonly string[]).includes(key)
+    ? (key as (typeof REPORT_TYPES)[number])
+    : "other";
+}
+
+function reportSeries(
+  volume: Array<{ day: string; report_type?: string; count?: number }>,
+  type: (typeof REPORT_TYPES)[number]
+) {
   const byDay = new Map<string, number>();
-  for (const row of volume) byDay.set(row.day, (byDay.get(row.day) ?? 0) + (row.count ?? 0));
-  const points = dailyCountPoints(
+  for (const row of volume) {
+    if (reportBucket(row.report_type) !== type) continue;
+    byDay.set(row.day, (byDay.get(row.day) ?? 0) + (row.count ?? 0));
+  }
+  return dailyCountPoints(
     [...byDay.entries()].map(([day, count]) => ({ day, count })),
     (row) => row.count
   );
+}
+
+export function ModerationStatsSection({
+  data,
+  profiles = {},
+}: {
+  data: ModerationStatsResponse | null;
+  profiles?: Record<string, Profile>;
+}) {
+  const volume = data?.volume ?? [];
+  const reported = data?.most_reported ?? [];
   if (volume.length === 0 && reported.length === 0) {
     return (
       <SectionCard
@@ -298,50 +298,75 @@ export function ModerationStatsSection({ data }: { data: ModerationStatsResponse
       </SectionCard>
     );
   }
+  const series = REPORT_TYPES.flatMap((type) => {
+    const points = reportSeries(volume, type);
+    return points.length > 0 ? [{ type, points }] : [];
+  });
   return (
     <SectionCard
       id="moderation"
       title="Moderation"
       description="Reports by day and the targets reported most often."
     >
-      <ChartOrEmpty points={points} label="Reports per day" />
-      {volume.length > 0 ? (
-        <ul className="mt-4 space-y-1 text-sm">
-          {volume.slice(0, 40).map((row, index) => (
-            <li
-              key={`${row.day}-${row.report_type ?? index}`}
-              className="flex justify-between gap-4"
-            >
-              <span className="text-ink-soft">
-                {row.day}
-                {row.report_type ? ` · ${row.report_type}` : ""}
-              </span>
-              <span className="text-ink tabular-nums">{(row.count ?? 0).toLocaleString()}</span>
-            </li>
+      {series.length > 0 ? (
+        <div className="grid gap-6 sm:grid-cols-2">
+          {series.map((entry) => (
+            <ChartOrEmpty
+              key={entry.type}
+              points={entry.points}
+              label={`${entry.type[0]!.toUpperCase()}${entry.type.slice(1)} reports per day`}
+            />
           ))}
-        </ul>
+        </div>
       ) : null}
       {reported.length > 0 ? (
-        <ul className="mt-6 space-y-2">
-          {reported.map((target) => (
-            <li key={`${target.target_type ?? ""}-${target.target_value}`} className="text-sm">
-              <span className="text-ink-faint mr-2 text-xs">{target.target_type ?? "target"}</span>
-              <span className="text-ink break-all">{target.target_value}</span>
-              <span className="text-ink-muted ml-2 tabular-nums">
-                {(target.report_count ?? 0).toLocaleString()} reports
-                {typeof target.reporter_count === "number"
-                  ? ` · ${target.reporter_count.toLocaleString()} reporters`
-                  : ""}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className="mt-6">
+          <h3 className="text-ink mb-2 text-sm font-medium">Most reported</h3>
+          <RankedList
+            items={reported.map((target) => {
+              const type = (target.target_type ?? "").toLowerCase();
+              const reports = target.report_count ?? 0;
+              const people = target.reporter_count;
+              const entity =
+                type === "p" || type === "pubkey" ? (
+                  <ProfileChip
+                    pubkey={target.target_value}
+                    profile={profiles[target.target_value.toLowerCase()]}
+                  />
+                ) : type === "e" || type === "event" ? (
+                  <Link
+                    href={`/notes/${encodeURIComponent(target.target_value)}`}
+                    className="text-link text-sm"
+                  >
+                    Note
+                  </Link>
+                ) : (
+                  <span className="text-ink text-sm break-all">{target.target_value}</span>
+                );
+              return {
+                id: `${type}-${target.target_value}`,
+                amount: reports,
+                entity,
+                value:
+                  typeof people === "number"
+                    ? `${reports.toLocaleString()} reports from ${people.toLocaleString()} people`
+                    : `${reports.toLocaleString()} reports`,
+              };
+            })}
+          />
+        </div>
       ) : null}
     </SectionCard>
   );
 }
 
-export function SpamStatsSection({ data }: { data: SpamStatsResponse | null }) {
+export function SpamStatsSection({
+  data,
+  profiles = {},
+}: {
+  data: SpamStatsResponse | null;
+  profiles?: Record<string, Profile>;
+}) {
   const clusters = data?.duplicate_clusters ?? [];
   const authors = data?.burst_authors ?? [];
   return (
@@ -359,26 +384,7 @@ export function SpamStatsSection({ data }: { data: SpamStatsResponse | null }) {
             {clusters.length === 0 ? (
               <EmptyState message="No duplicate content clusters are recorded yet." />
             ) : (
-              <ul className="space-y-2 text-sm">
-                {clusters.map((cluster) => (
-                  <li key={cluster.fingerprint ?? cluster.first_event_id} className="text-ink-soft">
-                    {(cluster.event_count ?? 0).toLocaleString()} events ·{" "}
-                    {(cluster.pubkey_count ?? 0).toLocaleString()} authors
-                    {cluster.first_event_id ? (
-                      <>
-                        {" "}
-                        ·{" "}
-                        <Link
-                          href={`/notes/${encodeURIComponent(cluster.first_event_id)}`}
-                          className="text-link"
-                        >
-                          first note
-                        </Link>
-                      </>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
+              <SpamClusters clusters={clusters} />
             )}
           </div>
           <div>
@@ -386,18 +392,19 @@ export function SpamStatsSection({ data }: { data: SpamStatsResponse | null }) {
             {authors.length === 0 ? (
               <EmptyState message="No burst authors are recorded yet." />
             ) : (
-              <ul className="space-y-2 text-sm">
-                {authors.map((author) => (
-                  <li key={`${author.pubkey}-${author.day ?? ""}-${author.hour ?? ""}`}>
-                    <PubkeyLink pubkey={author.pubkey} />
-                    <span className="text-ink-muted ml-2 tabular-nums">
-                      {(author.post_count ?? 0).toLocaleString()} posts
-                      {author.day ? ` · ${author.day}` : ""}
-                      {typeof author.hour === "number" ? ` ${author.hour}:00 UTC` : ""}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <RankedList
+                items={authors.map((author) => ({
+                  id: `${author.pubkey}-${author.day ?? ""}-${author.hour ?? ""}`,
+                  amount: author.post_count ?? 0,
+                  entity: (
+                    <ProfileChip
+                      pubkey={author.pubkey}
+                      profile={profiles[author.pubkey.toLowerCase()]}
+                    />
+                  ),
+                  value: `${(author.post_count ?? 0).toLocaleString()} posts/hour`,
+                }))}
+              />
             )}
           </div>
         </div>
@@ -645,12 +652,13 @@ export function RelaySoftwareSection({ data }: { data: RelaySoftwareStatsRespons
       ) : (
         <div className="space-y-4">
           {hasShares ? (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <StatGrid>
               {typeof data?.auth_required_share_bps === "number" ? (
                 <StatCard
                   plain
                   label="Auth required"
                   value={formatBasisPointsAsPercent(data.auth_required_share_bps)}
+                  description="Share of relays that require authentication."
                 />
               ) : null}
               {typeof data?.payment_required_share_bps === "number" ? (
@@ -658,9 +666,10 @@ export function RelaySoftwareSection({ data }: { data: RelaySoftwareStatsRespons
                   plain
                   label="Payment required"
                   value={formatBasisPointsAsPercent(data.payment_required_share_bps)}
+                  description="Share of relays that require payment."
                 />
               ) : null}
-            </div>
+            </StatGrid>
           ) : null}
           {software.length === 0 ? (
             <EmptyState message="No software names are recorded yet." />
@@ -767,6 +776,13 @@ export function ZapHeatmapSection({ data }: { data: ZapHeatmapResponse | null })
           ))}
         </div>
       </div>
+      <p className="text-ink-faint mt-3 flex items-center gap-2 text-xs">
+        <span className="bg-accent/15 inline-block h-3 w-6 rounded-sm" />
+        Fewer
+        <span className="bg-accent inline-block h-3 w-6 rounded-sm" />
+        More
+        <span>Hours are UTC. Sunday is the first row.</span>
+      </p>
     </SectionCard>
   );
 }
@@ -788,7 +804,7 @@ export function ZapLeaderboardSection({
     const next = new URLSearchParams(searchParams);
     next.set("zap_role", nextRole);
     const query = next.toString();
-    return query.length > 0 ? `/stats?${query}` : "/stats";
+    return query.length > 0 ? `/stats/zaps?${query}` : "/stats/zaps";
   };
   return (
     <SectionCard
@@ -815,28 +831,19 @@ export function ZapLeaderboardSection({
       {items.length === 0 ? (
         <EmptyState message="No zap totals are recorded for this window yet." />
       ) : (
-        <ol className="space-y-2">
-          {items.map((item, index) => {
+        <RankedList
+          items={items.map((item) => {
             const profile = profiles[item.pubkey.toLowerCase()];
-            return (
-              <li key={item.pubkey} className="flex items-baseline justify-between gap-4 text-sm">
-                <span>
-                  <span className="text-ink-faint mr-2 tabular-nums">{index + 1}</span>
-                  <PubkeyLink
-                    pubkey={item.pubkey}
-                    name={profile ? profileLabel(profile) : undefined}
-                  />
-                </span>
-                <span className="text-ink tabular-nums">
-                  {(item.sats ?? 0).toLocaleString()} sats
-                  {typeof item.zap_count === "number"
-                    ? ` · ${item.zap_count.toLocaleString()}`
-                    : ""}
-                </span>
-              </li>
-            );
+            return {
+              id: item.pubkey,
+              amount: item.sats ?? 0,
+              entity: <ProfileChip pubkey={item.pubkey} profile={profile} />,
+              value: `${(item.sats ?? 0).toLocaleString()} sats${
+                typeof item.zap_count === "number" ? ` · ${item.zap_count.toLocaleString()}` : ""
+              }`,
+            };
           })}
-        </ol>
+        />
       )}
     </SectionCard>
   );

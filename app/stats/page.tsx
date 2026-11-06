@@ -5,35 +5,23 @@ import { Suspense } from "react";
 import { readStatNumber } from "@/components/explorer/stats-utils";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { AboutThisData, readStatsSections } from "@/components/explorer/about-this-data";
-import { PageHero } from "@/components/explorer/page-hero";
-import { NetworkNav } from "@/components/explorer/network-nav";
-import { StatCard } from "@/components/explorer/stat-card";
+import { StatCard, StatGrid } from "@/components/explorer/stat-card";
 import { isRecord } from "@/components/explorer/utils";
 import { SectionCard } from "@/components/ui/section-card";
-import { LoadErrors } from "@/components/ui/status-panels";
 import { DeltaChart } from "@/components/charts/delta-chart";
+import { LoadErrors } from "@/components/ui/status-panels";
 import type { SeriesPoint } from "@/components/charts/sparkline";
 import { IndexedAt } from "@/components/freshness/indexed-at";
 import { LiveRefresh } from "@/components/freshness/live-refresh";
-import { WindowSelector } from "@/components/explorer/window-selector";
-import {
-  AccountStatsSection,
-  ClientStatsSection,
-  IdentityStatsSection,
-  ZapStatsSection,
-} from "@/components/stats/ecosystem-sections";
 import { SeriesMetricSelector } from "@/components/stats/series-metric-selector";
-import { DiscoverySurfaceStats } from "@/components/stats/discovery-surface-stats";
+import { StatsFrame } from "@/components/stats/stats-frame";
+import { StatsThemeCards } from "@/components/stats/theme-cards";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  getAccountStats,
-  getClientStats,
   getContentStats,
-  getIdentityStats,
   getNetworkStats,
   getRelayStats,
   getStatsSeries,
-  getZapStats,
   normalizeSeriesPoints,
   parseStatsSeriesMetric,
   STATS_SERIES_METRIC_LABELS,
@@ -43,7 +31,6 @@ import {
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { readSearchParam, toUrlSearchParams } from "@/lib/search-params/pagination";
 import {
-  STATS_WINDOWS,
   formatStatsWindowLength,
   readStatsWindow,
   relayStatsWindow,
@@ -112,10 +99,6 @@ export default async function StatsPage({
   let network: Awaited<ReturnType<typeof getNetworkStats>> | null = null;
   let content: Awaited<ReturnType<typeof getContentStats>> | null = null;
   let relays: Awaited<ReturnType<typeof getRelayStats>> | null = null;
-  let clients: Awaited<ReturnType<typeof getClientStats>> | null = null;
-  let identity: Awaited<ReturnType<typeof getIdentityStats>> | null = null;
-  let zaps: Awaited<ReturnType<typeof getZapStats>> | null = null;
-  let accounts: Awaited<ReturnType<typeof getAccountStats>> | null = null;
 
   let noteVolumeSeries: SeriesPoint[] = [];
   let activeAuthorsSeries: SeriesPoint[] = [];
@@ -136,10 +119,6 @@ export default async function StatsPage({
     getStatsSeries("active_authors", window, "shortTtl"),
     getStatsSeries("relay_events", window, "shortTtl"),
     needsExtraSeries ? getStatsSeries(seriesMetric, window, "shortTtl") : Promise.resolve(null),
-    getClientStats("shortTtl", window),
-    getIdentityStats("shortTtl"),
-    getZapStats("shortTtl", window),
-    getAccountStats("shortTtl"),
   ]);
   const fail = (index: number, fallback: string) => {
     const result = settled[index];
@@ -165,14 +144,6 @@ export default async function StatsPage({
   else fail(5, "Failed to load relay series.");
   if (settled[6]?.status === "fulfilled") selectedSeries = settled[6].value;
   else fail(6, "Failed to load the selected series.");
-  if (settled[7]?.status === "fulfilled") clients = settled[7].value;
-  else fail(7, "Failed to load client stats.");
-  if (settled[8]?.status === "fulfilled") identity = settled[8].value;
-  else fail(8, "Failed to load identity stats.");
-  if (settled[9]?.status === "fulfilled") zaps = settled[9].value;
-  else fail(9, "Failed to load zap stats.");
-  if (settled[10]?.status === "fulfilled") accounts = settled[10].value;
-  else fail(10, "Failed to load account stats.");
   if (!computedAt && isRecord(network) && typeof network.computed_at === "string") {
     computedAt = network.computed_at;
   }
@@ -209,165 +180,118 @@ export default async function StatsPage({
     `active_${relayWindow}`,
     `relays_active_${relayWindow}`,
   ]);
-  const relayUrls = readStatNumber(relays, ["total", "relays_total"]);
-  const relayEvents =
-    readStatNumber(relays, [`event_volume_${relayWindow}`, `relays_event_volume_${relayWindow}`]) ??
-    latestValue(relayEventsSeries);
-  const relayAuthors = readStatNumber(relays, [`unique_authors_${relayWindow}`]);
 
   return (
-    <div className="space-y-8">
+    <>
       <LiveRefresh />
-      <PageHero
-        eyebrow="Statistics"
+      <StatsFrame
+        path="/stats"
         title="How the index is moving."
         subtitle={`Note volume and authors over the last ${windowPhrase}, and how those rolling totals change from one sample to the next.`}
-        badges={
-          <WindowSelector
+        searchParams={currentSearchParams}
+        window={window}
+        toc={[
+          { id: "this-window", label: "This window" },
+          { id: "rolling-series", label: "Rolling series" },
+          { id: "on-record", label: "On record" },
+        ]}
+      >
+        <IndexedAt computedAt={computedAt} />
+        <LoadErrors errors={errors} />
+
+        <SectionCard
+          id="this-window"
+          title="This window"
+          description="Each sample is a rolling 24-hour total. The bars are how that total moved since the previous sample, not the notes from that hour alone."
+        >
+          <div className="grid gap-8 lg:grid-cols-2">
+            <MovingFigure
+              label="Note authors"
+              value={authors}
+              points={activeAuthorsSeries}
+              chartLabel="Change in note authors"
+            />
+            <MovingFigure
+              label="Note volume"
+              value={noteVolume}
+              points={noteVolumeSeries}
+              chartLabel="Change in note volume"
+            />
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          id="rolling-series"
+          title="Rolling series"
+          description="Each point is a rolling 24-hour total, sampled once per UTC hour."
+        >
+          <SeriesMetricSelector
             path="/stats"
             searchParams={currentSearchParams}
-            activeWindow={window}
-            windows={STATS_WINDOWS}
+            active={seriesMetric}
           />
-        }
-      />
-      <NetworkNav active="stats" />
-      <IndexedAt computedAt={computedAt} />
+          <div className="mt-6">
+            <MovingFigure
+              label={STATS_SERIES_METRIC_LABELS[seriesMetric]}
+              value={latestValue(selectedPoints)}
+              points={selectedPoints}
+              chartLabel={`Change in ${STATS_SERIES_METRIC_LABELS[seriesMetric].toLowerCase()}`}
+              caption={selectedCaption}
+              formatValue={formatSelected}
+            />
+          </div>
+        </SectionCard>
 
-      <LoadErrors errors={errors} />
+        <SectionCard
+          id="on-record"
+          title="On record"
+          description="Totals for the whole index. Note volume for this window is the figure above."
+        >
+          <StatGrid>
+            {eventsIngested !== null ? (
+              <StatCard
+                plain
+                label="Events ingested"
+                value={eventsIngested}
+                description="Events stored by this index."
+              />
+            ) : null}
+            {profiles !== null ? (
+              <StatCard
+                plain
+                label="Profiles on record"
+                value={profiles}
+                description="Profiles projected from those events."
+              />
+            ) : null}
+          </StatGrid>
+          <p className="text-ink-muted mt-4 text-sm">
+            Topics are ranked on{" "}
+            <Link href="/trending/hashtags" className="nm-action-link">
+              Discover
+            </Link>
+            .
+          </p>
+        </SectionCard>
 
-      <SectionCard
-        title="This window"
-        description="Each sample is a rolling 24-hour total. The bars are how that total moved since the previous sample, not the notes from that hour alone."
-      >
-        <div className="grid gap-8 lg:grid-cols-2">
-          <MovingFigure
-            label="Note authors"
-            value={authors}
-            points={activeAuthorsSeries}
-            chartLabel="Change in note authors"
+        <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+          <StatsThemeCards
+            window={window}
+            searchParams={currentSearchParams}
+            relaysIndexed={relaysIndexed}
           />
-          <MovingFigure
-            label="Note volume"
-            value={noteVolume}
-            points={noteVolumeSeries}
-            chartLabel="Change in note volume"
+        </Suspense>
+
+        <div className="space-y-3">
+          <DebugDisclosure title="Debug payload: network stats" data={network ?? {}} />
+          <DebugDisclosure title="Debug payload: content stats" data={content ?? {}} />
+          <AboutThisData
+            semantics={semantics}
+            sections={readStatsSections(network, content, relays)}
           />
+          <DebugDisclosure title="Debug payload: relay stats" data={relays ?? {}} />
         </div>
-      </SectionCard>
-
-      <SectionCard
-        title="Rolling series"
-        description="Each point is a rolling 24-hour total, sampled once per UTC hour."
-      >
-        <SeriesMetricSelector
-          path="/stats"
-          searchParams={currentSearchParams}
-          active={seriesMetric}
-        />
-        <div className="mt-6">
-          <MovingFigure
-            label={STATS_SERIES_METRIC_LABELS[seriesMetric]}
-            value={latestValue(selectedPoints)}
-            points={selectedPoints}
-            chartLabel={`Change in ${STATS_SERIES_METRIC_LABELS[seriesMetric].toLowerCase()}`}
-            caption={selectedCaption}
-            formatValue={formatSelected}
-          />
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        title="On record"
-        description="Totals for the whole index. Note volume for this window is the figure above."
-      >
-        <div className="grid gap-3 sm:grid-cols-2">
-          {eventsIngested !== null ? (
-            <StatCard
-              plain
-              label="Events ingested"
-              value={eventsIngested}
-              description="Events stored by this index."
-            />
-          ) : null}
-          {profiles !== null ? (
-            <StatCard
-              plain
-              label="Profiles on record"
-              value={profiles}
-              description="Profiles projected from those events."
-            />
-          ) : null}
-        </div>
-        <p className="text-ink-muted mt-4 text-sm">
-          Topics are ranked on{" "}
-          <Link href="/trending/hashtags" className="nm-action-link">
-            Discover
-          </Link>
-          .
-        </p>
-      </SectionCard>
-
-      <SectionCard
-        title="Relays this index reads"
-        description="These counts are the index's own view. The public list of relays people publish is much larger, and lives under Popular relays."
-      >
-        <div className="grid gap-3 sm:grid-cols-2">
-          {relaysIndexed !== null ? (
-            <StatCard
-              plain
-              label={`Relays indexed (${relayWindow})`}
-              value={relaysIndexed}
-              description="Relays that delivered events during this window."
-            />
-          ) : null}
-          {relayUrls !== null ? (
-            <StatCard
-              plain
-              label="Relay URLs on record"
-              value={relayUrls}
-              description="Distinct relay URLs that have ever delivered an event. This is not the public relay list."
-            />
-          ) : null}
-          {relayEvents !== null ? (
-            <StatCard
-              plain
-              label={`Events from relays (${relayWindow})`}
-              value={relayEvents}
-              description="Event volume reported by relay stats for this window."
-            />
-          ) : null}
-          {relayAuthors !== null ? (
-            <StatCard
-              plain
-              label={`Authors on relays (${relayWindow})`}
-              value={relayAuthors}
-              description="Authors seen on a relay, any event kind. This is not the note-author count above."
-            />
-          ) : null}
-        </div>
-        <div className="mt-6">
-          <DeltaChart points={relayEventsSeries} label="Change in relay events" />
-        </div>
-      </SectionCard>
-
-      <ClientStatsSection data={clients} window={window} />
-      <ZapStatsSection data={zaps} window={window} />
-      <AccountStatsSection data={accounts} />
-      <IdentityStatsSection data={identity} />
-      <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-        <DiscoverySurfaceStats window={window} searchParams={currentSearchParams} />
-      </Suspense>
-
-      <div className="space-y-3">
-        <DebugDisclosure title="Debug payload: network stats" data={network ?? {}} />
-        <DebugDisclosure title="Debug payload: content stats" data={content ?? {}} />
-        <AboutThisData
-          semantics={semantics}
-          sections={readStatsSections(network, content, relays)}
-        />
-        <DebugDisclosure title="Debug payload: relay stats" data={relays ?? {}} />
-      </div>
-    </div>
+      </StatsFrame>
+    </>
   );
 }

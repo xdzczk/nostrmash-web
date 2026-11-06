@@ -115,12 +115,12 @@ describe("surface normalizers", () => {
   });
 
   it("labels account-age buckets 0 through 5", () => {
-    expect(accountAgeLabel(0)).toBe("Under 1 day");
+    expect(accountAgeLabel(0)).toBe("<1 day");
     expect(accountAgeLabel(1)).toBe("1–7 days");
     expect(accountAgeLabel(2)).toBe("7–30 days");
     expect(accountAgeLabel(3)).toBe("30–90 days");
     expect(accountAgeLabel(4)).toBe("90–365 days");
-    expect(accountAgeLabel(5)).toBe("1 year or more");
+    expect(accountAgeLabel(5)).toBe("1 year+");
     const accounts = normalizeAccountStats({
       account_age: [
         { bucket: 0, authors: 2 },
