@@ -152,7 +152,6 @@ export function DiscoverShell({
               {rankingControls ? (
                 <Link
                   href={buildExcludeBridgedHref(path, searchParams)}
-                  aria-pressed={excludeBridged}
                   className={`inline-flex min-h-6 items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${
                     excludeBridged
                       ? "border-accent/50 bg-surface text-ink"
@@ -160,6 +159,7 @@ export function DiscoverShell({
                   }`}
                 >
                   Exclude bridged
+                  <span className="sr-only">{excludeBridged ? ", on" : ", off"}</span>
                 </Link>
               ) : null}
               {freshness ?? (freshnessLabel ? <FreshnessBadge label={freshnessLabel} /> : null)}

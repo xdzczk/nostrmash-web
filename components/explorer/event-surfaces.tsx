@@ -127,7 +127,7 @@ export async function ProvenanceLabelCount({ eventId }: { eventId: string }) {
     const payload = await getEventLabels(eventId);
     count = new Set(
       (payload.labels ?? [])
-        .filter((label) => label.label.trim().length > 0)
+        .filter((label) => (label.label ?? "").trim().length > 0)
         .map((label) => `${label.namespace ?? ""}:${label.label.trim()}`)
     ).size;
   } catch {
