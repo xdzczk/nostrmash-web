@@ -28,7 +28,6 @@ import {
 import {
   ProfileEngagementSection,
   ProfileIdentitySection,
-  ProfileZapAnalyticsSection,
 } from "@/components/profile/profile-ecosystem-sections";
 import { ProfileReports } from "@/components/profile/profile-reports";
 import { ProfileCover } from "@/components/profile/profile-banner-backdrop";
@@ -102,8 +101,8 @@ function normalizeHeroActions(value: unknown): HeroAction[] {
 }
 
 function counterActivityHref(route: string, key: string): string | undefined {
-  if (key === "note_count") return `${route}?activity=notes`;
-  if (key === "reply_count") return `${route}?activity=replies`;
+  if (key === "note_count") return route;
+  if (key === "reply_count") return `${route}?tab=replies`;
   return undefined;
 }
 
@@ -565,6 +564,7 @@ export default async function ProfilePage({
                   text={rawHeroBio}
                   className="text-ink-dim line-clamp-2 max-w-3xl text-sm leading-6 break-words sm:text-base sm:leading-7"
                   resolution={contentResolution}
+                  chips
                 />
               ) : null}
               <ProfileHeroSignals
@@ -595,7 +595,7 @@ export default async function ProfilePage({
                       {href ? (
                         <Link
                           href={href}
-                          prefetch={!href.endsWith(`activity=${currentActivity}`)}
+                          prefetch={!href.endsWith(`tab=${currentActivity}`)}
                           className="hover:text-ink-strong"
                           aria-label={`${value} ${counter.label.toLowerCase()}`}
                         >
@@ -698,13 +698,6 @@ export default async function ProfilePage({
       </Suspense>
       <Suspense fallback={null}>
         <ProfileEngagementSection pubkey={pubkeyHex ?? lookupKey} />
-      </Suspense>
-      <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-        <ProfileZapAnalyticsSection
-          pubkey={pubkeyHex ?? lookupKey}
-          route={profileRoute}
-          searchParams={resolvedSearchParams}
-        />
       </Suspense>
 
       <JsonLd

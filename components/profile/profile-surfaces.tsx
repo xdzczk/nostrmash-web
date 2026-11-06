@@ -3,7 +3,7 @@ import Link from "@/components/app-link";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { Timestamp } from "@/components/explorer/timestamp";
 import { sanitizeExternalHref } from "@/components/explorer/utils";
-import { StatCard } from "@/components/explorer/stat-card";
+import { StatCard, StatGrid } from "@/components/explorer/stat-card";
 import { Pill } from "@/components/ui/pill";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
@@ -125,18 +125,30 @@ export async function ProfileBadgesRow({ pubkey }: { pubkey: string }) {
   );
 }
 
+function signedCount(value: number): { text: string; tone?: "up" | "down" } {
+  if (value > 0) return { text: `+${value.toLocaleString()}`, tone: "up" };
+  if (value < 0) return { text: value.toLocaleString(), tone: "down" };
+  return { text: "0" };
+}
+
 function GraphCards({ graph }: { graph: ProfileGraphStats | undefined }) {
   if (!graph) return null;
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <StatGrid>
       {typeof graph.mutual_count === "number" ? (
-        <StatCard plain label="Mutual follows" value={graph.mutual_count} />
+        <StatCard
+          plain
+          label="Mutual follows"
+          value={graph.mutual_count}
+          description="People this profile follows who follow back."
+        />
       ) : null}
       {typeof graph.reciprocity_bps === "number" ? (
         <StatCard
           plain
           label="Reciprocity"
           value={formatBasisPointsAsPercent(graph.reciprocity_bps)}
+          description="Share of follows that are mutual."
         />
       ) : null}
       {typeof graph.follow_back_rate_bps === "number" ? (
@@ -144,6 +156,7 @@ function GraphCards({ graph }: { graph: ProfileGraphStats | undefined }) {
           plain
           label="Follow-back rate"
           value={formatBasisPointsAsPercent(graph.follow_back_rate_bps)}
+          description="Share of followers this profile follows back."
         />
       ) : null}
       {typeof graph.ghost_follower_bps === "number" ? (
@@ -151,9 +164,10 @@ function GraphCards({ graph }: { graph: ProfileGraphStats | undefined }) {
           plain
           label="Ghost followers"
           value={formatBasisPointsAsPercent(graph.ghost_follower_bps)}
+          description="Followers inactive for 90+ days."
         />
       ) : null}
-    </div>
+    </StatGrid>
   );
 }
 
@@ -357,21 +371,34 @@ export async function ProfileSurfacePanel({
   return (
     <div className="space-y-4">
       <GraphCards graph={model.graph} />
-      <div className="grid gap-3 sm:grid-cols-3">
+      <StatGrid>
         {typeof model.downvote === "number" ? (
           <StatCard
             plain
             label="Downvote ratio"
             value={formatBasisPointsAsPercent(model.downvote)}
+            description="Share of reactions received in 30 days that were downvotes."
           />
         ) : null}
         {typeof model.net7 === "number" ? (
-          <StatCard plain label="Net followers, 7 days" value={model.net7.toLocaleString()} />
+          <StatCard
+            plain
+            label="Net followers, 7 days"
+            value={signedCount(model.net7).text}
+            tone={signedCount(model.net7).tone}
+            description="Follower change over 7 days."
+          />
         ) : null}
         {typeof model.net30 === "number" ? (
-          <StatCard plain label="Net followers, 30 days" value={model.net30.toLocaleString()} />
+          <StatCard
+            plain
+            label="Net followers, 30 days"
+            value={signedCount(model.net30).text}
+            tone={signedCount(model.net30).tone}
+            description="Follower change over 30 days."
+          />
         ) : null}
-      </div>
+      </StatGrid>
     </div>
   );
 }

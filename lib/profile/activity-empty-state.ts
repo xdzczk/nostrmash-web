@@ -87,6 +87,8 @@ export function activityEmptyCopy(tab: ProfileActivityTab): ActivityEmptyCopy {
         message: "Follow-graph stats are not available for this profile yet.",
         hint: "Mutual follows, reciprocity, and recent follower change appear after the graph rollup.",
       };
+    case "zap_stats":
+      return { message: "Zap totals are not available for this profile yet." };
   }
 }
 

@@ -1,9 +1,9 @@
-import { BarChart } from "@/components/charts/bar-chart";
 import { WindowSelector } from "@/components/explorer/window-selector";
+import { StatCard, StatGrid } from "@/components/explorer/stat-card";
+import { BarSeries } from "@/components/stats/bar-series";
 import { Pill } from "@/components/ui/pill";
 import { SectionCard } from "@/components/ui/section-card";
 import { ErrorPanel } from "@/components/ui/status-panels";
-import { StatCard } from "@/components/explorer/stat-card";
 import {
   getAuthorAnalyticsSummary,
   getAuthorZapAnalytics,
@@ -177,15 +177,38 @@ export async function ProfileZapAnalyticsSection({
         defaultWindow={PROFILE_ZAP_WINDOW}
         ariaLabel="Zap window"
       />
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {typeof data.inbound_zaps === "number" && data.inbound_zaps > 0 ? (
-          <StatCard plain label="Lifetime inbound zaps" value={data.inbound_zaps} />
+      <StatGrid>
+        {typeof data.inbound_zaps === "number" ? (
+          <StatCard
+            plain
+            label="Lifetime zaps received"
+            value={data.inbound_zaps}
+            description="Zap receipts on record for this profile."
+          />
         ) : null}
-        {typeof data.inbound_sats === "number" && data.inbound_sats > 0 ? (
-          <StatCard plain label="Lifetime inbound sats" value={data.inbound_sats} />
+        {typeof data.inbound_sats === "number" ? (
+          <StatCard
+            plain
+            label="Lifetime sats"
+            value={data.inbound_sats}
+            description="Sats received across those receipts."
+          />
         ) : null}
-        {typeof data.repeat_zappers === "number" && data.repeat_zappers > 0 ? (
-          <StatCard plain label="Repeat zappers" value={data.repeat_zappers} />
+        {typeof data.sats_per_1k_followers === "number" ? (
+          <StatCard
+            plain
+            label="Sats per 1k followers"
+            value={data.sats_per_1k_followers}
+            description="Lifetime sats divided by each thousand followers."
+          />
+        ) : null}
+        {typeof data.zap_to_reaction_ratio === "number" ? (
+          <StatCard
+            plain
+            label="Zaps per reaction"
+            value={formatRate(data.zap_to_reaction_ratio)}
+            description="Zap receipts compared with reactions received."
+          />
         ) : null}
         {nutzapCount !== null && nutzapCount > 0 ? (
           <StatCard plain label="Nutzaps received" value={nutzapCount} />
@@ -193,33 +216,11 @@ export async function ProfileZapAnalyticsSection({
         {nutzapSats !== null && nutzapSats > 0 ? (
           <StatCard plain label="Nutzap sats received" value={nutzapSats} />
         ) : null}
-        {typeof data.sats_per_1k_followers === "number" && data.sats_per_1k_followers > 0 ? (
-          <StatCard plain label="Sats per 1k followers" value={data.sats_per_1k_followers} />
-        ) : null}
-        {typeof data.zap_to_reaction_ratio === "number" && data.zap_to_reaction_ratio > 0 ? (
-          <StatCard
-            plain
-            label="Zaps per reaction"
-            value={formatRate(data.zap_to_reaction_ratio)}
-          />
-        ) : null}
+      </StatGrid>
+      <div className="mt-6 grid gap-8 lg:grid-cols-2">
+        <BarSeries points={receivedSats} label="Sats received per day" />
+        <BarSeries points={sentSats} label="Sats sent per day" />
       </div>
-      {receivedSats.length > 0 || sentSats.length > 0 ? (
-        <div className="mt-6 grid gap-8 lg:grid-cols-2">
-          {receivedSats.length > 0 ? (
-            <div>
-              <p className="text-ink-faint mb-2 text-xs">Sats received per day</p>
-              <BarChart points={receivedSats} label="Sats received per day" />
-            </div>
-          ) : null}
-          {sentSats.length > 0 ? (
-            <div>
-              <p className="text-ink-faint mb-2 text-xs">Sats sent per day</p>
-              <BarChart points={sentSats} label="Sats sent per day" />
-            </div>
-          ) : null}
-        </div>
-      ) : null}
     </SectionCard>
   );
 }

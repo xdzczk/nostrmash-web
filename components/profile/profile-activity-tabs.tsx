@@ -12,11 +12,13 @@ export function ProfileActivityTabs({
   activeTab,
   tabs,
   children,
+  ariaLabel = "Profile activity",
 }: {
   activeTab: ProfileActivityTab;
   tabs: Array<{ id: ProfileActivityTab; label: string; href: string }>;
   /** Server-rendered panel for the active tab. */
   children: ReactNode;
+  ariaLabel?: string;
 }) {
   const primary: TabItem[] = [];
   const secondary: TabItem[] = [];
@@ -32,7 +34,7 @@ export function ProfileActivityTabs({
 
   return (
     <ProfileActivityTabBar
-      ariaLabel="Profile activity"
+      ariaLabel={ariaLabel}
       activeKey={activeTab}
       items={primary}
       overflow={secondary.length > 0 ? { label: "More", items: secondary } : undefined}

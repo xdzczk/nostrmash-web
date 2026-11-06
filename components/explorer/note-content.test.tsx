@@ -206,7 +206,7 @@ describe("NoteContent", () => {
     );
     expect(screen.getByRole("link", { name: "@Alice's article" })).toHaveAttribute(
       "href",
-      `/profiles/${encodeURIComponent(NPUB)}?activity=long_form`
+      `/profiles/${encodeURIComponent(NPUB)}?tab=long_form`
     );
   });
 

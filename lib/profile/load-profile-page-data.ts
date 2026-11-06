@@ -36,6 +36,7 @@ import {
   buildProfileActivityTabHref,
   isProfileSurfaceTab,
   parseProfileActivityTab,
+  profileFetchedTab,
   PROFILE_ACTIVITY_TABS,
   type ProfileActivityTab,
 } from "@/lib/profile/activity-tabs";
@@ -99,9 +100,14 @@ function readActivitySearchParams(
   const pinsCursor = readSearchParam(resolvedSearchParams, "pins_cursor");
   const muteListCursor = readSearchParam(resolvedSearchParams, "mute_list_cursor");
   const mutedByCursor = readSearchParam(resolvedSearchParams, "muted_by_cursor");
-  const activityTab = parseProfileActivityTab(readSearchParam(resolvedSearchParams, "activity"));
+  const selectedTab = parseProfileActivityTab(
+    readSearchParam(resolvedSearchParams, "tab") ??
+      readSearchParam(resolvedSearchParams, "activity")
+  );
+  const activityTab = profileFetchedTab(selectedTab);
   return {
     activityTab,
+    selectedTab,
     notesCursor,
     repliesCursor,
     reactionsCursor,
@@ -410,6 +416,7 @@ export async function loadProfileActivityData(
     identities: undefined,
     moderation: undefined,
     graph: undefined,
+    zap_stats: undefined,
   };
   const activityContinuationByTab: Record<ProfileActivityTab, string> = {
     notes: buildProfileActivityContinuationHref(
@@ -498,6 +505,7 @@ export async function loadProfileActivityData(
       "moderation"
     ),
     graph: buildProfileActivityContinuationHref(profileRoute, currentSearchParams, "graph"),
+    zap_stats: buildProfileActivityContinuationHref(profileRoute, currentSearchParams, "zap_stats"),
   };
 
   const targetEventIds = [...reactions, ...zaps].flatMap((entry) => {
@@ -605,12 +613,14 @@ export async function loadProfileActivityData(
       case "identities":
       case "moderation":
       case "graph":
+      case "zap_stats":
         return null;
     }
   })();
 
   return {
     activityTab: params.activityTab,
+    selectedTab: params.selectedTab,
     activityTabs,
     activeContinuationHref,
     activeNextCursor,

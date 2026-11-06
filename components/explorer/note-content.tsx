@@ -191,6 +191,7 @@ export function NoteContent({
   as: Tag = "div",
   size = "list",
   highlightTerms,
+  chips = false,
 }: {
   tokens: NoteToken[];
   className?: string;
@@ -202,6 +203,8 @@ export function NoteContent({
   /** Type scale: list cards stay compact; the detail page reads at prose size. */
   size?: NoteContentSize;
   highlightTerms?: string[];
+  /** Render hashtags as chips. Used for profile bios. */
+  chips?: boolean;
 }) {
   const hiddenLinks = new Set(hideLinkPreviewUrls);
   return (
@@ -251,7 +254,11 @@ export function NoteContent({
               <Link
                 key={key}
                 href={`/hashtags/${encodeURIComponent(token.tag)}`}
-                className="text-link hover:text-link-hover font-medium whitespace-nowrap"
+                className={
+                  chips
+                    ? "border-edge-strong text-ink-soft hover:text-ink rounded-full border px-1.5 py-0.5 text-xs font-medium whitespace-nowrap"
+                    : "text-link hover:text-link-hover font-medium whitespace-nowrap"
+                }
               >
                 <HighlightedText value={`#${token.tag}`} terms={highlightTerms} />
               </Link>
@@ -404,6 +411,7 @@ export function RichInlineText({
   resolution,
   hideLinkPreviewUrls,
   as,
+  chips = false,
 }: {
   text: string;
   tags?: unknown;
@@ -411,6 +419,7 @@ export function RichInlineText({
   resolution?: NoteContentResolution;
   hideLinkPreviewUrls?: string[];
   as?: "div" | "span";
+  chips?: boolean;
 }) {
   return (
     <NoteContent
@@ -420,6 +429,7 @@ export function RichInlineText({
       resolution={resolution}
       hideLinkPreviewUrls={hideLinkPreviewUrls}
       as={as}
+      chips={chips}
     />
   );
 }

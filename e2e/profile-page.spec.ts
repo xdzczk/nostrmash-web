@@ -105,7 +105,7 @@ test.describe("profile page", () => {
     expect(before).toBeGreaterThan(0);
 
     await tabs.getByRole("link", { name: "Replies", exact: true }).click();
-    await expect(page).toHaveURL(/activity=replies/);
+    await expect(page).toHaveURL(/tab=replies/);
     await expect(tabs.getByRole("link", { name: "Replies", exact: true })).toHaveAttribute(
       "aria-current",
       "page"
@@ -120,7 +120,7 @@ test.describe("profile page", () => {
     // Open the More menu and choose a secondary tab.
     await tabs.getByText("More").click();
     await tabs.getByRole("menuitem", { name: "Highlights" }).click();
-    await expect(page).toHaveURL(/activity=highlights/);
+    await expect(page).toHaveURL(/tab=highlights/);
     await expect(page.getByTestId("tab-overflow-menu").locator("summary")).toContainText(
       "Highlights"
     );

@@ -8,6 +8,7 @@ export function StatCard({
   value,
   description,
   delta,
+  tone,
   plain = false,
 }: {
   label: string;
@@ -15,18 +16,25 @@ export function StatCard({
   description?: string;
   /** Change versus the previous window, already formatted. */
   delta?: string;
+  tone?: "up" | "down";
   /** Keep `label` as written. Otherwise it is treated as a metric key. */
   plain?: boolean;
 }) {
   const shown = typeof value === "number" ? formatCompactNumber(value) : formatValue(value);
-  const rising = delta?.trim().startsWith("+");
-  const falling = delta?.trim().startsWith("-");
+  const rising = tone === "up" || delta?.trim().startsWith("+");
+  const falling = tone === "down" || delta?.trim().startsWith("-");
   return (
     <article className={cardTierClassName("utility")}>
       <p className="text-ink-faint text-[11px] font-medium">
         {plain ? label : formatMetricLabel(label)}
       </p>
-      <p className="text-ink mt-2 text-xl font-semibold tabular-nums sm:text-2xl">{shown}</p>
+      <p
+        className={`mt-2 text-xl font-semibold tabular-nums sm:text-2xl ${
+          tone === "up" ? "text-success-ink" : tone === "down" ? "text-danger-ink" : "text-ink"
+        }`}
+      >
+        {shown}
+      </p>
       {delta ? (
         <p
           className={`mt-1 text-xs tabular-nums ${

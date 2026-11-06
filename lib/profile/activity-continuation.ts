@@ -78,6 +78,7 @@ export function profileActivityHasItems(data: ActivitySlice): boolean {
     case "identities":
     case "moderation":
     case "graph":
+    case "zap_stats":
       return false;
   }
 }
@@ -114,6 +115,7 @@ export function profileActivityAnchor(data: ActivitySlice): string {
     case "identities":
     case "moderation":
     case "graph":
+    case "zap_stats":
       return "";
   }
 }

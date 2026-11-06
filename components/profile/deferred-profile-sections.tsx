@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/explorer/empty-state";
 import { isRecord } from "@/components/explorer/utils";
 import { mapRelatedProfileReasons } from "@/components/explorer/why-now";
 import { ProfileActivityTabs } from "@/components/profile/profile-activity-tabs";
+import { ProfileZapAnalyticsSection } from "@/components/profile/profile-ecosystem-sections";
 import { Pill } from "@/components/ui/pill";
 import { ErrorPanel } from "@/components/ui/status-panels";
 import { SectionCard } from "@/components/ui/section-card";
@@ -19,6 +20,9 @@ import {
 } from "@/lib/profile/activity-continuation";
 import { activityEmptyCopy, suggestActivityTab } from "@/lib/profile/activity-empty-state";
 import {
+  isProfileContentTab,
+  isProfileInsightTab,
+  isProfileListTab,
   isProfileSurfaceTab,
   PROFILE_ACTIVITY_TABS,
   type ProfileActivityTab,
@@ -99,15 +103,39 @@ export async function DeferredProfileActivity({
       ? encodeProfileContinuation(data.activeNextCursor, profileActivityAnchor(data))
       : undefined;
   const tabLabel = data.activeTabMeta?.label.toLowerCase() ?? "activity";
+  const selected = data.selectedTab ?? data.activityTab;
+  const insightTab = isProfileInsightTab(selected) ? selected : "graph";
+  const listTab = isProfileListTab(selected) ? selected : null;
+  const insightTabs = data.activityTabs.filter((tab) => isProfileInsightTab(tab.id));
+  const contentTabs = data.activityTabs.filter((tab) => isProfileContentTab(tab.id));
+  const listTabs = data.activityTabs.filter((tab) => isProfileListTab(tab.id));
+  const contentPanel = isProfileContentTab(data.activityTab);
 
   return (
-    <div id="profile-activity">
+    <div id="profile-activity" className="space-y-8">
+      <SectionCard title="Insights" description="Graph, zaps, moderation, and external identities.">
+        <ProfileActivityTabs activeTab={insightTab} tabs={insightTabs} ariaLabel="Profile insights">
+          {insightTab === "zap_stats" ? (
+            <ProfileZapAnalyticsSection
+              pubkey={lookupKey}
+              route={profileRoute}
+              searchParams={searchParams}
+            />
+          ) : (
+            <ProfileSurfacePanel tab={insightTab} pubkey={lookupKey} />
+          )}
+        </ProfileActivityTabs>
+      </SectionCard>
       <SectionCard title="Recent activity">
         <div className="space-y-4">
-          <ProfileActivityTabs activeTab={data.activityTab} tabs={data.activityTabs}>
+          <ProfileActivityTabs
+            activeTab={contentPanel ? data.activityTab : "notes"}
+            tabs={contentTabs}
+            ariaLabel="Recent activity"
+          >
             <div className="space-y-4">
-              {isProfileSurfaceTab(data.activityTab) ? (
-                <ProfileSurfacePanel tab={data.activityTab} pubkey={lookupKey} />
+              {!contentPanel ? (
+                <EmptyState message="Open Notes to see recent posts." />
               ) : data.activeTabError && !hasItems ? (
                 <ErrorPanel
                   message={data.activeTabError}
@@ -141,6 +169,21 @@ export async function DeferredProfileActivity({
             </div>
           </ProfileActivityTabs>
         </div>
+      </SectionCard>
+      <SectionCard title="Lists" description="Interests, relay lists, labels, and mute lists.">
+        <ProfileActivityTabs
+          activeTab={listTab ?? "notes"}
+          tabs={listTabs}
+          ariaLabel="Profile lists"
+        >
+          {listTab === "mute_list" || listTab === "muted_by" ? (
+            <ProfileActivityFeed data={data} />
+          ) : listTab && isProfileSurfaceTab(listTab) ? (
+            <ProfileSurfacePanel tab={listTab} pubkey={lookupKey} />
+          ) : (
+            <p className="text-ink-muted text-sm">Choose a list to see it.</p>
+          )}
+        </ProfileActivityTabs>
       </SectionCard>
 
       <div className="mt-3 space-y-3">
