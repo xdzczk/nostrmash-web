@@ -1,5 +1,6 @@
 import { formatCompactNumber } from "@/components/explorer/utils";
 import { formatBasisPointsAsPercent, formatLatencyMs } from "@/lib/stats/ecosystem-display";
+import { formatUtcDay } from "@/lib/stats/surface-display";
 import { formatStatsWindowSpan, type StatsWindow } from "@/lib/search-params/window";
 import type { AccountStatsResponse, ZapStatsResponse } from "@/lib/types/api";
 import type {
@@ -53,7 +54,10 @@ export function moderationHeadline(data: ModerationStatsResponse | null): string
     .reduce((sum, row) => sum + (row.count ?? 0), 0);
   const yesterday = new Date();
   yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-  const when = latestDay === yesterday.toISOString().slice(0, 10) ? "yesterday" : `on ${latestDay}`;
+  const when =
+    latestDay === yesterday.toISOString().slice(0, 10)
+      ? "yesterday"
+      : `on ${formatUtcDay(latestDay)}`;
   return `${reports.toLocaleString()} reports were filed ${when}, ${percent(spam, reports)}% of them for spam.`;
 }
 
@@ -64,7 +68,7 @@ export function peopleHeadline(data: AccountStatsResponse | null): string {
   if (typeof active !== "number") return "Account totals are still collecting.";
   const fresh =
     typeof created === "number"
-      ? `; ${created.toLocaleString()} accounts were first seen on the latest day`
+      ? `; ${formatCompactNumber(created)} accounts were first seen on the latest day`
       : "";
   return `${formatCompactNumber(active)} people posted in the last day${fresh}.`;
 }

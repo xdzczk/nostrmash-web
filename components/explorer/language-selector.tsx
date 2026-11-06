@@ -51,7 +51,14 @@ export function LanguageSelector({
     const raw = event.target.value;
     const next = raw === ALL_LANGUAGES ? undefined : parseLanguage(raw);
     document.cookie = serializeLanguageCookie(raw === ALL_LANGUAGES ? ALL_LANGUAGES : next);
-    router.push(buildLanguageHref(path, new URLSearchParams(query), next));
+    const href = buildLanguageHref(path, new URLSearchParams(query), next);
+    // A full load drops the cached "/ → /?lang=…" redirect. router.push("/")
+    // replays that redirect and the saved language comes back.
+    if (raw === ALL_LANGUAGES) {
+      window.location.assign(href);
+      return;
+    }
+    router.push(href);
   }
 
   const prefetchHrefs = prefetchLanguages
@@ -110,9 +117,6 @@ function languagePrefetchHrefs(
   activeLanguage: string | undefined,
   listed: Array<{ language: string }>
 ): string[] {
-  // Skip the URL that omits `lang`. That request still carries `nm_lang`, so
-  // the server redirects back to the saved language and choosing All languages
-  // replays the redirect.
   const choices: string[] = [];
   for (const option of listed) {
     if (option.language === activeLanguage) continue;

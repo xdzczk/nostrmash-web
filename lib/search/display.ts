@@ -1,3 +1,5 @@
+import { extractImetaAttachments } from "@/lib/notes/media-event";
+import { extractNoteMediaAttachments } from "@/lib/notes/media";
 import type { EventRecord, Profile, SearchResponse } from "@/lib/types/api";
 
 const OFFSET_TOKEN_PREFIX = "offset:";
@@ -139,4 +141,66 @@ export function collapseRepeatedAuthors(
     notes: kept,
     extras: [...hidden.entries()].map(([pubkey, count]) => ({ pubkey, hidden: count })),
   };
+}
+
+/** The note card prints "(no content)" when there is no text and no media. */
+export function noteHasVisibleContent(note: Pick<EventRecord, "content" | "tags">): boolean {
+  const content = typeof note.content === "string" ? note.content.trim() : "";
+  if (content.length > 0) return true;
+  return (
+    extractNoteMediaAttachments(typeof note.content === "string" ? note.content : "").length > 0 ||
+    extractImetaAttachments(note.tags).length > 0
+  );
+}
+
+const PRICE_TICKER = /~{4,}|hourly price/i;
+
+function hashtagShare(content: string): number {
+  const tags = content.match(/#[\p{L}\p{N}_]{1,64}/gu) ?? [];
+  const tagged = tags.reduce((sum, tag) => sum + tag.length, 0);
+  const body = content.replace(/\s+/g, "");
+  return body.length === 0 ? 0 : tagged / body.length;
+}
+
+/**
+ * Prose stays above hashtag walls, price tickers, and notes from bot accounts.
+ * A page that is entirely noise keeps its original order.
+ */
+export function demoteNoisyNotes(
+  notes: EventRecord[],
+  authors: Record<string, Profile> = {}
+): EventRecord[] {
+  const prose: EventRecord[] = [];
+  const demoted: EventRecord[] = [];
+  for (const note of notes) {
+    const content = typeof note.content === "string" ? note.content : "";
+    const pubkey = typeof note.pubkey === "string" ? note.pubkey.trim().toLowerCase() : "";
+    const author = pubkey ? authors[pubkey] : undefined;
+    const noisy = hashtagShare(content) > 0.6 || PRICE_TICKER.test(content) || author?.bot === true;
+    if (noisy) demoted.push(note);
+    else prose.push(note);
+  }
+  return prose.length > 0 && demoted.length > 0 ? [...prose, ...demoted] : notes;
+}
+
+/** Followers first. A nip05 breaks a tie. Zero-follower accounts with no nip05 collapse. */
+export function presentSearchProfiles(profiles: Profile[]): {
+  visible: Profile[];
+  hidden: Profile[];
+} {
+  const sorted = [...profiles].sort((left, right) => {
+    const followers = (right.follower_count ?? 0) - (left.follower_count ?? 0);
+    if (followers !== 0) return followers;
+    const leftNip = left.nip05?.trim() ? 1 : 0;
+    const rightNip = right.nip05?.trim() ? 1 : 0;
+    return rightNip - leftNip;
+  });
+  const visible = sorted.filter(
+    (profile) => (profile.follower_count ?? 0) > 0 || Boolean(profile.nip05?.trim())
+  );
+  const hidden = sorted.filter(
+    (profile) => (profile.follower_count ?? 0) <= 0 && !profile.nip05?.trim()
+  );
+  if (visible.length === 0) return { visible: sorted, hidden: [] };
+  return { visible, hidden };
 }

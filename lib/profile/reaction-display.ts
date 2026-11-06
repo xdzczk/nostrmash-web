@@ -5,6 +5,8 @@ export type ReactionDisplay = {
   text: string;
   /** https emoji image from a NIP-30 `emoji` tag, when one matches. */
   imageUrl?: string;
+  /** True when `text` is a custom-emoji name with no image. */
+  named?: boolean;
 };
 
 function emojiUrl(tags: unknown, shortcode: string): string | undefined {
@@ -22,7 +24,8 @@ function emojiUrl(tags: unknown, shortcode: string): string | undefined {
 
 /**
  * Unicode reactions stay as-is. `:shortcode:` becomes an image when a matching
- * NIP-30 emoji tag has an https URL. An unresolved shortcode is omitted.
+ * NIP-30 emoji tag has an https URL. Otherwise the bare name is shown, never
+ * the colon shortcode.
  */
 export function presentReactionContent(
   content: string | null | undefined,
@@ -33,5 +36,5 @@ export function presentReactionContent(
   if (!match?.[1]) return { text: raw };
   const name = match[1];
   const imageUrl = emojiUrl(tags, name);
-  return imageUrl ? { text: name, imageUrl } : { text: "+" };
+  return imageUrl ? { text: name, imageUrl } : { text: name, named: true };
 }

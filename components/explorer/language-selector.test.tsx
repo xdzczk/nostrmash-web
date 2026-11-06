@@ -54,18 +54,37 @@ describe("LanguageSelector", () => {
     expect(labels).toEqual(["All languages", "Deutsch", "日本語", "XX"]);
   });
 
-  it("navigates with lang and clears it for all languages", () => {
+  it("navigates with lang for a specific language", () => {
+    render(
+      <LanguageSelector
+        path="/trending/notes"
+        query="window=7d"
+        options={[{ language: "de", count: 4 }]}
+      />
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Language" }), {
+      target: { value: "de" },
+    });
+
+    expect(push).toHaveBeenCalledWith("/trending/notes?window=7d&lang=de");
+  });
+
+  it("loads the unscoped page when switching from a saved language to all languages", () => {
     const writes: string[] = [];
     const cookie = vi.spyOn(document, "cookie", "set").mockImplementation((value) => {
       writes.push(String(value));
     });
+    const assign = vi.fn();
+    const location = window.location;
+    vi.stubGlobal("location", { ...location, assign });
 
     render(
       <LanguageSelector
-        path="/trending/notes"
-        query="window=7d&cursor=abc"
-        activeLanguage="de"
-        options={[{ language: "de", count: 4 }]}
+        path="/"
+        query="lang=en"
+        activeLanguage="en"
+        options={[{ language: "en", count: 4 }]}
       />
     );
 
@@ -73,9 +92,11 @@ describe("LanguageSelector", () => {
       target: { value: "all" },
     });
 
-    expect(push).toHaveBeenCalledWith("/trending/notes?window=7d");
+    expect(assign).toHaveBeenCalledWith("/");
+    expect(push).not.toHaveBeenCalled();
     expect(writes.at(-1)).toContain(`${LANGUAGE_COOKIE}=all;`);
     cookie.mockRestore();
+    vi.stubGlobal("location", location);
   });
 
   it("warms the other Discover languages and leaves search alone", () => {

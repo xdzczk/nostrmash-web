@@ -1,15 +1,20 @@
 "use server";
 
 import type { LoadMoreChunk } from "@/components/data/load-more-list";
-import { ProfilesList } from "@/components/data/renderers";
 import { SearchHitList } from "@/components/search/search-hit-list";
+import { SearchProfiles } from "@/components/search/search-profiles";
 import { getSearch } from "@/lib/api/endpoints";
 import {
   extractEventAuthorPubkeys,
   fetchProfilesByPubkey,
   hydrateProfiles,
 } from "@/lib/api/profile-hydration";
-import { decodeContinuation, encodeOffsetToken } from "@/lib/search/display";
+import {
+  decodeContinuation,
+  demoteNoisyNotes,
+  encodeOffsetToken,
+  noteHasVisibleContent,
+} from "@/lib/search/display";
 import { highlightTermsForQuery } from "@/lib/search/highlight";
 import { MAX_LIST_LIMIT } from "@/lib/search-params/pagination";
 import { decodeSearchFilters } from "@/lib/search-params/search";
@@ -67,7 +72,8 @@ export async function loadMoreSearchNotes(
     },
     "requestTime"
   );
-  const notes = payload.notes ?? [];
+  const page = payload.notes ?? [];
+  const notes = page.filter(noteHasVisibleContent);
   let authorsByPubkey: Record<string, Profile> = {};
   if (notes.length > 0) {
     try {
@@ -84,15 +90,15 @@ export async function loadMoreSearchNotes(
         ? encodeOffsetToken(payload.next_offset)
         : continuation.cursor
           ? undefined
-          : notes.length >= args.limit
-            ? encodeOffsetToken((continuation.offset ?? 0) + notes.length)
+          : page.length >= args.limit
+            ? encodeOffsetToken((continuation.offset ?? 0) + page.length)
             : undefined);
 
   return {
     content:
       notes.length > 0 ? (
         <SearchHitList
-          notes={notes}
+          notes={demoteNoisyNotes(notes, authorsByPubkey)}
           authorsByPubkey={authorsByPubkey}
           highlightTerms={highlightTermsForQuery(highlightQuery || args.q)}
         />
@@ -145,7 +151,7 @@ export async function loadMoreSearchProfiles(
             : undefined);
 
   return {
-    content: profiles.length > 0 ? <ProfilesList profiles={profiles} searchContext /> : null,
+    content: profiles.length > 0 ? <SearchProfiles profiles={profiles} /> : null,
     nextCursor,
   };
 }

@@ -7,7 +7,7 @@ describe("presentReactionContent", () => {
     expect(presentReactionContent("💜", undefined)).toEqual({ text: "💜" });
   });
 
-  it("resolves an https emoji tag and omits an unresolved shortcode", () => {
+  it("resolves an https emoji tag and shows the bare name otherwise", () => {
     const tags = [["emoji", "whoadude", "https://cdn.example/whoa.png"]];
     expect(presentReactionContent(":whoadude:", tags)).toEqual({
       text: "whoadude",
@@ -16,8 +16,9 @@ describe("presentReactionContent", () => {
     expect(
       presentReactionContent(":leopoint:", [["emoji", "leopoint", "http://insecure/x.png"]])
     ).toEqual({
-      text: "+",
+      text: "leopoint",
+      named: true,
     });
-    expect(presentReactionContent(":missing:", tags)).toEqual({ text: "+" });
+    expect(presentReactionContent(":missing:", tags)).toEqual({ text: "missing", named: true });
   });
 });

@@ -14,6 +14,7 @@ import {
   UNATTRIBUTED_CLIENT,
   ZAP_HISTOGRAM_LABELS,
 } from "@/lib/stats/ecosystem-display";
+import { countNoun } from "@/lib/stats/plural";
 import { formatStatsWindowLength } from "@/lib/search-params/window";
 import type { StatsWindow } from "@/lib/search-params/window";
 import type {
@@ -92,7 +93,7 @@ export function ClientStatsSection({
             const unattributed = client.client === UNATTRIBUTED_CLIENT;
             const authors =
               !unattributed && typeof client.unique_authors === "number"
-                ? `${client.unique_authors.toLocaleString()} authors`
+                ? countNoun(client.unique_authors, "author", "authors")
                 : null;
             return (
               <li key={client.client} className="py-3">
@@ -321,7 +322,7 @@ export function AccountStatsSection({ data }: { data: AccountStatsResponse | nul
               plain
               label="Dormant"
               value={data.dormant_30d}
-              description="Accounts with no post in the last 30 days."
+              description="Of every profile on record. Accounts with no post in the last 30 days."
             />
           ) : null}
           {typeof data?.unfollow_rate_bps === "number" ? (
@@ -334,10 +335,15 @@ export function AccountStatsSection({ data }: { data: AccountStatsResponse | nul
           ) : null}
         </StatGrid>
       ) : null}
-      <div className="mb-6">
-        <h3 className="text-ink mb-3 text-sm font-medium">Account age</h3>
-        <AccountAgeList buckets={ages} />
-      </div>
+      {ages.length > 0 ? (
+        <div className="mb-6">
+          <h3 className="text-ink mb-1 text-sm font-medium">First seen by this index</h3>
+          <p className="text-ink-muted mb-3 text-sm">
+            The index started recording on Nov 5, so most accounts appear in the newest bucket.
+          </p>
+          <AccountAgeList buckets={ages} />
+        </div>
+      ) : null}
       {points.length > 0 ? (
         <div>
           <BarSeries points={points} label="New authors per day" />
@@ -352,7 +358,13 @@ export function IdentityStatsSection({ data }: { data: IdentityStatsResponse | n
   const verified =
     typeof data.nip05_verified === "number" && data.nip05_verified > 0 ? data.nip05_verified : null;
   const cards: Array<{ label: string; value: string | number; description?: string }> = [];
-  if (typeof data.profiles === "number") cards.push({ label: "Profiles", value: data.profiles });
+  if (typeof data.profiles === "number") {
+    cards.push({
+      label: "Profiles",
+      value: data.profiles,
+      description: "Profiles with metadata events in the window.",
+    });
+  }
   if (typeof data.nip05_present === "number") {
     cards.push({ label: "NIP-05 present", value: data.nip05_present });
   }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "@/components/app-link";
 
+import { countNoun } from "@/lib/stats/plural";
 import type { DuplicateCluster } from "@/lib/types/surfaces";
 
 export function SpamClusters({ clusters }: { clusters: DuplicateCluster[] }) {
@@ -30,7 +31,7 @@ function Cluster({ cluster }: { cluster: DuplicateCluster }) {
       >
         <span className="text-ink">Repeated text</span>
         <span className="text-ink-muted shrink-0 tabular-nums">
-          {authors.toLocaleString()} authors · {events.toLocaleString()} notes
+          {countNoun(authors, "author", "authors")} · {countNoun(events, "note", "notes")}
         </span>
       </button>
       {open ? (

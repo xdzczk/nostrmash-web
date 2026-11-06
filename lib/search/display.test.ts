@@ -4,8 +4,11 @@ import {
   collapseRepeatedAuthors,
   continuationToken,
   decodeContinuation,
+  demoteNoisyNotes,
   displayQuery,
   leadsWithExactProfile,
+  noteHasVisibleContent,
+  presentSearchProfiles,
   searchProfileContextLine,
   searchResultSubtitle,
 } from "@/lib/search/display";
@@ -73,5 +76,30 @@ describe("search display", () => {
       })
     ).toBe(`12.4K followers · ${(38).toLocaleString()} notes this week · bitcoin@nostrich.org`);
     expect(searchProfileContextLine({ follower_count: 0, recent_post_count: 0 })).toBeUndefined();
+  });
+
+  it("drops notes that would render as no content and demotes tickers and bots", () => {
+    expect(noteHasVisibleContent({ content: "  " })).toBe(false);
+    expect(noteHasVisibleContent({ content: "hello" })).toBe(true);
+    const prose = { id: "1", pubkey: "a".repeat(64), content: "Bitcoin is a protocol." };
+    const ticker = {
+      id: "2",
+      pubkey: "b".repeat(64),
+      content: "~~~~ hourly price ~~~~",
+    };
+    const bot = { id: "3", pubkey: "c".repeat(64), content: "A normal sentence." };
+    const ordered = demoteNoisyNotes([ticker, bot, prose], {
+      [bot.pubkey]: { pubkey: bot.pubkey, bot: true },
+    });
+    expect(ordered.map((note) => note.id)).toEqual(["1", "2", "3"]);
+  });
+
+  it("sorts search profiles by followers and collapses empty squatters", () => {
+    const well = { pubkey: "a".repeat(64), name: "Bitcoin Well", follower_count: 1100 };
+    const named = { pubkey: "b".repeat(64), name: "Desk", nip05: "desk@example.com" };
+    const squatter = { pubkey: "c".repeat(64), name: "bitcoin", follower_count: 0 };
+    const presented = presentSearchProfiles([squatter, named, well]);
+    expect(presented.visible.map((profile) => profile.pubkey)).toEqual([well.pubkey, named.pubkey]);
+    expect(presented.hidden.map((profile) => profile.pubkey)).toEqual([squatter.pubkey]);
   });
 });

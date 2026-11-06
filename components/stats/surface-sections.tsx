@@ -5,7 +5,8 @@ import { BarSeries } from "@/components/stats/bar-series";
 import { KindFamilyList } from "@/components/stats/kind-family-list";
 import { AdjacentValue, RankedList } from "@/components/stats/ranked-list";
 import { SpamClusters } from "@/components/stats/spam-clusters";
-import { ProfileChip } from "@/components/explorer/entity-chips";
+import { ZapLeaderboardList } from "@/components/stats/zap-leaderboard";
+import { KindChip, ProfileChip } from "@/components/explorer/entity-chips";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { StatCard, StatGrid } from "@/components/explorer/stat-card";
 import { ShareBar } from "@/components/relays/share-bar";
@@ -15,10 +16,14 @@ import {
   formatBasisPointsAsPercent,
   formatLatencyMs,
 } from "@/lib/stats/ecosystem-display";
+import { mergeHostCounts } from "@/lib/stats/hosts";
+import { groupLabelCounts } from "@/lib/stats/label-groups";
+import { countNoun } from "@/lib/stats/plural";
 import {
   ACCOUNT_AGE_LABELS,
   CONTENT_LENGTH_LABELS,
   GROUP_SIZE_LABELS,
+  INDEX_COLLECTING_SINCE,
   SERIES_EMPTY_MESSAGE,
   WEEKDAY_LABELS,
   accountAgeLabel,
@@ -30,10 +35,6 @@ import {
 import type { StatsWindow } from "@/lib/search-params/window";
 import { formatStatsWindowLength } from "@/lib/search-params/window";
 import type { Profile } from "@/lib/types/api";
-
-function countNoun(count: number, singular: string, plural: string): string {
-  return `${count.toLocaleString()} ${count === 1 ? singular : plural}`;
-}
 import { CONTENT_LENGTH_BUCKETS } from "@/lib/types/surfaces";
 import type {
   AccountAgeBucket,
@@ -61,12 +62,15 @@ function ChartOrEmpty({
   points,
   label,
   message = SERIES_EMPTY_MESSAGE,
+  formatValue,
 }: {
   points: SeriesPoint[];
   label: string;
   message?: string;
+  formatValue?: (value: number) => string;
 }) {
-  return <BarSeries points={points} label={label} empty={message} />;
+  if (points.length === 0) return null;
+  return <BarSeries points={points} label={label} empty={message} formatValue={formatValue} />;
 }
 
 export function GroupStatsSection({ data }: { data: GroupStatsResponse | null }) {
@@ -196,6 +200,7 @@ export function ConversationStatsSection({ data }: { data: ConversationStatsResp
                 plain
                 label="Average depth, latest day"
                 value={formatScaledHundredths(latest.avg_depth_x100)}
+                description="Average reply depth per thread."
               />
             ) : null}
             {typeof latest?.avg_branching_x100 === "number" ? (
@@ -203,12 +208,17 @@ export function ConversationStatsSection({ data }: { data: ConversationStatsResp
                 plain
                 label="Average branching, latest day"
                 value={formatScaledHundredths(latest.avg_branching_x100)}
+                description="Replies per branch point."
               />
             ) : null}
           </div>
           <div className="grid gap-8 lg:grid-cols-2">
             <ChartOrEmpty points={threads} label="Threads per day" />
-            <ChartOrEmpty points={latency} label="Median seconds to first reply" />
+            <ChartOrEmpty
+              points={latency}
+              label="Median time to first reply"
+              formatValue={formatDurationSeconds}
+            />
           </div>
         </div>
       )}
@@ -218,42 +228,41 @@ export function ConversationStatsSection({ data }: { data: ConversationStatsResp
 
 export function DeletionStatsSection({ data }: { data: DeletionStatsResponse | null }) {
   const items = data?.items ?? [];
+  if (items.length === 0) return null;
   return (
     <SectionCard
       id="deletions"
       title="Deletions"
       description="Deletes by day and kind, with median time to delete."
     >
-      {items.length === 0 ? (
-        <EmptyState message={SERIES_EMPTY_MESSAGE} />
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-ink-faint text-xs">
-                <th className="py-2 pr-4 font-medium">Day</th>
-                <th className="py-2 pr-4 font-medium">Kind</th>
-                <th className="py-2 pr-4 font-medium">Deletes</th>
-                <th className="py-2 font-medium">Median time</th>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="text-ink-faint text-xs">
+              <th className="py-2 pr-4 font-medium">Day</th>
+              <th className="py-2 pr-4 font-medium">Kind</th>
+              <th className="py-2 pr-4 font-medium">Deletes</th>
+              <th className="py-2 font-medium">Median time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((row) => (
+              <tr key={`${row.day}-${row.kind ?? "any"}`} className="border-edge/60 border-t">
+                <td className="py-2 pr-4 tabular-nums">{row.day}</td>
+                <td className="py-2 pr-4">
+                  {typeof row.kind === "number" ? <KindChip kind={row.kind} /> : "—"}
+                </td>
+                <td className="py-2 pr-4 tabular-nums">{(row.count ?? 0).toLocaleString()}</td>
+                <td className="py-2 tabular-nums">
+                  {typeof row.p50_time_to_delete_s === "number"
+                    ? formatDurationSeconds(row.p50_time_to_delete_s)
+                    : "—"}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {items.map((row) => (
-                <tr key={`${row.day}-${row.kind ?? "any"}`} className="border-edge/60 border-t">
-                  <td className="py-2 pr-4 tabular-nums">{row.day}</td>
-                  <td className="py-2 pr-4 tabular-nums">{row.kind ?? "—"}</td>
-                  <td className="py-2 pr-4 tabular-nums">{(row.count ?? 0).toLocaleString()}</td>
-                  <td className="py-2 tabular-nums">
-                    {typeof row.p50_time_to_delete_s === "number"
-                      ? formatDurationSeconds(row.p50_time_to_delete_s)
-                      : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
     </SectionCard>
   );
 }
@@ -463,7 +472,9 @@ export function ContentShapeSection({ data }: { data: ContentShapeStats }) {
                 <tbody>
                   {rows.map((row) => (
                     <tr key={row.kind} className="border-edge/60 border-t">
-                      <td className="py-2 pr-4 tabular-nums">{row.kind}</td>
+                      <td className="py-2 pr-4">
+                        <KindChip kind={row.kind} />
+                      </td>
                       <td className="py-2 pr-4 tabular-nums">
                         {(row.posts ?? 0).toLocaleString()}
                       </td>
@@ -492,7 +503,9 @@ export function ContentShapeSection({ data }: { data: ContentShapeStats }) {
                 <tbody>
                   {engagement.map((row) => (
                     <tr key={row.kind} className="border-edge/60 border-t">
-                      <td className="py-2 pr-4 tabular-nums">{row.kind}</td>
+                      <td className="py-2 pr-4">
+                        <KindChip kind={row.kind} />
+                      </td>
                       <td className="py-2 pr-4 tabular-nums">
                         {(row.posts ?? 0).toLocaleString()}
                       </td>
@@ -516,48 +529,60 @@ export function ContentShapeSection({ data }: { data: ContentShapeStats }) {
 }
 
 export function LabelStatsSection({ data }: { data: LabelStatsResponse | null }) {
-  const labels = data?.labels ?? [];
+  const grouped = groupLabelCounts(data?.labels ?? []);
   const agreement = data?.language_agreement;
+  const agree = agreement?.agree ?? 0;
+  const disagree = agreement?.disagree ?? 0;
+  const showAgreement = agree > 0 || disagree > 0;
+  if (grouped.namespaces.length === 0 && !grouped.bridge && !showAgreement) return null;
   return (
     <SectionCard
       id="labels"
       title="Labels"
       description="NIP-32 labels and how often language labels agree."
     >
-      {labels.length === 0 && !agreement ? (
-        <EmptyState message="No label totals are recorded yet." />
-      ) : (
-        <div className="space-y-4">
-          {agreement ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {typeof agreement.agree === "number" ? (
-                <StatCard plain label="Language labels agree" value={agreement.agree} />
-              ) : null}
-              {typeof agreement.disagree === "number" ? (
-                <StatCard plain label="Language labels disagree" value={agreement.disagree} />
-              ) : null}
-            </div>
-          ) : null}
-          {labels.length > 0 ? (
-            <ul className="space-y-1 text-sm">
-              {labels.slice(0, 40).map((label) => (
-                <li
-                  key={`${label.namespace}-${label.label}`}
-                  className="flex justify-between gap-4"
-                >
-                  <span className="text-ink-soft min-w-0 break-all">
-                    {label.namespace ? `${label.namespace} / ` : ""}
-                    {label.label}
-                  </span>
+      <div className="space-y-4">
+        {showAgreement ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {agree > 0 ? <StatCard plain label="Language labels agree" value={agree} /> : null}
+            {disagree > 0 ? (
+              <StatCard plain label="Language labels disagree" value={disagree} />
+            ) : null}
+          </div>
+        ) : null}
+        {grouped.namespaces.length > 0 || grouped.bridge ? (
+          <ul className="space-y-3 text-sm">
+            {grouped.namespaces.map((row) => (
+              <li key={row.namespace}>
+                <div className="flex justify-between gap-4">
+                  <span className="text-ink">{row.namespace}</span>
                   <span className="text-ink shrink-0 tabular-nums">
-                    {(label.count ?? 0).toLocaleString()}
+                    {row.total.toLocaleString()}
                   </span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      )}
+                </div>
+                <p className="text-ink-muted mt-0.5 text-xs">
+                  {row.top
+                    .map((label) => `${label.label} ${(label.count ?? 0).toLocaleString()}`)
+                    .join(" · ")}
+                </p>
+              </li>
+            ))}
+            {grouped.bridge ? (
+              <li>
+                <div className="flex justify-between gap-4">
+                  <span className="text-ink">Bridge and trend markers</span>
+                  <span className="text-ink shrink-0 tabular-nums">
+                    {grouped.bridge.total.toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-ink-muted mt-0.5 text-xs">
+                  Machine labels from bridges and trend indexes.
+                </p>
+              </li>
+            ) : null}
+          </ul>
+        ) : null}
+      </div>
     </SectionCard>
   );
 }
@@ -583,8 +608,10 @@ export function EmojiStatsSection({
         <ul className="space-y-3">
           {emoji.slice(0, 24).map((entry) => (
             <li key={entry.shortcode}>
-              <div className="flex justify-between gap-4 text-sm">
-                <span className="text-ink min-w-0 break-all">:{entry.shortcode}:</span>
+              <div className="flex items-center justify-between gap-4 text-sm">
+                <span className="border-edge text-ink-soft inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] leading-none">
+                  {entry.shortcode.replace(/^:+|:+$/g, "")}
+                </span>
                 <span className="shrink-0 tabular-nums">{(entry.count ?? 0).toLocaleString()}</span>
               </div>
               <ShareBar
@@ -601,8 +628,18 @@ export function EmojiStatsSection({
 }
 
 export function MediaHostStatsSection({ data }: { data: MediaHostStatsResponse | null }) {
-  const observed = data?.observed ?? [];
-  const servers = data?.blossom_servers ?? [];
+  const observed = mergeHostCounts(
+    (data?.observed ?? []).map((host) => ({
+      host: host.canonical_domain,
+      count: host.media_count ?? 0,
+    }))
+  );
+  const servers = mergeHostCounts(
+    (data?.blossom_servers ?? []).map((server) => ({
+      host: server.server,
+      count: server.pubkeys ?? 0,
+    }))
+  );
   return (
     <SectionCard
       id="media-hosts"
@@ -615,20 +652,20 @@ export function MediaHostStatsSection({ data }: { data: MediaHostStatsResponse |
         <div className="grid gap-8 lg:grid-cols-2">
           <ul className="space-y-2 text-sm">
             {observed.map((host) => (
-              <li key={host.canonical_domain} className="flex justify-between gap-4">
-                <span className="text-ink min-w-0 break-all">{host.canonical_domain}</span>
+              <li key={host.host} className="flex justify-between gap-4">
+                <span className="text-ink min-w-0 break-all">{host.host}</span>
                 <span className="text-ink-muted shrink-0 tabular-nums">
-                  {(host.media_count ?? 0).toLocaleString()}
+                  {host.count.toLocaleString()}
                 </span>
               </li>
             ))}
           </ul>
           <ul className="space-y-2 text-sm">
             {servers.map((server) => (
-              <li key={server.server} className="flex justify-between gap-4">
-                <span className="text-ink min-w-0 break-all">{server.server}</span>
+              <li key={server.host} className="flex justify-between gap-4">
+                <span className="text-ink min-w-0 break-all">{server.host}</span>
                 <span className="text-ink-muted shrink-0 tabular-nums">
-                  {(server.pubkeys ?? 0).toLocaleString()} pubkeys
+                  {countNoun(server.count, "pubkey", "pubkeys")}
                 </span>
               </li>
             ))}
@@ -737,13 +774,11 @@ export function RelayListStatsSection({ data }: { data: RelayListStatsResponse |
 
 export function ZapHeatmapSection({ data }: { data: ZapHeatmapResponse | null }) {
   const cells = data?.cells ?? [];
-  if (cells.length === 0) {
-    return (
-      <SectionCard id="zap-heatmap" title="Zap timing" description="Zaps by weekday and hour, UTC.">
-        <EmptyState message={SERIES_EMPTY_MESSAGE} />
-      </SectionCard>
-    );
-  }
+  const activeDays = WEEKDAY_LABELS.map((_, day) => day).filter((day) =>
+    cells.some((cell) => cell.day_of_week === day && (cell.zap_count ?? 0) > 0)
+  );
+  if (activeDays.length === 0) return null;
+  const partial = activeDays.length < WEEKDAY_LABELS.length;
   const grid = new Map<string, number>();
   for (const cell of cells) grid.set(`${cell.day_of_week}:${cell.hour}`, cell.zap_count ?? 0);
   const max = Math.max(...cells.map((cell) => cell.zap_count ?? 0), 1);
@@ -751,7 +786,11 @@ export function ZapHeatmapSection({ data }: { data: ZapHeatmapResponse | null })
     <SectionCard
       id="zap-heatmap"
       title="Zap timing"
-      description="Zaps by weekday and hour, UTC. Sunday is the first row."
+      description={
+        partial
+          ? "Zaps by weekday and hour, UTC. Days with no zaps yet are hidden."
+          : "Zaps by weekday and hour, UTC. Sunday is the first row."
+      }
     >
       <div className="overflow-x-auto">
         <div className="grid min-w-[42rem] grid-cols-[6rem_repeat(24,minmax(0,1fr))] gap-px">
@@ -761,8 +800,8 @@ export function ZapHeatmapSection({ data }: { data: ZapHeatmapResponse | null })
               {hour}
             </span>
           ))}
-          {WEEKDAY_LABELS.map((label, day) => (
-            <div key={label} className="contents">
+          {activeDays.map((day) => (
+            <div key={day} className="contents">
               <span className="text-ink-muted pr-2 text-xs">{weekdayLabel(day)}</span>
               {Array.from({ length: 24 }, (_, hour) => {
                 const count = grid.get(`${day}:${hour}`) ?? 0;
@@ -770,7 +809,7 @@ export function ZapHeatmapSection({ data }: { data: ZapHeatmapResponse | null })
                 return (
                   <span
                     key={`${day}-${hour}`}
-                    title={`${label} ${hour}:00 UTC, ${count.toLocaleString()} zaps`}
+                    title={`${weekdayLabel(day)} ${hour}:00 UTC, ${countNoun(count, "zap", "zaps")}`}
                     className="bg-accent h-4 rounded-sm"
                     style={{ opacity: alpha }}
                   />
@@ -785,7 +824,7 @@ export function ZapHeatmapSection({ data }: { data: ZapHeatmapResponse | null })
         Fewer
         <span className="bg-accent inline-block h-3 w-6 rounded-sm" />
         More
-        <span>Hours are UTC. Sunday is the first row.</span>
+        <span>{partial ? INDEX_COLLECTING_SINCE : "Hours are UTC. Sunday is the first row."}</span>
       </p>
     </SectionCard>
   );
@@ -835,19 +874,7 @@ export function ZapLeaderboardSection({
       {items.length === 0 ? (
         <EmptyState message="No zap totals are recorded for this window yet." />
       ) : (
-        <RankedList
-          items={items.map((item) => {
-            const profile = profiles[item.pubkey.toLowerCase()];
-            return {
-              id: item.pubkey,
-              amount: item.sats ?? 0,
-              entity: <ProfileChip pubkey={item.pubkey} profile={profile} />,
-              value: `${(item.sats ?? 0).toLocaleString()} sats${
-                typeof item.zap_count === "number" ? ` · ${item.zap_count.toLocaleString()}` : ""
-              }`,
-            };
-          })}
-        />
+        <ZapLeaderboardList items={items} profiles={profiles} />
       )}
     </SectionCard>
   );
@@ -953,7 +980,7 @@ export function AccountAgeList({ buckets }: { buckets: AccountAgeBucket[] }) {
             <ShareBar
               value={count}
               max={max}
-              label={`${label}, ${count.toLocaleString()} authors`}
+              label={`${label}, ${countNoun(count, "author", "authors")}`}
             />
           </li>
         );
