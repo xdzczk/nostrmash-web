@@ -218,12 +218,23 @@ export interface SearchApiResponse extends NativeApiSemantics {
   [key: string]: unknown;
 }
 
+/** A stored comparison. Absent means the page keeps the count and invents nothing. */
+export interface EntityBaseline {
+  metric?: string;
+  window?: string;
+  value?: number;
+  typical?: number;
+  typical_basis?: string;
+  ratio?: number;
+}
+
 export interface HashtagEntry {
   hashtag?: string;
   count?: number;
   event_count?: number;
   unique_authors?: number;
   ranking?: DiscoveryItemRanking;
+  baseline?: EntityBaseline;
   [key: string]: unknown;
 }
 
@@ -249,6 +260,7 @@ export interface DomainEntry {
     "30d"?: DomainTrendWindow;
   };
   ranking?: DiscoveryItemRanking;
+  baseline?: EntityBaseline;
   [key: string]: unknown;
 }
 

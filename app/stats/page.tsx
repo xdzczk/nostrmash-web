@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   getContentStats,
   getNetworkStats,
+  getRelayCoverageChanges,
   getRelayStats,
   getStatsSeries,
   normalizeSeriesPoints,
@@ -36,6 +37,7 @@ import {
   relayStatsWindow,
 } from "@/lib/search-params/window";
 import { toUserFacingErrorMessage } from "@/lib/errors/user-message";
+import type { CoverageNote } from "@/lib/stats/coverage-notes";
 import { buildEntityMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = buildEntityMetadata({
@@ -56,6 +58,7 @@ function MovingFigure({
   chartLabel,
   caption = "Rolling 24-hour total",
   formatValue,
+  coverageNotes = [],
 }: {
   label: string;
   value: number | null;
@@ -63,6 +66,7 @@ function MovingFigure({
   chartLabel: string;
   caption?: string;
   formatValue?: (value: number) => string;
+  coverageNotes?: readonly CoverageNote[];
 }) {
   const formatted =
     value === null ? "—" : formatValue ? formatValue(value) : value.toLocaleString();
@@ -75,7 +79,7 @@ function MovingFigure({
         </p>
         <p className="text-ink-faint mt-1 text-xs">{caption}</p>
       </div>
-      <DeltaChart points={points} label={chartLabel} />
+      <DeltaChart points={points} label={chartLabel} coverageNotes={coverageNotes} />
     </div>
   );
 }
@@ -111,14 +115,17 @@ export default async function StatsPage({
     seriesMetric !== "active_authors" &&
     seriesMetric !== "relay_events";
 
-  const settled = await Promise.allSettled([
-    getNetworkStats("shortTtl"),
-    getContentStats("shortTtl"),
-    getRelayStats("shortTtl", window),
-    getStatsSeries("note_volume", window, "shortTtl"),
-    getStatsSeries("active_authors", window, "shortTtl"),
-    getStatsSeries("relay_events", window, "shortTtl"),
-    needsExtraSeries ? getStatsSeries(seriesMetric, window, "shortTtl") : Promise.resolve(null),
+  const [settled, coverageNotes] = await Promise.all([
+    Promise.allSettled([
+      getNetworkStats("shortTtl"),
+      getContentStats("shortTtl"),
+      getRelayStats("shortTtl", window),
+      getStatsSeries("note_volume", window, "shortTtl"),
+      getStatsSeries("active_authors", window, "shortTtl"),
+      getStatsSeries("relay_events", window, "shortTtl"),
+      needsExtraSeries ? getStatsSeries(seriesMetric, window, "shortTtl") : Promise.resolve(null),
+    ]),
+    getRelayCoverageChanges().catch(() => [] as CoverageNote[]),
   ]);
   const fail = (index: number, fallback: string) => {
     const result = settled[index];
@@ -211,6 +218,7 @@ export default async function StatsPage({
               points={activeAuthorsSeries}
               chartLabel="Change in note authors"
               caption="All languages, rolling 24-hour total"
+              coverageNotes={coverageNotes}
             />
             <MovingFigure
               label="Notes indexed"
@@ -218,6 +226,7 @@ export default async function StatsPage({
               points={noteVolumeSeries}
               chartLabel="Change in notes indexed"
               caption="All languages, rolling 24-hour total"
+              coverageNotes={coverageNotes}
             />
           </div>
         </SectionCard>
@@ -240,6 +249,7 @@ export default async function StatsPage({
               chartLabel={`Change in ${STATS_SERIES_METRIC_LABELS[seriesMetric].toLowerCase()}`}
               caption={selectedCaption}
               formatValue={formatSelected}
+              coverageNotes={coverageNotes}
             />
           </div>
         </SectionCard>

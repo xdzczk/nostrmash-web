@@ -3,6 +3,7 @@ import type { SeriesPoint } from "@/components/charts/sparkline";
 import { StatCard, StatGrid } from "@/components/explorer/stat-card";
 import { SectionCard } from "@/components/ui/section-card";
 import type { RelayStatsWindow } from "@/lib/search-params/window";
+import type { CoverageNote } from "@/lib/stats/coverage-notes";
 
 export function RelayIndexSection({
   relayWindow,
@@ -11,6 +12,7 @@ export function RelayIndexSection({
   relayEvents,
   relayAuthors,
   relayEventsSeries,
+  coverageNotes = [],
 }: {
   relayWindow: RelayStatsWindow;
   relaysIndexed: number | null;
@@ -18,6 +20,7 @@ export function RelayIndexSection({
   relayEvents: number | null;
   relayAuthors: number | null;
   relayEventsSeries: SeriesPoint[];
+  coverageNotes?: readonly CoverageNote[];
 }) {
   return (
     <SectionCard
@@ -60,7 +63,11 @@ export function RelayIndexSection({
         ) : null}
       </StatGrid>
       <div className="mt-6">
-        <DeltaChart points={relayEventsSeries} label="Change in relay events" />
+        <DeltaChart
+          points={relayEventsSeries}
+          label="Change in relay events"
+          coverageNotes={coverageNotes}
+        />
       </div>
     </SectionCard>
   );

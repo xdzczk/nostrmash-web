@@ -337,6 +337,16 @@ export interface EmergingHashtagsResponse extends NativeApiSemantics {
   items?: HashtagMomentum[];
 }
 
+export interface DomainMomentum {
+  domain: string;
+  z_score_7d?: number;
+  status?: HashtagMomentumStatus;
+}
+
+export interface EmergingDomainsResponse extends NativeApiSemantics {
+  items?: DomainMomentum[];
+}
+
 export interface HashtagHistoryDay {
   day: string;
   events?: number;

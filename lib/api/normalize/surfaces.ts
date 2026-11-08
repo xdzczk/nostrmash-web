@@ -40,6 +40,8 @@ import {
   type GroupsResponse,
   type HashtagHistoryDay,
   type HashtagHistoryResponse,
+  type DomainMomentum,
+  type EmergingDomainsResponse,
   type HashtagMomentum,
   type HashtagMomentumStatus,
   type InterestList,
@@ -852,6 +854,33 @@ export function normalizeZapHeatmap(value: unknown): ZapHeatmapResponse {
   return {
     ...(consistency ? { consistency } : {}),
     ...(cells.length > 0 ? { cells } : {}),
+  };
+}
+
+export function normalizeEmergingDomains(value: unknown): EmergingDomainsResponse {
+  const record = asRecord(value) ?? {};
+  const items = asArray(record.items).flatMap((entry): DomainMomentum[] => {
+    const row = asRecord(entry);
+    const domain = text(row?.domain)?.toLowerCase();
+    if (!domain || domain.includes(" ")) return [];
+    const score = finite(row?.z_score_7d);
+    const statusRaw = text(row?.status);
+    const status =
+      statusRaw && MOMENTUM.has(statusRaw as HashtagMomentumStatus)
+        ? (statusRaw as HashtagMomentumStatus)
+        : undefined;
+    return [
+      {
+        domain,
+        ...(score === undefined ? {} : { z_score_7d: score }),
+        ...(status ? { status } : {}),
+      },
+    ];
+  });
+  const consistency = consistencyOf(record);
+  return {
+    ...(consistency ? { consistency } : {}),
+    ...(items.length > 0 ? { items } : {}),
   };
 }
 

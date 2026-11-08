@@ -1,3 +1,4 @@
+import { getDiscoveryArchiveDays } from "@/lib/api/endpoints";
 import { absoluteUrl } from "@/lib/seo/metadata";
 import type { MetadataRoute } from "next";
 
@@ -46,10 +47,27 @@ const STATIC_PATHS = [
 
 export async function buildSitemapEntries(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
-  return STATIC_PATHS.map((path) => ({
+  const today = now.toISOString().slice(0, 10);
+  const pages = STATIC_PATHS.map((path) => ({
     url: absoluteUrl(path),
     lastModified: now,
-    changeFrequency: path === "/" ? "daily" : "weekly",
+    changeFrequency: path === "/" ? ("daily" as const) : ("weekly" as const),
     priority: path === "/" ? 1 : 0.7,
   }));
+  let days: string[] = [];
+  try {
+    days = await getDiscoveryArchiveDays(366);
+  } catch {
+    days = [];
+  }
+  const archived = days.filter((day) => day <= today);
+  return [
+    ...pages,
+    ...archived.map((day) => ({
+      url: absoluteUrl(`/day/${day}`),
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.4,
+    })),
+  ];
 }

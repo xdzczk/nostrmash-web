@@ -8,12 +8,14 @@ import { StatsFrame } from "@/components/stats/stats-frame";
 import { RelayListStatsSection, RelaySoftwareSection } from "@/components/stats/surface-sections";
 import { LoadErrors } from "@/components/ui/status-panels";
 import {
+  getRelayCoverageChanges,
   getRelayListStats,
   getRelaySoftwareStats,
   getRelayStats,
   getStatsSeries,
   normalizeSeriesPoints,
 } from "@/lib/api/endpoints";
+import type { CoverageNote } from "@/lib/stats/coverage-notes";
 import { relaysHeadline } from "@/lib/stats/headlines";
 import { settle } from "@/lib/stats/settle";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
@@ -39,11 +41,12 @@ export default async function RelayStatsPage({
   const current = toUrlSearchParams(resolved);
   const window = readStatsWindow(resolved);
   const relayWindow = relayStatsWindow(window);
-  const [relays, series, software, lists] = await Promise.all([
+  const [relays, series, software, lists, coverageNotes] = await Promise.all([
     settle(getRelayStats("shortTtl", window), "Failed to load relay stats."),
     settle(getStatsSeries("relay_events", window, "shortTtl"), "Failed to load relay series."),
     settle(getRelaySoftwareStats(), "Relay software stats are unavailable."),
     settle(getRelayListStats(), "Relay list stats are unavailable."),
+    getRelayCoverageChanges().catch(() => [] as CoverageNote[]),
   ]);
   const relaysIndexed = readStatNumber(relays.value, [
     `active_${relayWindow}`,
@@ -80,6 +83,7 @@ export default async function RelayStatsPage({
           ])}
           relayAuthors={readStatNumber(relays.value, [`unique_authors_${relayWindow}`])}
           relayEventsSeries={normalizeSeriesPoints(series.value)}
+          coverageNotes={coverageNotes}
         />
         <RelaySoftwareSection data={software.value} />
         <RelayListStatsSection data={lists.value} />

@@ -94,7 +94,6 @@ export async function HomeOverviewBody({ data }: { data: Promise<HomePageData> }
           mediaLeaders={home.mediaLeaders}
           profiles={home.hydratedHomeProfiles}
           risingProfiles={home.hydratedHomeRisingProfiles}
-          domains={home.homeDomains}
           authorsByPubkey={home.noteAuthorsByPubkey}
           pulseStats={home.pulseStats}
           sectionFailures={home.sectionFailures}
@@ -102,6 +101,9 @@ export async function HomeOverviewBody({ data }: { data: Promise<HomePageData> }
           lang={home.language}
           excludeBridged={readExcludeBridged(home.currentSearchParams)}
           emergingHashtags={home.emergingHashtags}
+          emergingDomains={home.emergingDomains}
+          archiveDay={home.archiveDay}
+          coverageNotes={home.coverageNotes}
           briefing={home.briefing}
         />
       ) : home.language && !home.errorMessage ? (

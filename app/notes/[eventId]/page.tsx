@@ -16,6 +16,12 @@ import { EventSurfaces, ProvenanceLabelCount } from "@/components/explorer/event
 import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
 import { ProfileCard } from "@/components/explorer/profile-card";
 import { normalizeRelayHost } from "@/components/explorer/stats-utils";
+import {
+  formatSeenDelta,
+  isOfflineRelayHost,
+  observationTime,
+  propagationLine,
+} from "@/lib/notes/propagation";
 import { offlineRelayNote } from "@/lib/relays/coverage";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
@@ -68,28 +74,6 @@ function hasInformativeValue(value: unknown): boolean {
   if (Array.isArray(value)) return value.length > 0;
   if (isRecord(value)) return Object.keys(value).length > 0;
   return true;
-}
-
-function observationTime(value: string | number | undefined): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value > 1e12 ? value : value * 1000;
-  }
-  if (typeof value === "string" && value.trim().length > 0) {
-    const numeric = Number(value);
-    if (Number.isFinite(numeric)) return numeric > 1e12 ? numeric : numeric * 1000;
-    const parsed = Date.parse(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
-
-function formatSeenDelta(ms: number): string {
-  const minutes = Math.max(0, Math.round(ms / 60_000));
-  if (minutes < 1) return "same moment";
-  if (minutes < 60) return `+${minutes}m`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 48) return `+${hours}h`;
-  return `+${Math.round(hours / 24)}d`;
 }
 
 /** Provenance hides empty booleans and zero counts ("Has image: no"). */
@@ -275,11 +259,13 @@ export default async function NotePage({
       const relay =
         typeof entry.relay_url === "string"
           ? entry.relay_url
-          : typeof entry.url === "string"
-            ? entry.url
-            : typeof entry.host === "string"
-              ? entry.host
-              : "";
+          : typeof entry.relay === "string"
+            ? entry.relay
+            : typeof entry.url === "string"
+              ? entry.url
+              : typeof entry.host === "string"
+                ? entry.host
+                : "";
       const routeHost = normalizeRelayHost(relay);
       if (!relay || !routeHost) return null;
       const seenAt =
@@ -308,6 +294,12 @@ export default async function NotePage({
     return leftTime - rightTime;
   });
   const firstSeen = observationTime(provenanceRelayLinks[0]?.seenAt);
+  const arrivalLine = propagationLine(
+    provenanceRelayLinks.map((observation) => ({
+      host: observation.routeHost,
+      seenAt: observation.seenAt,
+    }))
+  );
   const offlineNote = offlineRelayNote(
     provenanceRelayLinks.map((observation) => observation.routeHost)
   );
@@ -466,6 +458,9 @@ export default async function NotePage({
                 <h2 className="text-ink-dim mb-3 text-xs font-medium tracking-wide uppercase">
                   Seen on
                 </h2>
+                {arrivalLine ? (
+                  <p className="text-ink-soft mb-3 text-sm leading-6">{arrivalLine}</p>
+                ) : null}
                 <ol className="space-y-2">
                   {provenanceRelayLinks.map((observation) => {
                     const seen = observationTime(observation.seenAt);
@@ -475,6 +470,8 @@ export default async function NotePage({
                           ? "First"
                           : formatSeenDelta(seen - firstSeen)
                         : null;
+                    const offline = isOfflineRelayHost(observation.routeHost) ? "Offline" : null;
+                    const marks = [offline, delta].filter((mark): mark is string => Boolean(mark));
                     return (
                       <li
                         key={observation.key}
@@ -486,9 +483,9 @@ export default async function NotePage({
                         >
                           {observation.routeHost}
                         </Link>
-                        {delta ? (
+                        {marks.length > 0 ? (
                           <span className="text-ink-muted shrink-0 text-xs tabular-nums">
-                            {delta}
+                            {marks.join(" · ")}
                           </span>
                         ) : null}
                       </li>

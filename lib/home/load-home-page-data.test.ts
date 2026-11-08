@@ -21,6 +21,9 @@ vi.mock("@/lib/api/endpoints", () => ({
   getTrendingProfiles: vi.fn(),
   getTrendingMedia: vi.fn(async () => ({ events: [] })),
   getEmergingHashtags: vi.fn(async () => ({ items: [] })),
+  getEmergingDomains: vi.fn(async () => ({ items: [] })),
+  getDiscoveryArchiveDays: vi.fn(async () => []),
+  getRelayCoverageChanges: vi.fn(async () => []),
 }));
 
 vi.mock("@/lib/api/profile-hydration", () => ({

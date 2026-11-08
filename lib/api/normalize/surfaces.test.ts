@@ -6,6 +6,7 @@ import {
 } from "@/lib/api/normalize/ecosystem";
 import {
   normalizeContentShape,
+  normalizeEmergingDomains,
   normalizeEmergingHashtags,
   normalizeEventPoll,
   normalizeKindMix,
@@ -17,6 +18,14 @@ import { accountAgeLabel } from "@/lib/stats/surface-display";
 
 describe("surface normalizers", () => {
   it("drops placeholder momentum and mute fields", () => {
+    expect(
+      normalizeEmergingDomains({
+        items: [{ domain: "Example.COM", z_score_7d: 3, status: "emerging" }, { domain: "" }],
+      })
+    ).toEqual({
+      items: [{ domain: "example.com", z_score_7d: 3, status: "emerging" }],
+    });
+
     expect(
       normalizeEmergingHashtags({
         consistency: "eventual",

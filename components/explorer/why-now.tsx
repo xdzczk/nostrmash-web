@@ -4,6 +4,7 @@ import {
   formatValue,
 } from "@/components/explorer/utils";
 import { mapServerRankingReasons } from "@/lib/discover/reasons";
+import { authorBaselineComparison } from "@/lib/discover/baseline";
 import type { DomainEntry, EventRecord, HashtagEntry, Profile } from "@/lib/types/api";
 
 export type WhyNowReason = {
@@ -206,8 +207,11 @@ export function mapProfileWhyNow(profile: Profile): WhyNowReason[] {
 }
 
 export function mapHashtagWhyNow(entry: HashtagEntry): WhyNowReason[] {
+  const comparison = authorBaselineComparison(entry.baseline, entry.unique_authors);
   const serverReasons = mapServerRankingReasons(entry.ranking);
-  if (serverReasons.length > 0) return serverReasons;
+  if (serverReasons.length > 0) {
+    return comparison ? [...serverReasons, { text: comparison }] : serverReasons;
+  }
 
   const mentionCount = typeof entry.count === "number" && entry.count > 0 ? entry.count : null;
   const noteCount =
@@ -218,11 +222,14 @@ export function mapHashtagWhyNow(entry: HashtagEntry): WhyNowReason[] {
       : null;
 
   const reasons: WhyNowReason[] = [];
+  let folded = false;
   if (authorCount !== null && authorCount > 1) {
+    const people = `Used by ${readableCount(authorCount, "person", "people")}`;
     reasons.push({
       code: "author_breadth",
-      text: `Used by ${readableCount(authorCount, "person", "people")}`,
+      text: comparison ? `${people}, ${comparison}` : people,
     });
+    folded = comparison !== null;
   }
   if (noteCount !== null && noteCount >= MOMENTUM_FLOOR) {
     reasons.push({
@@ -234,13 +241,17 @@ export function mapHashtagWhyNow(entry: HashtagEntry): WhyNowReason[] {
       text: `Mentioned ${readableCount(mentionCount, "time", "times")}`,
     });
   }
+  if (comparison && !folded) reasons.push({ text: comparison });
 
   return dedupeReasons(reasons);
 }
 
 export function mapDomainWhyNow(entry: DomainEntry): WhyNowReason[] {
+  const comparison = authorBaselineComparison(entry.baseline, entry.unique_authors);
   const serverReasons = mapServerRankingReasons(entry.ranking);
-  if (serverReasons.length > 0) return serverReasons;
+  if (serverReasons.length > 0) {
+    return comparison ? [...serverReasons, { text: comparison }] : serverReasons;
+  }
 
   const linkCount = positiveNumber(entry.link_count);
   const linkedNotes = positiveNumber(entry.note_count) ?? positiveNumber(entry.event_count);
@@ -251,11 +262,14 @@ export function mapDomainWhyNow(entry: DomainEntry): WhyNowReason[] {
   // is a legacy appearance tally that can be far below `link_count` for the
   // same domain, so it is only a last resort.
   const reasons: WhyNowReason[] = [];
+  let folded = false;
   if (authorCount !== null && authorCount > 1) {
+    const people = `Used by ${readableCount(authorCount, "person", "people")}`;
     reasons.push({
       code: "author_breadth",
-      text: `Used by ${readableCount(authorCount, "person", "people")}`,
+      text: comparison ? `${people}, ${comparison}` : people,
     });
+    folded = comparison !== null;
   }
   if (linkCount !== null && linkCount >= MOMENTUM_FLOOR) {
     reasons.push({
@@ -272,6 +286,7 @@ export function mapDomainWhyNow(entry: DomainEntry): WhyNowReason[] {
       text: `Appeared ${readableCount(appearanceCount, "time", "times")}`,
     });
   }
+  if (comparison && !folded) reasons.push({ text: comparison });
 
   return dedupeReasons(reasons);
 }

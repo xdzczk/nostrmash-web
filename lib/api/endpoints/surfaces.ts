@@ -1,4 +1,5 @@
 import { fetchApiJson } from "@/lib/api/http";
+import { coverageNotesFromChanges, type CoverageNote } from "@/lib/stats/coverage-notes";
 import {
   normalizeBadge,
   normalizeBadgeStats,
@@ -8,6 +9,7 @@ import {
   normalizeCurationSets,
   normalizeDeletionStats,
   normalizeEmojiStats,
+  normalizeEmergingDomains,
   normalizeEmergingHashtags,
   normalizeEventGoal,
   normalizeEventLabels,
@@ -51,6 +53,7 @@ import type {
   CurationSetsResponse,
   DeletionStatsResponse,
   EmojiStatsResponse,
+  EmergingDomainsResponse,
   EmergingHashtagsResponse,
   EventGoalResponse,
   EventLabelsResponse,
@@ -332,6 +335,43 @@ export async function getEmergingHashtags(): Promise<EmergingHashtagsResponse> {
     cacheClass: cache,
   });
   return normalizeEmergingHashtags(response);
+}
+
+export async function getEmergingDomains(): Promise<EmergingDomainsResponse> {
+  const response = await fetchApiJson<unknown>(nativeApiV1Routes.emergingDomains, {
+    cacheClass: cache,
+  });
+  return normalizeEmergingDomains(response);
+}
+
+export async function getDiscoveryArchiveDays(limit = 30): Promise<string[]> {
+  const response = await fetchApiJson<unknown>(nativeApiV1Routes.discoveryArchive, {
+    cacheClass: cache,
+    query: { limit },
+  });
+  const days =
+    response && typeof response === "object" && "days" in response
+      ? (response as { days?: unknown }).days
+      : undefined;
+  if (!Array.isArray(days)) return [];
+  return days.filter(
+    (day): day is string => typeof day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(day)
+  );
+}
+
+export async function getDiscoveryArchive(date: string): Promise<unknown> {
+  return fetchApiJson<unknown>(
+    `${nativeApiV1Routes.discoveryArchive}/${encodeURIComponent(date)}`,
+    { cacheClass: cache }
+  );
+}
+
+export async function getRelayCoverageChanges(limit = 50): Promise<CoverageNote[]> {
+  const response = await fetchApiJson<unknown>(nativeApiV1Routes.relayCoverageChanges, {
+    cacheClass: cache,
+    query: { limit },
+  });
+  return coverageNotesFromChanges(response);
 }
 
 export async function getHashtagHistory(tag: string): Promise<HashtagHistoryResponse> {

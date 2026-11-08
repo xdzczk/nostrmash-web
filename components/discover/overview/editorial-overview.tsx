@@ -6,12 +6,7 @@ import { PostEngagement } from "@/components/explorer/post-engagement";
 import { TopZap } from "@/components/explorer/top-zap";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
-import {
-  mapDomainWhyNow,
-  mapNoteWhyNow,
-  mapProfileWhyNow,
-  type WhyNowReason,
-} from "@/components/explorer/why-now";
+import { mapNoteWhyNow, mapProfileWhyNow, type WhyNowReason } from "@/components/explorer/why-now";
 import { Orientation } from "@/components/discover/orientation";
 import { type Briefing } from "@/lib/discover/briefing";
 import { INTERESTS } from "@/lib/discover/interests";
@@ -22,9 +17,7 @@ import { buildDiscoverHref, LANGUAGE_EMPTY_MESSAGE } from "@/lib/search-params/l
 import { SourceFigure } from "@/components/explorer/source-figure";
 import {
   postEngagementStats,
-  formatCompactNumber,
   formatProfileSecondary,
-  normalizeDomainLabel,
   noteAuthorIdentifier,
   noteInlineAuthorProfile,
   profileHref,
@@ -45,22 +38,25 @@ import { fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { getEditorialNoteText } from "@/components/explorer/note-preview";
 import { isHiddenNoteKind } from "@/lib/api/normalize";
 import { GENERIC_REPOST_KIND, isLiveActivityKind, isMediaKind } from "@/lib/notes/kinds";
-import {
-  belowVolumeFloor,
-  listedVolume,
-  rankMovement,
-  reasonsBesideSourceFigure,
-} from "@/lib/discover/reasons";
+import { rankMovement } from "@/lib/discover/reasons";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
 import type { StatsWindow } from "@/lib/search-params/window";
-import type { DiscoveryItemRanking, DomainEntry, EventRecord, Profile } from "@/lib/types/api";
-import type { HashtagMomentum } from "@/lib/types/surfaces";
+import type { CoverageNote } from "@/lib/stats/coverage-notes";
+import type { DiscoveryItemRanking, EventRecord, Profile } from "@/lib/types/api";
+import type { DomainMomentum, HashtagMomentum } from "@/lib/types/surfaces";
 
 type PulseStat = {
   label: string;
   value: string | number | boolean;
   series?: Array<{ t: number; v: number }>;
+  baseline?: {
+    metric?: string;
+    window?: string;
+    value?: number;
+    typical?: number;
+    typical_basis?: string;
+  } | null;
 };
 
 const INDEX_ROW_LIMIT = 6;
@@ -470,76 +466,6 @@ function ProfileRanking({
   );
 }
 
-type IndexRow = {
-  key: string;
-  href: string;
-  label: string;
-  reasons: WhyNowReason[];
-  ranking?: DiscoveryItemRanking;
-  extra?: Array<string | null>;
-  figureNoun?: string;
-};
-
-/**
- * Ranked index shared by Topics and Links. Server order follows source
- * breadth, so the right-hand figure is that count. The why-now line is
- * omitted: it would only repeat the figure or cite volume, which is not
- * the order.
- */
-function RankedIndex({ rows }: { rows: IndexRow[] }) {
-  return (
-    <ol className="border-edge/70 mt-6 divide-y divide-[var(--edge)] border-y">
-      {rows.map((row, index) => (
-        <li key={row.key} className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 py-4">
-          <span className="text-accent-ink pt-0.5 text-lg tabular-nums">
-            {String(index + 1).padStart(2, "0")}
-          </span>
-          <div className="min-w-0">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex min-w-0 items-center">
-                <Link
-                  href={row.href}
-                  className="text-ink block min-h-6 min-w-0 truncate py-0.5 font-medium hover:underline"
-                >
-                  {row.label}
-                </Link>
-                <RankMovement ranking={row.ranking} />
-              </div>
-              <SourceFigure ranking={row.ranking} noun={row.figureNoun} className="ml-auto" />
-            </div>
-            <EvidenceLine
-              reasons={reasonsBesideSourceFigure(row.ranking, row.reasons)}
-              ranking={row.ranking}
-              extra={row.extra}
-              className="mt-1"
-            />
-          </div>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-/**
- * "N authors" qualifier for index rows. Skipped when the server already cites
- * breadth (as the leading reason or as `source_breadth`), so the line never
- * reads "160 authors · 160 sources".
- */
-function authorsQualifier(
-  count: unknown,
-  reasons: WhyNowReason[],
-  ranking?: DiscoveryItemRanking
-): string | null {
-  if (typeof ranking?.source_breadth === "number") return null;
-  if (/authors?\b/.test(reasons[0]?.text ?? "")) return null;
-  if (typeof count === "number" && reasons[0]?.text.includes(formatCompactNumber(count))) {
-    return null;
-  }
-  return typeof count === "number" && Number.isFinite(count) && count > 1
-    ? `${formatCompactNumber(count)} authors`
-    : null;
-}
-
 function UnusualTopics({
   items,
   window,
@@ -590,59 +516,50 @@ function UnusualTopics({
   );
 }
 
-function LinksIndex({
-  domains,
+function UnusualLinks({
+  items,
   window,
   lang,
   excludeBridged,
-  headingId = "links-circulating",
 }: {
-  domains: DomainEntry[];
+  items: DomainMomentum[];
   window: StatsWindow;
   lang?: string;
   excludeBridged?: boolean;
-  headingId?: string;
 }) {
-  const rows = domains
-    .slice(0, INDEX_ROW_LIMIT)
-    .map((entry, index): IndexRow | null => {
-      const domain = normalizeDomainLabel(String(entry.domain ?? ""));
-      if (!domain) return null;
-      if (
-        belowVolumeFloor(
-          listedVolume([entry.link_count, entry.count, entry.event_count, entry.note_count])
-        )
-      )
-        return null;
-      const reasons = mapDomainWhyNow(entry);
-      return {
-        key: `${domain}-${index}`,
-        href: `/domains/${encodeURIComponent(domain)}`,
-        label: domain,
-        reasons,
-        ranking: entry.ranking,
-        extra: [authorsQualifier(entry.unique_authors, reasons, entry.ranking)],
-        figureNoun: "authors",
-      };
+  const rows = items
+    .map((item) => {
+      const domain = String(item.domain ?? "").trim();
+      return domain ? { domain } : null;
     })
-    .filter((row): row is IndexRow => row !== null);
+    .filter((row): row is { domain: string } => row !== null)
+    .slice(0, INDEX_ROW_LIMIT);
+  if (rows.length === 0) return null;
   return (
-    <section aria-labelledby={headingId}>
+    <section aria-labelledby="links-circulating">
       <SectionHeader
         kicker="Links"
-        title="Most shared links"
-        headingId={headingId}
+        title="Unusual today"
+        headingId="links-circulating"
         action={{
           href: buildDiscoverHref("/trending/domains", { window, lang, excludeBridged }),
-          label: "Link index",
+          label: "Most shared",
         }}
         ranked="/methodology#links"
       />
-      {rows.length > 0 ? (
-        <RankedIndex rows={rows} />
-      ) : (
-        <EmptyRow>{scopedEmpty(lang, "No links circulating in this window.")}</EmptyRow>
-      )}
+      <ol className="border-edge/70 mt-6 divide-y divide-[var(--edge)] border-y">
+        {rows.map((row) => (
+          <li key={row.domain} className="py-3">
+            <Link
+              href={`/domains/${encodeURIComponent(row.domain)}`}
+              className="text-ink font-medium hover:underline"
+            >
+              {row.domain}
+            </Link>
+            <p className="text-ink-muted mt-1 text-sm">Moving faster than its recent pace.</p>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
@@ -815,7 +732,6 @@ export async function EditorialOverview({
   mediaLeaders,
   profiles,
   risingProfiles,
-  domains,
   authorsByPubkey,
   pulseStats,
   sectionFailures,
@@ -823,13 +739,15 @@ export async function EditorialOverview({
   lang,
   excludeBridged,
   emergingHashtags = [],
+  emergingDomains = [],
+  archiveDay = null,
+  coverageNotes = [],
   briefing = null,
 }: {
   notes: EventRecord[];
   mediaLeaders: MediaLeaders;
   profiles: Profile[];
   risingProfiles: Profile[];
-  domains: DomainEntry[];
   authorsByPubkey: Record<string, Profile>;
   pulseStats: PulseStat[];
   sectionFailures: {
@@ -843,11 +761,13 @@ export async function EditorialOverview({
   lang?: string;
   excludeBridged?: boolean;
   emergingHashtags?: HashtagMomentum[];
+  emergingDomains?: DomainMomentum[];
+  archiveDay?: string | null;
+  coverageNotes?: readonly CoverageNote[];
   briefing?: Briefing | null;
 }) {
   const lead = notes[0];
   const followups = selectSupportingNotes(notes);
-  const visibleDomains = sectionFailures.domains ? [] : domains;
   const mediaEvents = MEDIA_RANKINGS.flatMap((ranking) => {
     const event = mediaLeaders[ranking.format];
     return event ? [event] : [];
@@ -965,16 +885,22 @@ export async function EditorialOverview({
           lang={lang}
           excludeBridged={excludeBridged}
         />
-        <LinksIndex
-          domains={visibleDomains}
+        <UnusualLinks
+          items={emergingDomains}
           window={window}
           lang={lang}
           excludeBridged={excludeBridged}
-          headingId="links-circulating"
         />
       </div>
 
-      <NetworkPulseStrip title="Network pulse" stats={pulseStats} />
+      {archiveDay ? (
+        <p className="text-sm">
+          <Link href={`/day/${archiveDay}`} className="nm-action-link">
+            {`Overview for ${archiveDay}`}
+          </Link>
+        </p>
+      ) : null}
+      <NetworkPulseStrip title="Network pulse" stats={pulseStats} coverageNotes={coverageNotes} />
     </div>
   );
 }

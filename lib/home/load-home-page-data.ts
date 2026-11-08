@@ -1,7 +1,10 @@
 import {
+  getDiscoveryArchiveDays,
   getDiscoveryHome,
+  getEmergingDomains,
   getEmergingHashtags,
   getNetworkStats,
+  getRelayCoverageChanges,
   getRelayStats,
   getRisingProfiles,
   getStatsSeries,
@@ -35,17 +38,21 @@ import {
 } from "@/lib/search-params/window";
 import { loadHomeMediaLeaders, type MediaLeaders } from "@/lib/discover/media-rankings";
 import { mapProfileWhyNow } from "@/components/explorer/why-now";
+import { latestArchiveDay } from "@/lib/discover/archive";
+import { readEntityBaseline } from "@/lib/discover/baseline";
 import { buildOverviewBriefing, type Briefing } from "@/lib/discover/briefing";
 import { languageScopedStatLabel } from "@/lib/home/pulse-labels";
 import { traceHomeFanOut } from "@/lib/telemetry/trace";
+import type { CoverageNote } from "@/lib/stats/coverage-notes";
 import type {
   DomainEntry,
+  EntityBaseline,
   EventRecord,
   HashtagEntry,
   Profile,
   TopLanguages,
 } from "@/lib/types/api";
-import type { HashtagMomentum } from "@/lib/types/surfaces";
+import type { DomainMomentum, HashtagMomentum } from "@/lib/types/surfaces";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return isRecord(value) ? value : null;
@@ -59,7 +66,19 @@ function hasRichIdentity(profile: Profile | undefined): boolean {
   return displayName.length > 0 || name.length > 0 || picture.length > 0;
 }
 
-type PulseStat = { label: string; value: string | number | boolean; series?: SeriesPoint[] };
+type PulseStat = {
+  label: string;
+  value: string | number | boolean;
+  series?: SeriesPoint[];
+  baseline?: EntityBaseline | null;
+};
+
+function baselineFromSeries(
+  result: PromiseSettledResult<Awaited<ReturnType<typeof getStatsSeries>> | undefined>
+): EntityBaseline | null {
+  if (result.status !== "fulfilled" || !result.value) return null;
+  return readEntityBaseline(result.value.baseline);
+}
 
 /**
  * Pair Pulse tiles with their history series and keep the strip honest: once
@@ -70,15 +89,21 @@ type PulseStat = { label: string; value: string | number | boolean; series?: Ser
  */
 export function attachPulseSeries(
   stats: PulseStat[],
-  series: { noteVolume: SeriesPoint[]; activeAuthors: SeriesPoint[]; relayEvents: SeriesPoint[] }
+  series: { noteVolume: SeriesPoint[]; activeAuthors: SeriesPoint[]; relayEvents: SeriesPoint[] },
+  baselines?: { noteVolume?: EntityBaseline | null; activeAuthors?: EntityBaseline | null }
 ): PulseStat[] {
+  const withBaseline = (
+    stat: PulseStat,
+    points: SeriesPoint[],
+    baseline?: EntityBaseline | null
+  ) => (baseline ? { ...stat, series: points, baseline } : { ...stat, series: points });
   const withSeries = stats.map((stat) => {
     const label = stat.label.toLowerCase();
     if (/(^|_)note_volume(_|$)/.test(label) || /(^|_)notes?(_|$)/.test(label)) {
-      return { ...stat, series: series.noteVolume };
+      return withBaseline(stat, series.noteVolume, baselines?.noteVolume);
     }
     if (/(^|_)active_authors(_|$)/.test(label)) {
-      return { ...stat, series: series.activeAuthors };
+      return withBaseline(stat, series.activeAuthors, baselines?.activeAuthors);
     }
     if (/(^|_)event_volume(_|$)/.test(label) || /(^|_)relay_events(_|$)/.test(label)) {
       return { ...stat, series: series.relayEvents };
@@ -113,6 +138,9 @@ export type HomePageData = {
   homeHashtags: HashtagEntry[];
   homeDomains: DomainEntry[];
   emergingHashtags: HashtagMomentum[];
+  emergingDomains: DomainMomentum[];
+  archiveDay: string | null;
+  coverageNotes: CoverageNote[];
   briefing: Briefing | null;
   noteAuthorsByPubkey: Record<string, Profile>;
   pulseStats: PulseStat[];
@@ -168,6 +196,13 @@ export async function loadHomePageData(
   const emergingPromise = getEmergingHashtags()
     .then((response) => response.items ?? [])
     .catch(() => [] as HashtagMomentum[]);
+  const emergingDomainsPromise = getEmergingDomains()
+    .then((response) => response.items ?? [])
+    .catch(() => [] as DomainMomentum[]);
+  const archiveDayPromise = getDiscoveryArchiveDays(1)
+    .then((days) => latestArchiveDay(days))
+    .catch(() => null);
+  const coverageNotesPromise = getRelayCoverageChanges().catch(() => [] as CoverageNote[]);
 
   upstreamCallCount += 3;
 
@@ -208,6 +243,9 @@ export async function loadHomePageData(
         homeHashtags: [],
         homeDomains: [],
         emergingHashtags: [],
+        emergingDomains: [],
+        archiveDay: null,
+        coverageNotes: [],
         briefing: null,
         noteAuthorsByPubkey: {},
         pulseStats: [],
@@ -418,11 +456,20 @@ export async function loadHomePageData(
       : [];
   // Attach each history series to its own metric only; a tile must never
   // borrow another metric's trend.
-  const pulseStats = attachPulseSeries(basePulseStats, {
-    noteVolume: lang ? [] : noteVolumeSeries,
-    activeAuthors: lang ? [] : activeAuthorsSeries,
-    relayEvents: relayEventsSeries,
-  }).map((stat) => (lang ? { ...stat, label: languageScopedStatLabel(stat.label) } : stat));
+  const pulseStats = attachPulseSeries(
+    basePulseStats,
+    {
+      noteVolume: lang ? [] : noteVolumeSeries,
+      activeAuthors: lang ? [] : activeAuthorsSeries,
+      relayEvents: relayEventsSeries,
+    },
+    lang
+      ? undefined
+      : {
+          noteVolume: baselineFromSeries(noteVolumeSeriesResult),
+          activeAuthors: baselineFromSeries(activeAuthorsSeriesResult),
+        }
+  ).map((stat) => (lang ? { ...stat, label: languageScopedStatLabel(stat.label) } : stat));
   const relayWindow = relayStatsWindow(window);
   let relayLeaders = extractRelayRows(networkSummary ?? payload, 1, relayWindow);
   if (relayLeaders.length === 0) {
@@ -443,7 +490,12 @@ export async function loadHomePageData(
       ((networkStats as Record<string, unknown>).computed_at as string)) ||
     null;
 
-  const emergingHashtags = await emergingPromise;
+  const [emergingHashtags, emergingDomains, archiveDay, coverageNotes] = await Promise.all([
+    emergingPromise,
+    emergingDomainsPromise,
+    archiveDayPromise,
+    coverageNotesPromise,
+  ]);
   const risingSentence =
     hydratedHomeRisingProfiles
       .map((profile) => mapProfileWhyNow(profile)[0]?.text)
@@ -472,6 +524,9 @@ export async function loadHomePageData(
     homeHashtags,
     homeDomains,
     emergingHashtags,
+    emergingDomains,
+    archiveDay,
+    coverageNotes,
     briefing: buildOverviewBriefing({
       hashtags: homeHashtags,
       domains: homeDomains,

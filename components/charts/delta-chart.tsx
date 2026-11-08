@@ -1,5 +1,5 @@
 import type { SeriesPoint } from "@/components/charts/sparkline";
-import { coverageChangeLabel } from "@/lib/stats/coverage-notes";
+import { coverageChangeLabel, type CoverageNote } from "@/lib/stats/coverage-notes";
 import { rollingTotalDeltas } from "@/lib/stats/series-delta";
 import { seriesJumped } from "@/lib/stats/series-jumps";
 
@@ -39,11 +39,13 @@ export function DeltaChart({
   label,
   width = 480,
   height = 140,
+  coverageNotes = [],
 }: {
   points: SeriesPoint[];
   label: string;
   width?: number;
   height?: number;
+  coverageNotes?: readonly CoverageNote[];
 }) {
   const deltas = rollingTotalDeltas(points);
   if (deltas.length === 0) {
@@ -99,7 +101,7 @@ export function DeltaChart({
             >
               <title>
                 {jumped
-                  ? coverageChangeLabel(point.t)
+                  ? coverageChangeLabel(point.t, coverageNotes)
                   : `${formatSeriesTick(point.t)} — ${formatSigned(point.v)}`}
               </title>
             </rect>
@@ -110,7 +112,9 @@ export function DeltaChart({
         <span>Largest rise {formatSigned(peak.v)}</span>
         <span>Latest {formatSigned(latest.v)}</span>
         <span>Largest fall {formatSigned(trough.v)}</span>
-        {jump ? <span className="basis-full">{coverageChangeLabel(jump.t)}</span> : null}
+        {jump ? (
+          <span className="basis-full">{coverageChangeLabel(jump.t, coverageNotes)}</span>
+        ) : null}
       </figcaption>
     </figure>
   );

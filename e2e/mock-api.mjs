@@ -429,7 +429,10 @@ function notePayload(id = FOCAL_ID) {
       reaction_count: 5,
       repost_count: id === FOCAL_ID ? 22 : 0,
     },
-    seen_on: [{ relay: "wss://relay.example.com" }],
+    seen_on: [
+      { relay: "wss://relay.example.com", seen_at: "2026-07-30T11:00:00.000Z" },
+      { relay: "wss://relay.other.example.com", seen_at: "2026-07-30T13:00:00.000Z" },
+    ],
     consistency: "eventual",
   };
 }
@@ -684,6 +687,52 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
+  if (path === "/api/v1/discovery/domains/emerging") {
+    return json(res, 200, {
+      items: [{ domain: "example.com", z_score_7d: 2, status: "emerging" }],
+    });
+  }
+
+  if (path === "/api/v1/discovery/archive") {
+    return json(res, 200, { days: ["2026-07-29"] });
+  }
+
+  if (path === "/api/v1/discovery/archive/2026-07-29") {
+    return json(res, 200, {
+      day: "2026-07-29",
+      language: "",
+      window: "24h",
+      hashtags: [
+        {
+          hashtag: "bitcoin",
+          event_count: 10,
+          unique_authors: 40,
+          baseline: {
+            metric: "unique_authors",
+            window: "24h",
+            value: 40,
+            typical: 10,
+            typical_basis: "entity_30d_median",
+            ratio: 4,
+          },
+        },
+      ],
+      domains: [{ domain: "example.com", link_count: 4, note_count: 3, unique_authors: 8 }],
+      network: {
+        note_volume: 100,
+        active_authors: 20,
+        note_volume_baseline: {
+          metric: "note_volume",
+          window: "24h",
+          value: 100,
+          typical: 80,
+          typical_basis: "same_weekday_median",
+          ratio: 1.25,
+        },
+      },
+    });
+  }
+
   if (path.startsWith("/api/v1/discovery/")) {
     return json(res, 200, {
       notes: trendingNotes,
@@ -731,6 +780,19 @@ const server = http.createServer(async (req, res) => {
       liveEvent,
     ].filter((event) => (ids.length === 0 ? true : ids.includes(event.id)));
     return json(res, 200, { events, missing: [] });
+  }
+
+  if (path === "/api/v1/relays/coverage-changes") {
+    return json(res, 200, {
+      items: [
+        {
+          occurred_at: "2026-07-28T12:00:00.000Z",
+          host: "relay.example.com",
+          change: "added",
+          label: "Added relay.example.com",
+        },
+      ],
+    });
   }
 
   if (path.startsWith("/api/v1/relays")) {
@@ -995,7 +1057,12 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { event_id: FOCAL_ID, related: [relatedRepostOfFocal, relatedQuote] });
     }
     if (path.endsWith("/seen-on")) {
-      return json(res, 200, { seen_on: [{ relay: "wss://relay.example.com" }] });
+      return json(res, 200, {
+        seen_on: [
+          { relay: "wss://relay.example.com", seen_at: "2026-07-30T11:00:00.000Z" },
+          { relay: "wss://relay.other.example.com", seen_at: "2026-07-30T13:00:00.000Z" },
+        ],
+      });
     }
     if (path.endsWith("/counts")) {
       return json(res, 200, {

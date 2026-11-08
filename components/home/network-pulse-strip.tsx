@@ -1,8 +1,10 @@
 import { Sparkline, type SeriesPoint } from "@/components/charts/sparkline";
 import { CausalValue } from "@/components/discover/causal-value";
 import { formatCompactNumber, formatMetricLabel, formatValue } from "@/components/explorer/utils";
+import { baselineComparison, readEntityBaseline } from "@/lib/discover/baseline";
 import { vsBaseline } from "@/lib/format/relative";
-import { coverageChangeLabel } from "@/lib/stats/coverage-notes";
+import { coverageChangeLabel, type CoverageNote } from "@/lib/stats/coverage-notes";
+import type { EntityBaseline } from "@/lib/types/api";
 import { seriesJumpIndexes } from "@/lib/stats/series-jumps";
 
 function seriesMedian(points: SeriesPoint[]): number | null {
@@ -19,6 +21,7 @@ type PulseStat = {
   label: string;
   value: string | number | boolean | null | undefined;
   series?: SeriesPoint[];
+  baseline?: EntityBaseline | null;
 };
 
 function isEmptyNumeric(value: PulseStat["value"]): boolean {
@@ -38,7 +41,15 @@ function hasRealValue(stat: PulseStat): boolean {
  * trend are filtered upstream (see `attachPulseSeries`), so a tile either
  * shows a sparkline or the whole strip has none.
  */
-export function NetworkPulseStrip({ title, stats }: { title: string; stats: PulseStat[] }) {
+export function NetworkPulseStrip({
+  title,
+  stats,
+  coverageNotes = [],
+}: {
+  title: string;
+  stats: PulseStat[];
+  coverageNotes?: readonly CoverageNote[];
+}) {
   if (stats.length === 0) return null;
 
   const hasAnyReal = stats.some(hasRealValue);
@@ -97,11 +108,13 @@ export function NetworkPulseStrip({ title, stats }: { title: string; stats: Puls
           const series = stat.series ?? [];
           const latest = series[series.length - 1];
           const median = seriesMedian(series);
-          const comparison = latest && median !== null ? vsBaseline(latest.v, median) : null;
+          const comparison =
+            baselineComparison(readEntityBaseline(stat.baseline)) ??
+            (latest && median !== null ? vsBaseline(latest.v, median) : null);
           const jumpIndex = seriesJumpIndexes(series).at(-1);
           const jump =
             jumpIndex !== undefined && series[jumpIndex]
-              ? coverageChangeLabel(series[jumpIndex].t)
+              ? coverageChangeLabel(series[jumpIndex].t, coverageNotes)
               : null;
 
           return (
@@ -113,7 +126,12 @@ export function NetworkPulseStrip({ title, stats }: { title: string; stats: Puls
               {comparison ? <p className="text-ink-muted mt-1 text-xs">{comparison}</p> : null}
               {hasSeries ? (
                 <div className="text-link mt-2.5">
-                  <Sparkline points={series} width={220} height={36} />
+                  <Sparkline
+                    points={series}
+                    width={220}
+                    height={36}
+                    coverageNotes={coverageNotes}
+                  />
                 </div>
               ) : null}
               {jump ? <p className="text-ink-faint mt-1 text-xs">{jump}</p> : null}

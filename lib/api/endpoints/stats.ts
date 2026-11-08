@@ -1,6 +1,7 @@
 import type {
   AccountStatsResponse,
   ClientStatsResponse,
+  EntityBaseline,
   IdentityStatsResponse,
   StatsResponse,
   ZapStatsResponse,
@@ -39,6 +40,7 @@ export type StatsSeriesResponse = {
   window?: StatsSeriesWindow | string;
   computed_at?: string;
   points?: Array<{ t?: number; v?: number }>;
+  baseline?: EntityBaseline;
   consistency?: string;
 };
 

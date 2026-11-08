@@ -1,29 +1,41 @@
 import { formatCompactNumber } from "@/components/explorer/utils";
+import { authorBaselineComparison } from "@/lib/discover/baseline";
 
 export type Briefing = {
   headline: string;
   items: string[];
 };
 
-type TopicFact = { hashtag?: string; unique_authors?: number };
-type DomainFact = { domain?: string; unique_authors?: number };
+type TopicFact = { hashtag?: string; unique_authors?: number; baseline?: unknown };
+type DomainFact = { domain?: string; unique_authors?: number; baseline?: unknown };
 
 function people(count: number): string {
   return count === 1 ? "person" : "people";
 }
 
-function topicSentence(tag: string, authors: number): string {
-  const name = tag.replace(/^#/, "").trim();
-  return `#${name} is in notes from ${formatCompactNumber(authors)} ${people(authors)} in this window.`;
+function withComparison(sentence: string, comparison: string | null): string {
+  if (!comparison) return `${sentence}.`;
+  return `${sentence}, ${comparison}.`;
 }
 
-function domainSentence(domain: string, authors: number): string {
-  return `${domain} was shared by ${formatCompactNumber(authors)} ${people(authors)} in this window.`;
+function topicSentence(tag: string, authors: number, comparison: string | null): string {
+  const name = tag.replace(/^#/, "").trim();
+  return withComparison(
+    `#${name} is in notes from ${formatCompactNumber(authors)} ${people(authors)} in this window`,
+    comparison
+  );
+}
+
+function domainSentence(domain: string, authors: number, comparison: string | null): string {
+  return withComparison(
+    `${domain} was shared by ${formatCompactNumber(authors)} ${people(authors)} in this window`,
+    comparison
+  );
 }
 
 /**
- * A headline from counts already on the homepage. Ratios stay out until the
- * API returns a baseline for the same row.
+ * A headline from counts already on the homepage. A comparison is added only
+ * when that row carries a baseline for the same author count.
  */
 export function buildOverviewBriefing(input: {
   hashtags?: TopicFact[];
@@ -35,7 +47,7 @@ export function buildOverviewBriefing(input: {
     const tag = typeof entry.hashtag === "string" ? entry.hashtag.trim() : "";
     const authors = entry.unique_authors;
     if (!tag || typeof authors !== "number" || !Number.isFinite(authors) || authors < 2) continue;
-    sentences.push(topicSentence(tag, authors));
+    sentences.push(topicSentence(tag, authors, authorBaselineComparison(entry.baseline, authors)));
     if (sentences.length === 3) break;
   }
   for (const entry of input.domains ?? []) {
@@ -44,7 +56,9 @@ export function buildOverviewBriefing(input: {
     if (!domain || typeof authors !== "number" || !Number.isFinite(authors) || authors < 2) {
       continue;
     }
-    sentences.push(domainSentence(domain, authors));
+    sentences.push(
+      domainSentence(domain, authors, authorBaselineComparison(entry.baseline, authors))
+    );
     break;
   }
   const rising = input.risingSentence?.trim();

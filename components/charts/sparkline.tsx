@@ -1,4 +1,4 @@
-import { coverageChangeLabel } from "@/lib/stats/coverage-notes";
+import { coverageChangeLabel, type CoverageNote } from "@/lib/stats/coverage-notes";
 import { seriesJumpIndexes } from "@/lib/stats/series-jumps";
 
 export type SeriesPoint = { t: number; v: number };
@@ -11,6 +11,7 @@ export function Sparkline({
   className = "",
   stroke = "currentColor",
   fill = "currentColor",
+  coverageNotes = [],
 }: {
   points: SeriesPoint[];
   width?: number;
@@ -18,6 +19,7 @@ export function Sparkline({
   className?: string;
   stroke?: string;
   fill?: string;
+  coverageNotes?: readonly CoverageNote[];
 }) {
   if (points.length < 2) {
     return (
@@ -57,7 +59,9 @@ export function Sparkline({
   const area = `${line} L${width},${height} L0,${height} Z`;
   const jumps = seriesJumpIndexes(points);
   const jumpLabel =
-    jumps.length > 0 ? coverageChangeLabel(points[jumps[jumps.length - 1]!]!.t) : null;
+    jumps.length > 0
+      ? coverageChangeLabel(points[jumps[jumps.length - 1]!]!.t, coverageNotes)
+      : null;
 
   return (
     <svg
@@ -76,7 +80,7 @@ export function Sparkline({
         if (!point || !sample) return null;
         return (
           <circle key={sample.t} cx={point.x} cy={point.y} r={2.5} fill={stroke}>
-            <title>{coverageChangeLabel(sample.t)}</title>
+            <title>{coverageChangeLabel(sample.t, coverageNotes)}</title>
           </circle>
         );
       })}

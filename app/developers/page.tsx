@@ -19,6 +19,18 @@ const EXAMPLES = [
     path: "/api/v1/hashtags/emerging",
   },
   {
+    label: "Links moving faster than their recent pace",
+    path: "/api/v1/discovery/domains/emerging",
+  },
+  {
+    label: "A saved overview for one UTC day",
+    path: "/api/v1/discovery/archive/{date}",
+  },
+  {
+    label: "Relays added to or dropped from the index",
+    path: "/api/v1/relays/coverage-changes",
+  },
+  {
     label: "Author posting hours",
     path: "/api/v1/authors/{pubkey}/analytics/posting-patterns?window=30d",
   },
