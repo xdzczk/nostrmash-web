@@ -70,7 +70,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               },
               {
                 href: "/relays",
-                label: "Network intelligence",
+                label: "Relays",
                 description: "Relay concentration, reach, and health.",
               },
             ].map((entry) => (

@@ -74,7 +74,7 @@ export default async function TrendingDomainsPage({
       discoverView="links"
       eyebrow=""
       title="Links"
-      subtitle="The domains spreading most widely through active notes."
+      subtitle="Most shared links, ranked by how widely they spread."
       path={path}
       searchParams={currentSearchParams}
       window={window}

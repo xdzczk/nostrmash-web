@@ -20,7 +20,7 @@ test.describe("global product shell", () => {
 
     await page
       .getByRole("navigation", { name: "Primary" })
-      .getByRole("link", { name: "Network" })
+      .getByRole("link", { name: "Relays" })
       .click();
     await expect(page).toHaveURL(/\/relays/);
     await expect(globalSearch).toHaveValue("");
@@ -32,7 +32,7 @@ test.describe("global product shell", () => {
     await globalSearch.fill("bitcoin");
     await page
       .getByRole("navigation", { name: "Primary" })
-      .getByRole("link", { name: "Network" })
+      .getByRole("link", { name: "Relays" })
       .click();
     await expect(page).toHaveURL(/\/relays/);
     await expect(globalSearch).toHaveValue("");
@@ -55,7 +55,8 @@ test.describe("global product shell", () => {
       "aria-current",
       "page"
     );
-    await expect(nav.getByRole("link", { name: "Network" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Relays" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Stats" })).toHaveAttribute("href", "/stats");
     await expect(nav.getByRole("link", { name: "Search" })).toHaveCount(0);
   });
 
@@ -147,6 +148,56 @@ test.describe("global product shell", () => {
     });
 
     expect(positions.targetTop).toBeGreaterThanOrEqual(positions.headerBottom);
+  });
+
+  test("home lead, an index row, and a people row stay readable", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("/");
+
+    const lead = page.locator("section", { has: page.locator("#leading-signal") });
+    const leadText = lead.locator("article").first().locator(".text-ink-strong").first();
+    await expect(leadText).toBeVisible();
+    await expect(lead.locator(".nm-note-body")).toHaveCount(0);
+    await expect(page.getByText(/breadth of authors/i)).toHaveCount(0);
+    const fontSize = await leadText.evaluate((element) =>
+      parseFloat(getComputedStyle(element).fontSize)
+    );
+    expect(fontSize).toBeGreaterThanOrEqual(28);
+
+    const topics = page.locator("section", { has: page.locator("#links-circulating") });
+    await expect(topics.getByRole("link").first()).toBeVisible();
+    await expect(topics.getByText(/Why now ·/)).toHaveCount(0);
+
+    const people = page.locator("section", { has: page.locator("#profiles-in-motion") });
+    await expect(people.getByRole("link").first()).toBeVisible();
+  });
+
+  test("the first note author is on screen at phone width", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    const author = page
+      .locator("section", { has: page.locator("#leading-signal") })
+      .locator("article")
+      .first()
+      .locator("a")
+      .first();
+    await expect(author).toBeVisible();
+    const box = await author.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.y + box!.height).toBeLessThanOrEqual(844);
+  });
+
+  test("note header stays in view at phone and desktop widths", async ({ page }) => {
+    for (const width of [390, 1280]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto(`/notes/${"a".repeat(64)}`);
+      const heading = page.getByRole("heading", { level: 1 });
+      await expect(heading).toBeVisible();
+      const box = await heading.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.y).toBeGreaterThanOrEqual(0);
+      expect(box!.y).toBeLessThan(844);
+    }
   });
 });
 

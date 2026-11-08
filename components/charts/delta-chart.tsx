@@ -1,5 +1,7 @@
 import type { SeriesPoint } from "@/components/charts/sparkline";
+import { coverageChangeLabel } from "@/lib/stats/coverage-notes";
 import { rollingTotalDeltas } from "@/lib/stats/series-delta";
+import { seriesJumped } from "@/lib/stats/series-jumps";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -8,6 +10,17 @@ function formatSeriesTick(timestamp: number): string {
   const date = new Date(ms);
   const hour = String(date.getUTCHours()).padStart(2, "0");
   return `${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}, ${hour}:00 UTC`;
+}
+
+function deltaJumped(points: SeriesPoint[], index: number): boolean {
+  const previous = points[index];
+  const current = points[index + 1];
+  return Boolean(previous && current && seriesJumped(previous.v, current.v));
+}
+
+function barFill(jumped: boolean, rising: boolean): string {
+  if (jumped) return "fill-ink";
+  return rising ? "fill-accent/80" : "fill-danger/80";
 }
 
 function formatSigned(value: number): string {
@@ -49,6 +62,7 @@ export function DeltaChart({
   const barWidth = Math.max(1, usableWidth / deltas.length - barGap);
   const half = (height - pad * 2) / 2;
   const center = height / 2;
+  const jump = deltas.find((_, index) => deltaJumped(points, index));
 
   return (
     <figure>
@@ -72,6 +86,7 @@ export function DeltaChart({
           const rising = point.v >= 0;
           const y = rising ? center - extent : center;
           const x = pad + index * (barWidth + barGap);
+          const jumped = deltaJumped(points, index);
           return (
             <rect
               key={`${point.t}-${index}`}
@@ -80,9 +95,13 @@ export function DeltaChart({
               width={barWidth}
               height={Math.max(point.v === 0 ? 1 : extent, point.v === 0 ? 1 : 0)}
               rx={1}
-              className={rising ? "fill-accent/80" : "fill-danger/80"}
+              className={barFill(jumped, rising)}
             >
-              <title>{`${formatSeriesTick(point.t)} — ${formatSigned(point.v)}`}</title>
+              <title>
+                {jumped
+                  ? coverageChangeLabel(point.t)
+                  : `${formatSeriesTick(point.t)} — ${formatSigned(point.v)}`}
+              </title>
             </rect>
           );
         })}
@@ -91,6 +110,7 @@ export function DeltaChart({
         <span>Largest rise {formatSigned(peak.v)}</span>
         <span>Latest {formatSigned(latest.v)}</span>
         <span>Largest fall {formatSigned(trough.v)}</span>
+        {jump ? <span className="basis-full">{coverageChangeLabel(jump.t)}</span> : null}
       </figcaption>
     </figure>
   );

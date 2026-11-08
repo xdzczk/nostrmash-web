@@ -140,13 +140,15 @@ export function MentionedNoteCards({
   return <div className={className}>{cards}</div>;
 }
 
-export type NoteContentSize = "list" | "reply" | "detail" | "profile";
+export type NoteContentSize = "list" | "reply" | "detail" | "profile" | "lead";
 
 const SIZE_CLASS: Record<NoteContentSize, string> = {
-  list: "text-sm leading-5 sm:leading-6",
-  reply: "nm-reply-body",
-  detail: "nm-note-body",
-  profile: "max-w-[65ch] text-base leading-7",
+  list: "text-ink text-sm leading-5 sm:leading-6",
+  reply: "text-ink nm-reply-body",
+  detail: "text-ink nm-note-body",
+  profile: "text-ink max-w-[65ch] text-base leading-7",
+  // Inherit the display size and ink from the lead wrapper.
+  lead: "",
 };
 
 function omitUnresolvedShortcodes(value: string): string {
@@ -208,7 +210,7 @@ export function NoteContent({
 }) {
   const hiddenLinks = new Set(hideLinkPreviewUrls);
   return (
-    <Tag className={`text-ink break-words ${SIZE_CLASS[size]} ${className}`}>
+    <Tag className={`break-words ${SIZE_CLASS[size]} ${className}`}>
       {tokens.map((token, index) => {
         const key = `${token.type}-${index}`;
         switch (token.type) {

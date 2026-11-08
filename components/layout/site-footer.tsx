@@ -2,8 +2,11 @@ import Link from "@/components/app-link";
 
 const footerLinks = [
   { href: "/", label: "Discover" },
-  { href: "/relays", label: "Network" },
+  { href: "/relays", label: "Relays" },
+  { href: "/stats", label: "Stats" },
   { href: "/methodology", label: "Methodology" },
+  { href: "/about", label: "About" },
+  { href: "/developers", label: "Developers" },
   { href: "/feeds/trending-notes.xml", label: "Trending RSS" },
 ];
 

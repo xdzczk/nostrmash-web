@@ -10,28 +10,96 @@ export type DiscoveryReasonPresentation = {
   code?: string;
 };
 
-const REASON_LABELS: Record<string, string> = {
-  reply_velocity: "rising replies",
-  repost_lift: "repost lift",
-  recent_engagement: "recent engagement",
-  zap_support: "zap support",
-  follower_growth: "follower growth",
-  publishing_momentum: "publishing momentum",
-  engagement_received: "engagement received",
-  engagement_quality: "engagement per post",
-  relative_engagement_growth: "engagement vs. audience size",
-  mention_volume: "topic lift",
-  author_breadth: "breadth of authors",
-  link_circulation: "link circulation",
-  combined_engagement: "combined engagement",
-  recency: "newer in this window",
-  conversation_velocity: "conversation velocity",
-  participant_breadth: "participant breadth",
-  saved_by: "saved by",
-  zap_volume: "sats received in this window",
-  audience_size: "audience size",
-  supporter_sats: "capped sats",
-};
+function countPhrase(value: number, singular: string, plural: string): string {
+  const rounded = Math.round(value);
+  return `${rounded.toLocaleString()} ${rounded === 1 ? singular : plural}`;
+}
+
+/**
+ * One sentence a reader can say back. `combined_engagement` is not a reason;
+ * callers fall through to the next code. Unknown codes stay humanized.
+ */
+function reasonSentence(reason: DiscoveryRankingReason): string | null {
+  const evidence = reason.evidence?.[0];
+  const value = evidence && Number.isFinite(evidence.value) ? evidence.value : undefined;
+  const ratio = value !== undefined ? formatEvidenceValue(value, evidence?.unit) : undefined;
+  switch (reason.code) {
+    case "combined_engagement":
+      return null;
+    case "reply_velocity":
+      return value !== undefined
+        ? `${countPhrase(value, "reply", "replies")} are still arriving`
+        : "Replies are still arriving";
+    case "repost_lift":
+      return value !== undefined
+        ? `Reposted ${countPhrase(value, "time", "times")}`
+        : "Reposts are lifting it";
+    case "recent_engagement":
+      return value !== undefined
+        ? `${countPhrase(value, "reaction", "reactions")} in this window`
+        : "Recent reactions and replies";
+    case "zap_support":
+      return value !== undefined
+        ? `${countPhrase(value, "person", "people")} zapped it`
+        : "People are zapping it";
+    case "follower_growth":
+      return value !== undefined ? `Gained ${countPhrase(value, "follower", "followers")}` : null;
+    case "publishing_momentum":
+      return value !== undefined
+        ? `Published ${countPhrase(value, "note", "notes")} in this window`
+        : "Publishing more than usual";
+    case "engagement_received":
+      return value !== undefined
+        ? `${countPhrase(value, "interaction", "interactions")} in total`
+        : "Engagement is coming in";
+    case "engagement_quality":
+      return ratio !== undefined
+        ? `Each note gets about ${ratio} reactions, replies, and zaps`
+        : null;
+    case "relative_engagement_growth":
+      return ratio !== undefined
+        ? `About ${ratio} interactions for each follower`
+        : "More engagement than the audience size suggests";
+    case "mention_volume":
+      return value !== undefined
+        ? `Mentioned ${countPhrase(value, "time", "times")}`
+        : "Mentions are picking up";
+    case "author_breadth":
+      return value !== undefined
+        ? `Used by ${countPhrase(value, "person", "people")}`
+        : "Used by many different people";
+    case "link_circulation":
+      return value !== undefined
+        ? `Shared ${countPhrase(value, "time", "times")}`
+        : "The link is circulating";
+    case "recency":
+      return "Posted recently and already in this ranking";
+    case "conversation_velocity":
+      return value !== undefined
+        ? `The thread gained ${countPhrase(value, "reply", "replies")}`
+        : "The thread is growing quickly";
+    case "participant_breadth":
+      return value !== undefined
+        ? `${countPhrase(value, "person", "people")} joined the thread`
+        : "Many people joined the thread";
+    case "saved_by":
+      return value !== undefined
+        ? `Saved by ${countPhrase(value, "person", "people")}`
+        : "People have it saved";
+    case "zap_volume":
+      return value !== undefined
+        ? `${countPhrase(value, "sat", "sats")} in this window`
+        : "Sats received in this window";
+    case "audience_size":
+      return value !== undefined ? countPhrase(value, "follower", "followers") : "A large audience";
+    case "supporter_sats":
+      return value !== undefined
+        ? `${countPhrase(value, "sat", "sats")}, with each sender capped`
+        : "Supported by several people";
+    default:
+      return null;
+  }
+}
 
 /**
  * Reasons whose evidence is a count of discrete things (posts, followers,
@@ -145,9 +213,12 @@ export function listedVolume(values: unknown[]): number | undefined {
 
 function presentReason(reason: DiscoveryRankingReason): DiscoveryReasonPresentation | null {
   if (!reason.code || belowFloor(reason)) return null;
+  const sentence = reasonSentence(reason);
+  if (sentence) return { text: sentence, code: reason.code };
+  if (reason.code === "combined_engagement") return null;
   // Unknown codes are still the server's actual ranking rationale; a humanized
   // code beats falling back to inferred stats that may contradict the rank.
-  const text = REASON_LABELS[reason.code] ?? humanizeCode(reason.code);
+  const text = humanizeCode(reason.code);
   if (!text) return null;
   return {
     text,

@@ -1,6 +1,6 @@
 import { formatCompactNumber } from "@/components/explorer/utils";
 import { formatBasisPointsAsPercent, formatLatencyMs } from "@/lib/stats/ecosystem-display";
-import { formatUtcDay } from "@/lib/stats/surface-display";
+import { formatUtcDay, kindFamilyLabel } from "@/lib/stats/surface-display";
 import { formatStatsWindowSpan, type StatsWindow } from "@/lib/search-params/window";
 import type { AccountStatsResponse, ZapStatsResponse } from "@/lib/types/api";
 import type {
@@ -17,10 +17,22 @@ function percent(part: number, total: number): string {
 export function activityHeadline(data: KindStatsResponse | null, window: StatsWindow): string {
   const families = data?.families ?? [];
   const total = families.reduce((sum, family) => sum + (family.event_count ?? 0), 0);
-  const kind1 = families.flatMap((family) => family.kinds ?? []).find((kind) => kind.kind === 1);
-  const notes = kind1?.event_count ?? 0;
-  if (total <= 0) return "Kind totals for this window are still collecting.";
-  return `Kind 1 notes were ${percent(notes, total)}% of indexed events ${formatStatsWindowSpan(window)}.`;
+  const notesFamily = families.find((family) => family.kinds?.some((kind) => kind.kind === 1));
+  const notes =
+    notesFamily?.kinds?.find((kind) => kind.kind === 1)?.event_count ??
+    notesFamily?.event_count ??
+    0;
+  if (total <= 0) return "Event totals for this window are still collecting.";
+  const rest = families
+    .filter((family) => family !== notesFamily && (family.event_count ?? 0) > 0)
+    .sort((left, right) => (right.event_count ?? 0) - (left.event_count ?? 0))
+    .slice(0, 2)
+    .map((family) => kindFamilyLabel(family.family).toLowerCase());
+  const remainder =
+    rest.length > 0
+      ? `${rest.join(" and ")} were most of the rest`
+      : "The rest is other event kinds";
+  return `Short notes were ${percent(notes, total)}% of indexed events ${formatStatsWindowSpan(window)}. ${remainder}.`;
 }
 
 export function zapsHeadline(data: ZapStatsResponse | null, window: StatsWindow): string {
@@ -67,9 +79,11 @@ export function peopleHeadline(data: AccountStatsResponse | null): string {
   const created = newest && "count" in newest ? newest.count : undefined;
   if (typeof active !== "number") return "Account totals are still collecting.";
   const fresh =
-    typeof created === "number"
-      ? `; ${formatCompactNumber(created)} accounts were first seen on the latest day`
-      : "";
+    typeof created === "number" && active > 0 && created / active > 5
+      ? `. ${formatCompactNumber(created)} new keys appeared; most never post`
+      : typeof created === "number"
+        ? `; ${formatCompactNumber(created)} accounts were first seen on the latest day`
+        : "";
   return `${formatCompactNumber(active)} people posted in the last day${fresh}.`;
 }
 

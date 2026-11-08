@@ -27,7 +27,6 @@ describe("ProfileCard ranking order", () => {
 
     render(<ProfileCard profile={profile} rank={1} discoverySignals />);
 
-    expect(screen.getByText("audience size")).toBeInTheDocument();
     expect(screen.getByText("4 followers")).toBeInTheDocument();
     expect(screen.queryByText("Score")).not.toBeInTheDocument();
     expect(screen.queryByText("Follower Count")).not.toBeInTheDocument();
@@ -57,8 +56,7 @@ describe("ProfileCard ranking order", () => {
 
     render(<ProfileCard profile={profile} rank={1} discoverySignals />);
 
-    expect(screen.getByText("capped sats")).toBeInTheDocument();
-    expect(screen.getByText(`${capped} sats`)).toBeInTheDocument();
+    expect(screen.getByText(`${capped} sats, with each sender capped`)).toBeInTheDocument();
     expect(screen.getByText("Capped sats")).toBeInTheDocument();
     expect(screen.getByText("Supporters")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();

@@ -11,6 +11,7 @@ import {
   pickTopPrimitiveStats,
   rankRelayActivity,
   readStatNumber,
+  normalizeRelayHost,
   relayDisplayLabel,
   relayHealthPosture,
   selectRelayHealthForHost,
@@ -457,6 +458,14 @@ describe("readStatNumber", () => {
     expect(readStatNumber(payload, ["events_ingested"])).toBe(50);
     expect(readStatNumber(payload, ["note_volume_24h"])).toBe(100);
     expect(readStatNumber(payload, ["missing"])).toBeNull();
+  });
+});
+
+describe("normalizeRelayHost", () => {
+  it("returns an empty host when the relay URL is missing", () => {
+    expect(normalizeRelayHost(undefined)).toBe("");
+    expect(normalizeRelayHost(null)).toBe("");
+    expect(normalizeRelayHost("wss://relay.example.com/path")).toBe("relay.example.com");
   });
 });
 

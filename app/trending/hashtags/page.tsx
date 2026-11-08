@@ -26,7 +26,7 @@ import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { StatsWindow } from "@/lib/search-params/window";
 
-const TOPICS_SUBTITLE = "The topics on the overview, ranked by how many authors use them.";
+const TOPICS_SUBTITLE = "Most used topics, ranked by how many authors use them.";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 

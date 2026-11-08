@@ -1,3 +1,6 @@
+import { coverageChangeLabel } from "@/lib/stats/coverage-notes";
+import { seriesJumpIndexes } from "@/lib/stats/series-jumps";
+
 export type SeriesPoint = { t: number; v: number };
 
 /** Pure-SVG area/line sparkline — no client JS. */
@@ -52,6 +55,9 @@ export function Sparkline({
     .map((c, i) => `${i === 0 ? "M" : "L"}${c.x.toFixed(2)},${c.y.toFixed(2)}`)
     .join(" ");
   const area = `${line} L${width},${height} L0,${height} Z`;
+  const jumps = seriesJumpIndexes(points);
+  const jumpLabel =
+    jumps.length > 0 ? coverageChangeLabel(points[jumps[jumps.length - 1]!]!.t) : null;
 
   return (
     <svg
@@ -60,10 +66,20 @@ export function Sparkline({
       viewBox={`0 0 ${width} ${height}`}
       className={className}
       role="img"
-      aria-label="Time series sparkline"
+      aria-label={jumpLabel ? `Time series sparkline. ${jumpLabel}.` : "Time series sparkline"}
     >
       <path d={area} fill={fill} opacity={0.15} />
       <path d={line} fill="none" stroke={stroke} strokeWidth={1.5} strokeLinejoin="round" />
+      {jumps.map((index) => {
+        const point = coords[index];
+        const sample = points[index];
+        if (!point || !sample) return null;
+        return (
+          <circle key={sample.t} cx={point.x} cy={point.y} r={2.5} fill={stroke}>
+            <title>{coverageChangeLabel(sample.t)}</title>
+          </circle>
+        );
+      })}
     </svg>
   );
 }

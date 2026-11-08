@@ -5,11 +5,18 @@ import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/", label: "Discover" },
-  { href: "/relays", label: "Network" },
+  { href: "/relays", label: "Relays" },
+  { href: "/stats", label: "Stats" },
+  { href: "/me", label: "Your view" },
 ];
 
 function isActivePath(pathname: string, href: string): boolean {
-  if (href === "/relays") return pathname.startsWith("/relays") || pathname.startsWith("/stats");
+  if (href === "/me") return pathname === "/me";
+  if (href === "/relays") return pathname.startsWith("/relays");
+  if (href === "/stats") return pathname.startsWith("/stats");
+  if (pathname === "/me" || pathname.startsWith("/about") || pathname.startsWith("/developers")) {
+    return false;
+  }
   return !pathname.startsWith("/relays") && !pathname.startsWith("/stats");
 }
 

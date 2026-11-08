@@ -17,7 +17,7 @@ export function NotFoundState() {
             Search
           </Link>
           <Link href="/relays" className={buttonClassName({ variant: "ghost" })}>
-            Network
+            Relays
           </Link>
         </div>
       }

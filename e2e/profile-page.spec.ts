@@ -88,7 +88,8 @@ test.describe("profile page", () => {
       "aria-current",
       "page"
     );
-    await expect(tabs.getByRole("link", { name: "Highlights" })).toBeVisible();
+    await expect(tabs.getByRole("link", { name: "Replies", exact: true })).toBeVisible();
+    await expect(tabs.getByRole("link", { name: "Highlights" })).toHaveCount(0);
 
     await expect(page.getByTestId("profile-related-rail")).toBeVisible();
     await page.locator("#profile-activity").evaluate((el) => {
@@ -113,6 +114,11 @@ test.describe("profile page", () => {
     await expect(panel.getByText("Thanks for the note")).toBeVisible();
     await expect(panel.getByRole("link", { name: /Hello/ })).toBeVisible();
 
+    await page
+      .getByRole("navigation", { name: "Activity" })
+      .getByRole("link", { name: "Engagement" })
+      .click();
+    await expect(page).toHaveURL(/tab=reactions/);
     await tabs.getByRole("link", { name: "Highlights", exact: true }).click();
     await expect(page).toHaveURL(/tab=highlights/);
     await expect(tabs.getByRole("link", { name: "Highlights", exact: true })).toHaveAttribute(

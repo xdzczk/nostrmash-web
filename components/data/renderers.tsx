@@ -413,7 +413,7 @@ export function DomainsList({
                 className="mt-1.5"
               />
             </div>
-            <SourceFigure ranking={entry.ranking} className="pt-0.5" />
+            <SourceFigure ranking={entry.ranking} noun="authors" className="pt-0.5" />
           </li>
         ))}
       </ol>

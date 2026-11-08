@@ -68,8 +68,7 @@ describe("EventKindSwitch", () => {
     expect(
       screen.getByRole("heading", { name: /Bookmarked long-form piece about public relays/ })
     ).toBeInTheDocument();
-    expect(screen.getByText("saved by")).toBeInTheDocument();
-    expect(screen.getByText("1 person")).toBeInTheDocument();
+    expect(screen.getByText("Saved by 1 person")).toBeInTheDocument();
   });
 
   it("renders a comment with the same post stats as a reply", () => {

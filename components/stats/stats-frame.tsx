@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 
+import Link from "@/components/app-link";
+
 import { NetworkNav } from "@/components/explorer/network-nav";
 import { PageHero } from "@/components/explorer/page-hero";
 import { WindowSelector } from "@/components/explorer/window-selector";
-import { TabBar } from "@/components/ui/tabs";
 import { STATS_WINDOWS, type StatsWindow } from "@/lib/search-params/window";
 
 export const STATS_SECTIONS = [
@@ -59,16 +60,30 @@ export function StatsFrame({
         }
       />
       <NetworkNav active="stats" />
-      <TabBar
-        ariaLabel="Statistics sections"
-        prefetch
-        items={STATS_SECTIONS.map((section) => ({
-          key: section.href,
-          label: section.label,
-          href: statsHref(section.href, searchParams),
-          active: section.href === path,
-        }))}
-      />
+      {path !== "/stats" ? (
+        <nav
+          aria-label="Statistics sections"
+          className="flex flex-wrap items-center gap-x-4 gap-y-1"
+        >
+          {STATS_SECTIONS.map((section) => {
+            const active = section.href === path;
+            return (
+              <Link
+                key={section.href}
+                href={statsHref(section.href, searchParams)}
+                aria-current={active ? "page" : undefined}
+                className={`text-sm ${
+                  active
+                    ? "text-ink underline decoration-[var(--accent-soft)] decoration-2 underline-offset-4"
+                    : "text-ink-muted hover:text-ink"
+                }`}
+              >
+                {section.label}
+              </Link>
+            );
+          })}
+        </nav>
+      ) : null}
       {headline ? (
         <p className="text-ink-strong max-w-[46rem] text-lg leading-7 tracking-[-0.02em]">
           {headline}
@@ -77,11 +92,11 @@ export function StatsFrame({
       <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_12rem] xl:items-start xl:gap-10">
         <div className="min-w-0 space-y-8">{children}</div>
         {toc.length > 0 ? (
-          <nav aria-label="On this page" className="xl:sticky xl:top-24">
+          <nav aria-label="On this page" className="hidden xl:sticky xl:top-24 xl:block">
             <p className="text-ink-faint mb-2 text-[11px] font-medium tracking-wide uppercase">
               On this page
             </p>
-            <ul className="flex gap-x-3 gap-y-1 overflow-x-auto xl:block xl:overflow-visible">
+            <ul className="xl:block">
               {toc.map((item) => (
                 <li key={item.id} className="shrink-0">
                   <a href={`#${item.id}`} className="text-ink-muted hover:text-ink text-sm">

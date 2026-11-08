@@ -2,6 +2,7 @@ import Link from "@/components/app-link";
 
 import { sanitizeExternalHref, truncateMiddle } from "@/components/explorer/utils";
 import { Pill } from "@/components/ui/pill";
+import { GLOSSARY } from "@/lib/i18n/glossary";
 import { formatTrustTier, lastActiveLabel } from "@/lib/profile/hero-signals";
 import type { ProfileField, TrustSummary } from "@/lib/types/api";
 
@@ -80,11 +81,7 @@ export function ProfileHeroSignals({
     >
       {trustLabel ? (
         <li>
-          <Pill
-            tone="entity"
-            href="/methodology#trust"
-            title="Web-of-trust distance from seed accounts. Learn how trust tiers work."
-          >
+          <Pill tone="entity" href="/methodology#trust" title={GLOSSARY.trust.gloss}>
             <span className="text-ink-faint mr-1.5 font-normal">Trust</span>
             {trustLabel.label}
           </Pill>

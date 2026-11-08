@@ -29,6 +29,16 @@ export async function HomeFreshness({ data }: { data: Promise<HomePageData> }) {
   return label ? <FreshnessBadge label={label} /> : null;
 }
 
+export async function HomeHeadline({ data }: { data: Promise<HomePageData> }) {
+  const home = await data;
+  redirectRejectedDiscoveryWindow(home.discoveryWindowRedirect);
+  return (
+    <h1 className="nm-display-lg text-ink-strong min-w-0">
+      {home.briefing?.headline ?? "What has the network’s attention."}
+    </h1>
+  );
+}
+
 export async function HomeLanguageSelector({
   data,
   path,
@@ -84,7 +94,6 @@ export async function HomeOverviewBody({ data }: { data: Promise<HomePageData> }
           mediaLeaders={home.mediaLeaders}
           profiles={home.hydratedHomeProfiles}
           risingProfiles={home.hydratedHomeRisingProfiles}
-          hashtags={home.homeHashtags}
           domains={home.homeDomains}
           authorsByPubkey={home.noteAuthorsByPubkey}
           pulseStats={home.pulseStats}
@@ -92,6 +101,8 @@ export async function HomeOverviewBody({ data }: { data: Promise<HomePageData> }
           window={home.window}
           lang={home.language}
           excludeBridged={readExcludeBridged(home.currentSearchParams)}
+          emergingHashtags={home.emergingHashtags}
+          briefing={home.briefing}
         />
       ) : home.language && !home.errorMessage ? (
         <EmptyState message={LANGUAGE_EMPTY_MESSAGE} />

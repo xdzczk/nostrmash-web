@@ -76,26 +76,22 @@ export function mapNoteWhyNow(note: EventRecord): WhyNowReason[] {
   const reasons: WhyNowReason[] = [];
   if (replyCount !== null && replyCount > 0) {
     reasons.push({
-      text: "rising replies",
-      support: readableCount(replyCount, "reply", "replies"),
+      text: `${readableCount(replyCount, "reply", "replies")} are still arriving`,
     });
   }
   if (repostCount !== null && repostCount > 0) {
     reasons.push({
-      text: "repost lift",
-      support: readableCount(repostCount, "repost", "reposts"),
+      text: `Reposted ${readableCount(repostCount, "time", "times")}`,
     });
   }
   if (engagementCount !== null && engagementCount > 0) {
     reasons.push({
-      text: "recent engagement",
-      support: readableCount(engagementCount, "interaction", "interactions"),
+      text: `${readableCount(engagementCount, "reaction", "reactions")} in this window`,
     });
   }
   if (relayCount > 1) {
     reasons.push({
-      text: "cross-relay visibility",
-      support: readableCount(relayCount, "relay", "relays"),
+      text: `Seen on ${readableCount(relayCount, "relay", "relays")}`,
     });
   }
 
@@ -192,20 +188,17 @@ export function mapProfileWhyNow(profile: Profile): WhyNowReason[] {
   const reasons: WhyNowReason[] = [];
   if (postCount !== null && postCount >= MOMENTUM_FLOOR) {
     reasons.push({
-      text: "posting momentum",
-      support: readableCount(postCount, "post", "posts"),
+      text: `Published ${readableCount(postCount, "note", "notes")} in this window`,
     });
   }
   if (activeDays !== null && activeDays >= MOMENTUM_FLOOR) {
     reasons.push({
-      text: "recent active days",
-      support: readableCount(activeDays, "active day", "active days"),
+      text: `Active on ${readableCount(activeDays, "day", "days")} in this window`,
     });
   }
   if (replyPickup !== null && replyPickup >= MOMENTUM_FLOOR) {
     reasons.push({
-      text: "reply pickup",
-      support: readableCount(replyPickup, "reply", "replies"),
+      text: `${readableCount(replyPickup, "reply", "replies")} are still arriving`,
     });
   }
 
@@ -228,20 +221,17 @@ export function mapHashtagWhyNow(entry: HashtagEntry): WhyNowReason[] {
   if (authorCount !== null && authorCount > 1) {
     reasons.push({
       code: "author_breadth",
-      text: "breadth of authors",
-      support: readableCount(authorCount, "author", "authors"),
+      text: `Used by ${readableCount(authorCount, "person", "people")}`,
     });
   }
   if (noteCount !== null && noteCount >= MOMENTUM_FLOOR) {
     reasons.push({
-      text: "topic lift",
-      support: readableCount(noteCount, "note", "notes"),
+      text: `Mentioned in ${readableCount(noteCount, "note", "notes")}`,
     });
   }
   if (mentionCount !== null && mentionCount >= MOMENTUM_FLOOR) {
     reasons.push({
-      text: "mention acceleration",
-      support: readableCount(mentionCount, "mention", "mentions"),
+      text: `Mentioned ${readableCount(mentionCount, "time", "times")}`,
     });
   }
 
@@ -264,26 +254,22 @@ export function mapDomainWhyNow(entry: DomainEntry): WhyNowReason[] {
   if (authorCount !== null && authorCount > 1) {
     reasons.push({
       code: "author_breadth",
-      text: "author breadth",
-      support: readableCount(authorCount, "author", "authors"),
+      text: `Used by ${readableCount(authorCount, "person", "people")}`,
     });
   }
   if (linkCount !== null && linkCount >= MOMENTUM_FLOOR) {
     reasons.push({
-      text: "link circulation",
-      support: readableCount(linkCount, "link", "links"),
+      text: `Shared ${readableCount(linkCount, "time", "times")}`,
     });
   }
   if (linkedNotes !== null && linkedNotes >= MOMENTUM_FLOOR) {
     reasons.push({
-      text: "linked note activity",
-      support: readableCount(linkedNotes, "note", "notes"),
+      text: `Linked from ${readableCount(linkedNotes, "note", "notes")}`,
     });
   }
   if (appearanceCount !== null && appearanceCount >= MOMENTUM_FLOOR) {
     reasons.push({
-      text: "repeated appearances",
-      support: readableCount(appearanceCount, "appearance", "appearances"),
+      text: `Appeared ${readableCount(appearanceCount, "time", "times")}`,
     });
   }
 

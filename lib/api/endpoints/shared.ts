@@ -108,6 +108,14 @@ export const nativeApiV1Routes = {
   relayOverlap: "/api/v1/relays/overlap",
   authorAnalyticsSummary: (pubkey: string) =>
     `/api/v1/authors/${encodeURIComponent(pubkey)}/analytics/summary`,
+  authorAnalyticsTopics: (pubkey: string) =>
+    `/api/v1/authors/${encodeURIComponent(pubkey)}/analytics/topics`,
+  authorAnalyticsPostingPatterns: (pubkey: string) =>
+    `/api/v1/authors/${encodeURIComponent(pubkey)}/analytics/posting-patterns`,
+  authorAnalyticsTopNotes: (pubkey: string) =>
+    `/api/v1/authors/${encodeURIComponent(pubkey)}/analytics/top-notes`,
+  authorAnalyticsPerformance: (pubkey: string) =>
+    `/api/v1/authors/${encodeURIComponent(pubkey)}/analytics/performance-summary`,
   authorZapAnalytics: (pubkey: string) =>
     `/api/v1/authors/${encodeURIComponent(pubkey)}/analytics/zaps`,
   profileIdentity: (pubkey: string) => `/api/v1/profiles/${encodeURIComponent(pubkey)}/identity`,

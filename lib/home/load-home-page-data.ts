@@ -1,5 +1,6 @@
 import {
   getDiscoveryHome,
+  getEmergingHashtags,
   getNetworkStats,
   getRelayStats,
   getRisingProfiles,
@@ -33,6 +34,9 @@ import {
   type StatsWindow,
 } from "@/lib/search-params/window";
 import { loadHomeMediaLeaders, type MediaLeaders } from "@/lib/discover/media-rankings";
+import { mapProfileWhyNow } from "@/components/explorer/why-now";
+import { buildOverviewBriefing, type Briefing } from "@/lib/discover/briefing";
+import { languageScopedStatLabel } from "@/lib/home/pulse-labels";
 import { traceHomeFanOut } from "@/lib/telemetry/trace";
 import type {
   DomainEntry,
@@ -41,6 +45,7 @@ import type {
   Profile,
   TopLanguages,
 } from "@/lib/types/api";
+import type { HashtagMomentum } from "@/lib/types/surfaces";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return isRecord(value) ? value : null;
@@ -107,6 +112,8 @@ export type HomePageData = {
   hydratedHomeRisingProfiles: Profile[];
   homeHashtags: HashtagEntry[];
   homeDomains: DomainEntry[];
+  emergingHashtags: HashtagMomentum[];
+  briefing: Briefing | null;
   noteAuthorsByPubkey: Record<string, Profile>;
   pulseStats: PulseStat[];
   relayLeaders: ReturnType<typeof extractRelayRows>;
@@ -158,6 +165,9 @@ export async function loadHomePageData(
   // them with the first fan-out so a window change is not home-then-media.
   const mediaLeadersPromise = loadHomeMediaLeaders(scopedQuery);
   upstreamCallCount += 3;
+  const emergingPromise = getEmergingHashtags()
+    .then((response) => response.items ?? [])
+    .catch(() => [] as HashtagMomentum[]);
 
   upstreamCallCount += 3;
 
@@ -197,6 +207,8 @@ export async function loadHomePageData(
         hydratedHomeRisingProfiles: [],
         homeHashtags: [],
         homeDomains: [],
+        emergingHashtags: [],
+        briefing: null,
         noteAuthorsByPubkey: {},
         pulseStats: [],
         relayLeaders: [],
@@ -410,7 +422,7 @@ export async function loadHomePageData(
     noteVolume: lang ? [] : noteVolumeSeries,
     activeAuthors: lang ? [] : activeAuthorsSeries,
     relayEvents: relayEventsSeries,
-  });
+  }).map((stat) => (lang ? { ...stat, label: languageScopedStatLabel(stat.label) } : stat));
   const relayWindow = relayStatsWindow(window);
   let relayLeaders = extractRelayRows(networkSummary ?? payload, 1, relayWindow);
   if (relayLeaders.length === 0) {
@@ -430,6 +442,12 @@ export async function loadHomePageData(
       typeof (networkStats as Record<string, unknown>).computed_at === "string" &&
       ((networkStats as Record<string, unknown>).computed_at as string)) ||
     null;
+
+  const emergingHashtags = await emergingPromise;
+  const risingSentence =
+    hydratedHomeRisingProfiles
+      .map((profile) => mapProfileWhyNow(profile)[0]?.text)
+      .find((sentence) => typeof sentence === "string" && sentence.length > 0) ?? null;
 
   traceHomeFanOut(upstreamCallCount, {
     window: window === "30d" ? 30 : window === "7d" ? 7 : 1,
@@ -453,6 +471,12 @@ export async function loadHomePageData(
     hydratedHomeRisingProfiles,
     homeHashtags,
     homeDomains,
+    emergingHashtags,
+    briefing: buildOverviewBriefing({
+      hashtags: homeHashtags,
+      domains: homeDomains,
+      risingSentence,
+    }),
     noteAuthorsByPubkey,
     pulseStats,
     relayLeaders,

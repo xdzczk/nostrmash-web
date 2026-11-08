@@ -202,7 +202,7 @@ export default async function StatsPage({
         <SectionCard
           id="this-window"
           title="This window"
-          description="Each sample is a rolling 24-hour total. The bars are how that total moved since the previous sample, not the notes from that hour alone."
+          description="Each sample is a rolling 24-hour total for every language. Discover counts only the language you selected. The bars are how that total moved since the previous sample, not the notes from that hour alone."
         >
           <div className="grid gap-8 lg:grid-cols-2">
             <MovingFigure
@@ -210,12 +210,14 @@ export default async function StatsPage({
               value={authors}
               points={activeAuthorsSeries}
               chartLabel="Change in note authors"
+              caption="All languages, rolling 24-hour total"
             />
             <MovingFigure
-              label="Note volume"
+              label="Notes indexed"
               value={noteVolume}
               points={noteVolumeSeries}
-              chartLabel="Change in note volume"
+              chartLabel="Change in notes indexed"
+              caption="All languages, rolling 24-hour total"
             />
           </div>
         </SectionCard>
@@ -227,7 +229,7 @@ export default async function StatsPage({
         >
           <SeriesMetricSelector
             path="/stats"
-            searchParams={currentSearchParams}
+            searchParams={currentSearchParams.toString()}
             active={seriesMetric}
           />
           <div className="mt-6">

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { GLOSSARY } from "@/lib/i18n/glossary";
 
 type ActionKind = "note" | "profile";
 type ToastApi = ReturnType<typeof useToast>;
@@ -98,6 +99,7 @@ function EntityActionsMenu({
         <button
           type="button"
           className={menuItemClass}
+          title={copyLabel === "nevent" ? GLOSSARY.nevent.gloss : undefined}
           onClick={async () => {
             const ok = await copyText(identifier);
             if (ok) toast.success(`Copied ${label} id`);
@@ -248,6 +250,7 @@ export function EntityActions({
         <Button
           size="sm"
           variant="chip"
+          title={copyLabel === "nevent" ? GLOSSARY.nevent.gloss : undefined}
           onClick={async () => {
             const ok = await copyText(identifier);
             if (ok) toast.success(`Copied ${label} id`);
@@ -282,6 +285,7 @@ export function EntityActions({
         <Button
           size="sm"
           variant="secondary"
+          title={copyLabel === "nevent" ? GLOSSARY.nevent.gloss : undefined}
           onClick={async () => {
             const ok = await copyText(identifier);
             if (ok) toast.success(`Copied ${label} id`);

@@ -17,7 +17,8 @@ search is a globally available utility.
 - **Discover** is the default destination and owns Overview, Notes, Conversations, People,
   Topics, and Links. A shared 24-hour/7-day selector changes the context without changing
   the destination name.
-- **Network** owns aggregate activity, relays, health, and operational statistics.
+- **Relays** owns where events concentrate, who lists a relay, and whether those checks are current.
+- **Stats** owns network-wide totals. Those totals are every language; Discover counts the selected language.
 - **Search** is available from every page. `/search` remains the durable, shareable results
   state rather than a primary navigation destination.
 - Notes, profiles, hashtags, domains, and relays are destination pages reached from
@@ -70,3 +71,10 @@ why the item appears here.
 - User media determining the page grid.
 - Blanket page-enter animation or motion without a causal relationship.
 - Generic error alerts that discard successful sections or hide stale usable data.
+
+## Evidence
+
+- No absolute count without a comparison when a baseline or a prior window is on the same response.
+- Reasons are sentences.
+- One number per metric label.
+- Rankings that can be archived belong to the API. Rendered pages may be cached; the snapshot is not stored as the only copy in the web cache.

@@ -37,6 +37,7 @@ import {
 } from "@/lib/search-params/window";
 import { extractNativeApiSemantics } from "@/lib/api/normalize";
 import { concentrationTitle } from "@/lib/relays/concentration";
+import { coverageStory, OFFLINE_RELAYS } from "@/lib/relays/coverage";
 import { indexMembershipNote } from "@/lib/relays/index-membership";
 import {
   publishedRelayMark,
@@ -128,6 +129,15 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
   const listedTotal = typeof popular?.total === "number" ? popular.total : listed.length;
   const indexedRows = rankedRelays.slice(0, 10);
   const listedRows = listed.slice(0, 8);
+  const coverage = coverageStory({
+    listed: listed.map((entry) => ({
+      host: entry.host,
+      distinctUsers: entry.relay.distinct_users,
+      indexed:
+        !OFFLINE_RELAYS.some((relay) => relay.host === entry.host) &&
+        indexMembershipNote(entry.relay.admission_state, entry.relay.in_registry) === null,
+    })),
+  });
 
   return (
     <div className="space-y-8">
@@ -145,6 +155,7 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
         }
       />
       <NetworkNav active="overview" />
+      <p className="text-ink-soft max-w-3xl text-sm leading-6">{coverage}</p>
       <IndexedAt computedAt={semantics.computed_at} label="Stats updated" />
 
       {staleNotice ? <SoftRefreshNote message={staleNotice} /> : null}
@@ -239,10 +250,10 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
             <ul className="divide-edge/70 divide-y">
               {listedRows.map((entry) => {
                 const indexed = indexedByHost.get(entry.host);
-                const membership = indexMembershipNote(
-                  entry.relay.admission_state,
-                  entry.relay.in_registry
-                );
+                const offline = OFFLINE_RELAYS.some((relay) => relay.host === entry.host);
+                const membership = offline
+                  ? "Offline"
+                  : indexMembershipNote(entry.relay.admission_state, entry.relay.in_registry);
                 const published = publishedRelayMark(entry.relay);
                 const detail = relayRankingDetail(entry.host, published?.name, [
                   "people list this relay",

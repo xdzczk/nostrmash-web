@@ -35,5 +35,15 @@ describe("stats headlines", () => {
     expect(headline).toContain("5K");
     expect(headline).not.toContain("31,218");
     expect(headline).toContain("31.2K");
+    expect(headline).toContain("most never post");
+  });
+
+  it("keeps a modest number of new keys as a first-seen count", () => {
+    expect(
+      peopleHeadline({
+        active_authors_1d: 5000,
+        new_authors: [{ day: "2026-11-06", count: 400 }],
+      })
+    ).toContain("accounts were first seen");
   });
 });

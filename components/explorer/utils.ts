@@ -1,4 +1,5 @@
 import type { DomainEntry, EventRecord, Profile } from "@/lib/types/api";
+import { languageScopedMetricLabel } from "@/lib/home/pulse-labels";
 import { extractHashtagsFromText, extractLinkableUrls } from "@/lib/notes/text";
 import { hexToNpub } from "../../lib/nostr/npub";
 
@@ -323,6 +324,8 @@ function parseJsonRecord(value: unknown): Record<string, unknown> | null {
 export function formatMetricLabel(value: string): string {
   if (!value) return "Metric";
   const normalized = value.trim().toLowerCase();
+  const languageScoped = languageScopedMetricLabel(normalized);
+  if (languageScoped) return languageScoped;
   const aliased = LABEL_ALIASES[normalized];
   if (aliased) return aliased;
 

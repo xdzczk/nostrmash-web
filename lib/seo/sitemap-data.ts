@@ -29,6 +29,8 @@ const STATIC_PATHS = [
   "/relays/health",
   "/relays/popular",
   "/methodology",
+  "/about",
+  "/developers",
   "/discovery/conversations/hot",
   "/discovery/notes/zapped",
   "/discovery/notes/bookmarked",

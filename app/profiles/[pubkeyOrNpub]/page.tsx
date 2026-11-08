@@ -29,6 +29,7 @@ import {
   ProfileEngagementSection,
   ProfileIdentitySection,
 } from "@/components/profile/profile-ecosystem-sections";
+import { ProfileInsights } from "@/components/profile/profile-insights";
 import { ProfileReports } from "@/components/profile/profile-reports";
 import { ProfileCover } from "@/components/profile/profile-banner-backdrop";
 import { ProfileHeroSignals } from "@/components/profile/profile-hero-signals";
@@ -698,6 +699,9 @@ export default async function ProfilePage({
       </Suspense>
       <Suspense fallback={null}>
         <ProfileEngagementSection pubkey={pubkeyHex ?? lookupKey} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <ProfileInsights pubkey={pubkeyHex ?? lookupKey} />
       </Suspense>
 
       <JsonLd

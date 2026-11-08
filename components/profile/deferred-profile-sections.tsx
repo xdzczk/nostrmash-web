@@ -21,10 +21,11 @@ import {
 import { activityEmptyCopy, suggestActivityTab } from "@/lib/profile/activity-empty-state";
 import {
   isProfileContentTab,
-  isProfileInsightTab,
-  isProfileListTab,
   isProfileSurfaceTab,
+  PROFILE_ACTIVITY_GROUPS,
   PROFILE_ACTIVITY_TABS,
+  PROFILE_INSIGHT_LINKS,
+  profileActivityGroup,
   type ProfileActivityTab,
 } from "@/lib/profile/activity-tabs";
 import { ProfileSurfacePanel } from "@/components/profile/profile-surfaces";
@@ -104,50 +105,109 @@ export async function DeferredProfileActivity({
       : undefined;
   const tabLabel = data.activeTabMeta?.label.toLowerCase() ?? "activity";
   const selected = data.selectedTab ?? data.activityTab;
-  const insightTab = isProfileInsightTab(selected) ? selected : "graph";
-  const listTab = isProfileListTab(selected) ? selected : null;
-  const insightTabs = data.activityTabs.filter((tab) => isProfileInsightTab(tab.id));
-  const contentTabs = data.activityTabs.filter((tab) => isProfileContentTab(tab.id));
-  const listTabs = data.activityTabs.filter((tab) => isProfileListTab(tab.id));
-  const contentPanel = isProfileContentTab(data.activityTab);
+  const insightSelected = PROFILE_INSIGHT_LINKS.some((link) => link.id === selected)
+    ? selected
+    : null;
+  const activitySelected = insightSelected ? null : selected;
+  const activeGroup = activitySelected
+    ? profileActivityGroup(activitySelected)
+    : PROFILE_ACTIVITY_GROUPS[0];
+  const groupTabs = data.activityTabs.filter((tab) =>
+    (activeGroup.tabs as readonly string[]).includes(tab.id)
+  );
+  const showFeed =
+    activitySelected !== null &&
+    (isProfileContentTab(activitySelected) ||
+      activitySelected === "mute_list" ||
+      activitySelected === "muted_by");
+  const showSurface =
+    activitySelected !== null &&
+    !showFeed &&
+    (activitySelected === "moderation" || isProfileSurfaceTab(activitySelected));
 
   return (
     <div id="profile-activity" className="space-y-8">
-      <SectionCard title="Insights" description="Graph, zaps, moderation, and external identities.">
-        <ProfileActivityTabs activeTab={insightTab} tabs={insightTabs} ariaLabel="Profile insights">
-          {insightTab === "zap_stats" ? (
-            <ProfileZapAnalyticsSection
-              pubkey={lookupKey}
-              route={profileRoute}
-              searchParams={searchParams}
-            />
-          ) : (
-            <ProfileSurfacePanel tab={insightTab} pubkey={lookupKey} />
-          )}
-        </ProfileActivityTabs>
-      </SectionCard>
+      <section className="border-edge/70 scroll-mt-24 space-y-3 border-t py-6 sm:py-8">
+        <h2 className="nm-title text-ink">Insights</h2>
+        <nav aria-label="Profile insights" className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {PROFILE_INSIGHT_LINKS.map((link) => {
+            const tab = data.activityTabs.find((entry) => entry.id === link.id);
+            if (!tab) return null;
+            const current = insightSelected === link.id;
+            return (
+              <Link
+                key={link.id}
+                href={tab.href}
+                aria-current={current ? "page" : undefined}
+                className={`text-sm ${
+                  current
+                    ? "text-ink underline decoration-[var(--accent-soft)] decoration-2 underline-offset-4"
+                    : "text-ink-muted hover:text-ink"
+                }`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+        </nav>
+        {insightSelected === "zap_stats" ? (
+          <ProfileZapAnalyticsSection
+            pubkey={lookupKey}
+            route={profileRoute}
+            searchParams={searchParams}
+          />
+        ) : insightSelected ? (
+          <ProfileSurfacePanel tab={insightSelected} pubkey={lookupKey} />
+        ) : null}
+      </section>
       <SectionCard title="Recent activity">
         <div className="space-y-4">
+          <nav aria-label="Activity" className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            {PROFILE_ACTIVITY_GROUPS.map((group) => {
+              const inGroup = activitySelected
+                ? profileActivityGroup(activitySelected).id === group.id
+                : false;
+              const targetId = inGroup && activitySelected ? activitySelected : group.tabs[0];
+              const tab = data.activityTabs.find((entry) => entry.id === targetId);
+              if (!tab) return null;
+              return (
+                <Link
+                  key={group.id}
+                  href={tab.href}
+                  aria-current={inGroup ? "page" : undefined}
+                  className={`text-sm font-medium ${
+                    inGroup ? "text-ink" : "text-ink-muted hover:text-ink"
+                  }`}
+                >
+                  {group.label}
+                </Link>
+              );
+            })}
+          </nav>
           <ProfileActivityTabs
-            activeTab={contentPanel ? data.activityTab : "notes"}
-            tabs={contentTabs}
+            activeTab={activitySelected ?? "graph"}
+            tabs={groupTabs}
             ariaLabel="Recent activity"
           >
             <div className="space-y-4">
-              {!contentPanel ? (
-                <EmptyState message="Open Notes to see recent posts." />
-              ) : data.activeTabError && !hasItems ? (
-                <ErrorPanel
-                  message={data.activeTabError}
-                  title="Couldn't load this activity"
-                  retryHref={profileRoute}
-                />
-              ) : hasItems ? (
-                <ProfileActivityFeed data={data} />
+              {showSurface && activitySelected ? (
+                <ProfileSurfacePanel tab={activitySelected} pubkey={lookupKey} />
+              ) : showFeed ? (
+                data.activeTabError && !hasItems ? (
+                  <ErrorPanel
+                    message={data.activeTabError}
+                    title="Couldn't load this activity"
+                    retryHref={profileRoute}
+                  />
+                ) : hasItems ? (
+                  <ProfileActivityFeed data={data} />
+                ) : (
+                  <ActivityEmpty tab={data.activityTab} tabs={data.activityTabs} stats={stats} />
+                )
               ) : (
-                <ActivityEmpty tab={data.activityTab} tabs={data.activityTabs} stats={stats} />
+                <EmptyState message="Open Notes to see recent posts." />
               )}
-              {continuationToken && !isProfileSurfaceTab(data.activityTab) ? (
+              {continuationToken && showFeed && !isProfileSurfaceTab(data.activityTab) ? (
                 <>
                   <LoadMoreList
                     key={`${data.activityTab}:${continuationToken}`}
@@ -169,21 +229,6 @@ export async function DeferredProfileActivity({
             </div>
           </ProfileActivityTabs>
         </div>
-      </SectionCard>
-      <SectionCard title="Lists" description="Interests, relay lists, labels, and mute lists.">
-        <ProfileActivityTabs
-          activeTab={listTab ?? "notes"}
-          tabs={listTabs}
-          ariaLabel="Profile lists"
-        >
-          {listTab === "mute_list" || listTab === "muted_by" ? (
-            <ProfileActivityFeed data={data} />
-          ) : listTab && isProfileSurfaceTab(listTab) ? (
-            <ProfileSurfacePanel tab={listTab} pubkey={lookupKey} />
-          ) : (
-            <p className="text-ink-muted text-sm">Choose a list to see it.</p>
-          )}
-        </ProfileActivityTabs>
       </SectionCard>
 
       <div className="mt-3 space-y-3">

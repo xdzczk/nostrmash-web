@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { DiscoverShell } from "@/components/discover/discover-shell";
 import {
   HomeFreshness,
+  HomeHeadline,
   HomeLanguageSelector,
   HomeOverviewBody,
 } from "@/components/home/home-overview-stream";
@@ -107,7 +108,18 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         }
         eyebrow={formatDiscoveryWindowEyebrow(window)}
         title="What has the network’s attention."
-        subtitle="A calm, ranked briefing on the notes, people, and ideas moving through Nostr—with the evidence behind their momentum."
+        headline={
+          <Suspense
+            fallback={
+              <h1 className="nm-display-lg text-ink-strong min-w-0">
+                What has the network’s attention.
+              </h1>
+            }
+          >
+            <HomeHeadline data={home} />
+          </Suspense>
+        }
+        subtitle=""
       >
         <Suspense fallback={<DiscoverOverviewBodySkeleton />}>
           <HomeOverviewBody data={home} />

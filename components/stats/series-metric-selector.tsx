@@ -1,4 +1,6 @@
-import Link from "@/components/app-link";
+"use client";
+
+import { useRouter } from "next/navigation";
 
 import {
   DEFAULT_STATS_SERIES_METRIC,
@@ -13,35 +15,34 @@ export function SeriesMetricSelector({
   active,
 }: {
   path: string;
-  searchParams: URLSearchParams;
+  /** Current query string. A URLSearchParams instance cannot cross to the client. */
+  searchParams: string;
   active: StatsSeriesMetric;
 }) {
+  const router = useRouter();
   return (
-    <div className="flex flex-wrap gap-1" role="group" aria-label="Series metric">
-      {STATS_SERIES_METRICS.map((metric) => {
-        const isActive = metric === active;
-        return (
-          <Link
-            key={metric}
-            href={seriesMetricHref(path, searchParams, metric)}
-            aria-current={isActive ? "true" : undefined}
-            className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-              isActive ? "bg-surface text-ink shadow-sm" : "text-ink-muted hover:text-ink"
-            }`}
-          >
+    <label className="text-ink-muted inline-flex items-center gap-2 text-sm">
+      <span>Series</span>
+      <select
+        aria-label="Series metric"
+        value={active}
+        className="border-edge-strong bg-surface text-ink rounded-md border px-2 py-1 text-sm"
+        onChange={(event) => {
+          const metric = event.target.value;
+          router.push(seriesMetricHref(path, searchParams, metric as StatsSeriesMetric));
+        }}
+      >
+        {STATS_SERIES_METRICS.map((metric) => (
+          <option key={metric} value={metric}>
             {STATS_SERIES_METRIC_LABELS[metric]}
-          </Link>
-        );
-      })}
-    </div>
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
-function seriesMetricHref(
-  path: string,
-  current: URLSearchParams,
-  metric: StatsSeriesMetric
-): string {
+function seriesMetricHref(path: string, current: string, metric: StatsSeriesMetric): string {
   const next = new URLSearchParams(current);
   if (metric === DEFAULT_STATS_SERIES_METRIC) next.delete("series");
   else next.set("series", metric);

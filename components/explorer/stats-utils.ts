@@ -101,7 +101,8 @@ function toRelayIdentifier(row: Record<string, unknown>): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export function normalizeRelayHost(value: string): string {
+export function normalizeRelayHost(value: string | null | undefined): string {
+  if (typeof value !== "string") return "";
   const trimmed = value.trim().toLowerCase();
   if (trimmed.length === 0) return "";
   const withScheme = trimmed.includes("://") ? trimmed : `wss://${trimmed}`;

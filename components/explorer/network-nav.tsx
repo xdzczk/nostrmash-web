@@ -12,7 +12,7 @@ const NETWORK_VIEWS = [
 export function NetworkNav({ active }: { active?: NetworkView }) {
   return (
     <TabBar
-      ariaLabel="Network categories"
+      ariaLabel="Relay sections"
       prefetch
       items={NETWORK_VIEWS.map((view) => ({ ...view, active: view.key === active }))}
     />

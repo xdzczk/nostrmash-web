@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { ReactionChips } from "@/components/explorer/reaction-chips";
+import { Term } from "@/components/ui/term";
 import type { EngagementStat, EngagementStatKey } from "@/components/explorer/utils";
 import type { ReactionBreakdownItem } from "@/lib/types/api";
 import { formatUnitShare } from "@/lib/stats/ecosystem-display";
@@ -165,12 +166,7 @@ export function PostEngagement({
       })}
       {typeof trustedShare === "number" ? (
         <span className="inline-flex flex-wrap items-center gap-2">
-          <span
-            title="Share of engagement from accounts in the trust set"
-            className="border-edge-strong text-ink-soft rounded-full border px-2 py-0.5 text-xs"
-          >
-            {formatUnitShare(trustedShare)} trusted
-          </span>
+          <Term id="trusted">{formatUnitShare(trustedShare)} trusted</Term>
           <span className="text-ink-muted basis-full text-xs sm:sr-only">
             {formatUnitShare(trustedShare)} of engagement came from accounts in the trust set
           </span>

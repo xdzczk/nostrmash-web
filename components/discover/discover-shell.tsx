@@ -16,6 +16,8 @@ import {
   type DiscoverMode,
   type DiscoverView,
 } from "@/lib/discover/views";
+import { methodologyHref } from "@/lib/discover/methodology-href";
+import { GLOSSARY } from "@/lib/i18n/glossary";
 import { formatDiscoverEyebrow } from "@/lib/i18n/language-names";
 import { buildDiscoverHref, buildExcludeBridgedHref } from "@/lib/search-params/language";
 import { DEFAULT_STATS_WINDOW, STATS_WINDOWS, type StatsWindow } from "@/lib/search-params/window";
@@ -35,6 +37,7 @@ export function DiscoverShell({
   mode = "default",
   eyebrow = "Discover",
   title,
+  headline,
   subtitle,
   path,
   searchParams,
@@ -62,6 +65,8 @@ export function DiscoverShell({
   mode?: DiscoverMode;
   eyebrow?: string;
   title: string;
+  /** Streamed h1. When set, it replaces the text title. */
+  headline?: ReactNode;
   subtitle: string;
   path: string;
   searchParams: URLSearchParams;
@@ -117,13 +122,15 @@ export function DiscoverShell({
       {rememberWindow ? <RememberDiscoveryWindow window={window} /> : null}
       <LiveRefresh />
       <PageHero
+        dense
         eyebrow={formatDiscoverEyebrow(eyebrow, language)}
         title={title}
-        subtitle={subtitle}
+        headline={headline}
+        subtitle={view === "overview" ? subtitle : undefined}
         subtitleFromSm={subtitleFromSm}
         badges={
           showRankingBadges ? (
-            <div className="nm-meta flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="nm-meta flex flex-nowrap items-center gap-x-3 overflow-x-auto">
               {showWindow || showLanguage ? (
                 <>
                   {showWindow ? (
@@ -152,7 +159,8 @@ export function DiscoverShell({
               {rankingControls ? (
                 <Link
                   href={buildExcludeBridgedHref(path, searchParams)}
-                  className={`inline-flex min-h-6 items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                  title={GLOSSARY.bridged.gloss}
+                  className={`inline-flex min-h-6 shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${
                     excludeBridged
                       ? "border-accent/50 bg-surface text-ink"
                       : "border-edge-strong text-ink-muted hover:text-ink"
@@ -169,7 +177,7 @@ export function DiscoverShell({
         support={heroSupport}
       />
 
-      <div className="min-w-0 space-y-2.5">
+      <div className="bg-surface sticky top-14 z-40 -mx-4 min-w-0 space-y-2.5 border-b border-[var(--edge)] px-4 py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <DiscoverNav
           active={view}
           window={carriedWindow}
@@ -216,8 +224,8 @@ export function DiscoverShell({
       {children}
 
       <div className="border-edge/70 border-t pt-4">
-        <Link href="/methodology" className="nm-action-link">
-          How Discover rankings work
+        <Link href={methodologyHref(view, mode)} className="nm-action-link">
+          How this is ranked
         </Link>
       </div>
     </div>

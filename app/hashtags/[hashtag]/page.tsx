@@ -7,6 +7,7 @@ import { EntityContextNav } from "@/components/discover/entity-context-nav";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { IdBadge } from "@/components/explorer/id-badge";
 import { AboutThisData } from "@/components/explorer/about-this-data";
+import { OpenInApp } from "@/components/actions/open-in-app";
 import { PageHero } from "@/components/explorer/page-hero";
 import { StatCard } from "@/components/explorer/stat-card";
 import { HashtagsList, NotesList } from "@/components/data/renderers";
@@ -66,7 +67,7 @@ export default async function HashtagPage({ params }: { params: Params }) {
     return (
       <div className="space-y-6">
         <PageHero
-          eyebrow="Hashtag"
+          eyebrow="Topic"
           title={hashtagTitle(hashtag)}
           subtitle="This value is not a valid hashtag. Try a search instead."
         />
@@ -142,9 +143,19 @@ export default async function HashtagPage({ params }: { params: Params }) {
   return (
     <div className="space-y-8">
       <PageHero
-        eyebrow="Hashtag explorer"
+        eyebrow="Topic"
         title={hashtagTitle(normalizedHashtag)}
-        subtitle="See related notes and nearby topics for this hashtag."
+        subtitle="Notes and nearby topics for this subject."
+        actions={
+          <OpenInApp
+            links={[
+              {
+                href: `https://njump.me/t/${encodeURIComponent(normalizedHashtag)}`,
+                label: "njump.me",
+              },
+            ]}
+          />
+        }
         badges={
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <IdBadge id={hashtagTitle(normalizedHashtag)} label="hashtag" />

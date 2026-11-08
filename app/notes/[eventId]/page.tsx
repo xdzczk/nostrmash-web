@@ -16,6 +16,7 @@ import { EventSurfaces, ProvenanceLabelCount } from "@/components/explorer/event
 import { NativeSemanticsBadges } from "@/components/explorer/native-semantics-badges";
 import { ProfileCard } from "@/components/explorer/profile-card";
 import { normalizeRelayHost } from "@/components/explorer/stats-utils";
+import { offlineRelayNote } from "@/lib/relays/coverage";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
   applyEngagementStats,
@@ -67,6 +68,28 @@ function hasInformativeValue(value: unknown): boolean {
   if (Array.isArray(value)) return value.length > 0;
   if (isRecord(value)) return Object.keys(value).length > 0;
   return true;
+}
+
+function observationTime(value: string | number | undefined): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value > 1e12 ? value : value * 1000;
+  }
+  if (typeof value === "string" && value.trim().length > 0) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) return numeric > 1e12 ? numeric : numeric * 1000;
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function formatSeenDelta(ms: number): string {
+  const minutes = Math.max(0, Math.round(ms / 60_000));
+  if (minutes < 1) return "same moment";
+  if (minutes < 60) return `+${minutes}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `+${hours}h`;
+  return `+${Math.round(hours / 24)}d`;
 }
 
 /** Provenance hides empty booleans and zero counts ("Has image: no"). */
@@ -276,7 +299,18 @@ export default async function NotePage({
   const provenanceRelayByHost = new Map(
     provenanceRelayObservations.map((observation) => [observation.routeHost, observation])
   );
-  const provenanceRelayLinks = Array.from(provenanceRelayByHost.values());
+  const provenanceRelayLinks = Array.from(provenanceRelayByHost.values()).sort((left, right) => {
+    const leftTime = observationTime(left.seenAt);
+    const rightTime = observationTime(right.seenAt);
+    if (leftTime === null && rightTime === null) return 0;
+    if (leftTime === null) return 1;
+    if (rightTime === null) return -1;
+    return leftTime - rightTime;
+  });
+  const firstSeen = observationTime(provenanceRelayLinks[0]?.seenAt);
+  const offlineNote = offlineRelayNote(
+    provenanceRelayLinks.map((observation) => observation.routeHost)
+  );
   // Index-internal summaries only surface inside "Details & provenance", and
   // only the fields that actually carry a value.
   const referenceIds = referencedNoteIds(focal, noteSummary?.quote_repost_context, eventId);
@@ -422,18 +456,62 @@ export default async function NotePage({
           </div>
         </div>
 
-        {resolvedAuthor ? (
+        {resolvedAuthor || provenanceRelayLinks.length > 0 ? (
           <aside
-            aria-label="About the author"
-            className="order-2 mt-8 min-w-0 lg:sticky lg:top-24 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-0"
+            aria-label="Note context"
+            className="order-2 mt-8 min-w-0 space-y-8 lg:sticky lg:top-24 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-0"
           >
-            <h2 className="text-ink-dim mb-3 text-xs font-medium tracking-wide uppercase">
-              Author
-            </h2>
-            <ProfileCard
-              profile={resolvedAuthor}
-              summary={isRecord(noteSummary?.author) ? noteSummary.author : undefined}
-            />
+            {provenanceRelayLinks.length > 0 ? (
+              <div>
+                <h2 className="text-ink-dim mb-3 text-xs font-medium tracking-wide uppercase">
+                  Seen on
+                </h2>
+                <ol className="space-y-2">
+                  {provenanceRelayLinks.map((observation) => {
+                    const seen = observationTime(observation.seenAt);
+                    const delta =
+                      seen !== null && firstSeen !== null
+                        ? seen === firstSeen
+                          ? "First"
+                          : formatSeenDelta(seen - firstSeen)
+                        : null;
+                    return (
+                      <li
+                        key={observation.key}
+                        className="flex items-baseline justify-between gap-3"
+                      >
+                        <Link
+                          href={`/relays/${encodeURIComponent(observation.routeHost)}`}
+                          className="text-ink min-w-0 truncate text-sm hover:underline"
+                        >
+                          {observation.routeHost}
+                        </Link>
+                        {delta ? (
+                          <span className="text-ink-muted shrink-0 text-xs tabular-nums">
+                            {delta}
+                          </span>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ol>
+                {offlineNote ? (
+                  <p className="text-ink-muted mt-3 text-xs leading-5">{offlineNote}</p>
+                ) : null}
+              </div>
+            ) : null}
+            {resolvedAuthor ? (
+              <div>
+                <h2 className="text-ink-dim mb-3 text-xs font-medium tracking-wide uppercase">
+                  Author
+                </h2>
+                <ProfileCard
+                  profile={resolvedAuthor}
+                  compact
+                  summary={isRecord(noteSummary?.author) ? noteSummary.author : undefined}
+                />
+              </div>
+            ) : null}
           </aside>
         ) : null}
 
@@ -489,43 +567,6 @@ export default async function NotePage({
                 <Suspense fallback={null}>
                   <ProvenanceLabelCount eventId={eventId} />
                 </Suspense>
-                {provenanceRelayLinks.length > 0 ? (
-                  <ul className="space-y-2">
-                    {provenanceRelayLinks.map((observation) => (
-                      <li
-                        key={observation.key}
-                        className="bg-surface/30 flex flex-wrap items-center justify-between gap-2 rounded-lg p-3"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-ink-soft truncate text-sm">{observation.routeHost}</p>
-                          {observation.seenAt !== undefined ? (
-                            <p className="text-ink-dim mt-0.5 truncate text-xs">
-                              seen{" "}
-                              <Timestamp
-                                unixSeconds={
-                                  typeof observation.seenAt === "number"
-                                    ? observation.seenAt
-                                    : undefined
-                                }
-                                isoString={
-                                  typeof observation.seenAt === "string"
-                                    ? observation.seenAt
-                                    : undefined
-                                }
-                              />
-                            </p>
-                          ) : null}
-                        </div>
-                        <Link
-                          href={`/relays/${encodeURIComponent(observation.routeHost)}`}
-                          className="border-edge-strong text-link inline-flex min-h-7 items-center rounded-full border px-3 text-xs"
-                        >
-                          Open relay
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
                 {provenanceDetails.length === 0 && provenanceRelayLinks.length === 0 ? (
                   <EmptyState message="No relay observations or trust data were returned for this event." />
                 ) : null}

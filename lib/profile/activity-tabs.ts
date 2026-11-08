@@ -37,6 +37,48 @@ export const PROFILE_ACTIVITY_TABS = [
 
 export type ProfileActivityTab = (typeof PROFILE_ACTIVITY_TABS)[number]["id"];
 
+/** Visual groups. The flat tab list above stays in its existing order. */
+export const PROFILE_ACTIVITY_GROUPS = [
+  {
+    id: "posts",
+    label: "Posts",
+    tabs: ["notes", "replies", "long_form", "media", "live"],
+  },
+  {
+    id: "engagement",
+    label: "Engagement",
+    tabs: ["reactions", "zaps", "highlights"],
+  },
+  {
+    id: "curation",
+    label: "Curation",
+    tabs: ["bookmarks", "pins", "interests", "lists", "labels"],
+  },
+  {
+    id: "safety",
+    label: "Safety",
+    tabs: ["mute_list", "muted_by", "moderation"],
+  },
+] as const satisfies ReadonlyArray<{
+  id: string;
+  label: string;
+  tabs: readonly ProfileActivityTab[];
+}>;
+
+/** Insights that stay above activity. Moderation lives under Safety. */
+export const PROFILE_INSIGHT_LINKS = [
+  { id: "graph", label: "Graph" },
+  { id: "zap_stats", label: "Zaps" },
+  { id: "identities", label: "Identities" },
+] as const satisfies ReadonlyArray<{ id: ProfileActivityTab; label: string }>;
+
+export function profileActivityGroup(tab: ProfileActivityTab) {
+  return (
+    PROFILE_ACTIVITY_GROUPS.find((group) => (group.tabs as readonly string[]).includes(tab)) ??
+    PROFILE_ACTIVITY_GROUPS[0]
+  );
+}
+
 const PROFILE_SURFACE_TABS = new Set<ProfileActivityTab>([
   "interests",
   "lists",

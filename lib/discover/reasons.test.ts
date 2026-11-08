@@ -39,10 +39,9 @@ describe("mapServerRankingReasons", () => {
         ],
       })
     ).toEqual([
-      { text: "follower growth", support: "+4 followers", code: "follower_growth" },
+      { text: "Gained 4 followers", code: "follower_growth" },
       {
-        text: "engagement per post",
-        support: "8.2 interactions per note",
+        text: "Each note gets about 8.2 reactions, replies, and zaps",
         code: "engagement_quality",
       },
     ]);
@@ -61,9 +60,7 @@ describe("mapServerRankingReasons", () => {
           },
         ],
       })
-    ).toEqual([
-      { text: "engagement received", support: "40 interactions", code: "engagement_received" },
-    ]);
+    ).toEqual([{ text: "40 interactions in total", code: "engagement_received" }]);
   });
 
   it("drops ratio reasons below one and keeps the ones worth reading", () => {
@@ -88,13 +85,11 @@ describe("mapServerRankingReasons", () => {
       })
     ).toEqual([
       {
-        text: "engagement per post",
-        support: "6.8 interactions per note",
+        text: "Each note gets about 6.8 reactions, replies, and zaps",
         code: "engagement_quality",
       },
       {
-        text: "engagement vs. audience size",
-        support: "10 interactions per follower",
+        text: "About 10 interactions for each follower",
         code: "relative_engagement_growth",
       },
     ]);
@@ -119,10 +114,10 @@ describe("mapServerRankingReasons", () => {
         ],
       })
     ).toEqual([
-      { text: "saved by", support: "1 person", code: "saved_by" },
-      { text: "sats received in this window", support: "1 sat", code: "zap_volume" },
-      { text: "capped sats", support: "1 sat", code: "supporter_sats" },
-      { text: "audience size", support: "1 follower", code: "audience_size" },
+      { text: "Saved by 1 person", code: "saved_by" },
+      { text: "1 sat in this window", code: "zap_volume" },
+      { text: "1 sat, with each sender capped", code: "supporter_sats" },
+      { text: "1 follower", code: "audience_size" },
     ]);
   });
 
@@ -132,17 +127,14 @@ describe("mapServerRankingReasons", () => {
     ).toEqual([{ text: "zap velocity", support: undefined, code: "zap_velocity" }]);
   });
 
-  it("names a combined score and a newer row without inventing a count", () => {
+  it("skips a combined score and says a newer row was posted recently", () => {
     expect(
       mapServerRankingReasons({
         rank: 1,
         score: 1,
         reasons: [{ code: "combined_engagement" }, { code: "recency" }],
       })
-    ).toEqual([
-      { text: "combined engagement", support: undefined, code: "combined_engagement" },
-      { text: "newer in this window", support: undefined, code: "recency" },
-    ]);
+    ).toEqual([{ text: "Posted recently and already in this ranking", code: "recency" }]);
   });
 });
 
