@@ -2,7 +2,17 @@
   "name": "nostrmash-web",
   "version": "0.1.0",
   "private": true,
+  "description": "Public explorer for NostrMash. Search notes and profiles, and browse trends, relays, and network stats.",
+  "author": "NostrMash",
   "license": "Unlicense",
+  "homepage": "https://nostrmash.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xdzczk/nostrmash-web.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xdzczk/nostrmash-web/issues"
+  },
   "packageManager": "pnpm@10.18.1",
   "scripts": {
     "dev": "next dev",

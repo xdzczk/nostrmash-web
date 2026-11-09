@@ -1,6 +1,9 @@
-# nostrmash-web
+# NostrMash Web
 
-Public explorer and analytics web surface for NostrMash.
+[![CI](https://github.com/xdzczk/nostrmash-web/actions/workflows/ci.yml/badge.svg)](https://github.com/xdzczk/nostrmash-web/actions/workflows/ci.yml)
+[![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue)](LICENSE)
+
+Public explorer for [NostrMash](https://nostrmash.com). Search notes and profiles, and browse trends, relays, and network stats. The site reads the NostrMash API and does not talk to relays itself.
 
 ## Stack
 
@@ -91,3 +94,11 @@ Before deploy, make sure you have:
 - configured Cloudflare auth for Wrangler
 - created the R2 bucket from `wrangler.jsonc`
 - set environment values (for example `NOSTRMASH_API_BASE_URL`) in Worker settings
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). This project follows the [Code of Conduct](CODE_OF_CONDUCT.md). Report security issues through [SECURITY.md](SECURITY.md).
+
+## License
+
+Released into the public domain under the [Unlicense](LICENSE).
