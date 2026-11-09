@@ -13,7 +13,6 @@ import {
   mapProfileWhyNow,
   type WhyNowReason,
 } from "@/components/explorer/why-now";
-import { INTERESTS } from "@/lib/discover/interests";
 import { sharedTopicLine } from "@/lib/discover/stories";
 import { selectSupportingNotes } from "@/lib/discover/lead-notes";
 import { MEDIA_RANKINGS, type MediaLeaders } from "@/lib/discover/media-rankings";
@@ -917,18 +916,6 @@ export async function EditorialOverview({
           contentResolution={contentResolution}
         />
       </section>
-
-      <nav aria-label="Browse by interest" className="flex flex-wrap gap-2">
-        {INTERESTS.map((interest) => (
-          <Link
-            key={interest.href}
-            href={interest.href}
-            className="border-edge-strong text-ink-soft hover:border-edge hover:text-ink inline-flex min-h-8 items-center rounded-full border px-3 text-sm"
-          >
-            {interest.label}
-          </Link>
-        ))}
-      </nav>
 
       <MediaLeadersSection
         leaders={mediaLeaders}
