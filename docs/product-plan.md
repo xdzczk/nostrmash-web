@@ -499,7 +499,7 @@ Every issue from both reviews, mapped to the item that closes it.
 | #   | Issue                                                  | Source | Closed by                   |
 | --- | ------------------------------------------------------ | ------ | --------------------------- |
 | 1   | Hero shows raw markdown                                | 6 Nov  | Done (lightweight-markdown) |
-| 2   | `[Video](…)` literal in media card                     | 6 Nov  | Done (verify in 0.6)        |
+| 2   | literal Video markdown in the media card               | 6 Nov  | Done (verify in 0.6)        |
 | 3   | Lead note lost display size                            | 8 Nov  | 0.1                         |
 | 4   | Topics/Links repeat figure as pill; sources vs authors | 8 Nov  | 0.2                         |
 | 5   | Unannotated 4x spike in relay volume                   | 8 Nov  | 0.3, 6.3                    |
