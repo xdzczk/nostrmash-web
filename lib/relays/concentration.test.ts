@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { concentrationTitle } from "@/lib/relays/concentration";
+import { concentrationTitle, strikingConcentration } from "@/lib/relays/concentration";
 
 describe("concentrationTitle", () => {
   it("states the share for the selected window", () => {
@@ -26,5 +26,18 @@ describe("concentrationTitle", () => {
 
   it("falls back when there is nothing to rank", () => {
     expect(concentrationTitle(0, 0, "24h")).toBe("The network behind the conversation.");
+  });
+});
+
+describe("strikingConcentration", () => {
+  it("states the share when a few relays carry most of the index", () => {
+    expect(strikingConcentration([448, 417, 49, 24], "24h")).toBe(
+      "Three relays carried 97% of what we indexed in the last day."
+    );
+  });
+
+  it("stays quiet when the share is mild or the ranking is too short", () => {
+    expect(strikingConcentration([15, 14, 13, 12, 11, 10, 9, 8, 8], "24h")).toBeNull();
+    expect(strikingConcentration([90], "24h")).toBeNull();
   });
 });

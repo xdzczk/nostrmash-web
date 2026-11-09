@@ -78,7 +78,7 @@ export function HashtagChip({ tag }: { tag: string }) {
   if (!clean) return null;
   return (
     <Link href={`/hashtags/${encodeURIComponent(clean)}`} className="text-link text-sm">
-      #{clean}
+      {`#${clean}`}
     </Link>
   );
 }

@@ -265,7 +265,7 @@ export async function ProfileSurfacePanel({
                   href={`/hashtags/${encodeURIComponent(tag.replace(/^#/, ""))}`}
                   className="border-edge-strong text-ink-soft hover:text-ink rounded-full border px-2.5 py-1 text-xs"
                 >
-                  #{tag.replace(/^#/, "")}
+                  {`#${tag.replace(/^#/, "")}`}
                 </Link>
               ))}
             </div>

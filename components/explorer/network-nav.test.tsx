@@ -17,7 +17,7 @@ describe("Network prefetch", () => {
   it("warms the other network categories", () => {
     render(<NetworkNav active="overview" />);
 
-    const categories = screen.getByRole("navigation", { name: "Relay sections" });
+    const categories = screen.getByRole("navigation", { name: "Network sections" });
     expect(categories).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute("data-prefetch", "off");
     expect(screen.getByRole("link", { name: "Popular relays" })).toHaveAttribute(
@@ -29,19 +29,15 @@ describe("Network prefetch", () => {
       "full"
     );
     expect(screen.getByRole("link", { name: "Status" })).toHaveAttribute("href", "/relays/health");
-    expect(screen.getByRole("link", { name: "Statistics" })).toHaveAttribute("href", "/stats");
-    expect(screen.getByRole("link", { name: "Statistics" })).toHaveAttribute(
-      "data-prefetch",
-      "full"
-    );
+    expect(screen.queryByRole("link", { name: "Statistics" })).not.toBeInTheDocument();
   });
 
   it("warms Network from Discover and leaves the current section alone", () => {
     render(<SiteNav />);
 
     expect(screen.getByRole("link", { name: "Discover" })).toHaveAttribute("data-prefetch", "off");
-    expect(screen.getByRole("link", { name: "Relays" })).toHaveAttribute("href", "/relays");
-    expect(screen.getByRole("link", { name: "Relays" })).toHaveAttribute("data-prefetch", "full");
+    expect(screen.getByRole("link", { name: "Network" })).toHaveAttribute("href", "/relays");
+    expect(screen.getByRole("link", { name: "Network" })).toHaveAttribute("data-prefetch", "full");
     expect(screen.getByRole("link", { name: "Stats" })).toHaveAttribute("href", "/stats");
     expect(screen.getByRole("link", { name: "Stats" })).toHaveAttribute("data-prefetch", "full");
   });

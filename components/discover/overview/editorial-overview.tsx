@@ -9,6 +9,7 @@ import { Timestamp } from "@/components/explorer/timestamp";
 import { mapNoteWhyNow, mapProfileWhyNow, type WhyNowReason } from "@/components/explorer/why-now";
 import { Orientation } from "@/components/discover/orientation";
 import { type Briefing } from "@/lib/discover/briefing";
+import { unusualDomains, unusualHashtags } from "@/lib/discover/unusual";
 import { INTERESTS } from "@/lib/discover/interests";
 import { sharedTopicLine } from "@/lib/discover/stories";
 import { selectSupportingNotes } from "@/lib/discover/lead-notes";
@@ -43,7 +44,13 @@ import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
 import type { StatsWindow } from "@/lib/search-params/window";
 import type { CoverageNote } from "@/lib/stats/coverage-notes";
-import type { DiscoveryItemRanking, EventRecord, Profile } from "@/lib/types/api";
+import type {
+  DiscoveryItemRanking,
+  DomainEntry,
+  EventRecord,
+  HashtagEntry,
+  Profile,
+} from "@/lib/types/api";
 import type { DomainMomentum, HashtagMomentum } from "@/lib/types/surfaces";
 
 type PulseStat = {
@@ -468,24 +475,18 @@ function ProfileRanking({
 
 function UnusualTopics({
   items,
+  ranked,
   window,
   lang,
   excludeBridged,
 }: {
   items: HashtagMomentum[];
+  ranked: HashtagEntry[];
   window: StatsWindow;
   lang?: string;
   excludeBridged?: boolean;
 }) {
-  const rows = items
-    .map((item) => {
-      const hashtag = String(item.hashtag ?? "")
-        .replace(/^#/, "")
-        .trim();
-      return hashtag ? { hashtag } : null;
-    })
-    .filter((row): row is { hashtag: string } => row !== null)
-    .slice(0, INDEX_ROW_LIMIT);
+  const rows = unusualHashtags(items, ranked).slice(0, INDEX_ROW_LIMIT);
   if (rows.length === 0) return null;
   return (
     <section aria-labelledby="unusual-today">
@@ -500,13 +501,13 @@ function UnusualTopics({
         ranked="/methodology#topics"
       />
       <ol className="border-edge/70 mt-6 divide-y divide-[var(--edge)] border-y">
-        {rows.map((row) => (
-          <li key={row.hashtag} className="py-3">
+        {rows.map((hashtag) => (
+          <li key={hashtag} className="py-3">
             <Link
-              href={`/hashtags/${encodeURIComponent(row.hashtag)}`}
+              href={`/hashtags/${encodeURIComponent(hashtag)}`}
               className="text-ink font-medium hover:underline"
             >
-              #{row.hashtag}
+              {`#${hashtag}`}
             </Link>
             <p className="text-ink-muted mt-1 text-sm">Moving faster than its recent pace.</p>
           </li>
@@ -518,22 +519,18 @@ function UnusualTopics({
 
 function UnusualLinks({
   items,
+  ranked,
   window,
   lang,
   excludeBridged,
 }: {
   items: DomainMomentum[];
+  ranked: DomainEntry[];
   window: StatsWindow;
   lang?: string;
   excludeBridged?: boolean;
 }) {
-  const rows = items
-    .map((item) => {
-      const domain = String(item.domain ?? "").trim();
-      return domain ? { domain } : null;
-    })
-    .filter((row): row is { domain: string } => row !== null)
-    .slice(0, INDEX_ROW_LIMIT);
+  const rows = unusualDomains(items, ranked).slice(0, INDEX_ROW_LIMIT);
   if (rows.length === 0) return null;
   return (
     <section aria-labelledby="links-circulating">
@@ -548,13 +545,13 @@ function UnusualLinks({
         ranked="/methodology#links"
       />
       <ol className="border-edge/70 mt-6 divide-y divide-[var(--edge)] border-y">
-        {rows.map((row) => (
-          <li key={row.domain} className="py-3">
+        {rows.map((domain) => (
+          <li key={domain} className="py-3">
             <Link
-              href={`/domains/${encodeURIComponent(row.domain)}`}
+              href={`/domains/${encodeURIComponent(domain)}`}
               className="text-ink font-medium hover:underline"
             >
-              {row.domain}
+              {domain}
             </Link>
             <p className="text-ink-muted mt-1 text-sm">Moving faster than its recent pace.</p>
           </li>
@@ -740,6 +737,8 @@ export async function EditorialOverview({
   excludeBridged,
   emergingHashtags = [],
   emergingDomains = [],
+  rankedHashtags = [],
+  rankedDomains = [],
   archiveDay = null,
   coverageNotes = [],
   briefing = null,
@@ -762,6 +761,8 @@ export async function EditorialOverview({
   excludeBridged?: boolean;
   emergingHashtags?: HashtagMomentum[];
   emergingDomains?: DomainMomentum[];
+  rankedHashtags?: HashtagEntry[];
+  rankedDomains?: DomainEntry[];
   archiveDay?: string | null;
   coverageNotes?: readonly CoverageNote[];
   briefing?: Briefing | null;
@@ -881,12 +882,14 @@ export async function EditorialOverview({
       <div className="grid items-start gap-14 lg:grid-cols-2 lg:gap-16 xl:gap-20">
         <UnusualTopics
           items={emergingHashtags}
+          ranked={rankedHashtags}
           window={window}
           lang={lang}
           excludeBridged={excludeBridged}
         />
         <UnusualLinks
           items={emergingDomains}
+          ranked={rankedDomains}
           window={window}
           lang={lang}
           excludeBridged={excludeBridged}

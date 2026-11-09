@@ -2,20 +2,9 @@ import { Sparkline, type SeriesPoint } from "@/components/charts/sparkline";
 import { CausalValue } from "@/components/discover/causal-value";
 import { formatCompactNumber, formatMetricLabel, formatValue } from "@/components/explorer/utils";
 import { baselineComparison, readEntityBaseline } from "@/lib/discover/baseline";
-import { vsBaseline } from "@/lib/format/relative";
 import { coverageChangeLabel, type CoverageNote } from "@/lib/stats/coverage-notes";
 import type { EntityBaseline } from "@/lib/types/api";
 import { seriesJumpIndexes } from "@/lib/stats/series-jumps";
-
-function seriesMedian(points: SeriesPoint[]): number | null {
-  if (points.length < 4) return null;
-  const values = [...points.map((point) => point.v)].sort((left, right) => left - right);
-  const mid = Math.floor(values.length / 2);
-  const lower = values[mid - 1];
-  const upper = values[mid];
-  if (upper === undefined) return null;
-  return values.length % 2 === 0 && lower !== undefined ? (lower + upper) / 2 : upper;
-}
 
 type PulseStat = {
   label: string;
@@ -106,11 +95,7 @@ export function NetworkPulseStrip({
               : formatValue(stat.value);
 
           const series = stat.series ?? [];
-          const latest = series[series.length - 1];
-          const median = seriesMedian(series);
-          const comparison =
-            baselineComparison(readEntityBaseline(stat.baseline)) ??
-            (latest && median !== null ? vsBaseline(latest.v, median) : null);
+          const comparison = baselineComparison(readEntityBaseline(stat.baseline));
           const jumpIndex = seriesJumpIndexes(series).at(-1);
           const jump =
             jumpIndex !== undefined && series[jumpIndex]

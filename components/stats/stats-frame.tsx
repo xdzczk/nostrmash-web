@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 
 import Link from "@/components/app-link";
 
-import { NetworkNav } from "@/components/explorer/network-nav";
 import { PageHero } from "@/components/explorer/page-hero";
 import { WindowSelector } from "@/components/explorer/window-selector";
 import { STATS_WINDOWS, type StatsWindow } from "@/lib/search-params/window";
@@ -59,7 +58,6 @@ export function StatsFrame({
           />
         }
       />
-      <NetworkNav active="stats" />
       {path !== "/stats" ? (
         <nav
           aria-label="Statistics sections"

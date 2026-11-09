@@ -22,7 +22,6 @@ import {
   observationTime,
   propagationLine,
 } from "@/lib/notes/propagation";
-import { offlineRelayNote } from "@/lib/relays/coverage";
 import { Timestamp } from "@/components/explorer/timestamp";
 import {
   applyEngagementStats,
@@ -300,9 +299,6 @@ export default async function NotePage({
       seenAt: observation.seenAt,
     }))
   );
-  const offlineNote = offlineRelayNote(
-    provenanceRelayLinks.map((observation) => observation.routeHost)
-  );
   // Index-internal summaries only surface inside "Details & provenance", and
   // only the fields that actually carry a value.
   const referenceIds = referencedNoteIds(focal, noteSummary?.quote_repost_context, eventId);
@@ -492,9 +488,6 @@ export default async function NotePage({
                     );
                   })}
                 </ol>
-                {offlineNote ? (
-                  <p className="text-ink-muted mt-3 text-xs leading-5">{offlineNote}</p>
-                ) : null}
               </div>
             ) : null}
             {resolvedAuthor ? (

@@ -20,7 +20,7 @@ test.describe("global product shell", () => {
 
     await page
       .getByRole("navigation", { name: "Primary" })
-      .getByRole("link", { name: "Relays" })
+      .getByRole("link", { name: "Network" })
       .click();
     await expect(page).toHaveURL(/\/relays/);
     await expect(globalSearch).toHaveValue("");
@@ -32,7 +32,7 @@ test.describe("global product shell", () => {
     await globalSearch.fill("bitcoin");
     await page
       .getByRole("navigation", { name: "Primary" })
-      .getByRole("link", { name: "Relays" })
+      .getByRole("link", { name: "Network" })
       .click();
     await expect(page).toHaveURL(/\/relays/);
     await expect(globalSearch).toHaveValue("");
@@ -55,7 +55,7 @@ test.describe("global product shell", () => {
       "aria-current",
       "page"
     );
-    await expect(nav.getByRole("link", { name: "Relays" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Network" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Stats" })).toHaveAttribute("href", "/stats");
     await expect(nav.getByRole("link", { name: "Search" })).toHaveCount(0);
   });

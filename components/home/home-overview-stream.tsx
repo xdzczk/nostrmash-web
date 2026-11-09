@@ -102,6 +102,8 @@ export async function HomeOverviewBody({ data }: { data: Promise<HomePageData> }
           excludeBridged={readExcludeBridged(home.currentSearchParams)}
           emergingHashtags={home.emergingHashtags}
           emergingDomains={home.emergingDomains}
+          rankedHashtags={home.homeHashtags}
+          rankedDomains={home.homeDomains}
           archiveDay={home.archiveDay}
           coverageNotes={home.coverageNotes}
           briefing={home.briefing}

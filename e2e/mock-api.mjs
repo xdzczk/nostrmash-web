@@ -383,6 +383,14 @@ const trendingDomains = [
     link_count: 12,
     note_count: 11,
     unique_authors: 7,
+    baseline: {
+      metric: "unique_authors",
+      window: "24h",
+      value: 7,
+      typical: 3,
+      typical_basis: "entity_30d_median",
+      ratio: 7 / 3,
+    },
     ranking: {
       rank: 1,
       score: 12,

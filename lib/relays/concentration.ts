@@ -27,3 +27,19 @@ export function concentrationTitle(
   const when = formatStatsWindowSpan(window);
   return `${subject} carried ${Math.round(sharePercent)}% of what we indexed ${when}.`;
 }
+
+/**
+ * Homepage lede for relay concentration. A mild share is not the story.
+ * Scores are already ordered with the largest first.
+ */
+export function strikingConcentration(scores: number[], window: StatsWindow): string | null {
+  const positive = scores.filter((score) => Number.isFinite(score) && score > 0);
+  if (positive.length < 2) return null;
+  const total = positive.reduce((sum, score) => sum + score, 0);
+  if (total <= 0) return null;
+  const headCount = Math.min(3, positive.length);
+  const head = positive.slice(0, headCount).reduce((sum, score) => sum + score, 0);
+  const share = Math.round((head / total) * 100);
+  if (share < 50) return null;
+  return concentrationTitle(headCount, share, window);
+}

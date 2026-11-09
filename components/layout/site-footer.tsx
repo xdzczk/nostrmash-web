@@ -2,7 +2,7 @@ import Link from "@/components/app-link";
 
 const footerLinks = [
   { href: "/", label: "Discover" },
-  { href: "/relays", label: "Relays" },
+  { href: "/relays", label: "Network" },
   { href: "/stats", label: "Stats" },
   { href: "/methodology", label: "Methodology" },
   { href: "/about", label: "About" },

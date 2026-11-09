@@ -45,7 +45,7 @@ export async function ProfileInsights({ pubkey }: { pubkey: string }) {
                   href={`/hashtags/${encodeURIComponent(topic.hashtag)}`}
                   className="text-ink text-sm hover:underline"
                 >
-                  #{topic.hashtag}
+                  {`#${topic.hashtag}`}
                 </Link>
                 <span className="text-ink-muted text-xs"> {topic.count}</span>
               </li>

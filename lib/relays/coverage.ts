@@ -1,19 +1,6 @@
 /** Relays that are shut down. They are omitted because they do not respond, not because coverage is unfinished. */
 export const OFFLINE_RELAYS = [{ host: "relay.damus.io" }, { host: "relay.mostr.pub" }] as const;
 
-export function offlineRelayNote(seenHosts: string[]): string | null {
-  const seen = new Set(seenHosts.map((host) => host.toLowerCase()));
-  const missing = OFFLINE_RELAYS.filter((relay) => !seen.has(relay.host));
-  if (missing.length === 0) return null;
-  const names = missing.map((relay) => relay.host);
-  const subject =
-    names.length === 1
-      ? names[0]
-      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-  const verb = names.length === 1 ? "is" : "are";
-  return `${subject} ${verb} offline and unresponsive, so this note was not checked there.`;
-}
-
 /**
  * Coverage of the relays this page already listed. The share is of that list,
  * not of every relay list on the network.

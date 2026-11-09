@@ -948,7 +948,7 @@ export function EmergingHashtagsSection({ items }: { items: HashtagMomentum[] })
         {items.map((item) => (
           <li key={item.hashtag} className="flex items-baseline justify-between gap-4 text-sm">
             <Link href={`/hashtags/${encodeURIComponent(item.hashtag)}`} className="text-link">
-              #{item.hashtag}
+              {`#${item.hashtag}`}
             </Link>
             <span className="text-ink-muted tabular-nums">
               {momentumLabel(item.status)}

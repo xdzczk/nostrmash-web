@@ -105,6 +105,10 @@ export default async function DayPage({ params }: { params: Params }) {
       unique_authors: entry.uniqueAuthors,
       baseline: entry.baseline,
     })),
+    noteVolume: day.noteVolume,
+    noteVolumeBaseline: day.noteVolumeBaseline,
+    activeAuthors: day.activeAuthors,
+    activeAuthorsBaseline: day.activeAuthorsBaseline,
   });
   const noteComparison = metricComparison(day.noteVolume, day.noteVolumeBaseline, "note_volume");
   const authorComparison = metricComparison(

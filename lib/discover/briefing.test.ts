@@ -1,66 +1,115 @@
 import { describe, expect, it } from "vitest";
 
-import { buildOverviewBriefing } from "@/lib/discover/briefing";
+import {
+  buildOverviewBriefing,
+  noteLeadSentence,
+  personLeadSentence,
+} from "@/lib/discover/briefing";
 
-describe("buildOverviewBriefing", () => {
-  it("leads with the topic the most authors used, without inventing a ratio", () => {
-    const briefing = buildOverviewBriefing({
-      hashtags: [
-        { hashtag: "bitcoin", unique_authors: 993 },
-        { hashtag: "nostr", unique_authors: 120 },
-      ],
-      domains: [{ domain: "example.com", unique_authors: 31 }],
-      risingSentence: "Gained 40 followers.",
-    });
-    expect(briefing?.headline).toBe("#bitcoin is in notes from 993 people in this window.");
-    expect(briefing?.items).toEqual([
-      "#nostr is in notes from 120 people in this window.",
-      "example.com was shared by 31 people in this window.",
-      "Gained 40 followers.",
-    ]);
-    expect(briefing?.headline).not.toMatch(/x usual|below usual/);
+const ahead = {
+  metric: "unique_authors",
+  window: "24h",
+  value: 40,
+  typical: 10,
+  typical_basis: "entity_30d_median",
+};
+
+describe("lead sentences", () => {
+  it("names the author of the leading note", () => {
+    expect(noteLeadSentence("12 replies are still arriving", "Gigi")).toBe(
+      "12 replies are still arriving on a note from Gigi."
+    );
   });
 
-  it("adds the stored comparison when it describes the same author count", () => {
+  it("drops a note that is only recent", () => {
+    expect(noteLeadSentence("Posted recently and already in this ranking", "Gigi")).toBeNull();
+  });
+
+  it("skips a person whose only reason is a post count", () => {
+    expect(personLeadSentence("Published 6 notes in this window", "Ada")).toBeNull();
+    expect(personLeadSentence("Gained 40 followers", "Ada")).toBe("Ada: gained 40 followers.");
+  });
+});
+
+describe("buildOverviewBriefing", () => {
+  it("leads with the note, then a person and a link that is actually ahead", () => {
     const briefing = buildOverviewBriefing({
+      noteSentence: "12 replies are still arriving on a note from Gigi.",
+      personSentence: "Ada: gained 40 followers.",
       hashtags: [
+        { hashtag: "bitcoin", unique_authors: 993 },
         {
-          hashtag: "bitcoin",
+          hashtag: "music",
           unique_authors: 40,
-          baseline: {
-            metric: "unique_authors",
-            window: "24h",
-            value: 40,
-            typical: 10,
-            typical_basis: "entity_30d_median",
-          },
+          baseline: { ...ahead, value: 40, typical: 20 },
         },
       ],
+      domains: [{ domain: "example.com", unique_authors: 40, baseline: ahead }],
+    });
+    expect(briefing?.headline).toBe("12 replies are still arriving on a note from Gigi.");
+    expect(briefing?.items).toEqual([
+      "Ada: gained 40 followers.",
+      "example.com was shared by 40 people in this window, 4x its usual day.",
+      "#music is in notes from 40 people in this window, 2x its usual day.",
+    ]);
+  });
+
+  it("does not lead with a large topic that is flat or down", () => {
+    expect(
+      buildOverviewBriefing({
+        hashtags: [
+          { hashtag: "bitcoin", unique_authors: 993 },
+          {
+            hashtag: "nostr",
+            unique_authors: 70,
+            baseline: {
+              metric: "unique_authors",
+              value: 70,
+              typical: 100,
+              typical_basis: "entity_30d_median",
+            },
+          },
+        ],
+      })
+    ).toBeNull();
+  });
+
+  it("uses a topic that is ahead of its usual day when nothing else is moving", () => {
+    const briefing = buildOverviewBriefing({
+      hashtags: [{ hashtag: "bitcoin", unique_authors: 40, baseline: ahead }],
     });
     expect(briefing?.headline).toBe(
       "#bitcoin is in notes from 40 people in this window, 4x its usual day."
     );
   });
 
-  it("leaves the count alone when the baseline is for a different value", () => {
+  it("prefers the network count that is furthest ahead of its usual level", () => {
     const briefing = buildOverviewBriefing({
-      hashtags: [
-        {
-          hashtag: "bitcoin",
-          unique_authors: 40,
-          baseline: {
-            metric: "unique_authors",
-            value: 12,
-            typical: 3,
-            typical_basis: "entity_30d_median",
-          },
-        },
-      ],
+      noteVolume: 100,
+      noteVolumeBaseline: {
+        metric: "note_volume",
+        value: 100,
+        typical: 80,
+        typical_basis: "same_weekday_median",
+      },
+      hashtags: [{ hashtag: "bitcoin", unique_authors: 40, baseline: ahead }],
+      networkSentence: "Three relays carried 91% of what we indexed in the last day.",
     });
-    expect(briefing?.headline).toBe("#bitcoin is in notes from 40 people in this window.");
+    expect(briefing?.headline).toBe("Three relays carried 91% of what we indexed in the last day.");
+    expect(briefing?.items[0]).toBe("100 notes, +25% vs a typical same weekday.");
   });
 
-  it("returns null when no row has a usable count", () => {
-    expect(buildOverviewBriefing({ hashtags: [{ hashtag: "x", unique_authors: 1 }] })).toBeNull();
+  it("leaves a baseline out when it describes a different count", () => {
+    expect(
+      buildOverviewBriefing({
+        hashtags: [
+          {
+            hashtag: "bitcoin",
+            unique_authors: 40,
+            baseline: { ...ahead, value: 12, typical: 3 },
+          },
+        ],
+      })
+    ).toBeNull();
   });
 });

@@ -18,8 +18,12 @@ import type { SeriesPoint } from "@/components/charts/sparkline";
 import { isApiError, isApiTimeoutError } from "@/lib/api/http";
 import { normalizeTopLanguages } from "@/lib/api/normalize";
 import { fetchProfilesByPubkey, mergeHydratedProfile } from "@/lib/api/profile-hydration";
-import { extractRelayRows, pickTopPrimitiveStats } from "@/components/explorer/stats-utils";
-import { isRecord } from "@/components/explorer/utils";
+import {
+  extractRelayRows,
+  pickTopPrimitiveStats,
+  rankRelayActivity,
+} from "@/components/explorer/stats-utils";
+import { isRecord, profileLabel } from "@/components/explorer/utils";
 import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import { readExcludeBridged, readLanguage } from "@/lib/search-params/language";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
@@ -37,10 +41,16 @@ import {
   type StatsWindow,
 } from "@/lib/search-params/window";
 import { loadHomeMediaLeaders, type MediaLeaders } from "@/lib/discover/media-rankings";
-import { mapProfileWhyNow } from "@/components/explorer/why-now";
+import { mapNoteWhyNow, mapProfileWhyNow } from "@/components/explorer/why-now";
 import { latestArchiveDay } from "@/lib/discover/archive";
 import { readEntityBaseline } from "@/lib/discover/baseline";
-import { buildOverviewBriefing, type Briefing } from "@/lib/discover/briefing";
+import {
+  buildOverviewBriefing,
+  noteLeadSentence,
+  personLeadSentence,
+  type Briefing,
+} from "@/lib/discover/briefing";
+import { strikingConcentration } from "@/lib/relays/concentration";
 import { languageScopedStatLabel } from "@/lib/home/pulse-labels";
 import { traceHomeFanOut } from "@/lib/telemetry/trace";
 import type { CoverageNote } from "@/lib/stats/coverage-notes";
@@ -496,10 +506,13 @@ export async function loadHomePageData(
     archiveDayPromise,
     coverageNotesPromise,
   ]);
-  const risingSentence =
-    hydratedHomeRisingProfiles
-      .map((profile) => mapProfileWhyNow(profile)[0]?.text)
-      .find((sentence) => typeof sentence === "string" && sentence.length > 0) ?? null;
+  const leadNote = homeNotes[0];
+  const leadKey = typeof leadNote?.pubkey === "string" ? leadNote.pubkey : "";
+  const leadAuthor = leadKey
+    ? (noteAuthorsByPubkey[leadKey.toLowerCase()] ?? noteAuthorsByPubkey[leadKey])
+    : undefined;
+  const risingProfile = hydratedHomeRisingProfiles[0];
+  const relayRanking = rankRelayActivity(relayStats, 40, relayWindow);
 
   traceHomeFanOut(upstreamCallCount, {
     window: window === "30d" ? 30 : window === "7d" ? 7 : 1,
@@ -530,7 +543,18 @@ export async function loadHomePageData(
     briefing: buildOverviewBriefing({
       hashtags: homeHashtags,
       domains: homeDomains,
-      risingSentence,
+      noteSentence: noteLeadSentence(
+        leadNote ? mapNoteWhyNow(leadNote)[0]?.text : null,
+        leadAuthor ? profileLabel(leadAuthor) : null
+      ),
+      personSentence: personLeadSentence(
+        risingProfile ? mapProfileWhyNow(risingProfile)[0]?.text : null,
+        risingProfile ? profileLabel(risingProfile) : null
+      ),
+      networkSentence: strikingConcentration(
+        relayRanking.map((row) => row.activityScore),
+        window
+      ),
     }),
     noteAuthorsByPubkey,
     pulseStats,
