@@ -35,6 +35,7 @@ import {
   type StatsWindow,
 } from "@/lib/search-params/window";
 import { loadHomeMediaLeaders, type MediaLeaders } from "@/lib/discover/media-rankings";
+import { EMPTY_HOME_RAILS, loadHomeRails, type HomeRails } from "@/lib/home/load-home-rails";
 import { latestArchiveDay } from "@/lib/discover/archive";
 import { readEntityBaseline } from "@/lib/discover/baseline";
 import { readPersonalization, viewerCohortDegraded } from "@/lib/discover/personalization";
@@ -136,6 +137,7 @@ export type HomePageData = {
   homeTimedOut: boolean;
   homeNotes: EventRecord[];
   mediaLeaders: MediaLeaders;
+  rails: HomeRails;
   hydratedHomeProfiles: Profile[];
   hydratedHomeRisingProfiles: Profile[];
   homeHashtags: HashtagEntry[];
@@ -240,6 +242,7 @@ export async function loadHomePageData(
         homeTimedOut: false,
         homeNotes: [],
         mediaLeaders: {},
+        rails: EMPTY_HOME_RAILS,
         hydratedHomeProfiles: [],
         hydratedHomeRisingProfiles: [],
         homeHashtags: [],
@@ -379,12 +382,19 @@ export async function loadHomePageData(
     );
   }
 
-  const mediaLeaders = await mediaLeadersPromise;
+  const railsPromise = loadHomeRails(globalRankingQuery);
+  upstreamCallCount += 6;
+  const [mediaLeaders, rails] = await Promise.all([mediaLeadersPromise, railsPromise]);
 
   let noteAuthorsByPubkey: Record<string, Profile> = {};
   let hydratedHomeProfiles = homeProfiles;
   let hydratedHomeRisingProfiles = homeRisingProfiles;
-  const notePreviewPubkeys = [...homeNotes.slice(0, 5), ...Object.values(mediaLeaders)]
+  const railEvents = [rails.article, ...rails.conversations, ...rails.zapped, ...rails.live];
+  const notePreviewPubkeys = [
+    ...homeNotes.slice(0, 5),
+    ...Object.values(mediaLeaders),
+    ...railEvents,
+  ]
     .map((note) => note?.pubkey)
     .filter((pubkey): pubkey is string => typeof pubkey === "string" && pubkey.length > 0);
   const profilePreviewPubkeys = homeProfiles
@@ -512,6 +522,7 @@ export async function loadHomePageData(
     homeTimedOut,
     homeNotes,
     mediaLeaders,
+    rails,
     hydratedHomeProfiles,
     hydratedHomeRisingProfiles,
     homeHashtags,

@@ -30,6 +30,7 @@ import {
   fetchEventsById,
   fetchProfilesByPubkey,
 } from "@/lib/api/profile-hydration";
+import { hydrateArticleRecords } from "@/lib/discover/hydrate-articles";
 import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import {
   buildProfileActivityContinuationHref,
@@ -367,7 +368,7 @@ export async function loadProfileActivityData(
   const replies = authoredRepliesPayload?.replies ?? [];
   const reactions = authoredReactionsPayload?.reactions ?? [];
   const zaps = authoredZapsPayload?.zaps ?? [];
-  const longFormArticles = longFormPayload?.articles ?? [];
+  const longFormArticles = await hydrateArticleRecords(longFormPayload?.articles ?? []);
   const mediaEvents = mediaPayload?.events ?? [];
   const bookmarks = bookmarksPayload?.events ?? [];
   const highlights = highlightsPayload?.highlights ?? [];

@@ -32,6 +32,7 @@ import {
   restoreRankingMetrics,
 } from "@/lib/api/profile-hydration";
 import { presentConversations } from "@/lib/discover/conversation-order";
+import { hydrateArticleRecords } from "@/lib/discover/hydrate-articles";
 import { hydrateRankedMediaEvents } from "@/lib/discover/media-rankings";
 import { DISCOVERY_30D_HIDDEN_COOKIE } from "@/lib/discover/discovery-window-session";
 import { lastDiscoveryWindow } from "@/lib/discover/window-fallback";
@@ -145,7 +146,7 @@ async function loadSurface(
     }
     case "long-form": {
       const payload = await getTrendingLongForm("shortTtl", query);
-      const notes = payload.articles ?? [];
+      const notes = await hydrateArticleRecords(payload.articles ?? []);
       return { items: notes, notes };
     }
     case "pictures":

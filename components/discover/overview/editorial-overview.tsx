@@ -51,7 +51,14 @@ import {
   reasonsBesideSourceFigure,
 } from "@/lib/discover/reasons";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
+import {
+  ConversationZapRails,
+  FormatLeaders,
+  LiveStrip,
+  MoversColumn,
+} from "@/components/discover/overview/overview-rails";
 import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
+import type { HomeRails } from "@/lib/home/load-home-rails";
 import type { StatsWindow } from "@/lib/search-params/window";
 import type { CoverageNote } from "@/lib/stats/coverage-notes";
 import type {
@@ -95,6 +102,8 @@ function SectionHeader({
   display = false,
   aside,
   ranked,
+  compact = false,
+  lede,
 }: {
   kicker: string;
   title: string;
@@ -104,31 +113,42 @@ function SectionHeader({
   aside?: ReactNode;
   /** Methodology anchor for this ranking. */
   ranked?: string;
+  /** Smaller title so a narrow rail stays on one line. */
+  compact?: boolean;
+  lede?: string;
 }) {
+  const titleClass = compact
+    ? "font-display text-[1.35rem] leading-tight tracking-[-0.03em]"
+    : display
+      ? "nm-display-lg"
+      : "nm-title";
   return (
-    <div className="flex items-end justify-between gap-4">
-      <div className="min-w-0">
-        <p className="nm-kicker">{kicker}</p>
-        <h2 id={headingId} className={`${display ? "nm-display-lg" : "nm-title"} text-ink mt-2`}>
-          {title}
-        </h2>
-      </div>
-      {action || ranked || aside ? (
-        <div className="mb-0.5 flex shrink-0 flex-col items-end gap-1">
-          {action ? (
-            <Link href={action.href} className="nm-action-link">
-              {action.label}
-            </Link>
-          ) : (
-            aside
-          )}
-          {ranked ? (
-            <Link href={ranked} className={RANKED_LINK}>
-              How this is ranked
-            </Link>
-          ) : null}
+    <div className="min-w-0">
+      <div className="flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="nm-kicker">{kicker}</p>
+          <h2 id={headingId} className={`${titleClass} text-ink mt-2`}>
+            {title}
+          </h2>
         </div>
-      ) : null}
+        {action || ranked || aside ? (
+          <div className="mb-0.5 flex shrink-0 flex-col items-end gap-1">
+            {action ? (
+              <Link href={action.href} className="nm-action-link">
+                {action.label}
+              </Link>
+            ) : (
+              aside
+            )}
+            {ranked ? (
+              <Link href={ranked} className={RANKED_LINK}>
+                How this is ranked
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      {lede ? <p className="text-ink-muted mt-2 max-w-md text-sm leading-5">{lede}</p> : null}
     </div>
   );
 }
@@ -193,6 +213,20 @@ function EvidenceLine({
 function noteId(note: EventRecord): string | null {
   const candidate = note.id ?? note.event_id ?? note.eventId;
   return typeof candidate === "string" && candidate.length > 0 ? candidate : null;
+}
+
+/** Fill a rail without repeating a note already shown higher on the page. */
+function takeUnseen(events: EventRecord[], seen: Set<string>, limit: number): EventRecord[] {
+  const rows: EventRecord[] = [];
+  for (const event of events) {
+    if (isHiddenNoteKind(event)) continue;
+    const id = noteId(event);
+    if (id && seen.has(id)) continue;
+    if (id) seen.add(id);
+    rows.push(event);
+    if (rows.length >= limit) break;
+  }
+  return rows;
 }
 
 function noteAuthor(note: EventRecord, authorsByPubkey: Record<string, Profile>) {
@@ -299,13 +333,15 @@ function EditorialNote({
             content={editorialText}
             tags={note.tags}
             resolution={contentResolution}
-            className="text-ink-strong mt-5 line-clamp-8 max-w-[44rem] text-[clamp(1.35rem,1rem+1.15vw,2rem)] leading-[1.38] tracking-[-0.028em] [overflow-wrap:anywhere]"
+            className="text-ink-strong font-display mt-5 line-clamp-5 max-w-[40rem] text-[clamp(1.7rem,1.05rem+1.7vw,2.55rem)] leading-[1.28] tracking-[-0.032em] [overflow-wrap:anywhere]"
             size="lead"
           />
         ) : null}
         {hasContent ? (
           <>
-            <NoteMedia content={note.content as string} variant="lead" priority />
+            <div className="mt-4 max-w-32">
+              <NoteMedia content={note.content as string} tags={note.tags} variant="compact" />
+            </div>
             <NoteLinkPreviews content={note.content as string} limit={1} />
           </>
         ) : null}
@@ -337,7 +373,7 @@ function EditorialNote({
   // screenshot cannot outrank the lead note in the other column.
   return (
     <article
-      className={`border-edge/70 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 border-t py-5 first:border-t-0 ${
+      className={`border-edge/70 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 border-t py-2.5 first:border-t-0 ${
         noteHref ? cardHitTargetClassName : ""
       }`}
     >
@@ -349,15 +385,7 @@ function EditorialNote({
             content={editorialText}
             tags={note.tags}
             resolution={contentResolution}
-            className="text-ink-dim mt-3 line-clamp-3 text-[15px] leading-6 [overflow-wrap:anywhere]"
-          />
-        ) : null}
-        {hasContent ? (
-          <MentionedNoteCards
-            content={note.content as string}
-            tags={note.tags}
-            resolution={contentResolution}
-            className="mt-3"
+            className="text-ink-soft mt-1 line-clamp-2 text-sm leading-5 [overflow-wrap:anywhere]"
           />
         ) : null}
       </div>
@@ -367,9 +395,8 @@ function EditorialNote({
         </div>
       ) : null}
       <div className="col-span-2">
-        <EvidenceLine reasons={mapNoteWhyNow(note)} ranking={note.ranking} />
-        <PostEngagement stats={postEngagementStats(note)} className="mt-2.5" />
-        <TopZap source={note} />
+        <EvidenceLine reasons={mapNoteWhyNow(note)} ranking={note.ranking} className="mt-1.5" />
+        <PostEngagement stats={postEngagementStats(note)} className="mt-1.5" />
       </div>
       {noteHref ? <CardHitTarget href={noteHref} label={`Open note by ${authorLabel}`} /> : null}
     </article>
@@ -393,6 +420,11 @@ function ProfileRanking({
   rankedHref = "/methodology#people",
   emptyMessage = "No clear profile movement.",
   degradedMessage = "Profile movement is temporarily unavailable.",
+  namesOnly = false,
+  rowLimit = PROFILE_ROW_LIMIT,
+  compact = false,
+  lede,
+  className,
 }: {
   profiles: Profile[];
   degraded?: boolean;
@@ -406,31 +438,78 @@ function ProfileRanking({
   rankedHref?: string;
   emptyMessage?: string;
   degradedMessage?: string;
+  /** Name and handle only. The wide column keeps the evidence line. */
+  namesOnly?: boolean;
+  rowLimit?: number;
+  compact?: boolean;
+  lede?: string;
+  className?: string;
 }) {
   return (
-    <section aria-labelledby={headingId}>
+    <section aria-labelledby={headingId} className={className}>
       <SectionHeader
         kicker={kicker}
         title={title}
         headingId={headingId}
+        compact={compact}
+        lede={lede}
         action={{
           href:
             fullRankingHref ?? buildDiscoverHref("/trending/profiles", { window, lang, viewer }),
-          label: "People index",
+          label: namesOnly ? "Full ranking" : "People index",
         }}
-        ranked={rankedHref}
+        ranked={compact ? undefined : rankedHref}
       />
       {profiles.length > 0 ? (
         <ol className="border-edge/70 mt-6 divide-y divide-[var(--edge)] border-y">
-          {profiles.slice(0, PROFILE_ROW_LIMIT).map((profile, index) => {
+          {profiles.slice(0, rowLimit).map((profile, index) => {
             const href = profileHref(profile);
             const label = profileLabel(profile);
             const secondary = profileSecondaryLabel(profile);
             const secondaryText = secondary ? formatProfileSecondary(secondary) : "";
+            if (namesOnly) {
+              return (
+                <li
+                  key={profile.pubkey ?? profile.npub ?? index}
+                  className="flex items-center gap-3 py-2.5"
+                >
+                  <span className="text-accent-ink w-8 shrink-0 text-lg tabular-nums">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <ProfileAvatar
+                    profile={profile}
+                    size={36}
+                    href={href}
+                    className="border-edge h-9 w-9 shrink-0 rounded-full border object-cover"
+                  />
+                  <div className="min-w-0 flex-1">
+                    {href ? (
+                      <Link
+                        href={href}
+                        title={label}
+                        className="text-ink block truncate text-sm font-medium hover:underline"
+                      >
+                        {truncateProfileLabel(label)}
+                      </Link>
+                    ) : (
+                      <p className="text-ink truncate text-sm font-medium" title={label}>
+                        {truncateProfileLabel(label)}
+                      </p>
+                    )}
+                    {secondaryText ? (
+                      <p className="nm-meta truncate" title={secondary ?? undefined}>
+                        {secondaryText}
+                      </p>
+                    ) : null}
+                  </div>
+                  <RankMovement ranking={profile.ranking} />
+                </li>
+              );
+            }
             return (
               <li
                 key={profile.pubkey ?? profile.npub ?? index}
-                className="grid grid-cols-[2.5rem_2.75rem_minmax(0,1fr)] gap-3 py-5"
+                className="grid grid-cols-[2.5rem_2.75rem_minmax(0,1fr)] gap-3 py-3"
               >
                 <span className="text-accent-ink pt-1 text-lg tabular-nums">
                   {String(index + 1).padStart(2, "0")}
@@ -592,6 +671,7 @@ function TopicsIndex({
           href: buildDiscoverHref("/trending/hashtags", { window, lang, viewer }),
           label: "Topic index",
         }}
+        lede="Hashtags by number of authors."
         ranked="/methodology#topics"
       />
       {rows.length > 0 ? (
@@ -653,6 +733,7 @@ function LinksIndex({
           href: buildDiscoverHref("/trending/domains", { window, lang, viewer }),
           label: "Link index",
         }}
+        lede="Domains by number of authors."
         ranked="/methodology#links"
       />
       {rows.length > 0 ? (
@@ -738,16 +819,16 @@ function SupportingNotes({
 }) {
   return (
     <section aria-labelledby={headingId}>
-      <div className="mb-3">
-        <SectionHeader
-          kicker="Notes"
-          title="Also moving"
-          headingId={headingId}
-          action={{
-            href: buildDiscoverHref("/trending/notes", { window, lang, viewer }),
-            label: "All notes",
-          }}
-        />
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <h2 id={headingId} className="nm-kicker">
+          Also moving
+        </h2>
+        <Link
+          href={buildDiscoverHref("/trending/notes", { window, lang, viewer })}
+          className="nm-action-link"
+        >
+          All notes
+        </Link>
       </div>
       {notes.map((note, index) => (
         <EditorialNote
@@ -762,77 +843,10 @@ function SupportingNotes({
   );
 }
 
-function MediaLeadersSection({
-  leaders,
-  authorsByPubkey,
-  window,
-  lang,
-  viewer,
-  contentResolution,
-}: {
-  leaders: MediaLeaders;
-  authorsByPubkey: Record<string, Profile>;
-  window: StatsWindow;
-  lang?: string;
-  viewer?: string;
-  contentResolution?: NoteContentResolution;
-}) {
-  const columns = MEDIA_RANKINGS.flatMap((ranking) => {
-    const event = leaders[ranking.format];
-    return event ? [{ ...ranking, event }] : [];
-  });
-  if (columns.length === 0) return null;
-
-  return (
-    <section aria-labelledby="media-leaders">
-      <SectionHeader
-        kicker="Media"
-        title="Leading each format"
-        headingId="media-leaders"
-        ranked="/methodology#ranking-orders"
-      />
-      <div
-        className={`mt-6 grid items-start gap-10 ${columns.length > 1 ? "lg:grid-cols-2" : ""} ${
-          columns.length > 2 ? "xl:grid-cols-3" : ""
-        }`}
-      >
-        {columns.map((column) => {
-          const pubkey =
-            typeof column.event.pubkey === "string" ? column.event.pubkey.toLowerCase() : "";
-          return (
-            <div key={column.format} className="min-w-0">
-              <div className="mb-3 flex items-end justify-between gap-3">
-                <h3 className="nm-kicker">{column.label}</h3>
-                <Link
-                  href={buildDiscoverHref(column.path, { window, lang, viewer })}
-                  className="nm-action-link"
-                >
-                  Ranking
-                </Link>
-              </div>
-              <EventKindSwitch
-                event={column.event}
-                author={pubkey ? authorsByPubkey[pubkey] : undefined}
-                surface="list"
-                showUtilityLinks={false}
-                contentResolution={contentResolution}
-              />
-              {postEngagementStats(column.event).every((stat) => stat.value === 0) ? (
-                <p className="text-ink-muted mt-2 text-xs">
-                  {mapNoteWhyNow(column.event)[0]?.text ?? "Newest in a quiet window"}
-                </p>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 export async function EditorialOverview({
   notes,
   mediaLeaders,
+  rails,
   profiles,
   risingProfiles,
   authorsByPubkey,
@@ -850,6 +864,7 @@ export async function EditorialOverview({
 }: {
   notes: EventRecord[];
   mediaLeaders: MediaLeaders;
+  rails: HomeRails;
   profiles: Profile[];
   risingProfiles: Profile[];
   authorsByPubkey: Record<string, Profile>;
@@ -872,12 +887,25 @@ export async function EditorialOverview({
   coverageNotes?: readonly CoverageNote[];
 }) {
   const lead = notes[0];
-  const followups = selectSupportingNotes(notes);
+  const followups = selectSupportingNotes(notes, 4);
+  const seenNoteIds = new Set<string>();
+  for (const event of lead ? [lead, ...followups] : followups) {
+    const id = noteId(event);
+    if (id) seenNoteIds.add(id);
+  }
+  const conversations = takeUnseen(rails.conversations, seenNoteIds, 4);
+  const zapped = takeUnseen(rails.zapped, seenNoteIds, 3);
   const mediaEvents = MEDIA_RANKINGS.flatMap((ranking) => {
     const event = mediaLeaders[ranking.format];
     return event ? [event] : [];
   });
-  const previewEvents = [...(lead ? [lead, ...followups] : []), ...mediaEvents];
+  const previewEvents = [
+    ...(lead ? [lead, ...followups] : []),
+    ...mediaEvents,
+    ...(rails.article ? [rails.article] : []),
+    ...conversations,
+    ...zapped,
+  ];
   const contentResolution = await resolveContentReferences(previewEvents).catch(() => undefined);
   if (contentResolution) {
     const knownProfiles = contentResolution.profilesByPubkey ?? {};
@@ -907,7 +935,7 @@ export async function EditorialOverview({
       />
       <section
         aria-label="Leading notes"
-        className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.42fr)_minmax(300px,0.62fr)] lg:gap-14 xl:gap-20"
+        className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.75fr)_minmax(16rem,0.8fr)] lg:gap-14"
       >
         <LeadSection
           lead={lead}
@@ -929,8 +957,9 @@ export async function EditorialOverview({
         />
       </section>
 
-      <MediaLeadersSection
+      <FormatLeaders
         leaders={mediaLeaders}
+        article={rails.article}
         authorsByPubkey={authorsByPubkey}
         window={window}
         lang={lang}
@@ -938,16 +967,21 @@ export async function EditorialOverview({
         contentResolution={contentResolution}
       />
 
-      <div className="grid items-start gap-14 lg:grid-cols-2 lg:gap-16 xl:gap-20">
+      <LiveStrip events={rails.live} authorsByPubkey={authorsByPubkey} />
+
+      <ConversationZapRails
+        conversations={conversations}
+        zapped={zapped}
+        authorsByPubkey={authorsByPubkey}
+        window={window}
+        lang={lang}
+        viewer={viewer}
+        contentResolution={contentResolution}
+      />
+
+      <div className="grid items-start gap-12 lg:grid-cols-[minmax(16rem,0.7fr)_minmax(0,1.45fr)] lg:gap-14">
         <ProfileRanking
-          profiles={profiles}
-          degraded={sectionFailures.profiles}
-          window={window}
-          lang={lang}
-          viewer={viewer}
-          headingId="profiles-in-motion"
-        />
-        <ProfileRanking
+          className="order-2 lg:order-1"
           profiles={risingProfiles}
           degraded={sectionFailures.risingProfiles}
           window={window}
@@ -955,6 +989,10 @@ export async function EditorialOverview({
           viewer={viewer}
           headingId="up-and-coming"
           title="Up and coming"
+          namesOnly
+          compact
+          rowLimit={5}
+          lede="Smaller accounts whose reach grew in this window."
           rankedHref="/methodology#rising"
           fullRankingHref={buildDiscoverHref("/discovery/profiles/rising", {
             window,
@@ -964,9 +1002,23 @@ export async function EditorialOverview({
           emptyMessage="No small accounts gaining ground yet."
           degradedMessage="Up-and-coming profiles are temporarily unavailable."
         />
+        <ProfileRanking
+          className="order-1 lg:order-2"
+          profiles={profiles}
+          degraded={sectionFailures.profiles}
+          window={window}
+          lang={lang}
+          viewer={viewer}
+          headingId="profiles-in-motion"
+          lede="Ranked by reactions, replies, and zaps on each note."
+        />
       </div>
 
-      <div className="grid items-start gap-14 lg:grid-cols-2 lg:gap-16 xl:gap-20">
+      <div
+        className={`grid items-start gap-14 ${
+          rails.movers.length > 0 ? "lg:grid-cols-3 lg:gap-x-10" : "lg:grid-cols-2 lg:gap-16"
+        }`}
+      >
         <TopicsIndex
           hashtags={rankedHashtags}
           degraded={sectionFailures.hashtags}
@@ -981,6 +1033,7 @@ export async function EditorialOverview({
           lang={lang}
           viewer={viewer}
         />
+        <MoversColumn movers={rails.movers} />
       </div>
 
       {archiveDay ? (

@@ -33,7 +33,7 @@ describe("getArticlePresentation", () => {
     expect(presentation.body.length).toBe(ARTICLE.content.length);
   });
 
-  it("decodes entities before markdown stripping and does not repeat a derived title", () => {
+  it("does not use the opening of the body as the title", () => {
     const presentation = getArticlePresentation({
       id: "e".repeat(64),
       kind: LONG_FORM_KIND,
@@ -41,10 +41,32 @@ describe("getArticlePresentation", () => {
       content:
         "This article was originally published via my Substack:&#x20;https://frankcorva.substack.com/p/this and then it continues with enough further sentences to remain a summary.",
     });
-    expect(presentation.title).not.toMatch(/&|x20/);
-    expect(presentation.title.toLowerCase()).toContain("substack");
-    expect(presentation.summary ?? "").not.toMatch(/^this article was originally/i);
+    expect(presentation.title).toBe("Untitled article");
+    expect(presentation.summary ?? "").toMatch(/substack/i);
     expect(presentation.summary ?? "").not.toMatch(/&#x20;|& x20;/);
+  });
+
+  it("prefers the title tag over a body excerpt stored on the record", () => {
+    const presentation = getArticlePresentation({
+      id: "g".repeat(64),
+      kind: LONG_FORM_KIND,
+      pubkey: "b".repeat(64),
+      title: "Applesauce v7.1 is out and the changelog follows with a long excerpt of the body.",
+      content: "Applesauce v7.1 is out and the changelog follows with a long excerpt of the body.",
+      tags: [["title", "Applesauce v7.1"]],
+    });
+    expect(presentation.title).toBe("Applesauce v7.1");
+  });
+
+  it("uses a short markdown heading when the event has no title tag", () => {
+    const presentation = getArticlePresentation({
+      id: "h".repeat(64),
+      kind: LONG_FORM_KIND,
+      pubkey: "b".repeat(64),
+      content: "# Release notes\n\nThe body starts after the heading and stays a summary.",
+    });
+    expect(presentation.title).toBe("Release notes");
+    expect(presentation.summary ?? "").not.toMatch(/^release notes/i);
   });
 
   it("keeps hyphens inside an explicit title", () => {

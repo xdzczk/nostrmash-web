@@ -10,7 +10,7 @@ import { TabBar } from "@/components/ui/tabs";
 
 const PATH = "/design/overview-briefing";
 
-type Move = number | "new";
+export type Move = number | "new";
 
 const TABS = [
   { key: "overview", label: "Overview", href: PATH, active: true },
@@ -22,7 +22,7 @@ const TABS = [
   { key: "links", label: "Links", href: "/trending/domains", active: false },
 ];
 
-const ALSO_MOVING = [
+export const ALSO_MOVING = [
   {
     name: "Noshole",
     ago: "2 hours ago",
@@ -60,7 +60,7 @@ const ALSO_MOVING = [
   },
 ];
 
-const FORMATS = [
+export const FORMATS = [
   {
     key: "pictures",
     label: "Pictures",
@@ -109,7 +109,7 @@ const FORMATS = [
   },
 ];
 
-const CONVERSATIONS = [
+export const CONVERSATIONS = [
   {
     title: "Yes, the Lambo bros are louder.",
     detail: "52 replies · 18 people · still arriving",
@@ -137,7 +137,7 @@ const CONVERSATIONS = [
   },
 ];
 
-const GAINING = [
+export const GAINING = [
   {
     name: "Juraj",
     handle: "juraj@tamersofentropy.net",
@@ -170,7 +170,7 @@ const GAINING = [
   },
 ];
 
-const RISING = [
+export const RISING = [
   {
     name: "21 Futures",
     handle: "21Futures@NostrAddress.com",
@@ -203,7 +203,7 @@ const RISING = [
   },
 ];
 
-const TOPICS = [
+export const TOPICS = [
   { label: "#bitcoin", href: "/hashtags/bitcoin", value: "148", noun: "authors", move: 1 as Move },
   { label: "#nostr", href: "/hashtags/nostr", value: "90", noun: "authors", move: 0 as Move },
   { label: "#news", href: "/hashtags/news", value: "63", noun: "authors", move: 2 as Move },
@@ -218,7 +218,7 @@ const TOPICS = [
   { label: "#music", href: "/hashtags/music", value: "36", noun: "authors", move: 3 as Move },
 ];
 
-const LINKS = [
+export const LINKS = [
   {
     label: "youtube.com",
     href: "/domains/youtube.com",
@@ -257,7 +257,7 @@ const LINKS = [
   },
 ];
 
-const EMERGING = [
+export const EMERGING = [
   { label: "#catstr", href: "/hashtags/catstr", value: "28", noun: "authors", move: "new" as Move },
   {
     label: "#meshcore",
@@ -290,7 +290,7 @@ const EMERGING = [
   },
 ];
 
-const ZAPS = [
+export const ZAPS = [
   {
     kicker: "Most zapped note",
     amount: "8,683 sats",
@@ -314,7 +314,7 @@ const ZAPS = [
   },
 ];
 
-const LIVE = [
+export const LIVE = [
   {
     title: "Beatbox set",
     by: "Beatbox Serenade",
@@ -327,7 +327,7 @@ const LIVE = [
   },
 ];
 
-const PULSE = [
+export const PULSE = [
   {
     label: "Note authors (24h)",
     value: "3.7K",
@@ -358,7 +358,7 @@ function series(values: number[]): SeriesPoint[] {
   return values.map((v, t) => ({ t, v }));
 }
 
-function Movement({ move }: { move?: Move }) {
+export function Movement({ move }: { move?: Move }) {
   if (move == null || move === 0) return null;
   if (move === "new") {
     return (
@@ -382,7 +382,16 @@ function Movement({ move }: { move?: Move }) {
   );
 }
 
-function Rank({ value }: { value: number }) {
+/** Fixed slot so a missing arrow does not shift the figure beside it. */
+function MovementSlot({ move }: { move?: Move }) {
+  return (
+    <span className="inline-flex w-10 shrink-0 justify-end">
+      <Movement move={move} />
+    </span>
+  );
+}
+
+export function Rank({ value }: { value: number }) {
   return (
     <span className="text-accent-ink w-8 shrink-0 pt-0.5 text-lg tabular-nums">
       {String(value).padStart(2, "0")}
@@ -390,7 +399,7 @@ function Rank({ value }: { value: number }) {
   );
 }
 
-function Avatar({ name }: { name: string }) {
+export function Avatar({ name }: { name: string }) {
   const initials = name
     .split(/\s+/)
     .slice(0, 2)
@@ -420,38 +429,48 @@ function Figure({ value, noun }: { value: string; noun: string }) {
   );
 }
 
-function SectionHeader({
+export function SectionHeader({
   kicker,
   title,
   headingId,
   lede,
   action,
+  compact = false,
 }: {
   kicker: string;
   title: string;
   headingId: string;
   lede?: string;
   action?: { href: string; label: string };
+  /** Smaller title for a narrow rail, so it stays on one line. */
+  compact?: boolean;
 }) {
   return (
-    <div className="flex items-end justify-between gap-4">
-      <div className="min-w-0">
-        <p className="nm-kicker">{kicker}</p>
-        <h2 id={headingId} className="nm-title text-ink mt-2 scroll-mt-32">
-          {title}
-        </h2>
-        {lede ? <p className="text-ink-muted mt-2 max-w-md text-sm leading-5">{lede}</p> : null}
+    <div className="min-w-0">
+      <div className="flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="nm-kicker">{kicker}</p>
+          <h2
+            id={headingId}
+            className={`text-ink mt-2 scroll-mt-32 ${
+              compact ? "font-display text-[1.35rem] leading-tight tracking-[-0.03em]" : "nm-title"
+            }`}
+          >
+            {title}
+          </h2>
+        </div>
+        {action ? (
+          <Link href={action.href} className="nm-action-link mb-1 shrink-0">
+            {action.label}
+          </Link>
+        ) : null}
       </div>
-      {action ? (
-        <Link href={action.href} className="nm-action-link mb-0.5 shrink-0">
-          {action.label}
-        </Link>
-      ) : null}
+      {lede ? <p className="text-ink-muted mt-2 max-w-md text-sm leading-5">{lede}</p> : null}
     </div>
   );
 }
 
-function IndexList({
+export function IndexList({
   rows,
 }: {
   rows: Array<{ label: string; href: string; value: string; noun: string; move: Move }>;
@@ -467,7 +486,7 @@ function IndexList({
           >
             {row.label}
           </Link>
-          <Movement move={row.move} />
+          <MovementSlot move={row.move} />
           <Figure value={row.value} noun={row.noun} />
         </li>
       ))}
@@ -475,26 +494,29 @@ function IndexList({
   );
 }
 
-function FormatArt({
+export function FormatArt({
   kind,
   duration,
+  frameClassName = "relative aspect-[4/3]",
 }: {
   kind: "picture" | "video" | "short" | "article";
   duration?: string;
+  /** Replaces the default 4:3 frame. Pass `absolute inset-0` to fill a sized parent. */
+  frameClassName?: string;
 }) {
+  const fill = frameClassName.includes("absolute");
   if (kind === "article") {
     return (
       <div
-        className="bg-surface-sunken relative aspect-[4/3] overflow-hidden rounded-sm p-4"
+        className={`bg-surface-sunken overflow-hidden rounded-sm ${fill ? "p-1.5" : "p-4"} ${frameClassName}`}
         aria-hidden
       >
-        <p className="text-ink-soft font-display text-lg leading-tight tracking-tight">
-          Country-wide mesh networks
-        </p>
-        <div className="mt-3 space-y-1.5">
+        <div className="space-y-2">
+          <span className="bg-edge-strong block h-2.5 w-4/5 rounded-full" />
           <span className="bg-edge block h-1.5 w-full rounded-full" />
           <span className="bg-edge block h-1.5 w-11/12 rounded-full" />
           <span className="bg-edge block h-1.5 w-4/5 rounded-full" />
+          <span className="bg-edge mt-3 block h-1.5 w-full rounded-full" />
           <span className="bg-edge block h-1.5 w-2/3 rounded-full" />
         </div>
       </div>
@@ -503,26 +525,45 @@ function FormatArt({
 
   const wash =
     kind === "picture"
-      ? "linear-gradient(160deg, #e7d3b0 0%, #c4844a 38%, #6a3b22 100%)"
+      ? "linear-gradient(165deg, #f0d7b4 0%, #d39258 42%, #7a4630 100%)"
       : kind === "video"
-        ? "linear-gradient(165deg, #3a3f46 0%, #1c1e22 70%)"
-        : "linear-gradient(180deg, #2a2622 0%, #141311 100%)";
+        ? "linear-gradient(180deg, #8ea0b5 0%, #667588 48%, #2a2e34 48%, #17191c 100%)"
+        : "linear-gradient(180deg, #2c2824 0%, #141311 100%)";
 
   return (
-    <div className="relative aspect-[4/3] overflow-hidden rounded-sm" aria-hidden>
+    <div className={`overflow-hidden rounded-sm ${frameClassName}`} aria-hidden>
       <div className="absolute inset-0" style={{ background: wash }} />
       {kind === "picture" ? (
         <>
-          <div className="absolute right-[16%] bottom-[18%] h-[48%] w-[62%] rounded-[45%] bg-[#f6efe4]/90" />
-          <div className="absolute right-[28%] bottom-[30%] h-[18%] w-[24%] rounded-full bg-[#e7b08a]" />
+          <span className="absolute top-[14%] left-[10%] h-[46%] w-[42%] rounded-full bg-[#f6ecdc]/55" />
+          <span className="absolute right-[-8%] bottom-[-18%] h-[78%] w-[78%] rounded-[50%] bg-[#f4e7d4]/88" />
+          <span className="absolute bottom-[18%] left-[22%] h-[16%] w-[28%] rounded-full bg-[#e7b08a]/80" />
         </>
-      ) : (
-        <span className="absolute top-1/2 left-1/2 grid size-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-[#1c1c1a]">
-          <svg width="14" height="16" viewBox="0 0 14 16" aria-hidden>
+      ) : null}
+      {kind === "video" ? (
+        <>
+          <span className="absolute bottom-[14%] left-[12%] h-[34%] w-[14%] bg-[#e4dfd6]/80" />
+          <span className="absolute bottom-[14%] left-[30%] h-[22%] w-[18%] bg-[#c8c2b6]/75" />
+        </>
+      ) : null}
+      {kind === "short" ? (
+        <span className="absolute inset-x-[16%] bottom-[20%] flex h-[48%] items-end gap-1">
+          {[42, 72, 54, 88, 63, 76, 48].map((height) => (
+            <span
+              key={height}
+              className="flex-1 rounded-sm bg-white/75"
+              style={{ height: `${height}%` }}
+            />
+          ))}
+        </span>
+      ) : null}
+      {kind !== "picture" ? (
+        <span className="absolute top-2 left-2 grid size-8 place-items-center rounded-full bg-white/90 text-[#1c1c1a]">
+          <svg width="10" height="12" viewBox="0 0 14 16" aria-hidden>
             <path d="M1 1.2v13.6L13 8 1 1.2Z" fill="currentColor" />
           </svg>
         </span>
-      )}
+      ) : null}
       {duration ? (
         <span className="absolute right-2 bottom-2 rounded-sm bg-black/70 px-1.5 py-0.5 text-[11px] font-medium text-white tabular-nums">
           {duration}
@@ -585,14 +626,18 @@ export function OverviewBriefingMock() {
   return (
     <div className="min-w-0 space-y-6 sm:space-y-7">
       <aside className="border-edge bg-surface-raised flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 rounded-md border px-4 py-3 text-sm">
-        <p className="text-ink-muted max-w-3xl leading-6">
-          <span className="text-ink-soft font-medium">Static mock.</span> Rankings below are
-          fixtures for layout review, not live data. Content comes first. Network totals stay at the
-          bottom.
+        <p className="text-ink-muted leading-6">
+          <span className="text-ink-soft font-medium">Even columns.</span> Fixture rankings, not
+          live data. Network totals stay at the bottom.
         </p>
-        <Link href="/" className="nm-action-link shrink-0">
-          Live overview
-        </Link>
+        <span className="flex shrink-0 gap-4">
+          <Link href="/design/overview-asymmetric" className="nm-action-link">
+            Asymmetric version
+          </Link>
+          <Link href="/" className="nm-action-link">
+            Live overview
+          </Link>
+        </span>
       </aside>
 
       <section className="nm-signal-rule border-edge/80 space-y-3 border-b pt-1 pb-4 sm:space-y-3.5 sm:pt-2 sm:pb-5">
@@ -787,6 +832,7 @@ export function OverviewBriefingMock() {
               kicker="Topics"
               title="Most used topics"
               headingId="topics-heading"
+              lede="Hashtags by number of authors."
               action={{ href: "/trending/hashtags", label: "Topic index" }}
             />
             <IndexList rows={TOPICS} />
@@ -796,6 +842,7 @@ export function OverviewBriefingMock() {
               kicker="Links"
               title="Most shared links"
               headingId="links-heading"
+              lede="Domains by number of authors."
               action={{ href: "/trending/domains", label: "Link index" }}
             />
             <IndexList rows={LINKS} />
@@ -863,7 +910,6 @@ export function OverviewBriefingMock() {
             kicker="Network"
             title="Network pulse"
             headingId="pulse-heading"
-            lede="Supporting evidence for this window. Discover itself stays above."
             action={{ href: "/day/2026-11-08", label: "Compare with yesterday" }}
           />
           <div className="mt-2 grid sm:grid-cols-2 xl:grid-cols-4">

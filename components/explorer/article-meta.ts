@@ -115,13 +115,28 @@ function hasReadableText(value: string): boolean {
   return /[\p{L}\p{N}]/u.test(value);
 }
 
-function titleFromSentence(text: string): string {
-  const slice = text.slice(0, 90);
-  const boundary = slice.lastIndexOf(" ");
-  return boundary > 40 ? slice.slice(0, boundary) : slice;
+/** A stored title that is really the opening of the body. */
+function usableFieldTitle(value: string | undefined, body: string): string | undefined {
+  if (!value) return undefined;
+  const title = value.replace(/\s+/g, " ").trim();
+  if (!title || title.length > 180) return undefined;
+  const text = body.replace(/\s+/g, " ").trim().toLowerCase();
+  if (title.length >= 80 && text.startsWith(title.toLowerCase().slice(0, 80))) return undefined;
+  return title;
 }
 
-/** Drop a summary that only repeats the title, and continue after a derived title. */
+/** First short markdown heading. A paragraph is not a title. */
+function firstMarkdownHeading(content: string): string | undefined {
+  for (const line of content.split("\n")) {
+    const match = /^#{1,2}\s+(\S.*)$/.exec(line.trim());
+    if (!match?.[1]) continue;
+    const heading = stripMarkdown(match[1]);
+    if (heading.length > 0 && heading.length <= 160 && hasReadableText(heading)) return heading;
+  }
+  return undefined;
+}
+
+/** Drop a summary that only repeats the title. */
 function summaryAfterTitle(title: string, summary: string): string | undefined {
   const normalize = (value: string) => value.replace(/\s+/g, " ").trim().toLowerCase();
   const normalizedSummary = normalize(summary);
@@ -156,10 +171,12 @@ export function getArticlePresentation(
   const content = typeof note.content === "string" ? note.content : "";
   const strippedContent = stripMarkdown(content);
 
-  const explicitTitleRaw = asString(record.title) ?? tagValue(note, "title");
+  const tagTitle = tagValue(note, "title");
+  const fieldTitle = usableFieldTitle(asString(record.title), strippedContent);
+  const explicitTitleRaw = tagTitle ?? fieldTitle;
   const explicitTitle = explicitTitleRaw ? stripMarkdown(explicitTitleRaw) : undefined;
-  const derivedTitle = strippedContent.length > 0 ? titleFromSentence(strippedContent) : undefined;
-  const title = explicitTitle ?? derivedTitle ?? "Untitled article";
+  const headingTitle = explicitTitle ? undefined : firstMarkdownHeading(content);
+  const title = explicitTitle ?? headingTitle ?? "Untitled article";
 
   const explicitSummary =
     asString(record.summary) ?? asString(record.description) ?? tagValue(note, "summary");
@@ -167,11 +184,9 @@ export function getArticlePresentation(
   const summarySource =
     explicitStripped && hasReadableText(explicitStripped)
       ? explicitStripped
-      : !explicitTitle && derivedTitle
-        ? strippedContent.slice(derivedTitle.length).replace(/^[\s—–\-:.,]+/, "")
-        : strippedContent.length > 0 && hasReadableText(strippedContent)
-          ? strippedContent
-          : undefined;
+      : strippedContent.length > 0 && hasReadableText(strippedContent)
+        ? strippedContent
+        : undefined;
   const clampSummary = (value: string) =>
     value.length > summaryMaxLength ? `${value.slice(0, summaryMaxLength - 1).trimEnd()}…` : value;
   const withoutTitle = summarySource ? summaryAfterTitle(title, summarySource) : undefined;

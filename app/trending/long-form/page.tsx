@@ -10,6 +10,7 @@ import {
 import { NotesListSkeleton } from "@/components/ui/skeleton";
 import { getTrendingLongForm } from "@/lib/api/endpoints";
 import { extractEventAuthorPubkeys, fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
+import { hydrateArticleRecords } from "@/lib/discover/hydrate-articles";
 import { loadMoreRanking } from "@/lib/explorer/load-more-ranking";
 import {
   rankedListRequest,
@@ -117,7 +118,7 @@ async function TrendingArticlesBody({
   offset: number;
 }) {
   const { payload, errorMessage, semantics } = await data;
-  const articles = payload?.articles ?? [];
+  const articles = await hydrateArticleRecords(payload?.articles ?? []);
   let authorsByPubkey: Record<string, Profile> = {};
   if (articles.length > 0) {
     try {

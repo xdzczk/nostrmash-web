@@ -7,6 +7,7 @@ import { LanguageSelector } from "@/components/explorer/language-selector";
 import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
 import { getStaleDataNotice } from "@/lib/api/http";
 import type { HomePageData } from "@/lib/home/load-home-page-data";
+import type { HomeRails } from "@/lib/home/load-home-rails";
 import { LANGUAGE_EMPTY_MESSAGE } from "@/lib/search-params/language";
 import type { StatsWindow } from "@/lib/search-params/window";
 import { formatUpdatedRelative } from "@/lib/time/freshness";
@@ -17,6 +18,16 @@ import { formatUpdatedRelative } from "@/lib/time/freshness";
  * the shared home-data promise inside Suspense boundaries so the fan-out never
  * blocks first paint.
  */
+
+function homeHasRails(rails: HomeRails): boolean {
+  return (
+    Boolean(rails.article) ||
+    rails.conversations.length > 0 ||
+    rails.zapped.length > 0 ||
+    rails.live.length > 0 ||
+    rails.movers.length > 0
+  );
+}
 
 function redirectRejectedDiscoveryWindow(href: string | null) {
   if (href) redirect(href);
@@ -60,6 +71,7 @@ export async function HomeOverviewBody({ data }: { data: Promise<HomePageData> }
   const hasContent =
     home.homeNotes.length > 0 ||
     Boolean(home.mediaLeaders.pictures || home.mediaLeaders.videos || home.mediaLeaders.shorts) ||
+    homeHasRails(home.rails) ||
     home.hydratedHomeProfiles.length > 0 ||
     home.hydratedHomeRisingProfiles.length > 0 ||
     home.homeHashtags.length > 0 ||
@@ -81,6 +93,7 @@ export async function HomeOverviewBody({ data }: { data: Promise<HomePageData> }
         <EditorialOverview
           notes={home.homeNotes}
           mediaLeaders={home.mediaLeaders}
+          rails={home.rails}
           profiles={home.hydratedHomeProfiles}
           risingProfiles={home.hydratedHomeRisingProfiles}
           authorsByPubkey={home.noteAuthorsByPubkey}

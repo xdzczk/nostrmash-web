@@ -39,7 +39,7 @@ describe("EventKindSwitch", () => {
     expect(screen.getByText("reposted")).toBeInTheDocument();
   });
 
-  it("renders a ranked article from its content and the server reason", () => {
+  it("renders a ranked article from its title tag and the server reason", () => {
     render(
       <EventKindSwitch
         event={{
@@ -48,6 +48,7 @@ describe("EventKindSwitch", () => {
           kind: 30023,
           content:
             "Bookmarked long-form piece about public relays and how readers find them today.",
+          tags: [["title", "Public relays"]],
           bookmark_count: 1,
           ranking: {
             rank: 1,
@@ -65,9 +66,10 @@ describe("EventKindSwitch", () => {
       />
     );
 
+    expect(screen.getByRole("heading", { name: "Public relays" })).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /Bookmarked long-form piece about public relays/ })
-    ).toBeInTheDocument();
+      screen.queryByRole("heading", { name: /Bookmarked long-form piece/ })
+    ).not.toBeInTheDocument();
     expect(screen.getByText("Saved by 1 person")).toBeInTheDocument();
   });
 

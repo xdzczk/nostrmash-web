@@ -20,12 +20,19 @@ vi.mock("@/lib/api/endpoints", () => ({
   getTrendingNotes: vi.fn(),
   getTrendingProfiles: vi.fn(),
   getTrendingMedia: vi.fn(async () => ({ events: [] })),
+  getTrendingLongForm: vi.fn(async () => ({ articles: [] })),
+  getHotConversations: vi.fn(async () => ({ notes: [] })),
+  getMostZappedNotes: vi.fn(async () => ({ notes: [] })),
+  getLiveActivities: vi.fn(async () => ({ events: [] })),
+  getEmergingHashtags: vi.fn(async () => ({ items: [] })),
+  getEmergingDomains: vi.fn(async () => ({ items: [] })),
   getDiscoveryArchiveDays: vi.fn(async () => []),
   getRelayCoverageChanges: vi.fn(async () => []),
 }));
 
 vi.mock("@/lib/api/profile-hydration", () => ({
   fetchProfilesByPubkey: vi.fn(async () => ({})),
+  fetchEventsById: vi.fn(async () => ({})),
 }));
 
 import {
