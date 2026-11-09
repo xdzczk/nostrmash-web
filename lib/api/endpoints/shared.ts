@@ -176,8 +176,6 @@ export interface CursorQuery {
   lang?: string;
   /** Optional Nostr kind filter (e.g. 1 for short text notes). */
   kind?: number;
-  /** Drop events that arrived through a bridge. */
-  excludeBridged?: boolean;
 }
 
 export interface OffsetQuery {
@@ -186,8 +184,6 @@ export interface OffsetQuery {
   window?: string;
   /** Lowercase ISO 639-1/639-2 code. Omitted means all languages. */
   lang?: string;
-  /** Drop events that arrived through a bridge. */
-  excludeBridged?: boolean;
 }
 
 export function buildOffsetQuery(
@@ -199,7 +195,6 @@ export function buildOffsetQuery(
     offset: query.offset,
     window: query.window,
     ...(query.lang ? { lang: query.lang } : {}),
-    ...(query.excludeBridged ? { exclude_bridged: "true" } : {}),
   };
 }
 
@@ -423,6 +418,5 @@ export function buildCursorQuery(
     window: query.window,
     kind: query.kind,
     ...(query.lang ? { lang: query.lang } : {}),
-    ...(query.excludeBridged ? { exclude_bridged: "true" } : {}),
   };
 }

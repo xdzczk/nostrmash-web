@@ -21,7 +21,6 @@ import {
   startRankedLoad,
 } from "@/lib/explorer/ranked-list";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
-import { readExcludeBridged } from "@/lib/search-params/language";
 import type { Profile } from "@/lib/types/api";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -47,11 +46,7 @@ export default async function MostFollowedProfilesPage({
   const offset = readRankedOffset(resolvedSearchParams);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () =>
-        getMostFollowedProfiles(
-          "shortTtl",
-          rankedListRequest(undefined, undefined, offset, readExcludeBridged(resolvedSearchParams))
-        ),
+      () => getMostFollowedProfiles("shortTtl", rankedListRequest(undefined, undefined, offset)),
       "Failed to load most followed profiles."
     )
   );
@@ -111,7 +106,7 @@ async function MostFollowedProfilesBody({
         emptyTitle="No followed accounts yet"
         emptyMessage="This is the follower directory. No profile with followers is in it yet."
         hasItems={profiles.length > 0}
-        loadMore={loadMoreRanking.bind(null, "followed", "", "", readExcludeBridged(searchParams))}
+        loadMore={loadMoreRanking.bind(null, "followed", "", "")}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

@@ -106,7 +106,6 @@ export async function hydrateRankedMediaEvents(
 export async function loadHomeMediaLeaders(query: {
   window: string;
   lang?: string;
-  excludeBridged?: boolean;
 }): Promise<MediaLeaders> {
   const leaders = await Promise.all(
     MEDIA_RANKINGS.map(async (ranking) => {
@@ -116,7 +115,6 @@ export async function loadHomeMediaLeaders(query: {
           limit: 1,
           offset: 0,
           ...(query.lang ? { lang: query.lang } : {}),
-          ...(query.excludeBridged ? { excludeBridged: true } : {}),
         });
         const [event] = await hydrateRankedMediaEvents(
           (payload.events ?? []).slice(0, 1),

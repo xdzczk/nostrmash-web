@@ -27,7 +27,7 @@ import {
   startRankedLoad,
 } from "@/lib/explorer/ranked-list";
 import { eventPageHref } from "@/lib/notes/kinds";
-import { readExcludeBridged, readLanguage } from "@/lib/search-params/language";
+import { readLanguage } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
 import { withLanguageVariantMetadata } from "@/lib/seo/metadata";
@@ -73,7 +73,7 @@ export async function MediaRankingPage({
           return await getTrendingMedia(
             format,
             "shortTtl",
-            rankedListRequest(window, language, offset, readExcludeBridged(resolvedSearchParams))
+            rankedListRequest(window, language, offset)
           );
         } catch (error) {
           if (isApiError(error) && error.isNotFound) {
@@ -186,13 +186,7 @@ async function MediaRankingBody({
         emptyTitle={emptyTitle}
         emptyMessage={emptyMessage}
         hasItems={events.length > 0}
-        loadMore={loadMoreRanking.bind(
-          null,
-          format,
-          window,
-          language ?? "",
-          readExcludeBridged(searchParams)
-        )}
+        loadMore={loadMoreRanking.bind(null, format, window, language ?? "")}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

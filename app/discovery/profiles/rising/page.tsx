@@ -21,7 +21,7 @@ import {
   readRankedListContext,
   startRankedLoad,
 } from "@/lib/explorer/ranked-list";
-import { buildLanguageHref, readExcludeBridged, readLanguage } from "@/lib/search-params/language";
+import { buildLanguageHref, readLanguage } from "@/lib/search-params/language";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { withLanguageVariantMetadata } from "@/lib/seo/metadata";
@@ -57,11 +57,7 @@ export default async function RisingProfilesPage({ searchParams }: { searchParam
   const offset = readRankedOffset(resolvedSearchParams);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () =>
-        getRisingProfiles(
-          "shortTtl",
-          rankedListRequest(window, language, offset, readExcludeBridged(resolvedSearchParams))
-        ),
+      () => getRisingProfiles("shortTtl", rankedListRequest(window, language, offset)),
       "Failed to load rising profiles.",
       { window, path, params: currentSearchParams }
     )
@@ -138,13 +134,7 @@ async function RisingProfilesBody({
         emptyTitle="No up-and-coming profiles available"
         emptyMessage="The API did not return up-and-coming profiles for this window."
         hasItems={hydratedProfiles.length > 0}
-        loadMore={loadMoreRanking.bind(
-          null,
-          "rising",
-          window,
-          language ?? "",
-          readExcludeBridged(searchParams)
-        )}
+        loadMore={loadMoreRanking.bind(null, "rising", window, language ?? "")}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

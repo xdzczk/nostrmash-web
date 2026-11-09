@@ -16,10 +16,6 @@ export const GLOSSARY = {
     gloss: "Share of engagement from accounts the trust graph can reach.",
     href: "/methodology#trust",
   },
-  bridged: {
-    gloss: "Posts copied in from another network, such as ActivityPub or RSS.",
-    href: "/methodology#coverage",
-  },
   nevent: {
     gloss: "A nevent is a shareable Nostr identifier for this note.",
     href: "/methodology#identifiers",

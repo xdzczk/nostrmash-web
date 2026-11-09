@@ -21,7 +21,7 @@ import {
   readRankedListContext,
   startRankedLoad,
 } from "@/lib/explorer/ranked-list";
-import { buildLanguageHref, readExcludeBridged, readLanguage } from "@/lib/search-params/language";
+import { buildLanguageHref, readLanguage } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
 import { withLanguageVariantMetadata } from "@/lib/seo/metadata";
@@ -60,11 +60,7 @@ export default async function TrendingLongFormPage({
   const offset = readRankedOffset(resolvedSearchParams);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () =>
-        getTrendingLongForm(
-          "shortTtl",
-          rankedListRequest(window, language, offset, readExcludeBridged(resolvedSearchParams))
-        ),
+      () => getTrendingLongForm("shortTtl", rankedListRequest(window, language, offset)),
       "Failed to load articles.",
       { window, path, params: currentSearchParams }
     )
@@ -150,13 +146,7 @@ async function TrendingArticlesBody({
         emptyTitle="No ranked articles yet"
         emptyMessage="Ranked articles have not populated for this window."
         hasItems={articles.length > 0}
-        loadMore={loadMoreRanking.bind(
-          null,
-          "long-form",
-          window,
-          language ?? "",
-          readExcludeBridged(searchParams)
-        )}
+        loadMore={loadMoreRanking.bind(null, "long-form", window, language ?? "")}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

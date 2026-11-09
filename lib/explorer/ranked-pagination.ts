@@ -42,21 +42,18 @@ export function readRankedOffset(params: RouteSearchParams): number {
 export function rankedListRequest(
   window: StatsWindow | undefined,
   language: string | undefined,
-  offset: number,
-  excludeBridged = false
+  offset: number
 ): {
   window?: StatsWindow;
   offset: number;
   limit: number;
   lang?: string;
-  excludeBridged?: boolean;
 } {
   return {
     ...(window ? { window } : {}),
     offset,
     limit: RANKED_PAGE_SIZE,
     ...(language ? { lang: language } : {}),
-    ...(excludeBridged ? { excludeBridged: true } : {}),
   };
 }
 
@@ -71,14 +68,13 @@ export function rankingContinuationQuery(
   surface: RankingSurface,
   window: string,
   lang: string,
-  offset: number,
-  excludeBridged = false
+  offset: number
 ): ReturnType<typeof rankedListRequest> | null {
   const windowless = WINDOWLESS_RANKINGS.has(surface);
   const statsWindow = isStatsWindow(window) ? window : undefined;
   if (!windowless && !statsWindow) return null;
   const language = LANGUAGELESS_RANKINGS.has(surface) ? undefined : parseLanguage(lang);
-  return rankedListRequest(windowless ? undefined : statsWindow, language, offset, excludeBridged);
+  return rankedListRequest(windowless ? undefined : statsWindow, language, offset);
 }
 
 export function rankingItemAnchor(surface: RankingSurface, item: unknown): string {

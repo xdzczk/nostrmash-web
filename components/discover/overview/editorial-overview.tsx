@@ -383,7 +383,6 @@ function ProfileRanking({
   degraded,
   window,
   lang,
-  excludeBridged,
   headingId = "profiles-in-motion",
   kicker = "People",
   title = "People gaining attention",
@@ -396,7 +395,6 @@ function ProfileRanking({
   degraded?: boolean;
   window: StatsWindow;
   lang?: string;
-  excludeBridged?: boolean;
   headingId?: string;
   kicker?: string;
   title?: string;
@@ -412,9 +410,7 @@ function ProfileRanking({
         title={title}
         headingId={headingId}
         action={{
-          href:
-            fullRankingHref ??
-            buildDiscoverHref("/trending/profiles", { window, lang, excludeBridged }),
+          href: fullRankingHref ?? buildDiscoverHref("/trending/profiles", { window, lang }),
           label: "People index",
         }}
         ranked={rankedHref}
@@ -555,13 +551,11 @@ function TopicsIndex({
   degraded,
   window,
   lang,
-  excludeBridged,
 }: {
   hashtags: HashtagEntry[];
   degraded?: boolean;
   window: StatsWindow;
   lang?: string;
-  excludeBridged?: boolean;
 }) {
   const rows = hashtags
     .slice(0, INDEX_ROW_LIMIT)
@@ -588,7 +582,7 @@ function TopicsIndex({
         title="Most used topics"
         headingId="topics-most-used"
         action={{
-          href: buildDiscoverHref("/trending/hashtags", { window, lang, excludeBridged }),
+          href: buildDiscoverHref("/trending/hashtags", { window, lang }),
           label: "Topic index",
         }}
         ranked="/methodology#topics"
@@ -611,13 +605,11 @@ function LinksIndex({
   degraded,
   window,
   lang,
-  excludeBridged,
 }: {
   domains: DomainEntry[];
   degraded?: boolean;
   window: StatsWindow;
   lang?: string;
-  excludeBridged?: boolean;
 }) {
   const rows = domains
     .slice(0, INDEX_ROW_LIMIT)
@@ -649,7 +641,7 @@ function LinksIndex({
         title="Most shared links"
         headingId="links-circulating"
         action={{
-          href: buildDiscoverHref("/trending/domains", { window, lang, excludeBridged }),
+          href: buildDiscoverHref("/trending/domains", { window, lang }),
           label: "Link index",
         }}
         ranked="/methodology#links"
@@ -723,7 +715,6 @@ function SupportingNotes({
   authorsByPubkey,
   window,
   lang,
-  excludeBridged,
   headingId,
   contentResolution,
 }: {
@@ -731,7 +722,6 @@ function SupportingNotes({
   authorsByPubkey: Record<string, Profile>;
   window: StatsWindow;
   lang?: string;
-  excludeBridged?: boolean;
   headingId: string;
   contentResolution?: NoteContentResolution;
 }) {
@@ -743,7 +733,7 @@ function SupportingNotes({
           title="Also moving"
           headingId={headingId}
           action={{
-            href: buildDiscoverHref("/trending/notes", { window, lang, excludeBridged }),
+            href: buildDiscoverHref("/trending/notes", { window, lang }),
             label: "All notes",
           }}
         />
@@ -766,14 +756,12 @@ function MediaLeadersSection({
   authorsByPubkey,
   window,
   lang,
-  excludeBridged,
   contentResolution,
 }: {
   leaders: MediaLeaders;
   authorsByPubkey: Record<string, Profile>;
   window: StatsWindow;
   lang?: string;
-  excludeBridged?: boolean;
   contentResolution?: NoteContentResolution;
 }) {
   const columns = MEDIA_RANKINGS.flatMap((ranking) => {
@@ -803,7 +791,7 @@ function MediaLeadersSection({
               <div className="mb-3 flex items-end justify-between gap-3">
                 <h3 className="nm-kicker">{column.label}</h3>
                 <Link
-                  href={buildDiscoverHref(column.path, { window, lang, excludeBridged })}
+                  href={buildDiscoverHref(column.path, { window, lang })}
                   className="nm-action-link"
                 >
                   Ranking
@@ -839,7 +827,6 @@ export async function EditorialOverview({
   sectionFailures,
   window,
   lang,
-  excludeBridged,
   rankedHashtags = [],
   rankedDomains = [],
   archiveDay = null,
@@ -860,7 +847,6 @@ export async function EditorialOverview({
   };
   window: StatsWindow;
   lang?: string;
-  excludeBridged?: boolean;
   rankedHashtags?: HashtagEntry[];
   rankedDomains?: DomainEntry[];
   archiveDay?: string | null;
@@ -911,7 +897,6 @@ export async function EditorialOverview({
           authorsByPubkey={authorsByPubkey}
           window={window}
           lang={lang}
-          excludeBridged={excludeBridged}
           headingId="supporting-notes"
           contentResolution={contentResolution}
         />
@@ -922,7 +907,6 @@ export async function EditorialOverview({
         authorsByPubkey={authorsByPubkey}
         window={window}
         lang={lang}
-        excludeBridged={excludeBridged}
         contentResolution={contentResolution}
       />
 
@@ -932,7 +916,6 @@ export async function EditorialOverview({
           degraded={sectionFailures.profiles}
           window={window}
           lang={lang}
-          excludeBridged={excludeBridged}
           headingId="profiles-in-motion"
         />
         <ProfileRanking
@@ -940,14 +923,12 @@ export async function EditorialOverview({
           degraded={sectionFailures.risingProfiles}
           window={window}
           lang={lang}
-          excludeBridged={excludeBridged}
           headingId="up-and-coming"
           title="Up and coming"
           rankedHref="/methodology#rising"
           fullRankingHref={buildDiscoverHref("/discovery/profiles/rising", {
             window,
             lang,
-            excludeBridged,
           })}
           emptyMessage="No small accounts gaining ground yet."
           degradedMessage="Up-and-coming profiles are temporarily unavailable."
@@ -960,14 +941,12 @@ export async function EditorialOverview({
           degraded={sectionFailures.hashtags}
           window={window}
           lang={lang}
-          excludeBridged={excludeBridged}
         />
         <LinksIndex
           domains={rankedDomains}
           degraded={sectionFailures.domains}
           window={window}
           lang={lang}
-          excludeBridged={excludeBridged}
         />
       </div>
 

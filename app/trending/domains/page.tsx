@@ -20,7 +20,7 @@ import {
   startRankedLoad,
 } from "@/lib/explorer/ranked-list";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
-import { readExcludeBridged, readLanguage } from "@/lib/search-params/language";
+import { readLanguage } from "@/lib/search-params/language";
 import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { StatsWindow } from "@/lib/search-params/window";
@@ -58,11 +58,7 @@ export default async function TrendingDomainsPage({
   const offset = readRankedOffset(resolvedSearchParams);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () =>
-        getTrendingDomains(
-          "shortTtl",
-          rankedListRequest(window, language, offset, readExcludeBridged(resolvedSearchParams))
-        ),
+      () => getTrendingDomains("shortTtl", rankedListRequest(window, language, offset)),
       "Failed to load trending domains.",
       { window, path, params: currentSearchParams }
     )
@@ -136,13 +132,7 @@ async function TrendingDomainsBody({
         emptyTitle="No ranked domains yet"
         emptyMessage="Ranked domains have not populated for this window."
         hasItems={domains.length > 0}
-        loadMore={loadMoreRanking.bind(
-          null,
-          "domains",
-          window,
-          language ?? "",
-          readExcludeBridged(searchParams)
-        )}
+        loadMore={loadMoreRanking.bind(null, "domains", window, language ?? "")}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

@@ -19,7 +19,7 @@ import { fetchProfilesByPubkey, mergeHydratedProfile } from "@/lib/api/profile-h
 import { extractRelayRows, pickTopPrimitiveStats } from "@/components/explorer/stats-utils";
 import { isRecord } from "@/components/explorer/utils";
 import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
-import { readExcludeBridged, readLanguage } from "@/lib/search-params/language";
+import { readLanguage } from "@/lib/search-params/language";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import {
   lastDiscoveryWindow,
@@ -155,11 +155,9 @@ export async function loadHomePageData(
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   const window = readStatsWindow(resolvedSearchParams);
   const lang = readLanguage(resolvedSearchParams);
-  const excludeBridged = readExcludeBridged(resolvedSearchParams);
   const scopedQuery = {
     window,
     ...(lang ? { lang } : {}),
-    ...(excludeBridged ? { excludeBridged: true } : {}),
   };
   const failedMessages: string[] = [];
   let upstreamCallCount = 0;

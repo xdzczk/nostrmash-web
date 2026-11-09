@@ -17,9 +17,8 @@ import {
   type DiscoverView,
 } from "@/lib/discover/views";
 import { methodologyHref } from "@/lib/discover/methodology-href";
-import { GLOSSARY } from "@/lib/i18n/glossary";
 import { formatDiscoverEyebrow } from "@/lib/i18n/language-names";
-import { buildDiscoverHref, buildExcludeBridgedHref } from "@/lib/search-params/language";
+import { buildDiscoverHref } from "@/lib/search-params/language";
 import { DEFAULT_STATS_WINDOW, STATS_WINDOWS, type StatsWindow } from "@/lib/search-params/window";
 import type { TopLanguages } from "@/lib/types/api";
 
@@ -112,7 +111,6 @@ export function DiscoverShell({
   const showWindow = showWindowControl ?? rankingControls;
   const showLanguage = showLanguageControl ?? rankingControls;
   const carriedWindow = linkedWindow === null ? undefined : (linkedWindow ?? window);
-  const excludeBridged = searchParams.get("exclude_bridged") === "true";
   const showRankingBadges =
     showWindow || showLanguage || Boolean(freshness) || Boolean(freshnessLabel) || rankingControls;
 
@@ -157,27 +155,7 @@ export function DiscoverShell({
                     : null}
                 </>
               ) : null}
-              {rankingControls ? (
-                <Link
-                  href={buildExcludeBridgedHref(path, searchParams)}
-                  title={GLOSSARY.bridged.gloss}
-                  aria-describedby={view === "overview" ? "bridged-gloss" : undefined}
-                  className={`inline-flex min-h-8 shrink-0 items-center rounded-full border px-3 py-1 text-[11px] font-medium ${
-                    excludeBridged
-                      ? "border-accent/50 bg-surface text-ink"
-                      : "border-edge-strong text-ink-muted hover:text-ink"
-                  }`}
-                >
-                  Exclude bridged
-                  <span className="sr-only">{excludeBridged ? ", on" : ", off"}</span>
-                </Link>
-              ) : null}
               {freshness ?? (freshnessLabel ? <FreshnessBadge label={freshnessLabel} /> : null)}
-              {view === "overview" && rankingControls ? (
-                <p id="bridged-gloss" className="text-ink-faint basis-full text-[13px] leading-5">
-                  {GLOSSARY.bridged.gloss}
-                </p>
-              ) : null}
             </div>
           ) : undefined
         }
@@ -185,12 +163,7 @@ export function DiscoverShell({
       />
 
       <div className="bg-surface sticky top-14 z-40 -mx-4 min-w-0 space-y-2.5 border-b border-[var(--edge)] px-4 py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <DiscoverNav
-          active={view}
-          window={carriedWindow}
-          lang={language}
-          excludeBridged={excludeBridged}
-        />
+        <DiscoverNav active={view} window={carriedWindow} lang={language} />
         {modeLinks.length > 1 ? (
           <nav aria-label={`${view} modes`} className="flex flex-wrap items-center gap-4">
             {modeLinks.map((item) => {
@@ -201,7 +174,6 @@ export function DiscoverShell({
                   href={buildDiscoverHref(item.href, {
                     window: carries.window ? carriedWindow : undefined,
                     lang: carries.language ? language : undefined,
-                    excludeBridged,
                   })}
                   prefetch={tabLinkPrefetch(true, item.mode === mode)}
                   aria-current={item.mode === mode ? "page" : undefined}

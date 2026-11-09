@@ -7,12 +7,10 @@ export function DiscoverNav({
   active,
   window,
   lang,
-  excludeBridged,
 }: {
   active: DiscoverView;
   window?: StatsWindow;
   lang?: string;
-  excludeBridged?: boolean;
 }) {
   return (
     <TabBar
@@ -20,7 +18,7 @@ export function DiscoverNav({
       prefetch
       items={DISCOVER_VIEWS.map((view) => ({
         ...view,
-        href: buildDiscoverHref(view.href, { window, lang, excludeBridged }),
+        href: buildDiscoverHref(view.href, { window, lang }),
         active: view.key === active,
       }))}
     />

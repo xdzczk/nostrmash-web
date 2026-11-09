@@ -63,13 +63,12 @@ export async function loadMoreRanking(
   surface: string,
   window: string,
   lang: string,
-  excludeBridged: boolean,
   token: string
 ): Promise<LoadMoreChunk> {
   if (!isRankingSurface(surface)) return { content: null };
   const parsed = parseRankedContinuation(token);
   if (!parsed) return { content: null };
-  const query = rankingContinuationQuery(surface, window, lang, parsed.offset, excludeBridged);
+  const query = rankingContinuationQuery(surface, window, lang, parsed.offset);
   if (!query) return { content: null };
   const windowless = surface === "bookmarked" || surface === "followed";
 
