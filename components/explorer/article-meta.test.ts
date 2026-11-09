@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { getArticlePresentation, isLongFormEvent } from "@/components/explorer/article-meta";
+import {
+  articleCoverSrc,
+  getArticlePresentation,
+  isLongFormEvent,
+} from "@/components/explorer/article-meta";
 import { LONG_FORM_KIND } from "@/lib/types/api";
 
 const ARTICLE = {
@@ -78,6 +82,41 @@ describe("getArticlePresentation", () => {
       tags: [["title", "Why long-form matters"]],
     });
     expect(presentation.title).toBe("Why long-form matters");
+  });
+
+  it("uses a markdown image as the cover when the event has no image tag", () => {
+    const presentation = getArticlePresentation({
+      id: "i".repeat(64),
+      kind: LONG_FORM_KIND,
+      pubkey: "b".repeat(64),
+      content:
+        "# Notes\n\n![Chart of the winter](https://cdn.example/winter.jpg)\n\nThe body stays a summary.",
+      tags: [["title", "Winter"]],
+    });
+    expect(presentation.title).toBe("Winter");
+    expect(presentation.image).toBe("https://cdn.example/winter.jpg");
+    expect(
+      articleCoverSrc({
+        id: "i".repeat(64),
+        kind: LONG_FORM_KIND,
+        content: presentation.body,
+        tags: [["title", "Winter"]],
+      })
+    ).toBe("https://cdn.example/winter.jpg");
+  });
+
+  it("prefers the image tag over a picture embedded in the body", () => {
+    const presentation = getArticlePresentation({
+      id: "j".repeat(64),
+      kind: LONG_FORM_KIND,
+      pubkey: "b".repeat(64),
+      content: "![Body](https://cdn.example/body.jpg)\n\nWords.",
+      tags: [
+        ["title", "Cover"],
+        ["image", "https://cdn.example/cover.jpg"],
+      ],
+    });
+    expect(presentation.image).toBe("https://cdn.example/cover.jpg");
   });
 
   it("drops pipe tables so a table-only body has no pipe summary and no read time", () => {

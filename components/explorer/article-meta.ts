@@ -125,6 +125,27 @@ function usableFieldTitle(value: string | undefined, body: string): string | und
   return title;
 }
 
+/** First https image in the prose. Fenced code is not a cover. */
+function firstContentImage(content: string): string | undefined {
+  const prose = content.replace(/```[\s\S]*?```/g, " ");
+  const markdown = /!\[[^\]]*]\((https:\/\/[^)\s]+)\)/.exec(prose);
+  if (markdown?.[1]) return markdown[1];
+  const html = /<img\b[^>]*\bsrc=["'](https:\/\/[^"']+)["']/i.exec(prose);
+  return html?.[1];
+}
+
+/** Cover URL safe to put in an image element. */
+export function articleCoverSrc(note: EventRecord): string | undefined {
+  const image = getArticlePresentation(note).image;
+  if (!image) return undefined;
+  try {
+    const url = new URL(image);
+    return url.protocol === "https:" ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** First short markdown heading. A paragraph is not a title. */
 function firstMarkdownHeading(content: string): string | undefined {
   for (const line of content.split("\n")) {
@@ -202,7 +223,11 @@ export function getArticlePresentation(
     summary,
     dek,
     body: content,
-    image: asString(record.image) ?? tagValue(note, "image"),
+    image:
+      asString(record.image) ??
+      tagValue(note, "image") ??
+      tagValue(note, "thumb") ??
+      firstContentImage(content),
     language: asString(record.language) ?? tagValue(note, "language") ?? asString(author?.language),
     publishedAt:
       asNumber(record.published_at) ?? asNumber(tagValue(note, "published_at")) ?? note.created_at,

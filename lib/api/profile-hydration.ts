@@ -42,7 +42,7 @@ export function hasProfilePicture(profile: Profile | undefined): boolean {
  * Search rows often already have a name, which counts as a rich identity, while
  * the picture still lives only on the profile service. Avatars need that fetch.
  */
-function needsProfileHydration(profile: Profile): boolean {
+function needsProfileHydration(profile: Profile | undefined): boolean {
   return !hasRichIdentity(profile) || !hasProfilePicture(profile);
 }
 
@@ -54,8 +54,8 @@ export async function fetchProfilesByPubkey(
   if (normalizedPubkeys.length === 0) return {};
   const profiles = await getProfilesBatch(normalizedPubkeys, cacheClass);
   const hydratedByPubkey = mapProfilesByPubkey(profiles);
-  const missingOrSparsePubkeys = normalizedPubkeys.filter(
-    (pubkey) => !hasRichIdentity(hydratedByPubkey[pubkey])
+  const missingOrSparsePubkeys = normalizedPubkeys.filter((pubkey) =>
+    needsProfileHydration(hydratedByPubkey[pubkey])
   );
 
   if (missingOrSparsePubkeys.length === 0) {
@@ -69,7 +69,9 @@ export async function fetchProfilesByPubkey(
     if (result.status !== "fulfilled") continue;
     const profile = result.value;
     if (typeof profile.pubkey !== "string" || profile.pubkey.length === 0) continue;
-    hydratedByPubkey[profile.pubkey.toLowerCase()] = profile;
+    const key = profile.pubkey.toLowerCase();
+    const existing = hydratedByPubkey[key];
+    hydratedByPubkey[key] = existing ? mergeHydratedProfile(existing, profile) : profile;
   }
 
   return hydratedByPubkey;

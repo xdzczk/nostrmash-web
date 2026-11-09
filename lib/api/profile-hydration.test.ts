@@ -6,8 +6,9 @@ vi.mock("@/lib/api/endpoints", () => ({
   getEventsBatch: vi.fn(),
 }));
 
-import { getProfilesBatch } from "@/lib/api/endpoints";
+import { getProfile, getProfilesBatch } from "@/lib/api/endpoints";
 import {
+  fetchProfilesByPubkey,
   hydrateProfiles,
   mergeHydratedProfile,
   restoreRankingMetrics,
@@ -15,6 +16,7 @@ import {
 import type { Profile } from "@/lib/types/api";
 
 const mockedGetProfilesBatch = vi.mocked(getProfilesBatch);
+const mockedGetProfile = vi.mocked(getProfile);
 
 describe("mergeHydratedProfile", () => {
   it("keeps the discovery ranking when the profile service has none", () => {
@@ -85,6 +87,30 @@ describe("restoreRankingMetrics", () => {
     expect(restored.supporter_count).toBe(3);
     expect(restored.recent_zap_volume_msats).toBe(500_000_000);
     expect(restored.ranking?.reasons?.[0]?.code).toBe("supporter_sats");
+  });
+});
+
+describe("fetchProfilesByPubkey", () => {
+  const pubkey = "cd".repeat(32);
+
+  beforeEach(() => {
+    mockedGetProfilesBatch.mockReset();
+    mockedGetProfile.mockReset();
+  });
+
+  it("loads a picture when the batch row only has a name", async () => {
+    mockedGetProfilesBatch.mockResolvedValue([{ pubkey, display_name: "Derek" }]);
+    mockedGetProfile.mockResolvedValue({
+      pubkey,
+      display_name: "Derek",
+      picture: "https://cdn.example/derek.jpg",
+    });
+
+    const profiles = await fetchProfilesByPubkey([pubkey]);
+
+    expect(mockedGetProfile).toHaveBeenCalledWith(pubkey, "shortTtl");
+    expect(profiles[pubkey]?.picture).toBe("https://cdn.example/derek.jpg");
+    expect(profiles[pubkey]?.display_name).toBe("Derek");
   });
 });
 

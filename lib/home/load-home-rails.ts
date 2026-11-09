@@ -1,3 +1,4 @@
+import { articleCoverSrc } from "@/components/explorer/article-meta";
 import {
   getEmergingDomains,
   getEmergingHashtags,
@@ -8,6 +9,9 @@ import {
 } from "@/lib/api/endpoints";
 import { hydrateArticleRecords } from "@/lib/discover/hydrate-articles";
 import type { EventRecord } from "@/lib/types/api";
+
+/** Enough ranked articles to skip a leader that has a title and no cover. */
+const ARTICLE_CANDIDATES = 6;
 
 export type HomeMover = {
   key: string;
@@ -70,6 +74,15 @@ function mixMovers(
 }
 
 /**
+ * The format rail needs a picture. Rank 1 is often a title with no cover, so
+ * the overview uses the highest ranked article that has one.
+ */
+export function featuredArticle(articles: EventRecord[]): EventRecord | undefined {
+  if (articles.length === 0) return undefined;
+  return articles.find((article) => Boolean(articleCoverSrc(article))) ?? articles[0];
+}
+
+/**
  * Extra homepage rankings. Each call fails closed so one quiet route cannot
  * blank the overview. Fetches a few spare rows so the page can skip a note
  * that is already the lead.
@@ -78,8 +91,13 @@ export async function loadHomeRails(query: { window: string; lang?: string }): P
   const lang = query.lang ? { lang: query.lang } : {};
   const [articles, conversations, zapped, live, hashtags, domains] = await Promise.all([
     settled(
-      getTrendingLongForm("shortTtl", { window: query.window, limit: 1, offset: 0, ...lang }).then(
-        (payload) => hydrateArticleRecords((payload.articles ?? []).slice(0, 1))
+      getTrendingLongForm("shortTtl", {
+        window: query.window,
+        limit: ARTICLE_CANDIDATES,
+        offset: 0,
+        ...lang,
+      }).then((payload) =>
+        hydrateArticleRecords((payload.articles ?? []).slice(0, ARTICLE_CANDIDATES))
       ),
       [] as EventRecord[]
     ),
@@ -106,7 +124,7 @@ export async function loadHomeRails(query: { window: string; lang?: string }): P
   ]);
 
   return {
-    article: articles[0],
+    article: featuredArticle(articles),
     conversations,
     zapped,
     live,

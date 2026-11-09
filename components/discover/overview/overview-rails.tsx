@@ -1,8 +1,10 @@
 import Link from "@/components/app-link";
 
-import { getArticlePresentation } from "@/components/explorer/article-meta";
+import { articleCoverSrc, getArticlePresentation } from "@/components/explorer/article-meta";
 import type { NoteContentResolution } from "@/components/explorer/note-content";
 import { getEditorialNoteText } from "@/components/explorer/note-preview";
+import { ProfileAvatar } from "@/components/explorer/profile-avatar";
+import { VideoStill } from "@/components/explorer/video-still";
 import {
   extractZapMsats,
   formatCompactNumber,
@@ -10,10 +12,13 @@ import {
   noteAuthorIdentifier,
   noteInlineAuthorProfile,
   postEngagementStats,
+  profileHref,
   profileLabel,
   truncateProfileLabel,
 } from "@/components/explorer/utils";
 import { BlossomImage } from "@/components/ui/blossom-image";
+import { mergeHydratedProfile } from "@/lib/api/profile-hydration";
+import { parseYoutubeVideoId } from "@/lib/notes/embeds";
 import type { HomeMover } from "@/lib/home/load-home-rails";
 import { MEDIA_RANKINGS, type MediaLeaders } from "@/lib/discover/media-rankings";
 import { rankMovement } from "@/lib/discover/reasons";
@@ -52,19 +57,47 @@ function httpsUrl(value: string | undefined): string | undefined {
   }
 }
 
-function authorOf(
+function authorProfile(
   event: EventRecord,
   authorsByPubkey: Record<string, Profile>
-): Profile | undefined {
+): Profile | null {
+  const pubkey = typeof event.pubkey === "string" ? event.pubkey.trim() : "";
+  const key = pubkey.toLowerCase();
+  const hydrated = key ? (authorsByPubkey[key] ?? authorsByPubkey[pubkey]) : undefined;
   const inline = noteInlineAuthorProfile(event);
+  if (inline && hydrated) return mergeHydratedProfile(inline, hydrated);
+  if (hydrated) return hydrated;
   if (inline) return inline;
-  if (typeof event.pubkey !== "string") return undefined;
-  return authorsByPubkey[event.pubkey.toLowerCase()] ?? authorsByPubkey[event.pubkey];
+  if (pubkey) return { pubkey };
+  return null;
 }
 
 function authorLabel(event: EventRecord, authorsByPubkey: Record<string, Profile>): string {
-  const author = authorOf(event, authorsByPubkey);
+  const author = authorProfile(event, authorsByPubkey);
   return author ? profileLabel(author) : noteAuthorIdentifier(event);
+}
+
+function AuthorFace({
+  event,
+  authorsByPubkey,
+  size = 32,
+}: {
+  event: EventRecord;
+  authorsByPubkey: Record<string, Profile>;
+  size?: number;
+}) {
+  const profile = authorProfile(event, authorsByPubkey);
+  if (!profile) return null;
+  const box = size <= 20 ? "h-5 w-5" : "h-8 w-8";
+  return (
+    <ProfileAvatar
+      profile={profile}
+      size={size}
+      alt={profileLabel(profile)}
+      href={profileHref(profile, typeof event.pubkey === "string" ? event.pubkey : undefined)}
+      className={`border-edge ${box} shrink-0 rounded-full border object-cover`}
+    />
+  );
 }
 
 function countLabel(count: number, singular: string, plural: string): string {
@@ -128,14 +161,20 @@ function formatEntries(leaders: MediaLeaders, article?: EventRecord): FormatEntr
   return entries;
 }
 
+function youtubePoster(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  const id = parseYoutubeVideoId(url);
+  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : undefined;
+}
+
 function formatArt(
   entry: FormatEntry,
   resolution?: NoteContentResolution
-): { src?: string; alt: string; title: string } {
+): { src?: string; videoUrl?: string; alt: string; title: string } {
   if (entry.key === "article") {
     const presentation = getArticlePresentation(entry.event);
     return {
-      src: httpsUrl(presentation.image),
+      src: articleCoverSrc(entry.event),
       alt: presentation.title,
       title: presentation.title,
     };
@@ -143,8 +182,11 @@ function formatArt(
   const media = getMediaPresentation(entry.event);
   const text = readableLine(getEditorialNoteText(entry.event, resolution));
   const title = media?.title || text;
+  const poster =
+    httpsUrl(media?.posterUrl ?? media?.images[0]?.url) ?? youtubePoster(media?.videoUrl);
   return {
-    src: httpsUrl(media?.posterUrl ?? media?.images[0]?.url),
+    src: poster,
+    videoUrl: poster ? undefined : httpsUrl(media?.videoUrl),
     alt: media?.images[0]?.alt || title || entry.label,
     title,
   };
@@ -152,12 +194,14 @@ function formatArt(
 
 function FormatFrame({
   src,
+  videoUrl,
   alt,
   className,
   priority = false,
   article = false,
 }: {
   src?: string;
+  videoUrl?: string;
   alt: string;
   className: string;
   priority?: boolean;
@@ -175,6 +219,8 @@ function FormatFrame({
           decoding="async"
           className="absolute inset-0 h-full w-full object-cover"
         />
+      ) : videoUrl ? (
+        <VideoStill url={videoUrl} className="absolute inset-0 h-full w-full object-cover" />
       ) : (
         <span
           className={`absolute inset-0 grid place-items-center ${
@@ -284,6 +330,7 @@ export function FormatLeaders({
                     >
                       <FormatFrame
                         src={art.src}
+                        videoUrl={art.videoUrl}
                         alt=""
                         article={entry.key === "article"}
                         className={THUMB[entry.key]}
@@ -292,6 +339,7 @@ export function FormatLeaders({
                   ) : (
                     <FormatFrame
                       src={art.src}
+                      videoUrl={art.videoUrl}
                       alt=""
                       article={entry.key === "article"}
                       className={`shrink-0 ${THUMB[entry.key]}`}
@@ -319,9 +367,12 @@ export function FormatLeaders({
                         <p className="text-ink mt-1 truncate text-sm font-medium">{art.title}</p>
                       )
                     ) : null}
-                    <p className="nm-meta mt-0.5 truncate">
-                      {truncateProfileLabel(authorLabel(entry.event, authorsByPubkey))}
-                      {metric ? ` · ${metric}` : ""}
+                    <p className="nm-meta mt-0.5 flex min-w-0 items-center gap-1.5">
+                      <AuthorFace event={entry.event} authorsByPubkey={authorsByPubkey} />
+                      <span className="truncate">
+                        {truncateProfileLabel(authorLabel(entry.event, authorsByPubkey))}
+                        {metric ? ` · ${metric}` : ""}
+                      </span>
                     </p>
                   </div>
                 </article>
@@ -347,6 +398,7 @@ export function FormatLeaders({
             >
               <FormatFrame
                 src={leadArt.src}
+                videoUrl={leadArt.videoUrl}
                 alt={leadArt.alt}
                 className="relative aspect-[2.4/1]"
                 priority
@@ -355,6 +407,7 @@ export function FormatLeaders({
           ) : (
             <FormatFrame
               src={leadArt.src}
+              videoUrl={leadArt.videoUrl}
               alt={leadArt.alt}
               className="relative aspect-[2.4/1]"
               priority
@@ -374,7 +427,8 @@ export function FormatLeaders({
               </p>
             )
           ) : null}
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+            <AuthorFace event={lead.event} authorsByPubkey={authorsByPubkey} />
             <span className="text-ink-muted">
               {truncateProfileLabel(authorLabel(lead.event, authorsByPubkey))}
               {leadMetric ? ` · ${leadMetric}` : ""}
@@ -405,6 +459,7 @@ export function LiveStrip({
     return [
       {
         key: event.id ?? presentation.title,
+        event,
         title: presentation.title,
         href,
         detail: `${truncateProfileLabel(authorLabel(event, authorsByPubkey))} · ${watching}`,
@@ -423,7 +478,8 @@ export function LiveStrip({
         Live
       </h2>
       {items.map((item) => (
-        <p key={item.key} className="min-w-0 text-sm">
+        <p key={item.key} className="flex min-w-0 items-center gap-2 text-sm">
+          <AuthorFace event={item.event} authorsByPubkey={authorsByPubkey} size={20} />
           {item.href ? (
             <Link href={item.href} className="text-ink font-medium hover:underline">
               {item.title}
@@ -431,7 +487,7 @@ export function LiveStrip({
           ) : (
             <span className="text-ink font-medium">{item.title}</span>
           )}
-          <span className="text-ink-muted"> · {item.detail}</span>
+          <span className="text-ink-muted truncate">· {item.detail}</span>
         </p>
       ))}
       <Link href="/live" className="nm-action-link sm:ml-auto">
@@ -490,10 +546,11 @@ export function ConversationZapRails({
                 postEngagementStats(event).find((stat) => stat.label === "reply_count")?.value ?? 0;
               const line = noteLine(event, contentResolution);
               return (
-                <li key={event.id ?? index} className="flex items-baseline gap-3 py-3">
+                <li key={event.id ?? index} className="flex items-center gap-3 py-3">
                   <span className="text-accent-ink w-8 shrink-0 text-lg tabular-nums">
                     {String(index + 1).padStart(2, "0")}
                   </span>
+                  <AuthorFace event={event} authorsByPubkey={authorsByPubkey} />
                   <div className="min-w-0 flex-1">
                     {href ? (
                       <Link
@@ -555,8 +612,11 @@ export function ConversationZapRails({
                   ) : (
                     <p className="text-ink mt-1 line-clamp-2 text-sm font-medium">{line}</p>
                   )}
-                  <p className="nm-meta mt-1">
-                    {truncateProfileLabel(authorLabel(event, authorsByPubkey))}
+                  <p className="nm-meta mt-1 flex min-w-0 items-center gap-1.5">
+                    <AuthorFace event={event} authorsByPubkey={authorsByPubkey} />
+                    <span className="truncate">
+                      {truncateProfileLabel(authorLabel(event, authorsByPubkey))}
+                    </span>
                   </p>
                 </li>
               );
