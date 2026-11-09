@@ -128,7 +128,7 @@ export default async function RelaysPage({ searchParams }: { searchParams: Searc
   const publishedByHost = publishedRelayMarksByHost(popular?.relays);
   const listedTotal = typeof popular?.total === "number" ? popular.total : listed.length;
   const indexedRows = rankedRelays.slice(0, 10);
-  const listedRows = listed.slice(0, 8);
+  const listedRows = listed.slice(0, 10);
   const coverage = coverageStory({
     listed: listed.map((entry) => ({
       host: entry.host,
