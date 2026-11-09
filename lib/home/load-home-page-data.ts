@@ -1,8 +1,6 @@
 import {
   getDiscoveryArchiveDays,
   getDiscoveryHome,
-  getEmergingDomains,
-  getEmergingHashtags,
   getNetworkStats,
   getRelayCoverageChanges,
   getRelayStats,
@@ -18,12 +16,8 @@ import type { SeriesPoint } from "@/components/charts/sparkline";
 import { isApiError, isApiTimeoutError } from "@/lib/api/http";
 import { normalizeTopLanguages } from "@/lib/api/normalize";
 import { fetchProfilesByPubkey, mergeHydratedProfile } from "@/lib/api/profile-hydration";
-import {
-  extractRelayRows,
-  pickTopPrimitiveStats,
-  rankRelayActivity,
-} from "@/components/explorer/stats-utils";
-import { isRecord, profileLabel } from "@/components/explorer/utils";
+import { extractRelayRows, pickTopPrimitiveStats } from "@/components/explorer/stats-utils";
+import { isRecord } from "@/components/explorer/utils";
 import { summarizeLoadErrors, toUserFacingErrorMessage } from "@/lib/errors/user-message";
 import { readExcludeBridged, readLanguage } from "@/lib/search-params/language";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
@@ -41,16 +35,8 @@ import {
   type StatsWindow,
 } from "@/lib/search-params/window";
 import { loadHomeMediaLeaders, type MediaLeaders } from "@/lib/discover/media-rankings";
-import { mapNoteWhyNow, mapProfileWhyNow } from "@/components/explorer/why-now";
 import { latestArchiveDay } from "@/lib/discover/archive";
 import { readEntityBaseline } from "@/lib/discover/baseline";
-import {
-  buildOverviewBriefing,
-  noteLeadSentence,
-  personLeadSentence,
-  type Briefing,
-} from "@/lib/discover/briefing";
-import { strikingConcentration } from "@/lib/relays/concentration";
 import { languageScopedStatLabel } from "@/lib/home/pulse-labels";
 import { traceHomeFanOut } from "@/lib/telemetry/trace";
 import type { CoverageNote } from "@/lib/stats/coverage-notes";
@@ -62,7 +48,6 @@ import type {
   Profile,
   TopLanguages,
 } from "@/lib/types/api";
-import type { DomainMomentum, HashtagMomentum } from "@/lib/types/surfaces";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return isRecord(value) ? value : null;
@@ -147,11 +132,8 @@ export type HomePageData = {
   hydratedHomeRisingProfiles: Profile[];
   homeHashtags: HashtagEntry[];
   homeDomains: DomainEntry[];
-  emergingHashtags: HashtagMomentum[];
-  emergingDomains: DomainMomentum[];
   archiveDay: string | null;
   coverageNotes: CoverageNote[];
-  briefing: Briefing | null;
   noteAuthorsByPubkey: Record<string, Profile>;
   pulseStats: PulseStat[];
   relayLeaders: ReturnType<typeof extractRelayRows>;
@@ -203,18 +185,12 @@ export async function loadHomePageData(
   // them with the first fan-out so a window change is not home-then-media.
   const mediaLeadersPromise = loadHomeMediaLeaders(scopedQuery);
   upstreamCallCount += 3;
-  const emergingPromise = getEmergingHashtags()
-    .then((response) => response.items ?? [])
-    .catch(() => [] as HashtagMomentum[]);
-  const emergingDomainsPromise = getEmergingDomains()
-    .then((response) => response.items ?? [])
-    .catch(() => [] as DomainMomentum[]);
   const archiveDayPromise = getDiscoveryArchiveDays(1)
     .then((days) => latestArchiveDay(days))
     .catch(() => null);
   const coverageNotesPromise = getRelayCoverageChanges().catch(() => [] as CoverageNote[]);
 
-  upstreamCallCount += 3;
+  upstreamCallCount += 2;
 
   const stageOne = await Promise.allSettled([
     getDiscoveryHome("shortTtl", scopedQuery),
@@ -252,11 +228,8 @@ export async function loadHomePageData(
         hydratedHomeRisingProfiles: [],
         homeHashtags: [],
         homeDomains: [],
-        emergingHashtags: [],
-        emergingDomains: [],
         archiveDay: null,
         coverageNotes: [],
-        briefing: null,
         noteAuthorsByPubkey: {},
         pulseStats: [],
         relayLeaders: [],
@@ -500,19 +473,7 @@ export async function loadHomePageData(
       ((networkStats as Record<string, unknown>).computed_at as string)) ||
     null;
 
-  const [emergingHashtags, emergingDomains, archiveDay, coverageNotes] = await Promise.all([
-    emergingPromise,
-    emergingDomainsPromise,
-    archiveDayPromise,
-    coverageNotesPromise,
-  ]);
-  const leadNote = homeNotes[0];
-  const leadKey = typeof leadNote?.pubkey === "string" ? leadNote.pubkey : "";
-  const leadAuthor = leadKey
-    ? (noteAuthorsByPubkey[leadKey.toLowerCase()] ?? noteAuthorsByPubkey[leadKey])
-    : undefined;
-  const risingProfile = hydratedHomeRisingProfiles[0];
-  const relayRanking = rankRelayActivity(relayStats, 40, relayWindow);
+  const [archiveDay, coverageNotes] = await Promise.all([archiveDayPromise, coverageNotesPromise]);
 
   traceHomeFanOut(upstreamCallCount, {
     window: window === "30d" ? 30 : window === "7d" ? 7 : 1,
@@ -536,26 +497,8 @@ export async function loadHomePageData(
     hydratedHomeRisingProfiles,
     homeHashtags,
     homeDomains,
-    emergingHashtags,
-    emergingDomains,
     archiveDay,
     coverageNotes,
-    briefing: buildOverviewBriefing({
-      hashtags: homeHashtags,
-      domains: homeDomains,
-      noteSentence: noteLeadSentence(
-        leadNote ? mapNoteWhyNow(leadNote)[0]?.text : null,
-        leadAuthor ? profileLabel(leadAuthor) : null
-      ),
-      personSentence: personLeadSentence(
-        risingProfile ? mapProfileWhyNow(risingProfile)[0]?.text : null,
-        risingProfile ? profileLabel(risingProfile) : null
-      ),
-      networkSentence: strikingConcentration(
-        relayRanking.map((row) => row.activityScore),
-        window
-      ),
-    }),
     noteAuthorsByPubkey,
     pulseStats,
     relayLeaders,

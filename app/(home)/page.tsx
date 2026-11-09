@@ -5,7 +5,6 @@ import { DiscoverShell } from "@/components/discover/discover-shell";
 import { Orientation } from "@/components/discover/orientation";
 import {
   HomeFreshness,
-  HomeHeadline,
   HomeLanguageSelector,
   HomeOverviewBody,
 } from "@/components/home/home-overview-stream";
@@ -116,17 +115,6 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         }
         eyebrow={formatDiscoveryWindowEyebrow(window)}
         title="What has the network’s attention."
-        headline={
-          <Suspense
-            fallback={
-              <h1 className="nm-display-lg text-ink-strong min-w-0">
-                What has the network’s attention.
-              </h1>
-            }
-          >
-            <HomeHeadline data={home} />
-          </Suspense>
-        }
         subtitle=""
         heroSupport={<Orientation />}
       >

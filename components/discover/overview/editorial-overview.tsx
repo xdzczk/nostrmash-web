@@ -6,9 +6,13 @@ import { PostEngagement } from "@/components/explorer/post-engagement";
 import { TopZap } from "@/components/explorer/top-zap";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
-import { mapNoteWhyNow, mapProfileWhyNow, type WhyNowReason } from "@/components/explorer/why-now";
-import { type Briefing } from "@/lib/discover/briefing";
-import { unusualDomains, unusualHashtags, type UnusualRow } from "@/lib/discover/unusual";
+import {
+  mapDomainWhyNow,
+  mapHashtagWhyNow,
+  mapNoteWhyNow,
+  mapProfileWhyNow,
+  type WhyNowReason,
+} from "@/components/explorer/why-now";
 import { INTERESTS } from "@/lib/discover/interests";
 import { sharedTopicLine } from "@/lib/discover/stories";
 import { selectSupportingNotes } from "@/lib/discover/lead-notes";
@@ -17,7 +21,9 @@ import { buildDiscoverHref, LANGUAGE_EMPTY_MESSAGE } from "@/lib/search-params/l
 import { SourceFigure } from "@/components/explorer/source-figure";
 import {
   postEngagementStats,
+  formatCompactNumber,
   formatProfileSecondary,
+  normalizeDomainLabel,
   noteAuthorIdentifier,
   noteInlineAuthorProfile,
   profileHref,
@@ -38,10 +44,15 @@ import { fetchProfilesByPubkey } from "@/lib/api/profile-hydration";
 import { getEditorialNoteText } from "@/components/explorer/note-preview";
 import { isHiddenNoteKind } from "@/lib/api/normalize";
 import { GENERIC_REPOST_KIND, isLiveActivityKind, isMediaKind } from "@/lib/notes/kinds";
-import { rankMovement } from "@/lib/discover/reasons";
+import {
+  belowVolumeFloor,
+  listedVolume,
+  rankMovement,
+  reasonsBesideSourceFigure,
+} from "@/lib/discover/reasons";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
-import { formatDiscoveryWindowEyebrow, type StatsWindow } from "@/lib/search-params/window";
+import type { StatsWindow } from "@/lib/search-params/window";
 import type { CoverageNote } from "@/lib/stats/coverage-notes";
 import type {
   DiscoveryItemRanking,
@@ -50,8 +61,6 @@ import type {
   HashtagEntry,
   Profile,
 } from "@/lib/types/api";
-import type { DomainMomentum, HashtagMomentum } from "@/lib/types/surfaces";
-
 type PulseStat = {
   label: string;
   value: string | number | boolean;
@@ -68,25 +77,6 @@ type PulseStat = {
 const INDEX_ROW_LIMIT = 6;
 const PROFILE_ROW_LIMIT = 4;
 const RANKED_LINK = "text-ink-faint hover:text-ink inline-flex min-h-6 items-center py-0.5 text-xs";
-
-function briefingMentions(token: string, briefing: Briefing | null | undefined): boolean {
-  if (!briefing || token.length === 0) return false;
-  const haystack = [briefing.headline, ...briefing.items, briefing.coverage ?? ""]
-    .join("\n")
-    .toLowerCase();
-  return haystack.includes(token.toLowerCase());
-}
-
-/** A lone row already said in the brief does not get its own section. */
-function rowsForSection(
-  rows: UnusualRow[],
-  mention: (row: UnusualRow) => string,
-  briefing: Briefing | null | undefined
-) {
-  const only = rows[0];
-  if (rows.length === 1 && only && briefingMentions(mention(only), briefing)) return [];
-  return rows;
-}
 
 function firstReason(reasons: WhyNowReason[]): WhyNowReason | null {
   return reasons[0] ?? null;
@@ -497,96 +487,183 @@ function ProfileRanking({
   );
 }
 
-function UnusualTopics({
-  items,
-  ranked,
+type IndexRow = {
+  key: string;
+  href: string;
+  label: string;
+  reasons: WhyNowReason[];
+  ranking?: DiscoveryItemRanking;
+  extra?: Array<string | null>;
+  figureNoun?: string;
+};
+
+/** Ranked index shared by Topics and Links. Server order is the row order. */
+function RankedIndex({ rows }: { rows: IndexRow[] }) {
+  return (
+    <ol className="border-edge/70 mt-6 divide-y divide-[var(--edge)] border-y">
+      {rows.map((row, index) => (
+        <li key={row.key} className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 py-4">
+          <span className="text-accent-ink pt-0.5 text-lg tabular-nums">
+            {String(index + 1).padStart(2, "0")}
+          </span>
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 items-center">
+                <Link
+                  href={row.href}
+                  className="text-ink block min-h-6 min-w-0 truncate py-0.5 font-medium hover:underline"
+                >
+                  {row.label}
+                </Link>
+                <RankMovement ranking={row.ranking} />
+              </div>
+              <SourceFigure ranking={row.ranking} noun={row.figureNoun} className="ml-auto" />
+            </div>
+            <EvidenceLine
+              reasons={reasonsBesideSourceFigure(row.ranking, row.reasons)}
+              ranking={row.ranking}
+              extra={row.extra}
+              className="mt-1"
+            />
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/**
+ * "N authors" qualifier for index rows. Skipped when the server already cites
+ * that count, so the line never reads the same number twice.
+ */
+function authorsQualifier(
+  count: unknown,
+  reasons: WhyNowReason[],
+  ranking?: DiscoveryItemRanking
+): string | null {
+  if (typeof ranking?.source_breadth === "number") return null;
+  if (/authors?\b/.test(reasons[0]?.text ?? "")) return null;
+  if (typeof count === "number" && reasons[0]?.text.includes(formatCompactNumber(count))) {
+    return null;
+  }
+  return typeof count === "number" && Number.isFinite(count) && count > 1
+    ? `${formatCompactNumber(count)} authors`
+    : null;
+}
+
+function TopicsIndex({
+  hashtags,
+  degraded,
   window,
   lang,
   excludeBridged,
-  briefing,
 }: {
-  items: HashtagMomentum[];
-  ranked: HashtagEntry[];
+  hashtags: HashtagEntry[];
+  degraded?: boolean;
   window: StatsWindow;
   lang?: string;
   excludeBridged?: boolean;
-  briefing?: Briefing | null;
 }) {
-  const found = unusualHashtags(items, ranked).slice(0, INDEX_ROW_LIMIT);
-  const rows = rowsForSection(found, (row) => `#${row.label}`, briefing);
-  if (rows.length === 0) return null;
+  const rows = hashtags
+    .slice(0, INDEX_ROW_LIMIT)
+    .map((entry, index): IndexRow | null => {
+      const hashtag = String(entry.hashtag ?? "").replace(/^#/, "");
+      if (!hashtag) return null;
+      if (belowVolumeFloor(listedVolume([entry.event_count, entry.count]))) return null;
+      const reasons = mapHashtagWhyNow(entry);
+      return {
+        key: `${hashtag}-${index}`,
+        href: `/hashtags/${encodeURIComponent(hashtag)}`,
+        label: `#${hashtag}`,
+        reasons,
+        ranking: entry.ranking,
+        extra: [authorsQualifier(entry.unique_authors, reasons, entry.ranking)],
+        figureNoun: "authors",
+      };
+    })
+    .filter((row): row is IndexRow => row !== null);
   return (
-    <section aria-labelledby="unusual-today">
+    <section aria-labelledby="topics-most-used">
       <SectionHeader
         kicker="Topics"
-        title="Unusual today"
-        headingId="unusual-today"
+        title="Most used topics"
+        headingId="topics-most-used"
         action={{
           href: buildDiscoverHref("/trending/hashtags", { window, lang, excludeBridged }),
-          label: "Most used",
+          label: "Topic index",
         }}
         ranked="/methodology#topics"
       />
-      <ol className="border-edge/70 mt-6 divide-y divide-[var(--edge)] border-y">
-        {rows.map((hashtag) => (
-          <li key={hashtag.label} className="py-3">
-            <Link
-              href={`/hashtags/${encodeURIComponent(hashtag.label)}`}
-              className="text-ink inline-flex min-h-8 items-center font-medium hover:underline"
-            >
-              {`#${hashtag.label}`}
-            </Link>
-            <p className="text-ink-muted mt-1 text-sm">{hashtag.detail}</p>
-          </li>
-        ))}
-      </ol>
+      {rows.length > 0 ? (
+        <RankedIndex rows={rows} />
+      ) : (
+        <EmptyRow>
+          {degraded
+            ? "Topic rankings are temporarily unavailable."
+            : scopedEmpty(lang, "No topics in this window.")}
+        </EmptyRow>
+      )}
     </section>
   );
 }
 
-function UnusualLinks({
-  items,
-  ranked,
+function LinksIndex({
+  domains,
+  degraded,
   window,
   lang,
   excludeBridged,
-  briefing,
 }: {
-  items: DomainMomentum[];
-  ranked: DomainEntry[];
+  domains: DomainEntry[];
+  degraded?: boolean;
   window: StatsWindow;
   lang?: string;
   excludeBridged?: boolean;
-  briefing?: Briefing | null;
 }) {
-  const found = unusualDomains(items, ranked).slice(0, INDEX_ROW_LIMIT);
-  const rows = rowsForSection(found, (row) => row.label, briefing);
-  if (rows.length === 0) return null;
+  const rows = domains
+    .slice(0, INDEX_ROW_LIMIT)
+    .map((entry, index): IndexRow | null => {
+      const domain = normalizeDomainLabel(String(entry.domain ?? ""));
+      if (!domain) return null;
+      if (
+        belowVolumeFloor(
+          listedVolume([entry.link_count, entry.count, entry.event_count, entry.note_count])
+        )
+      )
+        return null;
+      const reasons = mapDomainWhyNow(entry);
+      return {
+        key: `${domain}-${index}`,
+        href: `/domains/${encodeURIComponent(domain)}`,
+        label: domain,
+        reasons,
+        ranking: entry.ranking,
+        extra: [authorsQualifier(entry.unique_authors, reasons, entry.ranking)],
+        figureNoun: "authors",
+      };
+    })
+    .filter((row): row is IndexRow => row !== null);
   return (
     <section aria-labelledby="links-circulating">
       <SectionHeader
         kicker="Links"
-        title="Unusual today"
+        title="Most shared links"
         headingId="links-circulating"
         action={{
           href: buildDiscoverHref("/trending/domains", { window, lang, excludeBridged }),
-          label: "Most shared",
+          label: "Link index",
         }}
         ranked="/methodology#links"
       />
-      <ol className="border-edge/70 mt-6 divide-y divide-[var(--edge)] border-y">
-        {rows.map((domain) => (
-          <li key={domain.label} className="py-3">
-            <Link
-              href={`/domains/${encodeURIComponent(domain.label)}`}
-              className="text-ink inline-flex min-h-8 items-center font-medium hover:underline"
-            >
-              {domain.label}
-            </Link>
-            <p className="text-ink-muted mt-1 text-sm">{domain.detail}</p>
-          </li>
-        ))}
-      </ol>
+      {rows.length > 0 ? (
+        <RankedIndex rows={rows} />
+      ) : (
+        <EmptyRow>
+          {degraded
+            ? "Link rankings are temporarily unavailable."
+            : scopedEmpty(lang, "No links circulating in this window.")}
+        </EmptyRow>
+      )}
     </section>
   );
 }
@@ -764,13 +841,10 @@ export async function EditorialOverview({
   window,
   lang,
   excludeBridged,
-  emergingHashtags = [],
-  emergingDomains = [],
   rankedHashtags = [],
   rankedDomains = [],
   archiveDay = null,
   coverageNotes = [],
-  briefing = null,
 }: {
   notes: EventRecord[];
   mediaLeaders: MediaLeaders;
@@ -788,13 +862,10 @@ export async function EditorialOverview({
   window: StatsWindow;
   lang?: string;
   excludeBridged?: boolean;
-  emergingHashtags?: HashtagMomentum[];
-  emergingDomains?: DomainMomentum[];
   rankedHashtags?: HashtagEntry[];
   rankedDomains?: DomainEntry[];
   archiveDay?: string | null;
   coverageNotes?: readonly CoverageNote[];
-  briefing?: Briefing | null;
 }) {
   const lead = notes[0];
   const followups = selectSupportingNotes(notes);
@@ -821,35 +892,6 @@ export async function EditorialOverview({
       ...authorsByPubkey,
     };
   }
-  const unusualTopicRows = rowsForSection(
-    unusualHashtags(emergingHashtags, rankedHashtags).slice(0, INDEX_ROW_LIMIT),
-    (row) => `#${row.label}`,
-    briefing
-  );
-  const unusualLinkRows = rowsForSection(
-    unusualDomains(emergingDomains, rankedDomains).slice(0, INDEX_ROW_LIMIT),
-    (row) => row.label,
-    briefing
-  );
-
-  const brief =
-    briefing && briefing.items.length > 0 ? (
-      <section aria-labelledby="today-in-brief">
-        <SectionHeader
-          kicker={formatDiscoveryWindowEyebrow(window)}
-          title="In brief"
-          headingId="today-in-brief"
-        />
-        <ul className="border-edge/70 mt-6 max-w-[46rem] divide-y divide-[var(--edge)] border-y">
-          {briefing.items.map((item) => (
-            <li key={item} className="text-ink-soft py-3 text-sm leading-6">
-              {item}
-            </li>
-          ))}
-        </ul>
-      </section>
-    ) : null;
-
   return (
     <div className="space-y-[var(--space-section)]">
       <section
@@ -875,8 +917,6 @@ export async function EditorialOverview({
           contentResolution={contentResolution}
         />
       </section>
-
-      {brief}
 
       <nav aria-label="Browse by interest" className="flex flex-wrap gap-2">
         {INTERESTS.map((interest) => (
@@ -927,26 +967,22 @@ export async function EditorialOverview({
         />
       </div>
 
-      {unusualTopicRows.length > 0 || unusualLinkRows.length > 0 ? (
-        <div className="grid items-start gap-14 lg:grid-cols-2 lg:gap-16 xl:gap-20">
-          <UnusualTopics
-            items={emergingHashtags}
-            ranked={rankedHashtags}
-            window={window}
-            lang={lang}
-            excludeBridged={excludeBridged}
-            briefing={briefing}
-          />
-          <UnusualLinks
-            items={emergingDomains}
-            ranked={rankedDomains}
-            window={window}
-            lang={lang}
-            excludeBridged={excludeBridged}
-            briefing={briefing}
-          />
-        </div>
-      ) : null}
+      <div className="grid items-start gap-14 lg:grid-cols-2 lg:gap-16 xl:gap-20">
+        <TopicsIndex
+          hashtags={rankedHashtags}
+          degraded={sectionFailures.hashtags}
+          window={window}
+          lang={lang}
+          excludeBridged={excludeBridged}
+        />
+        <LinksIndex
+          domains={rankedDomains}
+          degraded={sectionFailures.domains}
+          window={window}
+          lang={lang}
+          excludeBridged={excludeBridged}
+        />
+      </div>
 
       {archiveDay ? (
         <p className="text-sm">

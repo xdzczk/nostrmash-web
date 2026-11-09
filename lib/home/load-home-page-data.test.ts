@@ -20,8 +20,6 @@ vi.mock("@/lib/api/endpoints", () => ({
   getTrendingNotes: vi.fn(),
   getTrendingProfiles: vi.fn(),
   getTrendingMedia: vi.fn(async () => ({ events: [] })),
-  getEmergingHashtags: vi.fn(async () => ({ items: [] })),
-  getEmergingDomains: vi.fn(async () => ({ items: [] })),
   getDiscoveryArchiveDays: vi.fn(async () => []),
   getRelayCoverageChanges: vi.fn(async () => []),
 }));

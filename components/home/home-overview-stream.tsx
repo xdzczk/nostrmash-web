@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 
 import { FreshnessBadge } from "@/components/discover/discover-shell";
 import { EditorialOverview } from "@/components/discover/overview/editorial-overview";
-import { DocumentTitle } from "@/components/home/document-title";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { LanguageSelector } from "@/components/explorer/language-selector";
 import { ErrorPanel, SoftRefreshNote } from "@/components/ui/status-panels";
@@ -28,26 +27,6 @@ export async function HomeFreshness({ data }: { data: Promise<HomePageData> }) {
   redirectRejectedDiscoveryWindow(home.discoveryWindowRedirect);
   const label = formatUpdatedRelative(home.computedAt);
   return label ? <FreshnessBadge label={label} /> : null;
-}
-
-export async function HomeHeadline({ data }: { data: Promise<HomePageData> }) {
-  const home = await data;
-  redirectRejectedDiscoveryWindow(home.discoveryWindowRedirect);
-  const headline = home.briefing?.headline ?? "What has the network’s attention.";
-  const title = home.briefing?.headline
-    ? `${home.briefing.headline.replace(/\.+$/, "")} — NostrMash`
-    : "What’s moving on Nostr — NostrMash";
-  return (
-    <div className="min-w-0">
-      <DocumentTitle title={title} />
-      <h1 className="nm-display-lg text-ink-strong">{headline}</h1>
-      {home.briefing?.coverage ? (
-        <p className="text-ink-muted mt-3 max-w-[42rem] text-base leading-7">
-          {home.briefing.coverage}
-        </p>
-      ) : null}
-    </div>
-  );
 }
 
 export async function HomeLanguageSelector({
@@ -110,13 +89,10 @@ export async function HomeOverviewBody({ data }: { data: Promise<HomePageData> }
           window={home.window}
           lang={home.language}
           excludeBridged={readExcludeBridged(home.currentSearchParams)}
-          emergingHashtags={home.emergingHashtags}
-          emergingDomains={home.emergingDomains}
           rankedHashtags={home.homeHashtags}
           rankedDomains={home.homeDomains}
           archiveDay={home.archiveDay}
           coverageNotes={home.coverageNotes}
-          briefing={home.briefing}
         />
       ) : home.language && !home.errorMessage ? (
         <EmptyState message={LANGUAGE_EMPTY_MESSAGE} />
