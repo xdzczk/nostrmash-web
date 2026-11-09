@@ -79,9 +79,7 @@ export function PageHero({
         ) : null}
       </div>
       {badges ? (
-        <div className={dense ? "min-w-0 overflow-x-auto" : "flex flex-wrap items-center gap-2"}>
-          {badges}
-        </div>
+        <div className={dense ? "min-w-0" : "flex flex-wrap items-center gap-2"}>{badges}</div>
       ) : null}
       {actions ? <div className="max-w-3xl">{actions}</div> : null}
       {support ? <div>{support}</div> : null}

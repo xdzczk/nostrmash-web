@@ -130,7 +130,7 @@ export function DiscoverShell({
         subtitleFromSm={subtitleFromSm}
         badges={
           showRankingBadges ? (
-            <div className="nm-meta flex flex-nowrap items-center gap-x-3 overflow-x-auto">
+            <div className="nm-meta flex flex-wrap items-center gap-x-3 gap-y-2">
               {showWindow || showLanguage ? (
                 <>
                   {showWindow ? (
@@ -141,6 +141,7 @@ export function DiscoverShell({
                       windows={windows}
                       defaultWindow={defaultWindow}
                       persist={showWindow}
+                      prefetch={view !== "overview"}
                     />
                   ) : null}
                   {showLanguage
@@ -160,7 +161,8 @@ export function DiscoverShell({
                 <Link
                   href={buildExcludeBridgedHref(path, searchParams)}
                   title={GLOSSARY.bridged.gloss}
-                  className={`inline-flex min-h-6 shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                  aria-describedby={view === "overview" ? "bridged-gloss" : undefined}
+                  className={`inline-flex min-h-8 shrink-0 items-center rounded-full border px-3 py-1 text-[11px] font-medium ${
                     excludeBridged
                       ? "border-accent/50 bg-surface text-ink"
                       : "border-edge-strong text-ink-muted hover:text-ink"
@@ -171,6 +173,11 @@ export function DiscoverShell({
                 </Link>
               ) : null}
               {freshness ?? (freshnessLabel ? <FreshnessBadge label={freshnessLabel} /> : null)}
+              {view === "overview" && rankingControls ? (
+                <p id="bridged-gloss" className="text-ink-faint basis-full text-[13px] leading-5">
+                  {GLOSSARY.bridged.gloss}
+                </p>
+              ) : null}
             </div>
           ) : undefined
         }

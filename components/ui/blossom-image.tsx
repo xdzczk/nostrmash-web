@@ -3,27 +3,46 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Image, { type ImageProps } from "next/image";
-import type { ComponentProps } from "react";
+import { useState, type ComponentProps } from "react";
 
 import { useBlossomImageSrc } from "@/hooks/use-blossom-image-src";
+import { displayImageSrc } from "@/lib/media/display-image";
 
 type BlossomImageProps = Omit<ComponentProps<"img">, "src"> & {
   src: string;
+  /** CSS pixels the picture is drawn at. At 96 or below, a resized copy is tried first. */
+  displayWidth?: number;
 };
 
 /**
  * Plain image that, after a failed load, retries a Blossom blob on other
  * public servers. Non-blob URLs stay as given.
  */
-export function BlossomImage({ src, alt = "", onError, onLoad, ...rest }: BlossomImageProps) {
+export function BlossomImage({
+  src,
+  alt = "",
+  displayWidth,
+  onError,
+  onLoad,
+  ...rest
+}: BlossomImageProps) {
   const image = useBlossomImageSrc(src);
+  const [direct, setDirect] = useState(false);
+  const remote = image.src ?? src;
+  const resized = !direct && displayWidth !== undefined && remote.startsWith("https://");
+  const shown =
+    resized && displayWidth !== undefined ? displayImageSrc(remote, displayWidth) : remote;
 
   return (
     <img
       {...rest}
-      src={image.src ?? src}
+      src={shown}
       alt={alt}
       onError={(event) => {
+        if (resized) {
+          setDirect(true);
+          return;
+        }
         image.onError();
         onError?.(event);
       }}

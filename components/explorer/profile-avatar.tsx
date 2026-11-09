@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 import Link from "@/components/app-link";
 
 import {
@@ -10,6 +11,7 @@ import {
 } from "@/components/explorer/utils";
 import { EnlargeableImage } from "@/components/ui/image-lightbox";
 import { useBlossomImageSrc } from "@/hooks/use-blossom-image-src";
+import { displayImageSrc } from "@/lib/media/display-image";
 import type { Profile } from "@/lib/types/api";
 
 type ProfileAvatarProps = {
@@ -44,8 +46,11 @@ export function ProfileAvatar({
   const fallbackSrc = profileFallbackAvatarDataUrl(profile);
   const remoteSrc = profilePictureUrl(profile);
   const remote = useBlossomImageSrc(remoteSrc);
+  const [direct, setDirect] = useState(false);
   const showingRemote = Boolean(remoteSrc && remote.src && !remote.failed);
-  const src = showingRemote && remote.src ? remote.src : fallbackSrc;
+  const remoteUrl = showingRemote && remote.src ? remote.src : null;
+  const resized = Boolean(remoteUrl && !direct && size <= 96);
+  const src = remoteUrl ? (resized ? displayImageSrc(remoteUrl, size) : remoteUrl) : fallbackSrc;
   const label = alt ?? profileLabel(profile);
   const canEnlarge = Boolean(enlarge && !href && showingRemote);
 
@@ -60,7 +65,17 @@ export function ProfileAvatar({
       loading={priority ? "eager" : undefined}
       fetchPriority={priority ? "high" : undefined}
       className={className}
-      onError={showingRemote ? remote.onError : undefined}
+      onError={
+        showingRemote
+          ? () => {
+              if (resized) {
+                setDirect(true);
+                return;
+              }
+              remote.onError();
+            }
+          : undefined
+      }
       onLoad={showingRemote ? remote.onLoad : undefined}
     />
   );

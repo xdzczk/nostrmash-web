@@ -105,7 +105,7 @@ describe("NoteCard", () => {
     expect(link).toHaveAttribute("data-top-zap", "quote");
     expect(link.querySelector(".text-\\[15px\\]")).toHaveTextContent("welcome");
     expect(link.querySelector("svg")).toBeNull();
-    expect(link.querySelector("img")).toHaveClass("size-5");
+    expect(link.querySelector("img")).toHaveClass("size-6");
   });
 
   it("keeps a wave in the stat row and cites a larger zap on one line", () => {

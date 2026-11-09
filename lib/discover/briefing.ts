@@ -4,6 +4,11 @@ import { baselineComparison, readEntityBaseline } from "@/lib/discover/baseline"
 export type Briefing = {
   headline: string;
   items: string[];
+  /**
+   * Relay concentration. Shown under the headline when a note, person,
+   * topic, or link is the story. Null when it is the headline itself.
+   */
+  coverage: string | null;
 };
 
 type TopicFact = { hashtag?: string; unique_authors?: number; baseline?: unknown };
@@ -58,14 +63,14 @@ export function noteLeadSentence(
   return finish(who ? `${text} on a note from ${who}` : text);
 }
 
-/** A person, when the reason is more than a post count. */
+/** A person, when the reason is more than how much they posted or how many days they showed up. */
 export function personLeadSentence(
   reason: string | null | undefined,
   name: string | null | undefined
 ): string | null {
   const text = reason?.trim();
   const who = readableName(name);
-  if (!text || !who || text.startsWith("Published ")) return null;
+  if (!text || !who || text.startsWith("Published ") || text.startsWith("Active on ")) return null;
   return finish(`${who}: ${text.charAt(0).toLowerCase()}${text.slice(1)}`);
 }
 
@@ -129,9 +134,11 @@ function countMovement(
 }
 
 /**
- * Homepage and saved-day lede. A note, a person, or the network leads.
- * A topic or link is used only when it is ahead of its usual day, and a
- * count that is merely large, flat, or down is left off.
+ * Homepage and saved-day lede. A note, a person, a link, or a topic leads.
+ * Relay concentration is context under that story, and becomes the headline
+ * only when nothing else is moving. A topic or link is used only when it is
+ * ahead of its usual day, and a count that is merely large, flat, or down is
+ * left off.
  */
 export function buildOverviewBriefing(input: {
   hashtags?: TopicFact[];
@@ -158,13 +165,19 @@ export function buildOverviewBriefing(input: {
     .sort((left, right) => right.ratio - left.ratio)
     .map((entry) => entry.sentence);
 
+  const coverageText = input.networkSentence?.trim() ?? "";
+  const coverage = coverageText
+    ? coverageText.endsWith(".")
+      ? coverageText
+      : `${coverageText}.`
+    : null;
+
   const ordered = [
     input.noteSentence,
     input.personSentence,
-    input.networkSentence,
-    ...networkCounts,
     ...upwardDomains(input.domains ?? []),
     ...upwardTopics(input.hashtags ?? []),
+    ...networkCounts,
   ];
 
   const sentences: string[] = [];
@@ -173,7 +186,11 @@ export function buildOverviewBriefing(input: {
     if (!text || sentences.includes(text)) continue;
     sentences.push(text.endsWith(".") ? text : `${text}.`);
   }
-  const headline = sentences[0];
+  const headline = sentences[0] ?? coverage;
   if (!headline) return null;
-  return { headline, items: sentences.slice(1, 5) };
+  return {
+    headline,
+    items: sentences.filter((sentence) => sentence !== headline).slice(0, 4),
+    coverage: coverage && coverage !== headline ? coverage : null,
+  };
 }

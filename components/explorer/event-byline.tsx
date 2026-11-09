@@ -45,7 +45,7 @@ export function EventByline({
         <Link
           href={href}
           title={label}
-          className="text-ink-soft hover:text-ink-strong max-w-[min(100%,16rem)] truncate font-medium hover:underline"
+          className="text-ink-soft hover:text-ink-strong inline-flex min-h-6 max-w-[min(100%,16rem)] items-center truncate font-medium hover:underline"
         >
           {truncateProfileLabel(label)}
         </Link>

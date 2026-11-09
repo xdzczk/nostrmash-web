@@ -28,7 +28,7 @@ describe("unusual lists", () => {
           { hashtag: "music", unique_authors: 40, baseline: ahead },
         ]
       )
-    ).toEqual(["music"]);
+    ).toEqual([{ label: "music", detail: "4x its usual day." }]);
   });
 
   it("drops a link that has no usual day to compare with", () => {
@@ -40,6 +40,6 @@ describe("unusual lists", () => {
         ],
         [{ domain: "example.com", unique_authors: 40, baseline: ahead }]
       )
-    ).toEqual(["example.com"]);
+    ).toEqual([{ label: "example.com", detail: "4x its usual day." }]);
   });
 });

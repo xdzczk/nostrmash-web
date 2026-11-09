@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { resetBlossomImageCache } from "@/hooks/use-blossom-image-src";
 import { BLOSSOM_MIRRORS } from "@/lib/media/blossom";
+import { displayImageSrc } from "@/lib/media/display-image";
 import type { Profile } from "@/lib/types/api";
 
 const profile = {
@@ -52,6 +53,9 @@ describe("ProfileAvatar", () => {
     render(<ProfileAvatar profile={{ ...profile, picture }} size={40} />);
 
     const avatar = () => screen.getByRole("img", { name: "Ada" });
+    expect(avatar()).toHaveAttribute("src", displayImageSrc(picture, 40));
+
+    fireEvent.error(avatar());
     expect(avatar()).toHaveAttribute("src", picture);
 
     fireEvent.error(avatar());

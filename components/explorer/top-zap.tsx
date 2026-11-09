@@ -53,14 +53,14 @@ export function TopZap({
     ? `Top zap from ${name}, ${amount}: ${comment}`
     : `Top zap from ${name}, ${amount}`;
   const detail = size === "md";
-  const avatar = detail ? 28 : 20;
+  const avatar = detail ? 28 : 24;
   const pullQuote = Boolean(comment) && zap.sats >= PULL_QUOTE_MIN_SATS;
   const portrait = (
     <ProfileAvatar
       profile={profile}
       size={avatar}
       alt=""
-      className={`${detail ? "size-7" : "size-5"} shrink-0 rounded-full object-cover`}
+      className={`${detail ? "size-7" : "size-6"} shrink-0 rounded-full object-cover`}
     />
   );
 
@@ -70,7 +70,7 @@ export function TopZap({
       aria-label={label}
       title={label}
       data-top-zap={pullQuote ? "quote" : "line"}
-      className={`${detail ? "mt-4" : "mt-1.5"} hover:text-ink flex w-full min-w-0 flex-col ${TEXT_SIZE[size]} ${className}`.trim()}
+      className={`${detail ? "mt-4" : "mt-1.5"} hover:text-ink flex min-h-8 w-full min-w-0 flex-col justify-center py-1 ${TEXT_SIZE[size]} ${className}`.trim()}
     >
       <span aria-hidden className="flex w-full min-w-0 flex-col gap-1.5">
         {pullQuote ? (

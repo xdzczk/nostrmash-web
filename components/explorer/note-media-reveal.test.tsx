@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { resetBlossomImageCache } from "@/hooks/use-blossom-image-src";
 import { BLOSSOM_MIRRORS } from "@/lib/media/blossom";
 
-import { NoteMediaReveal, videoPreviewSrc } from "./note-media-reveal";
+import { NoteMediaReveal } from "./note-media-reveal";
 
 afterEach(() => {
   resetBlossomImageCache();
@@ -50,6 +50,7 @@ describe("NoteMediaReveal", () => {
       <NoteMediaReveal url="https://media.example/image.jpg" kind="image" />
     );
     expect(container.querySelector("img")).toHaveAttribute("loading", "lazy");
+    expect(container.querySelector("img")).toHaveAttribute("fetchpriority", "low");
 
     rerender(<NoteMediaReveal url="https://media.example/image.jpg" kind="image" priority />);
     const image = container.querySelector("img");
@@ -98,16 +99,17 @@ describe("NoteMediaReveal", () => {
     expect(screen.getByLabelText("2 more attachments")).toHaveTextContent("+2");
   });
 
-  it("renders videos with an early-frame media fragment", () => {
-    const url = "https://media.example/clip.mp4";
-    const { container } = render(<NoteMediaReveal url={url} kind="video" />);
+  it("does not fetch a video until it is played", () => {
+    const url = "https://media.example/clip.mp4#t=0.001";
+    const { container } = render(
+      <NoteMediaReveal url={url} kind="video" poster="https://media.example/poster.jpg" />
+    );
 
     const video = container.querySelector("video");
-    expect(video).toHaveAttribute("src", "https://media.example/clip.mp4#t=0.001");
-    expect(video).toHaveAttribute("preload", "metadata");
+    expect(video).toHaveAttribute("src", "https://media.example/clip.mp4");
+    expect(video).toHaveAttribute("poster", "https://media.example/poster.jpg");
+    expect(video).toHaveAttribute("preload", "none");
     expect(video).toHaveClass("object-contain");
-    expect(videoPreviewSrc(url)).toBe("https://media.example/clip.mp4#t=0.001");
-    expect(videoPreviewSrc(`${url}#other`)).toBe("https://media.example/clip.mp4#t=0.001");
   });
 
   it("embeds a YouTube watch URL instead of treating it as a file", () => {

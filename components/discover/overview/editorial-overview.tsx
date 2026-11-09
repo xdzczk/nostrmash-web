@@ -7,9 +7,8 @@ import { TopZap } from "@/components/explorer/top-zap";
 import { ProfileAvatar } from "@/components/explorer/profile-avatar";
 import { Timestamp } from "@/components/explorer/timestamp";
 import { mapNoteWhyNow, mapProfileWhyNow, type WhyNowReason } from "@/components/explorer/why-now";
-import { Orientation } from "@/components/discover/orientation";
 import { type Briefing } from "@/lib/discover/briefing";
-import { unusualDomains, unusualHashtags } from "@/lib/discover/unusual";
+import { unusualDomains, unusualHashtags, type UnusualRow } from "@/lib/discover/unusual";
 import { INTERESTS } from "@/lib/discover/interests";
 import { sharedTopicLine } from "@/lib/discover/stories";
 import { selectSupportingNotes } from "@/lib/discover/lead-notes";
@@ -42,7 +41,7 @@ import { GENERIC_REPOST_KIND, isLiveActivityKind, isMediaKind } from "@/lib/note
 import { rankMovement } from "@/lib/discover/reasons";
 import { resolveContentReferences } from "@/lib/notes/resolve-content-refs";
 import { NetworkPulseStrip } from "@/components/home/network-pulse-strip";
-import type { StatsWindow } from "@/lib/search-params/window";
+import { formatDiscoveryWindowEyebrow, type StatsWindow } from "@/lib/search-params/window";
 import type { CoverageNote } from "@/lib/stats/coverage-notes";
 import type {
   DiscoveryItemRanking,
@@ -68,6 +67,26 @@ type PulseStat = {
 
 const INDEX_ROW_LIMIT = 6;
 const PROFILE_ROW_LIMIT = 4;
+const RANKED_LINK = "text-ink-faint hover:text-ink inline-flex min-h-6 items-center py-0.5 text-xs";
+
+function briefingMentions(token: string, briefing: Briefing | null | undefined): boolean {
+  if (!briefing || token.length === 0) return false;
+  const haystack = [briefing.headline, ...briefing.items, briefing.coverage ?? ""]
+    .join("\n")
+    .toLowerCase();
+  return haystack.includes(token.toLowerCase());
+}
+
+/** A lone row already said in the brief does not get its own section. */
+function rowsForSection(
+  rows: UnusualRow[],
+  mention: (row: UnusualRow) => string,
+  briefing: Briefing | null | undefined
+) {
+  const only = rows[0];
+  if (rows.length === 1 && only && briefingMentions(mention(only), briefing)) return [];
+  return rows;
+}
 
 function firstReason(reasons: WhyNowReason[]): WhyNowReason | null {
   return reasons[0] ?? null;
@@ -113,7 +132,7 @@ function SectionHeader({
             aside
           )}
           {ranked ? (
-            <Link href={ranked} className="text-ink-faint hover:text-ink text-xs">
+            <Link href={ranked} className={RANKED_LINK}>
               How this is ranked
             </Link>
           ) : null}
@@ -240,6 +259,15 @@ function EditorialNote({
   const noteHref = id ? `/notes/${encodeURIComponent(id)}` : undefined;
   const hasContent = typeof note.content === "string" && note.content.length > 0;
 
+  const rankMark = (
+    <span
+      className="text-ink-muted block text-xl leading-none font-medium tracking-[-0.05em]"
+      aria-label={`Rank ${rank}`}
+    >
+      {String(rank).padStart(2, "0")}
+    </span>
+  );
+
   const authorRow = (
     <div className="flex items-center gap-3">
       {authorAvatarProfile ? (
@@ -273,7 +301,8 @@ function EditorialNote({
   if (lead) {
     return (
       <article className={`border-edge/70 border-t pt-5 ${noteHref ? cardHitTargetClassName : ""}`}>
-        {authorRow}
+        {rankMark}
+        <div className="mt-3">{authorRow}</div>
         {editorialText ? (
           <NoteBody
             content={editorialText}
@@ -322,12 +351,7 @@ function EditorialNote({
       }`}
     >
       <div className="min-w-0">
-        <span
-          className="text-ink-muted block text-xl leading-none font-medium tracking-[-0.05em]"
-          aria-label={`Rank ${rank}`}
-        >
-          {String(rank).padStart(2, "0")}
-        </span>
+        {rankMark}
         <div className="mt-3">{authorRow}</div>
         {editorialText ? (
           <NoteBody
@@ -479,14 +503,17 @@ function UnusualTopics({
   window,
   lang,
   excludeBridged,
+  briefing,
 }: {
   items: HashtagMomentum[];
   ranked: HashtagEntry[];
   window: StatsWindow;
   lang?: string;
   excludeBridged?: boolean;
+  briefing?: Briefing | null;
 }) {
-  const rows = unusualHashtags(items, ranked).slice(0, INDEX_ROW_LIMIT);
+  const found = unusualHashtags(items, ranked).slice(0, INDEX_ROW_LIMIT);
+  const rows = rowsForSection(found, (row) => `#${row.label}`, briefing);
   if (rows.length === 0) return null;
   return (
     <section aria-labelledby="unusual-today">
@@ -502,14 +529,14 @@ function UnusualTopics({
       />
       <ol className="border-edge/70 mt-6 divide-y divide-[var(--edge)] border-y">
         {rows.map((hashtag) => (
-          <li key={hashtag} className="py-3">
+          <li key={hashtag.label} className="py-3">
             <Link
-              href={`/hashtags/${encodeURIComponent(hashtag)}`}
-              className="text-ink font-medium hover:underline"
+              href={`/hashtags/${encodeURIComponent(hashtag.label)}`}
+              className="text-ink inline-flex min-h-8 items-center font-medium hover:underline"
             >
-              {`#${hashtag}`}
+              {`#${hashtag.label}`}
             </Link>
-            <p className="text-ink-muted mt-1 text-sm">Moving faster than its recent pace.</p>
+            <p className="text-ink-muted mt-1 text-sm">{hashtag.detail}</p>
           </li>
         ))}
       </ol>
@@ -523,14 +550,17 @@ function UnusualLinks({
   window,
   lang,
   excludeBridged,
+  briefing,
 }: {
   items: DomainMomentum[];
   ranked: DomainEntry[];
   window: StatsWindow;
   lang?: string;
   excludeBridged?: boolean;
+  briefing?: Briefing | null;
 }) {
-  const rows = unusualDomains(items, ranked).slice(0, INDEX_ROW_LIMIT);
+  const found = unusualDomains(items, ranked).slice(0, INDEX_ROW_LIMIT);
+  const rows = rowsForSection(found, (row) => row.label, briefing);
   if (rows.length === 0) return null;
   return (
     <section aria-labelledby="links-circulating">
@@ -546,14 +576,14 @@ function UnusualLinks({
       />
       <ol className="border-edge/70 mt-6 divide-y divide-[var(--edge)] border-y">
         {rows.map((domain) => (
-          <li key={domain} className="py-3">
+          <li key={domain.label} className="py-3">
             <Link
-              href={`/domains/${encodeURIComponent(domain)}`}
-              className="text-ink font-medium hover:underline"
+              href={`/domains/${encodeURIComponent(domain.label)}`}
+              className="text-ink inline-flex min-h-8 items-center font-medium hover:underline"
             >
-              {domain}
+              {domain.label}
             </Link>
-            <p className="text-ink-muted mt-1 text-sm">Moving faster than its recent pace.</p>
+            <p className="text-ink-muted mt-1 text-sm">{domain.detail}</p>
           </li>
         ))}
       </ol>
@@ -586,7 +616,7 @@ function LeadSection({
         <h2 id={headingId} className="nm-kicker scroll-mt-24">
           The note to read first
         </h2>
-        <Link href="/methodology#notes" className="text-ink-faint hover:text-ink text-xs">
+        <Link href="/methodology#notes" className={RANKED_LINK}>
           How this is ranked
         </Link>
       </div>
@@ -640,7 +670,6 @@ function SupportingNotes({
             href: buildDiscoverHref("/trending/notes", { window, lang, excludeBridged }),
             label: "All notes",
           }}
-          ranked="/methodology#notes"
         />
       </div>
       {notes.map((note, index) => (
@@ -792,19 +821,37 @@ export async function EditorialOverview({
       ...authorsByPubkey,
     };
   }
+  const unusualTopicRows = rowsForSection(
+    unusualHashtags(emergingHashtags, rankedHashtags).slice(0, INDEX_ROW_LIMIT),
+    (row) => `#${row.label}`,
+    briefing
+  );
+  const unusualLinkRows = rowsForSection(
+    unusualDomains(emergingDomains, rankedDomains).slice(0, INDEX_ROW_LIMIT),
+    (row) => row.label,
+    briefing
+  );
+
+  const brief =
+    briefing && briefing.items.length > 0 ? (
+      <section aria-labelledby="today-in-brief">
+        <SectionHeader
+          kicker={formatDiscoveryWindowEyebrow(window)}
+          title="In brief"
+          headingId="today-in-brief"
+        />
+        <ul className="border-edge/70 mt-6 max-w-[46rem] divide-y divide-[var(--edge)] border-y">
+          {briefing.items.map((item) => (
+            <li key={item} className="text-ink-soft py-3 text-sm leading-6">
+              {item}
+            </li>
+          ))}
+        </ul>
+      </section>
+    ) : null;
 
   return (
     <div className="space-y-[var(--space-section)]">
-      {briefing && briefing.items.length > 0 ? (
-        <ul
-          aria-label="Today in brief"
-          className="text-ink-soft max-w-[46rem] space-y-1 text-sm leading-6"
-        >
-          {briefing.items.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      ) : null}
       <section
         aria-label="Leading notes"
         className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.42fr)_minmax(300px,0.62fr)] lg:gap-14 xl:gap-20"
@@ -829,18 +876,19 @@ export async function EditorialOverview({
         />
       </section>
 
-      <nav aria-label="Browse by interest" className="flex flex-wrap gap-x-4 gap-y-2">
+      {brief}
+
+      <nav aria-label="Browse by interest" className="flex flex-wrap gap-2">
         {INTERESTS.map((interest) => (
           <Link
             key={interest.href}
             href={interest.href}
-            className="text-ink-soft hover:text-ink text-sm"
+            className="border-edge-strong text-ink-soft hover:border-edge hover:text-ink inline-flex min-h-8 items-center rounded-full border px-3 text-sm"
           >
             {interest.label}
           </Link>
         ))}
       </nav>
-      <Orientation />
 
       <MediaLeadersSection
         leaders={mediaLeaders}
@@ -879,22 +927,26 @@ export async function EditorialOverview({
         />
       </div>
 
-      <div className="grid items-start gap-14 lg:grid-cols-2 lg:gap-16 xl:gap-20">
-        <UnusualTopics
-          items={emergingHashtags}
-          ranked={rankedHashtags}
-          window={window}
-          lang={lang}
-          excludeBridged={excludeBridged}
-        />
-        <UnusualLinks
-          items={emergingDomains}
-          ranked={rankedDomains}
-          window={window}
-          lang={lang}
-          excludeBridged={excludeBridged}
-        />
-      </div>
+      {unusualTopicRows.length > 0 || unusualLinkRows.length > 0 ? (
+        <div className="grid items-start gap-14 lg:grid-cols-2 lg:gap-16 xl:gap-20">
+          <UnusualTopics
+            items={emergingHashtags}
+            ranked={rankedHashtags}
+            window={window}
+            lang={lang}
+            excludeBridged={excludeBridged}
+            briefing={briefing}
+          />
+          <UnusualLinks
+            items={emergingDomains}
+            ranked={rankedDomains}
+            window={window}
+            lang={lang}
+            excludeBridged={excludeBridged}
+            briefing={briefing}
+          />
+        </div>
+      ) : null}
 
       {archiveDay ? (
         <p className="text-sm">

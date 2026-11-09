@@ -25,8 +25,9 @@ describe("lead sentences", () => {
     expect(noteLeadSentence("Posted recently and already in this ranking", "Gigi")).toBeNull();
   });
 
-  it("skips a person whose only reason is a post count", () => {
+  it("skips a person whose only reason is a post count or a day count", () => {
     expect(personLeadSentence("Published 6 notes in this window", "Ada")).toBeNull();
+    expect(personLeadSentence("Active on 2 days in this window", "Ada")).toBeNull();
     expect(personLeadSentence("Gained 40 followers", "Ada")).toBe("Ada: gained 40 followers.");
   });
 });
@@ -52,6 +53,7 @@ describe("buildOverviewBriefing", () => {
       "example.com was shared by 40 people in this window, 4x its usual day.",
       "#music is in notes from 40 people in this window, 2x its usual day.",
     ]);
+    expect(briefing?.coverage).toBeNull();
   });
 
   it("does not lead with a large topic that is flat or down", () => {
@@ -83,7 +85,7 @@ describe("buildOverviewBriefing", () => {
     );
   });
 
-  it("prefers the network count that is furthest ahead of its usual level", () => {
+  it("leads with a topic that is ahead and keeps relay concentration as coverage", () => {
     const briefing = buildOverviewBriefing({
       noteVolume: 100,
       noteVolumeBaseline: {
@@ -95,8 +97,20 @@ describe("buildOverviewBriefing", () => {
       hashtags: [{ hashtag: "bitcoin", unique_authors: 40, baseline: ahead }],
       networkSentence: "Three relays carried 91% of what we indexed in the last day.",
     });
-    expect(briefing?.headline).toBe("Three relays carried 91% of what we indexed in the last day.");
+    expect(briefing?.headline).toBe(
+      "#bitcoin is in notes from 40 people in this window, 4x its usual day."
+    );
     expect(briefing?.items[0]).toBe("100 notes, +25% vs a typical same weekday.");
+    expect(briefing?.coverage).toBe("Three relays carried 91% of what we indexed in the last day.");
+  });
+
+  it("uses relay concentration as the headline only when nothing else is moving", () => {
+    const briefing = buildOverviewBriefing({
+      networkSentence: "Three relays carried 91% of what we indexed in the last day.",
+    });
+    expect(briefing?.headline).toBe("Three relays carried 91% of what we indexed in the last day.");
+    expect(briefing?.items).toEqual([]);
+    expect(briefing?.coverage).toBeNull();
   });
 
   it("leaves a baseline out when it describes a different count", () => {

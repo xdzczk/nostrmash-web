@@ -164,9 +164,12 @@ test.describe("global product shell", () => {
     );
     expect(fontSize).toBeGreaterThanOrEqual(28);
 
-    const topics = page.locator("section", { has: page.locator("#links-circulating") });
-    await expect(topics.getByRole("link").first()).toBeVisible();
-    await expect(topics.getByText(/Why now ·/)).toHaveCount(0);
+    // A lone circulating link already named in the brief is folded into that
+    // list, so the page does not repeat it as its own section.
+    const brief = page.locator("section", { has: page.locator("#today-in-brief") });
+    await expect(brief.getByText(/example\.com/i)).toBeVisible();
+    await expect(brief.getByText(/Why now ·/)).toHaveCount(0);
+    await expect(page.locator("#links-circulating")).toHaveCount(0);
 
     const people = page.locator("section", { has: page.locator("#profiles-in-motion") });
     await expect(people.getByRole("link").first()).toBeVisible();

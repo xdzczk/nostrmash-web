@@ -170,9 +170,19 @@ export function relatedRailReasonLine(profile: Profile): string | null {
   return fallback.support ? `${fallback.text} · ${fallback.support}` : fallback.text;
 }
 
+/**
+ * A post count is not a reason something is moving. Drop it even when it is
+ * the only signal, so the line stays empty instead of saying "Published 2 notes".
+ */
+function omitPostVolume(reasons: WhyNowReason[]): WhyNowReason[] {
+  return reasons.filter(
+    (reason) => reason.code !== "publishing_momentum" && !reason.text.startsWith("Published ")
+  );
+}
+
 export function mapProfileWhyNow(profile: Profile): WhyNowReason[] {
   const serverReasons = mapServerRankingReasons(profile.ranking);
-  if (serverReasons.length > 0) return serverReasons;
+  if (serverReasons.length > 0) return omitPostVolume(serverReasons);
 
   const relatedReasons = mapRelatedProfileReasons(profile);
   if (relatedReasons.length > 0) return relatedReasons;
@@ -203,7 +213,7 @@ export function mapProfileWhyNow(profile: Profile): WhyNowReason[] {
     });
   }
 
-  return dedupeReasons(reasons);
+  return omitPostVolume(dedupeReasons(reasons));
 }
 
 export function mapHashtagWhyNow(entry: HashtagEntry): WhyNowReason[] {

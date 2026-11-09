@@ -59,7 +59,7 @@ export function WindowSelector({
               document.cookie = serializeDiscoveryWindowPreferenceCookie(window);
             }}
             aria-current={isActive ? "true" : undefined}
-            className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+            className={`inline-flex min-h-8 items-center rounded-full px-3 py-1 text-[11px] font-medium transition ${
               isActive ? "bg-surface text-ink shadow-sm" : "text-ink-muted hover:text-ink"
             }`}
           >

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { DiscoverShell } from "@/components/discover/discover-shell";
+import { Orientation } from "@/components/discover/orientation";
 import {
   HomeFreshness,
   HomeHeadline,
@@ -33,9 +34,16 @@ export async function generateMetadata({
   const lang = readLanguage(await searchParams);
   return withLanguageVariantMetadata(
     {
-      title: { absolute: "NostrMash" },
-      description:
-        "Explore Nostr notes, profiles, relays, and live trends through a public discovery index.",
+      title: { absolute: "What’s moving on Nostr — NostrMash" },
+      description: "Understand what is moving on Nostr, who is shaping it, and why it matters.",
+      openGraph: {
+        title: "What’s moving on Nostr — NostrMash",
+        description: "Understand what is moving on Nostr, who is shaping it, and why it matters.",
+      },
+      twitter: {
+        title: "What’s moving on Nostr — NostrMash",
+        description: "Understand what is moving on Nostr, who is shaping it, and why it matters.",
+      },
       alternates: {
         types: {
           "application/rss+xml": [{ url: "/feeds/trending-notes.xml", title: "Trending notes" }],
@@ -120,6 +128,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
           </Suspense>
         }
         subtitle=""
+        heroSupport={<Orientation />}
       >
         <Suspense fallback={<DiscoverOverviewBodySkeleton />}>
           <HomeOverviewBody data={home} />

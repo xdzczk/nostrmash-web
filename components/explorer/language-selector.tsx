@@ -72,7 +72,7 @@ export function LanguageSelector({
       ))}
       <label
         htmlFor={selectId}
-        className="border-edge-strong bg-surface/40 inline-flex items-center gap-1.5 rounded-full border py-0.5 pr-1.5 pl-2.5"
+        className="border-edge-strong bg-surface/40 inline-flex min-h-8 items-center gap-1.5 rounded-full border py-0.5 pr-1.5 pl-2.5"
       >
         <span className="text-ink-muted text-[11px] font-medium">Language</span>
         <select

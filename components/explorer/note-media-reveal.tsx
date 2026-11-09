@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { BlossomImage } from "@/components/ui/blossom-image";
 import { EnlargeableImage } from "@/components/ui/image-lightbox";
@@ -8,11 +8,10 @@ import { parseYoutubeVideoId, youtubeEmbedSrc } from "@/lib/notes/embeds";
 
 type MediaKind = "image" | "video" | "audio";
 
-/** Media fragment that encourages browsers to paint an early frame. */
-export function videoPreviewSrc(url: string): string {
+/** Drop a media fragment so the element does not seek into the file on its own. */
+function videoSrc(url: string): string {
   const hashIndex = url.indexOf("#");
-  const base = hashIndex >= 0 ? url.slice(0, hashIndex) : url;
-  return `${base}#t=0.001`;
+  return hashIndex >= 0 ? url.slice(0, hashIndex) : url;
 }
 
 function listen(target: EventTarget, type: string, handler: () => void) {
@@ -30,33 +29,6 @@ function NoteVideo({
   poster?: string;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const primedUrlRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const primeFrame = () => {
-      if (primedUrlRef.current === url) return;
-      const duration = Number.isFinite(video.duration) ? video.duration : 0;
-      const target = duration > 0 ? Math.min(0.1, Math.max(duration * 0.01, 0.001)) : 0.1;
-      try {
-        video.currentTime = target;
-        primedUrlRef.current = url;
-      } catch {
-        // Some sources reject seeks before enough data arrives; ignore.
-      }
-    };
-
-    if (video.readyState >= 1) {
-      primeFrame();
-    }
-
-    video.addEventListener("loadedmetadata", primeFrame);
-    return () => {
-      video.removeEventListener("loadedmetadata", primeFrame);
-    };
-  }, [url]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -83,11 +55,11 @@ function NoteVideo({
   return (
     <video
       ref={videoRef}
-      src={videoPreviewSrc(url)}
+      src={videoSrc(url)}
       poster={poster}
       controls
       playsInline
-      preload="metadata"
+      preload="none"
       className={className}
     />
   );
@@ -153,6 +125,7 @@ export function NoteMediaReveal({
       </span>
     ) : null;
 
+  const [imageReady, setImageReady] = useState(kind !== "image");
   const youtubeId = kind === "video" ? parseYoutubeVideoId(url) : null;
   const frameWidthClass = youtubeId
     ? `w-full ${variant === "portrait" ? "aspect-[9/16]" : "aspect-video"}`
@@ -164,7 +137,9 @@ export function NoteMediaReveal({
 
   return (
     <div
-      className={`nm-media-frame border-edge bg-surface-sunken/60 relative overflow-hidden rounded-[var(--radius-control)] border ${frameWidthClass}`}
+      className={`nm-media-frame border-edge bg-surface-sunken/60 relative overflow-hidden rounded-[var(--radius-control)] border ${frameWidthClass} ${
+        kind === "image" && !imageReady ? "animate-pulse" : ""
+      }`}
     >
       {kind === "image" ? (
         <EnlargeableImage
@@ -176,11 +151,14 @@ export function NoteMediaReveal({
           <BlossomImage
             src={url}
             alt={alt}
+            displayWidth={variant === "compact" ? 96 : undefined}
             loading={priority ? "eager" : "lazy"}
-            fetchPriority={priority ? "high" : "auto"}
+            fetchPriority={priority ? "high" : "low"}
             decoding="async"
             referrerPolicy="no-referrer"
             className={framedClass}
+            onLoad={() => setImageReady(true)}
+            onError={() => setImageReady(true)}
           />
         </EnlargeableImage>
       ) : null}
@@ -200,7 +178,7 @@ export function NoteMediaReveal({
       ) : null}
       {kind === "audio" ? (
         <div className={fill ? "flex h-full items-center p-3" : "p-3"}>
-          <audio src={url} controls preload="metadata" className="w-full" />
+          <audio src={url} controls preload="none" className="w-full" />
         </div>
       ) : null}
       {badge}
