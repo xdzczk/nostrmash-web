@@ -22,7 +22,8 @@ import {
 } from "@/lib/explorer/ranked-list";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
 import { readLanguage } from "@/lib/search-params/language";
-import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
+import { applyDiscoverRanking } from "@/lib/search-params/ranking-preference";
+import { readViewer } from "@/lib/search-params/viewer";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { StatsWindow } from "@/lib/search-params/window";
 
@@ -42,7 +43,8 @@ export async function generateMetadata({
       path: "/trending/hashtags",
     }),
     readLanguage(await searchParams),
-    "/trending/hashtags"
+    "/trending/hashtags",
+    readViewer(await searchParams)
   );
 }
 
@@ -53,16 +55,16 @@ export default async function TrendingHashtagsPage({
 }) {
   const path = "/trending/hashtags";
   const resolvedSearchParams = await searchParams;
-  const language = await applyDiscoverLanguage(path, resolvedSearchParams);
+  const { language, viewer } = await applyDiscoverRanking(path, resolvedSearchParams);
   const { window, windows, currentSearchParams } = await readRankedListContext(
     resolvedSearchParams,
     path
   );
-  const offset = readRankedOffset(resolvedSearchParams);
+  const offset = readRankedOffset(resolvedSearchParams, viewer);
   const emerging = getEmergingHashtags().catch(() => null);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () => getTrendingHashtags("shortTtl", rankedListRequest(window, language, offset)),
+      () => getTrendingHashtags("shortTtl", rankedListRequest(window, language, offset, viewer)),
       "Failed to load topics.",
       { window, path, params: currentSearchParams }
     )
@@ -117,7 +119,8 @@ async function TrendingHashtagsBody({
     emerging,
   ]);
   const hashtags = payload?.hashtags ?? [];
-  const continuation = rankedPageContinuation("hashtags", hashtags, offset);
+  const viewer = readViewer({ viewer: searchParams.get("viewer") ?? undefined });
+  const continuation = rankedPageContinuation("hashtags", hashtags, offset, undefined, viewer);
   const itemListUrls = hashtags
     .map((entry) => {
       const tag =
@@ -143,7 +146,7 @@ async function TrendingHashtagsBody({
         emptyTitle="No ranked hashtags yet"
         emptyMessage="Ranked hashtags have not populated for this window."
         hasItems={hashtags.length > 0}
-        loadMore={loadMoreRanking.bind(null, "hashtags", window, language ?? "")}
+        loadMore={loadMoreRanking.bind(null, "hashtags", window, language ?? "", viewer ?? "")}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

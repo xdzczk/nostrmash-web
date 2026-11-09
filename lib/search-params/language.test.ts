@@ -60,6 +60,16 @@ describe("buildDiscoverHref", () => {
     );
     expect(buildDiscoverHref("/", {})).toBe("/");
     expect(buildDiscoverHref("/", { lang: "ja" })).toBe("/?lang=ja");
+    expect(
+      buildDiscoverHref("/trending/notes", {
+        window: "7d",
+        lang: "de",
+        viewer: "ab".repeat(32),
+      })
+    ).toBe(`/trending/notes?window=7d&lang=de&viewer=${"ab".repeat(32)}`);
+    expect(buildDiscoverHref("/trending/notes", { window: "24h", viewer: "not-a-key" })).toBe(
+      "/trending/notes?window=24h"
+    );
   });
 });
 

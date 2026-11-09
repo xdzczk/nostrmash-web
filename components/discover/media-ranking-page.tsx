@@ -28,8 +28,9 @@ import {
 } from "@/lib/explorer/ranked-list";
 import { eventPageHref } from "@/lib/notes/kinds";
 import { readLanguage } from "@/lib/search-params/language";
-import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
+import { applyDiscoverRanking } from "@/lib/search-params/ranking-preference";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
+import { readViewer } from "@/lib/search-params/viewer";
 import { withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { StatsWindow } from "@/lib/search-params/window";
 import type { Profile } from "@/lib/types/api";
@@ -47,7 +48,8 @@ export async function mediaRankingMetadata(
       description: ranking.description,
     },
     readLanguage(await searchParams),
-    ranking.path
+    ranking.path,
+    readViewer(await searchParams)
   );
 }
 
@@ -60,12 +62,12 @@ export async function MediaRankingPage({
 }) {
   const ranking = mediaRanking(format);
   const resolvedSearchParams = await searchParams;
-  const language = await applyDiscoverLanguage(ranking.path, resolvedSearchParams);
+  const { language, viewer } = await applyDiscoverRanking(ranking.path, resolvedSearchParams);
   const { window, windows, currentSearchParams } = await readRankedListContext(
     resolvedSearchParams,
     ranking.path
   );
-  const offset = readRankedOffset(resolvedSearchParams);
+  const offset = readRankedOffset(resolvedSearchParams, viewer);
   const data = startRankedLoad(
     loadRankedListPayload(
       async () => {
@@ -73,7 +75,7 @@ export async function MediaRankingPage({
           return await getTrendingMedia(
             format,
             "shortTtl",
-            rankedListRequest(window, language, offset)
+            rankedListRequest(window, language, offset, viewer)
           );
         } catch (error) {
           if (isApiError(error) && error.isNotFound) {
@@ -165,7 +167,8 @@ async function MediaRankingBody({
       : Promise.resolve({} as Record<string, Profile>);
   const events = await hydrateRankedMediaEvents(rankedEvents, format);
   const authorsByPubkey = await authorsPromise;
-  const continuation = rankedPageContinuation(format, events, offset);
+  const viewer = readViewer({ viewer: searchParams.get("viewer") ?? undefined });
+  const continuation = rankedPageContinuation(format, events, offset, undefined, viewer);
   const itemListUrls = events
     .map((event) => eventPageHref(event))
     .filter((href): href is string => Boolean(href));
@@ -186,7 +189,7 @@ async function MediaRankingBody({
         emptyTitle={emptyTitle}
         emptyMessage={emptyMessage}
         hasItems={events.length > 0}
-        loadMore={loadMoreRanking.bind(null, format, window, language ?? "")}
+        loadMore={loadMoreRanking.bind(null, format, window, language ?? "", viewer ?? "")}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

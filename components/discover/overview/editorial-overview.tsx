@@ -13,6 +13,7 @@ import {
   mapProfileWhyNow,
   type WhyNowReason,
 } from "@/components/explorer/why-now";
+import { PersonalizationNote } from "@/components/discover/personalization-note";
 import { sharedTopicLine } from "@/lib/discover/stories";
 import { selectSupportingNotes } from "@/lib/discover/lead-notes";
 import { MEDIA_RANKINGS, type MediaLeaders } from "@/lib/discover/media-rankings";
@@ -58,6 +59,7 @@ import type {
   DomainEntry,
   EventRecord,
   HashtagEntry,
+  Personalization,
   Profile,
 } from "@/lib/types/api";
 type PulseStat = {
@@ -383,6 +385,7 @@ function ProfileRanking({
   degraded,
   window,
   lang,
+  viewer,
   headingId = "profiles-in-motion",
   kicker = "People",
   title = "People gaining attention",
@@ -395,6 +398,7 @@ function ProfileRanking({
   degraded?: boolean;
   window: StatsWindow;
   lang?: string;
+  viewer?: string;
   headingId?: string;
   kicker?: string;
   title?: string;
@@ -410,7 +414,8 @@ function ProfileRanking({
         title={title}
         headingId={headingId}
         action={{
-          href: fullRankingHref ?? buildDiscoverHref("/trending/profiles", { window, lang }),
+          href:
+            fullRankingHref ?? buildDiscoverHref("/trending/profiles", { window, lang, viewer }),
           label: "People index",
         }}
         ranked={rankedHref}
@@ -551,11 +556,13 @@ function TopicsIndex({
   degraded,
   window,
   lang,
+  viewer,
 }: {
   hashtags: HashtagEntry[];
   degraded?: boolean;
   window: StatsWindow;
   lang?: string;
+  viewer?: string;
 }) {
   const rows = hashtags
     .slice(0, INDEX_ROW_LIMIT)
@@ -582,7 +589,7 @@ function TopicsIndex({
         title="Most used topics"
         headingId="topics-most-used"
         action={{
-          href: buildDiscoverHref("/trending/hashtags", { window, lang }),
+          href: buildDiscoverHref("/trending/hashtags", { window, lang, viewer }),
           label: "Topic index",
         }}
         ranked="/methodology#topics"
@@ -605,11 +612,13 @@ function LinksIndex({
   degraded,
   window,
   lang,
+  viewer,
 }: {
   domains: DomainEntry[];
   degraded?: boolean;
   window: StatsWindow;
   lang?: string;
+  viewer?: string;
 }) {
   const rows = domains
     .slice(0, INDEX_ROW_LIMIT)
@@ -641,7 +650,7 @@ function LinksIndex({
         title="Most shared links"
         headingId="links-circulating"
         action={{
-          href: buildDiscoverHref("/trending/domains", { window, lang }),
+          href: buildDiscoverHref("/trending/domains", { window, lang, viewer }),
           label: "Link index",
         }}
         ranked="/methodology#links"
@@ -715,6 +724,7 @@ function SupportingNotes({
   authorsByPubkey,
   window,
   lang,
+  viewer,
   headingId,
   contentResolution,
 }: {
@@ -722,6 +732,7 @@ function SupportingNotes({
   authorsByPubkey: Record<string, Profile>;
   window: StatsWindow;
   lang?: string;
+  viewer?: string;
   headingId: string;
   contentResolution?: NoteContentResolution;
 }) {
@@ -733,7 +744,7 @@ function SupportingNotes({
           title="Also moving"
           headingId={headingId}
           action={{
-            href: buildDiscoverHref("/trending/notes", { window, lang }),
+            href: buildDiscoverHref("/trending/notes", { window, lang, viewer }),
             label: "All notes",
           }}
         />
@@ -756,12 +767,14 @@ function MediaLeadersSection({
   authorsByPubkey,
   window,
   lang,
+  viewer,
   contentResolution,
 }: {
   leaders: MediaLeaders;
   authorsByPubkey: Record<string, Profile>;
   window: StatsWindow;
   lang?: string;
+  viewer?: string;
   contentResolution?: NoteContentResolution;
 }) {
   const columns = MEDIA_RANKINGS.flatMap((ranking) => {
@@ -791,7 +804,7 @@ function MediaLeadersSection({
               <div className="mb-3 flex items-end justify-between gap-3">
                 <h3 className="nm-kicker">{column.label}</h3>
                 <Link
-                  href={buildDiscoverHref(column.path, { window, lang })}
+                  href={buildDiscoverHref(column.path, { window, lang, viewer })}
                   className="nm-action-link"
                 >
                   Ranking
@@ -827,6 +840,9 @@ export async function EditorialOverview({
   sectionFailures,
   window,
   lang,
+  viewer,
+  personalization,
+  viewerCohortDegraded = false,
   rankedHashtags = [],
   rankedDomains = [],
   archiveDay = null,
@@ -847,6 +863,9 @@ export async function EditorialOverview({
   };
   window: StatsWindow;
   lang?: string;
+  viewer?: string;
+  personalization?: Personalization;
+  viewerCohortDegraded?: boolean;
   rankedHashtags?: HashtagEntry[];
   rankedDomains?: DomainEntry[];
   archiveDay?: string | null;
@@ -879,6 +898,13 @@ export async function EditorialOverview({
   }
   return (
     <div className="space-y-[var(--space-section)]">
+      <PersonalizationNote
+        payload={{
+          personalization,
+          degraded_reasons: viewerCohortDegraded ? ["viewer_cohort"] : undefined,
+        }}
+        scope="home"
+      />
       <section
         aria-label="Leading notes"
         className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.42fr)_minmax(300px,0.62fr)] lg:gap-14 xl:gap-20"
@@ -897,6 +923,7 @@ export async function EditorialOverview({
           authorsByPubkey={authorsByPubkey}
           window={window}
           lang={lang}
+          viewer={viewer}
           headingId="supporting-notes"
           contentResolution={contentResolution}
         />
@@ -907,6 +934,7 @@ export async function EditorialOverview({
         authorsByPubkey={authorsByPubkey}
         window={window}
         lang={lang}
+        viewer={viewer}
         contentResolution={contentResolution}
       />
 
@@ -916,6 +944,7 @@ export async function EditorialOverview({
           degraded={sectionFailures.profiles}
           window={window}
           lang={lang}
+          viewer={viewer}
           headingId="profiles-in-motion"
         />
         <ProfileRanking
@@ -923,12 +952,14 @@ export async function EditorialOverview({
           degraded={sectionFailures.risingProfiles}
           window={window}
           lang={lang}
+          viewer={viewer}
           headingId="up-and-coming"
           title="Up and coming"
           rankedHref="/methodology#rising"
           fullRankingHref={buildDiscoverHref("/discovery/profiles/rising", {
             window,
             lang,
+            viewer,
           })}
           emptyMessage="No small accounts gaining ground yet."
           degradedMessage="Up-and-coming profiles are temporarily unavailable."
@@ -941,12 +972,14 @@ export async function EditorialOverview({
           degraded={sectionFailures.hashtags}
           window={window}
           lang={lang}
+          viewer={viewer}
         />
         <LinksIndex
           domains={rankedDomains}
           degraded={sectionFailures.domains}
           window={window}
           lang={lang}
+          viewer={viewer}
         />
       </div>
 

@@ -9,6 +9,7 @@ import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { AboutThisData } from "@/components/explorer/about-this-data";
 import { FreshnessBadge } from "@/components/discover/discover-shell";
+import { PersonalizationNote } from "@/components/discover/personalization-note";
 import {
   RankedLanguageControl,
   RankedListChrome,
@@ -38,7 +39,8 @@ import {
   LANGUAGE_EMPTY_MESSAGE,
   readLanguage,
 } from "@/lib/search-params/language";
-import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
+import { applyDiscoverRanking } from "@/lib/search-params/ranking-preference";
+import { readViewer } from "@/lib/search-params/viewer";
 import { buildContinuationHref, toUrlSearchParams } from "@/lib/search-params/pagination";
 import {
   readStatsWindow,
@@ -56,13 +58,15 @@ export async function generateMetadata({
 }: {
   searchParams: SearchParams;
 }): Promise<Metadata> {
+  const resolved = await searchParams;
   return withLanguageVariantMetadata(
     {
       title: "Conversations",
       description: "Notes driving active conversation right now.",
     },
-    readLanguage(await searchParams),
-    "/discovery/conversations/hot"
+    readLanguage(resolved),
+    "/discovery/conversations/hot",
+    readViewer(resolved)
   );
 }
 
@@ -73,14 +77,14 @@ export default async function HotConversationsPage({
 }) {
   const path = "/discovery/conversations/hot";
   const resolvedSearchParams = await searchParams;
-  const language = await applyDiscoverLanguage(path, resolvedSearchParams);
-  const offset = readRankedOffset(resolvedSearchParams);
+  const { language, viewer } = await applyDiscoverRanking(path, resolvedSearchParams);
+  const offset = readRankedOffset(resolvedSearchParams, viewer);
   await syncDiscoveryWindow(path, resolvedSearchParams);
   const window = readStatsWindow(resolvedSearchParams);
   const windows = selectableStatsWindows(!(await isDiscovery30dHidden()));
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   const data = startRankedLoad(
-    loadHotConversations(window, path, currentSearchParams, language, offset)
+    loadHotConversations(window, path, currentSearchParams, language, offset, viewer)
   );
   const query = currentSearchParams.toString();
 
@@ -139,11 +143,12 @@ async function loadHotConversations(
   path: string,
   searchParams: URLSearchParams,
   language: string | undefined,
-  offset: number
+  offset: number,
+  viewer: string | undefined
 ): Promise<{ payload: HotConversationsResponse | null; errorMessage: string }> {
   try {
     const payload = await requestDiscovery(window, path, searchParams, (activeWindow) =>
-      getHotConversations("shortTtl", rankedListRequest(activeWindow, language, offset))
+      getHotConversations("shortTtl", rankedListRequest(activeWindow, language, offset, viewer))
     );
     return { payload, errorMessage: "" };
   } catch (error) {
@@ -184,7 +189,8 @@ async function HotConversationsBody({
   const rawNotes = payload?.notes ?? [];
   const notes = presentConversations(rawNotes);
   const semantics = extractNativeApiSemantics(payload);
-  const continuation = rankedPageContinuation("conversations", rawNotes, offset);
+  const viewer = readViewer({ viewer: searchParams.get("viewer") ?? undefined });
+  const continuation = rankedPageContinuation("conversations", rawNotes, offset, undefined, viewer);
   const continuationHref =
     continuation.nextOffset != null
       ? buildContinuationHref(path, searchParams, "offset", String(continuation.nextOffset))
@@ -213,6 +219,7 @@ async function HotConversationsBody({
         path={path}
         searchParams={searchParams}
       />
+      <PersonalizationNote payload={payload ?? {}} />
       <div>
         {notes.length > 0 ? (
           <NotesList
@@ -238,7 +245,13 @@ async function HotConversationsBody({
               key={continuation.token}
               auto
               initialCursor={continuation.token}
-              loadMore={loadMoreRanking.bind(null, "conversations", window, language ?? "")}
+              loadMore={loadMoreRanking.bind(
+                null,
+                "conversations",
+                window,
+                language ?? "",
+                viewer ?? ""
+              )}
               label="Load more conversations"
             />
             {continuationHref ? (

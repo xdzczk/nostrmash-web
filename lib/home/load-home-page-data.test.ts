@@ -316,4 +316,109 @@ describe("loadHomePageData", () => {
     const relayArgs = vi.mocked(getRelayStats).mock.calls[0] ?? [];
     expect(relayArgs).toHaveLength(2);
   });
+
+  it("personalizes home rankings and keeps hashtags, media, and network stats global", async () => {
+    const viewer = "ab".repeat(32);
+    vi.mocked(getDiscoveryHome)
+      .mockResolvedValueOnce({
+        notes: [],
+        profiles: [],
+        rising_profiles: [],
+        hashtags: [],
+        domains: [],
+        personalization: {
+          viewer,
+          source: "personalized",
+          follow_count: 4,
+          follows_truncated: false,
+          cohort_weight: 0.85,
+        },
+      } as never)
+      .mockResolvedValueOnce({
+        notes: [{ id: "a".repeat(64), content: "english" }],
+        profiles: [],
+        rising_profiles: [],
+        hashtags: [],
+        domains: [],
+        personalization: {
+          viewer,
+          source: "personalized",
+          follow_count: 4,
+          follows_truncated: false,
+          cohort_weight: 0.85,
+        },
+      } as never);
+    vi.mocked(getTrendingNotes).mockResolvedValue({ notes: [] } as never);
+    vi.mocked(getTrendingProfiles).mockResolvedValue({ profiles: [] } as never);
+    vi.mocked(getRisingProfiles).mockResolvedValue({ profiles: [] } as never);
+    vi.mocked(getTrendingHashtags).mockResolvedValue({
+      hashtags: [{ hashtag: "global" }],
+    } as never);
+    vi.mocked(getTrendingDomains).mockResolvedValue({ domains: [] } as never);
+    vi.mocked(getNetworkStats).mockResolvedValue({} as never);
+    vi.mocked(getRelayStats).mockResolvedValue({} as never);
+    vi.mocked(getStatsSeries).mockResolvedValue({ points: [] } as never);
+    vi.mocked(getTrendingMedia).mockResolvedValue({ events: [] } as never);
+
+    const data = await loadHomePageData({ viewer });
+
+    const scoped = { window: "24h", viewer };
+    expect(data.viewer).toBe(viewer);
+    expect(data.personalization?.source).toBe("personalized");
+    expect(data.viewerCohortDegraded).toBe(false);
+    expect(data.homeNotes[0]?.content).toBe("english");
+    expect(getDiscoveryHome).toHaveBeenNthCalledWith(1, "shortTtl", scoped);
+    expect(getDiscoveryHome).toHaveBeenNthCalledWith(2, "shortTtl", { ...scoped, lang: "en" });
+    expect(getTrendingNotes).toHaveBeenCalledWith("shortTtl", scoped);
+    expect(getTrendingProfiles).toHaveBeenCalledWith("shortTtl", scoped);
+    expect(getRisingProfiles).toHaveBeenCalledWith("shortTtl", scoped);
+    expect(getTrendingDomains).toHaveBeenCalledWith("shortTtl", scoped);
+    expect(getTrendingHashtags).toHaveBeenCalledWith("shortTtl", { window: "24h" });
+    expect(getNetworkStats).toHaveBeenCalledWith("shortTtl");
+    for (const call of vi.mocked(getTrendingMedia).mock.calls) {
+      expect(call[2]).not.toHaveProperty("viewer");
+    }
+  });
+
+  it("does not send an invalid viewer upstream", async () => {
+    vi.mocked(getDiscoveryHome).mockResolvedValue({
+      notes: [{ id: "a".repeat(64), content: "hello" }],
+      profiles: [{ pubkey: "b".repeat(64), display_name: "Ada" }],
+      hashtags: [{ hashtag: "nostr" }],
+      domains: [{ domain: "example.com" }],
+    } as never);
+    vi.mocked(getNetworkStats).mockResolvedValue({} as never);
+    vi.mocked(getRelayStats).mockResolvedValue({} as never);
+    vi.mocked(getStatsSeries).mockResolvedValue({ points: [] } as never);
+
+    const data = await loadHomePageData({ viewer: "not-a-key" });
+
+    expect(data.viewer).toBeUndefined();
+    expect(getDiscoveryHome).toHaveBeenCalledWith("shortTtl", { window: "24h" });
+  });
+
+  it("does not claim a degraded follow lookup was personalized", async () => {
+    vi.mocked(getDiscoveryHome).mockResolvedValue({
+      notes: [{ id: "a".repeat(64), content: "hello" }],
+      profiles: [],
+      hashtags: [{ hashtag: "nostr" }],
+      domains: [{ domain: "example.com" }],
+      degraded_reasons: ["viewer_cohort"],
+      personalization: {
+        viewer: "ab".repeat(32),
+        source: "personalized",
+        follow_count: 4,
+        follows_truncated: false,
+        cohort_weight: 0.85,
+      },
+    } as never);
+    vi.mocked(getNetworkStats).mockResolvedValue({} as never);
+    vi.mocked(getRelayStats).mockResolvedValue({} as never);
+    vi.mocked(getStatsSeries).mockResolvedValue({ points: [] } as never);
+
+    const data = await loadHomePageData({ viewer: "ab".repeat(32) });
+
+    expect(data.viewerCohortDegraded).toBe(true);
+    expect(data.personalization).toBeUndefined();
+  });
 });

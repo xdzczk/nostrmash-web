@@ -4,6 +4,7 @@ import { Suspense, type ReactNode } from "react";
 
 import { LoadMoreList, type LoadMoreChunk } from "@/components/data/load-more-list";
 import { DiscoverShell } from "@/components/discover/discover-shell";
+import { PersonalizationNote } from "@/components/discover/personalization-note";
 import { DebugDisclosure } from "@/components/explorer/debug-disclosure";
 import { EmptyState } from "@/components/explorer/empty-state";
 import { LanguageSelector } from "@/components/explorer/language-selector";
@@ -402,6 +403,7 @@ export function RankedListResults({
           }}
         />
       ) : null}
+      <PersonalizationNote payload={debugPayload} />
       {sectionTitle ? (
         <SectionCard title={sectionTitle} description={sectionDescription}>
           <RankedListBody

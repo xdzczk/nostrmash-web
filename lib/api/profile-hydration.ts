@@ -148,6 +148,7 @@ export function restoreRankingMetrics(ranked: Profile, hydrated: Profile): Profi
   for (const key of RANKING_METRIC_KEYS) {
     if (ranked[key] !== undefined) next[key] = ranked[key];
   }
+  if (ranked.viewer_follows === true) next.viewer_follows = true;
   return next;
 }
 

@@ -21,7 +21,8 @@ import {
 } from "@/lib/explorer/ranked-list";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
 import { readLanguage } from "@/lib/search-params/language";
-import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
+import { applyDiscoverRanking } from "@/lib/search-params/ranking-preference";
+import { readViewer } from "@/lib/search-params/viewer";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { StatsWindow } from "@/lib/search-params/window";
 
@@ -39,7 +40,8 @@ export async function generateMetadata({
       path: "/trending/domains",
     }),
     readLanguage(await searchParams),
-    "/trending/domains"
+    "/trending/domains",
+    readViewer(await searchParams)
   );
 }
 
@@ -50,15 +52,15 @@ export default async function TrendingDomainsPage({
 }) {
   const path = "/trending/domains";
   const resolvedSearchParams = await searchParams;
-  const language = await applyDiscoverLanguage(path, resolvedSearchParams);
+  const { language, viewer } = await applyDiscoverRanking(path, resolvedSearchParams);
   const { window, windows, currentSearchParams } = await readRankedListContext(
     resolvedSearchParams,
     path
   );
-  const offset = readRankedOffset(resolvedSearchParams);
+  const offset = readRankedOffset(resolvedSearchParams, viewer);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () => getTrendingDomains("shortTtl", rankedListRequest(window, language, offset)),
+      () => getTrendingDomains("shortTtl", rankedListRequest(window, language, offset, viewer)),
       "Failed to load trending domains.",
       { window, path, params: currentSearchParams }
     )
@@ -107,7 +109,8 @@ async function TrendingDomainsBody({
 }) {
   const { payload, errorMessage, semantics } = await data;
   const domains = payload?.domains ?? [];
-  const continuation = rankedPageContinuation("domains", domains, offset);
+  const viewer = readViewer({ viewer: searchParams.get("viewer") ?? undefined });
+  const continuation = rankedPageContinuation("domains", domains, offset, undefined, viewer);
   const itemListUrls = domains
     .map((entry) => {
       const domain =
@@ -132,7 +135,7 @@ async function TrendingDomainsBody({
         emptyTitle="No ranked domains yet"
         emptyMessage="Ranked domains have not populated for this window."
         hasItems={domains.length > 0}
-        loadMore={loadMoreRanking.bind(null, "domains", window, language ?? "")}
+        loadMore={loadMoreRanking.bind(null, "domains", window, language ?? "", viewer ?? "")}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

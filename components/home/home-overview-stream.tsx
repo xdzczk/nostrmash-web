@@ -88,6 +88,9 @@ export async function HomeOverviewBody({ data }: { data: Promise<HomePageData> }
           sectionFailures={home.sectionFailures}
           window={home.window}
           lang={home.language}
+          viewer={home.viewer}
+          personalization={home.personalization}
+          viewerCohortDegraded={home.viewerCohortDegraded}
           rankedHashtags={home.homeHashtags}
           rankedDomains={home.homeDomains}
           archiveDay={home.archiveDay}

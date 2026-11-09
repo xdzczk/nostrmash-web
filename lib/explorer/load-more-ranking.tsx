@@ -57,18 +57,20 @@ async function authorMap(events: EventRecord[]): Promise<Record<string, Profile>
 
 /**
  * Next page of a ranked discovery list, rendered on the server and appended
- * in place. Ranked endpoints page with `offset` (up to 5000), not a cursor.
+ * in place. Ranked endpoints page with `offset` (up to 5000, or 500 with a
+ * viewer), not a cursor.
  */
 export async function loadMoreRanking(
   surface: string,
   window: string,
   lang: string,
+  viewer: string,
   token: string
 ): Promise<LoadMoreChunk> {
   if (!isRankingSurface(surface)) return { content: null };
   const parsed = parseRankedContinuation(token);
   if (!parsed) return { content: null };
-  const query = rankingContinuationQuery(surface, window, lang, parsed.offset);
+  const query = rankingContinuationQuery(surface, window, lang, parsed.offset, viewer);
   if (!query) return { content: null };
   const windowless = surface === "bookmarked" || surface === "followed";
 
@@ -86,7 +88,7 @@ export async function loadMoreRanking(
       sameSite: "lax",
     });
     const previous = await lastDiscoveryWindow();
-    const retry = rankingContinuationQuery(surface, previous, lang, parsed.offset);
+    const retry = rankingContinuationQuery(surface, previous, lang, parsed.offset, viewer);
     if (!retry) throw error;
     loaded = await loadSurface(surface, retry);
   }
@@ -94,7 +96,13 @@ export async function loadMoreRanking(
   if (loaded.items.length === 0 || !first || first === parsed.anchor) {
     return { content: null };
   }
-  const continuation = rankedPageContinuation(surface, loaded.items, parsed.offset);
+  const continuation = rankedPageContinuation(
+    surface,
+    loaded.items,
+    parsed.offset,
+    undefined,
+    viewer
+  );
 
   return {
     content: await renderSurface(surface, loaded, parsed.offset),

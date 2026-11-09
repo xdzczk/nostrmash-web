@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   encodeRankedContinuation,
   parseRankedContinuation,
+  rankedListRequest,
   rankedPageContinuation,
   rankingContinuationQuery,
   rankingItemAnchor,
   readRankedOffset,
 } from "@/lib/explorer/ranked-pagination";
+
+const VIEWER = "ab".repeat(32);
 
 describe("ranked pagination", () => {
   it("clamps offsets into the range the ranking API accepts", () => {
@@ -15,6 +18,35 @@ describe("ranked pagination", () => {
     expect(readRankedOffset({ offset: "-4" })).toBe(0);
     expect(readRankedOffset({ offset: "40" })).toBe(40);
     expect(readRankedOffset({ offset: "9000" })).toBe(5000);
+    expect(readRankedOffset({ offset: "9000" }, VIEWER)).toBe(500);
+    expect(readRankedOffset({ offset: "500" }, VIEWER)).toBe(500);
+    expect(readRankedOffset({ offset: "900" }, "not-a-key")).toBe(900);
+  });
+
+  it("sends a viewer only when the value is an npub or hex pubkey, and caps that offset at 500", () => {
+    expect(rankedListRequest("24h", "en", 40, VIEWER)).toEqual({
+      window: "24h",
+      offset: 40,
+      limit: 20,
+      lang: "en",
+      viewer: VIEWER,
+    });
+    expect(rankedListRequest("7d", undefined, 800, `  ${VIEWER}  `)).toEqual({
+      window: "7d",
+      offset: 500,
+      limit: 20,
+      viewer: VIEWER,
+    });
+    expect(rankedListRequest("24h", "en", 40, "not-a-key")).toEqual({
+      window: "24h",
+      offset: 40,
+      limit: 20,
+      lang: "en",
+    });
+    expect(rankedListRequest(undefined, undefined, 9000)).toEqual({
+      offset: 5000,
+      limit: 20,
+    });
   });
 
   it("offers another page only when this page is full", () => {
@@ -25,6 +57,9 @@ describe("ranked pagination", () => {
     });
     expect(rankedPageContinuation("notes", notes.slice(0, 1), 0, 2)).toEqual({});
     expect(rankedPageContinuation("notes", notes, 4999, 2)).toEqual({});
+    expect(rankedPageContinuation("notes", notes, 499, 2, VIEWER)).toEqual({});
+    expect(rankedPageContinuation("notes", notes, 498, 2, VIEWER).nextOffset).toBe(500);
+    expect(rankedPageContinuation("notes", notes, 499, 2).nextOffset).toBe(501);
   });
 
   it("round-trips the continuation token and rejects junk", () => {
@@ -68,5 +103,23 @@ describe("ranked pagination", () => {
     });
     expect(rankingContinuationQuery("zapped", "all", "en", 20)).toBeNull();
     expect(rankingContinuationQuery("notes", "", "", 20)).toBeNull();
+    expect(rankingContinuationQuery("notes", "24h", "", 500, VIEWER)).toEqual({
+      window: "24h",
+      offset: 500,
+      limit: 20,
+      viewer: VIEWER,
+    });
+    expect(rankingContinuationQuery("notes", "24h", "", 501, VIEWER)).toBeNull();
+    expect(rankingContinuationQuery("notes", "24h", "", 800)).toEqual({
+      window: "24h",
+      offset: 800,
+      limit: 20,
+    });
+    expect(rankingContinuationQuery("notes", "24h", "en", 20, "not-a-key")).toEqual({
+      window: "24h",
+      offset: 20,
+      limit: 20,
+      lang: "en",
+    });
   });
 });

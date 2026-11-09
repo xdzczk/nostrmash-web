@@ -22,7 +22,8 @@ import {
 } from "@/lib/explorer/ranked-list";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
 import { readLanguage } from "@/lib/search-params/language";
-import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
+import { applyDiscoverRanking } from "@/lib/search-params/ranking-preference";
+import { readViewer } from "@/lib/search-params/viewer";
 import { formatStatsWindowSpan, type StatsWindow } from "@/lib/search-params/window";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
@@ -43,7 +44,8 @@ export async function generateMetadata({
       path: PATH,
     }),
     readLanguage(await searchParams),
-    PATH
+    PATH,
+    readViewer(await searchParams)
   );
 }
 
@@ -53,13 +55,13 @@ export default async function MostZappedNotesPage({
   searchParams: SearchParams;
 }) {
   const resolvedSearchParams = await searchParams;
-  const language = await applyDiscoverLanguage(PATH, resolvedSearchParams);
+  const { language, viewer } = await applyDiscoverRanking(PATH, resolvedSearchParams);
   const { window, windows, currentSearchParams, pageDefault, rememberWindow, linkedWindow } =
     await readWindowedRankingContext(resolvedSearchParams, PATH, "7d");
-  const offset = readRankedOffset(resolvedSearchParams);
+  const offset = readRankedOffset(resolvedSearchParams, viewer);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () => getMostZappedNotes("shortTtl", rankedListRequest(window, language, offset)),
+      () => getMostZappedNotes("shortTtl", rankedListRequest(window, language, offset, viewer)),
       "Failed to load most zapped notes.",
       { window, path: PATH, params: currentSearchParams }
     )
@@ -110,7 +112,8 @@ async function MostZappedNotesBody({
 }) {
   const { payload, errorMessage, semantics } = await data;
   const notes = payload?.notes ?? [];
-  const continuation = rankedPageContinuation("zapped", notes, offset);
+  const viewer = readViewer({ viewer: searchParams.get("viewer") ?? undefined });
+  const continuation = rankedPageContinuation("zapped", notes, offset, undefined, viewer);
 
   let authorsByPubkey: Record<string, Profile> = {};
   if (notes.length > 0) {
@@ -147,7 +150,7 @@ async function MostZappedNotesBody({
         emptyTitle="No zapped notes yet"
         emptyMessage="This list stays empty until the worker rewrites it, once at startup and then about every 5 minutes."
         hasItems={notes.length > 0}
-        loadMore={loadMoreRanking.bind(null, "zapped", window, language ?? "")}
+        loadMore={loadMoreRanking.bind(null, "zapped", window, language ?? "", viewer ?? "")}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

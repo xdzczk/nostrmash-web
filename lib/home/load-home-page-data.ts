@@ -37,7 +37,9 @@ import {
 import { loadHomeMediaLeaders, type MediaLeaders } from "@/lib/discover/media-rankings";
 import { latestArchiveDay } from "@/lib/discover/archive";
 import { readEntityBaseline } from "@/lib/discover/baseline";
+import { readPersonalization, viewerCohortDegraded } from "@/lib/discover/personalization";
 import { languageScopedStatLabel } from "@/lib/home/pulse-labels";
+import { readViewer } from "@/lib/search-params/viewer";
 import { traceHomeFanOut } from "@/lib/telemetry/trace";
 import type { CoverageNote } from "@/lib/stats/coverage-notes";
 import type {
@@ -45,6 +47,7 @@ import type {
   EntityBaseline,
   EventRecord,
   HashtagEntry,
+  Personalization,
   Profile,
   TopLanguages,
 } from "@/lib/types/api";
@@ -122,6 +125,11 @@ export type HomeSectionFailures = {
 export type HomePageData = {
   window: StatsWindow;
   language?: string;
+  /** Viewer from the URL. The cookie is not read here. */
+  viewer?: string;
+  personalization?: Personalization;
+  /** Follow-list lookup failed. The lists are global and are not personalized. */
+  viewerCohortDegraded: boolean;
   topLanguages?: TopLanguages;
   currentSearchParams: URLSearchParams;
   errorMessage: string;
@@ -155,7 +163,14 @@ export async function loadHomePageData(
   const currentSearchParams = toUrlSearchParams(resolvedSearchParams);
   const window = readStatsWindow(resolvedSearchParams);
   const lang = readLanguage(resolvedSearchParams);
+  const viewer = readViewer(resolvedSearchParams);
   const scopedQuery = {
+    window,
+    ...(lang ? { lang } : {}),
+    ...(viewer ? { viewer } : {}),
+  };
+  // Hashtags on the home bundle stay global. The hashtag ranking page is personalized.
+  const globalRankingQuery = {
     window,
     ...(lang ? { lang } : {}),
   };
@@ -181,7 +196,7 @@ export async function loadHomePageData(
 
   // Pictures, videos, and shorts do not depend on the home payload. Overlap
   // them with the first fan-out so a window change is not home-then-media.
-  const mediaLeadersPromise = loadHomeMediaLeaders(scopedQuery);
+  const mediaLeadersPromise = loadHomeMediaLeaders(globalRankingQuery);
   upstreamCallCount += 3;
   const archiveDayPromise = getDiscoveryArchiveDays(1)
     .then((days) => latestArchiveDay(days))
@@ -216,6 +231,9 @@ export async function loadHomePageData(
       return {
         window,
         language: lang,
+        viewer,
+        personalization: undefined,
+        viewerCohortDegraded: false,
         topLanguages: undefined,
         currentSearchParams,
         errorMessage: "",
@@ -287,7 +305,7 @@ export async function loadHomePageData(
     if (homeHashtags.length === 0) {
       fallbackRequests.push({
         key: "hashtags",
-        promise: getTrendingHashtags("shortTtl", scopedQuery),
+        promise: getTrendingHashtags("shortTtl", globalRankingQuery),
       });
     }
     if (homeDomains.length === 0) {
@@ -483,6 +501,9 @@ export async function loadHomePageData(
   return {
     window,
     language: lang,
+    viewer,
+    personalization: viewerCohortDegraded(payload) ? undefined : readPersonalization(payload),
+    viewerCohortDegraded: viewerCohortDegraded(payload),
     topLanguages:
       normalizeTopLanguages(payload?.top_languages) ??
       normalizeTopLanguages(networkSummary?.top_languages),

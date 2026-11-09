@@ -8,16 +8,21 @@ export function absoluteUrl(pathname: string): string {
   return `${base}${path}`;
 }
 
-/** Point a language-filtered Discover URL at the unfiltered page and keep it out of the index. */
+/**
+ * Point a language or viewer URL at the public page. `lang` stays out of the
+ * index. `viewer` is omitted from the canonical URL so the public page stays
+ * the indexed one.
+ */
 export function withLanguageVariantMetadata(
   metadata: Metadata,
   lang: string | undefined,
-  path: string
+  path: string,
+  viewer?: string
 ): Metadata {
-  if (!lang) return metadata;
+  if (!lang && !viewer) return metadata;
   return {
     ...metadata,
-    robots: { index: false },
+    ...(lang ? { robots: { index: false } } : {}),
     alternates: {
       ...metadata.alternates,
       canonical: absoluteUrl(path),

@@ -111,10 +111,13 @@ function attachmentKind(url: string, mime: string | undefined): NoteMediaKind | 
 export function extractImetaAttachments(tags: unknown): NoteMediaAttachment[] {
   const seen = new Set<string>();
   const attachments: NoteMediaAttachment[] = [];
-  const add = (url: string, kind: NoteMediaKind, alt?: string) => {
+  const add = (url: string, kind: NoteMediaKind, alt?: string, poster?: string) => {
     if (seen.has(url)) return;
     seen.add(url);
-    attachments.push(alt ? { url, kind, alt } : { url, kind });
+    const attachment: NoteMediaAttachment = { url, kind };
+    if (alt) attachment.alt = alt;
+    if (poster) attachment.poster = poster;
+    attachments.push(attachment);
   };
 
   for (const row of eventTagRows(tags)) {
@@ -123,7 +126,7 @@ export function extractImetaAttachments(tags: unknown): NoteMediaAttachment[] {
     const pool = imeta.urls.length > 0 ? imeta.urls : imeta.fallbacks;
     const video = pool.find((url) => attachmentKind(url, imeta.mime) === "video");
     if (video) {
-      add(video, "video", imeta.alt);
+      add(video, "video", imeta.alt, imeta.images[0]);
       continue;
     }
     for (const url of imeta.images) add(url, "image", imeta.alt);

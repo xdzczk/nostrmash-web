@@ -96,6 +96,38 @@ function reasonSentence(reason: DiscoveryRankingReason): string | null {
       return value !== undefined
         ? `${countPhrase(value, "sat", "sats")}, with each sender capped`
         : "Supported by several people";
+    case "followed_engagers":
+      return value !== undefined
+        ? `${countPhrase(value, "account you follow", "accounts you follow")} engaged with it`
+        : "Accounts you follow engaged with it";
+    case "followed_zappers":
+      return value !== undefined
+        ? `${countPhrase(value, "sat", "sats")} from accounts you follow`
+        : "Accounts you follow zapped it";
+    case "followed_savers":
+      return value !== undefined
+        ? `Saved by ${countPhrase(value, "account you follow", "accounts you follow")}`
+        : "Accounts you follow saved it";
+    case "followed_replies":
+      return value !== undefined
+        ? `${countPhrase(value, "reply", "replies")} from accounts you follow`
+        : "Accounts you follow replied";
+    case "followed_by": {
+      const unit = evidence?.unit?.trim().toLowerCase() ?? "";
+      if (value === undefined) return "Accounts you follow are connected to it";
+      if (unit === "follower" || unit === "followers") {
+        return `${countPhrase(value, "new follower", "new followers")} from accounts you follow`;
+      }
+      return `Followed by ${countPhrase(value, "account you follow", "accounts you follow")}`;
+    }
+    case "followed_supporters":
+      return value !== undefined
+        ? `${countPhrase(value, "sat", "sats")} from accounts you follow`
+        : "Accounts you follow supported it";
+    case "followed_authors":
+      return value !== undefined
+        ? `${countPhrase(value, "author you follow", "authors you follow")} used it`
+        : "Accounts you follow used it";
     default:
       return null;
   }
@@ -129,7 +161,7 @@ const GROWTH_CODES = new Set(["follower_growth"]);
 
 /** Units that count whole things and must never render fractionally. */
 const COUNT_UNIT_PATTERN =
-  /^(followers?|posts?|notes?|repl(y|ies)|reposts?|interactions?|links?|mentions?|authors?|zaps?|reactions?|sources?|relays?|participants?|shares?|appearances?|boosts?|likes?|people|person|sats?)$/i;
+  /^(followers?|posts?|notes?|repl(y|ies)|reposts?|interactions?|links?|mentions?|authors?|accounts?|zaps?|reactions?|sources?|relays?|participants?|shares?|appearances?|boosts?|likes?|people|person|sats?)$/i;
 
 function singularize(unit: string): string {
   if (/^people$/i.test(unit)) return unit.startsWith("P") ? "Person" : "person";
@@ -247,7 +279,10 @@ export function mapServerRankingReasons(
   ranking: DiscoveryItemRanking | undefined
 ): DiscoveryReasonPresentation[] {
   if (!ranking?.reasons?.length) return [];
-  return ranking.reasons
+  const cohort = ranking.reasons.filter((reason) => reason.code.startsWith("followed_"));
+  const rest = ranking.reasons.filter((reason) => !reason.code.startsWith("followed_"));
+  const ordered = cohort.length > 0 ? [...cohort, ...rest] : ranking.reasons;
+  return ordered
     .map(presentReason)
     .filter((entry): entry is DiscoveryReasonPresentation => entry !== null);
 }

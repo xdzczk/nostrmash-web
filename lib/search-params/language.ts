@@ -3,6 +3,7 @@ import {
   toUrlSearchParams,
   type RouteSearchParams,
 } from "@/lib/search-params/pagination";
+import { parseViewer } from "@/lib/search-params/viewer";
 import type { StatsWindow } from "@/lib/search-params/window";
 
 export const LANGUAGE_COOKIE = "nm_lang";
@@ -62,15 +63,18 @@ export function buildLanguageHref(
 
 /**
  * Discover tab and mode links. Keeps today's `?window=` shape (including the
- * default 24h value those links already emit) and carries `lang` when set.
+ * default 24h value those links already emit) and carries `lang` and `viewer`
+ * when set. Dropping `viewer` sends the next ranking through a redirect.
  */
 export function buildDiscoverHref(
   path: string,
-  options: { window?: StatsWindow; lang?: string }
+  options: { window?: StatsWindow; lang?: string; viewer?: string }
 ): string {
   const next = new URLSearchParams();
   if (options.window) next.set("window", options.window);
   if (options.lang) next.set("lang", options.lang);
+  const viewer = parseViewer(options.viewer);
+  if (viewer) next.set("viewer", viewer);
   const query = next.toString();
   return query.length > 0 ? `${path}?${query}` : path;
 }

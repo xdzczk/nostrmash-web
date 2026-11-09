@@ -22,7 +22,8 @@ import {
 } from "@/lib/explorer/ranked-list";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
 import { readLanguage } from "@/lib/search-params/language";
-import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
+import { applyDiscoverRanking } from "@/lib/search-params/ranking-preference";
+import { readViewer } from "@/lib/search-params/viewer";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
 
@@ -33,6 +34,7 @@ export async function generateMetadata({
 }: {
   searchParams: SearchParams;
 }): Promise<Metadata> {
+  const resolved = await searchParams;
   return withLanguageVariantMetadata(
     buildEntityMetadata({
       title: "Notes",
@@ -40,23 +42,24 @@ export async function generateMetadata({
       path: "/trending/notes",
       rss: { url: "/feeds/trending-notes.xml", title: "Trending notes" },
     }),
-    readLanguage(await searchParams),
-    "/trending/notes"
+    readLanguage(resolved),
+    "/trending/notes",
+    readViewer(resolved)
   );
 }
 
 export default async function TrendingNotesPage({ searchParams }: { searchParams: SearchParams }) {
   const path = "/trending/notes";
   const resolvedSearchParams = await searchParams;
-  const language = await applyDiscoverLanguage(path, resolvedSearchParams);
+  const { language, viewer } = await applyDiscoverRanking(path, resolvedSearchParams);
   const { window, windows, currentSearchParams } = await readRankedListContext(
     resolvedSearchParams,
     path
   );
-  const offset = readRankedOffset(resolvedSearchParams);
+  const offset = readRankedOffset(resolvedSearchParams, viewer);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () => getTrendingNotes("shortTtl", rankedListRequest(window, language, offset)),
+      () => getTrendingNotes("shortTtl", rankedListRequest(window, language, offset, viewer)),
       "Failed to load trending notes.",
       { window, path, params: currentSearchParams }
     )
@@ -105,7 +108,8 @@ async function TrendingNotesBody({
 }) {
   const { payload, errorMessage, semantics } = await data;
   const notes = payload?.notes ?? [];
-  const continuation = rankedPageContinuation("notes", notes, offset);
+  const viewer = readViewer({ viewer: searchParams.get("viewer") ?? undefined });
+  const continuation = rankedPageContinuation("notes", notes, offset, undefined, viewer);
 
   let authorsByPubkey: Record<string, Profile> = {};
   if (notes.length > 0) {
@@ -142,7 +146,7 @@ async function TrendingNotesBody({
         emptyTitle="No ranked notes yet"
         emptyMessage="Ranked notes have not populated for this window."
         hasItems={notes.length > 0}
-        loadMore={loadMoreRanking.bind(null, "notes", window, language ?? "")}
+        loadMore={loadMoreRanking.bind(null, "notes", window, language ?? "", viewer ?? "")}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

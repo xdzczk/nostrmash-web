@@ -139,19 +139,24 @@ export function ProfileCard({
         />
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex min-w-0 items-start justify-between gap-3">
-            {href ? (
-              <Link
-                href={href}
-                title={label}
-                className="text-ink hover:text-ink-strong block min-w-0 flex-1 truncate text-base font-semibold hover:underline"
-              >
-                {truncateProfileLabel(label)}
-              </Link>
-            ) : (
-              <p className="text-ink min-w-0 flex-1 truncate text-base font-semibold" title={label}>
-                {truncateProfileLabel(label)}
-              </p>
-            )}
+            <div className="flex min-w-0 flex-1 items-baseline gap-2">
+              {href ? (
+                <Link
+                  href={href}
+                  title={label}
+                  className="text-ink hover:text-ink-strong block min-w-0 truncate text-base font-semibold hover:underline"
+                >
+                  {truncateProfileLabel(label)}
+                </Link>
+              ) : (
+                <p className="text-ink min-w-0 truncate text-base font-semibold" title={label}>
+                  {truncateProfileLabel(label)}
+                </p>
+              )}
+              {profile.viewer_follows ? (
+                <span className="text-ink-muted shrink-0 text-[11px]">You follow</span>
+              ) : null}
+            </div>
             {rankedRow ? <SourceFigure ranking={profile.ranking} /> : null}
           </div>
           {secondaryText && href ? (

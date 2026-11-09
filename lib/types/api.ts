@@ -32,6 +32,16 @@ export interface DiscoveryListMeta {
   confidence?: DiscoveryConfidence;
 }
 
+/** Follow-scoped blend on a discovery ranking. Absent when the list is global. */
+export interface Personalization {
+  /** Canonical hex pubkey. */
+  viewer: string;
+  source: "personalized" | "global_fallback";
+  follow_count: number;
+  follows_truncated: boolean;
+  cohort_weight: number;
+}
+
 export interface LanguageCount {
   language: string;
   count: number;
@@ -52,6 +62,10 @@ export interface NativeApiSemantics {
   /** Upstream served a fallback dataset instead of the requested one. */
   degraded?: boolean;
   degraded_reason?: string;
+  /** Home section names that failed. `viewer_cohort` means the lists are global. */
+  degraded_reasons?: string[];
+  /** Present when the request included a viewer. Missing after a failed follow lookup. */
+  personalization?: Personalization;
   next_cursor?: string;
   window?: string;
   /** Echoed when the request included `lang`. */
@@ -106,6 +120,8 @@ export interface Profile {
   sats_received?: number;
   /** Distinct senders behind `capped_sats`. */
   supporter_count?: number;
+  /** Most-followed rows the viewer already follows stay in the list. */
+  viewer_follows?: boolean;
   ranking?: DiscoveryItemRanking;
   /** Related-profile signals (only present on `/related` results). */
   reasons?: string[];

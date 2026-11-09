@@ -5,7 +5,8 @@ import { PageHero } from "@/components/explorer/page-hero";
 
 export const metadata: Metadata = {
   title: "Your view",
-  description: "Keep a public key in this browser and open that profile.",
+  description:
+    "Keep a public key in this browser. It ranks Discover and the trending lists by what the accounts it follows engage with. Forgetting the key returns the global lists.",
 };
 
 export default function MePage() {
@@ -14,7 +15,7 @@ export default function MePage() {
       <PageHero
         eyebrow="Your view"
         title="A key for this browser"
-        subtitle="Paste an npub, or sign with a browser signer if you have one."
+        subtitle="Paste an npub, or sign with a browser signer if you have one. Discover and the trending lists use that key."
       />
       <YourView />
     </article>

@@ -21,18 +21,30 @@ import {
   startRankedLoad,
 } from "@/lib/explorer/ranked-list";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
+import { applyDiscoverViewer } from "@/lib/search-params/viewer-preference";
+import { readViewer } from "@/lib/search-params/viewer";
+import { withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const PATH = "/discovery/profiles/followed";
 
-export async function generateMetadata(): Promise<Metadata> {
-  return {
-    title: "Most followed",
-    description:
-      "Accounts with a profile, ordered by follower count. Dormant accounts stay in the list.",
-  };
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}): Promise<Metadata> {
+  return withLanguageVariantMetadata(
+    {
+      title: "Most followed",
+      description:
+        "Accounts with a profile, ordered by follower count. Dormant accounts stay in the list.",
+    },
+    undefined,
+    PATH,
+    readViewer(await searchParams)
+  );
 }
 
 export default async function MostFollowedProfilesPage({
@@ -41,12 +53,17 @@ export default async function MostFollowedProfilesPage({
   searchParams: SearchParams;
 }) {
   const resolvedSearchParams = await searchParams;
+  const viewer = await applyDiscoverViewer(PATH, resolvedSearchParams);
   const { window, windows, currentSearchParams, linkedWindow } =
     await readUnwindowedRankingContext(resolvedSearchParams);
-  const offset = readRankedOffset(resolvedSearchParams);
+  const offset = readRankedOffset(resolvedSearchParams, viewer);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () => getMostFollowedProfiles("shortTtl", rankedListRequest(undefined, undefined, offset)),
+      () =>
+        getMostFollowedProfiles(
+          "shortTtl",
+          rankedListRequest(undefined, undefined, offset, viewer)
+        ),
       "Failed to load most followed profiles."
     )
   );
@@ -88,7 +105,14 @@ async function MostFollowedProfilesBody({
 }) {
   const { payload, errorMessage, semantics } = await data;
   const sourceProfiles = payload?.profiles ?? [];
-  const continuation = rankedPageContinuation("followed", sourceProfiles, offset);
+  const viewer = readViewer({ viewer: searchParams.get("viewer") ?? undefined });
+  const continuation = rankedPageContinuation(
+    "followed",
+    sourceProfiles,
+    offset,
+    undefined,
+    viewer
+  );
   const profiles = await withRankingMetrics(sourceProfiles);
 
   return (
@@ -106,7 +130,7 @@ async function MostFollowedProfilesBody({
         emptyTitle="No followed accounts yet"
         emptyMessage="This is the follower directory. No profile with followers is in it yet."
         hasItems={profiles.length > 0}
-        loadMore={loadMoreRanking.bind(null, "followed", "", "")}
+        loadMore={loadMoreRanking.bind(null, "followed", "", "", viewer ?? "")}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

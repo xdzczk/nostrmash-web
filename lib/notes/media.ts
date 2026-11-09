@@ -6,6 +6,8 @@ export interface NoteMediaAttachment {
   url: string;
   kind: NoteMediaKind;
   alt?: string;
+  /** Cover image from the same imeta row, when the file itself has no frame yet. */
+  poster?: string;
 }
 
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".svg"]);

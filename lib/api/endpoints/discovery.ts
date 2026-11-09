@@ -37,6 +37,7 @@ import {
   type OffsetQuery,
   nativeApiV1Routes,
   normalizeHotConversationNotes,
+  viewerQueryParam,
 } from "@/lib/api/endpoints/shared";
 import { eventListResponseSchema, profileListResponseSchema } from "@/lib/api/schemas/core";
 
@@ -49,6 +50,8 @@ export type DiscoveryHomeQuery = {
   domains_limit?: number;
   notes_limit?: number;
   lang?: string;
+  /** Hex pubkey or npub. Omitted for the global home bundle. */
+  viewer?: string;
 };
 
 export async function getDiscoveryHome(
@@ -64,6 +67,7 @@ export async function getDiscoveryHome(
           domains_limit: query.domains_limit,
           notes_limit: query.notes_limit,
           ...(query.lang ? { lang: query.lang } : {}),
+          ...viewerQueryParam(query.viewer),
         }
       : undefined,
   });
@@ -77,6 +81,7 @@ function discoveryListQuery(
         cursor?: string;
         window?: string;
         lang?: string;
+        viewer?: string;
       }
     | undefined,
   options: { window?: boolean; lang?: boolean }
@@ -90,6 +95,7 @@ function discoveryListQuery(
     ...(query.cursor ? { cursor: query.cursor } : {}),
     ...(window ? { window } : {}),
     ...(options.lang && query.lang ? { lang: query.lang } : {}),
+    ...viewerQueryParam(query.viewer),
   };
 }
 

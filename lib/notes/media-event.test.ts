@@ -23,7 +23,13 @@ describe("extractImetaAttachments", () => {
           "m image/jpeg",
         ],
       ])
-    ).toEqual([{ url: "https://www.youtube.com/watch?v=H02x_Vpqh9c", kind: "video" }]);
+    ).toEqual([
+      {
+        url: "https://www.youtube.com/watch?v=H02x_Vpqh9c",
+        kind: "video",
+        poster: "https://i.ytimg.com/vi/H02x_Vpqh9c/hqdefault.jpg",
+      },
+    ]);
   });
 
   it("keeps a video without also attaching its poster", () => {
@@ -36,7 +42,13 @@ describe("extractImetaAttachments", () => {
           "image https://media.example.invalid/cliff.jpg",
         ],
       ])
-    ).toEqual([{ url: "https://media.example.invalid/cliff.mp4", kind: "video" }]);
+    ).toEqual([
+      {
+        url: "https://media.example.invalid/cliff.mp4",
+        kind: "video",
+        poster: "https://media.example.invalid/cliff.jpg",
+      },
+    ]);
   });
 });
 

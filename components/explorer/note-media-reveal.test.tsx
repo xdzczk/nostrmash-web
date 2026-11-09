@@ -112,6 +112,16 @@ describe("NoteMediaReveal", () => {
     expect(video).toHaveClass("object-contain");
   });
 
+  it("asks for a one-frame preview when a video has no poster", () => {
+    const { container } = render(
+      <NoteMediaReveal url="https://media.example/clip.mp4#t=0.001" kind="video" />
+    );
+    const video = container.querySelector("video");
+    expect(video).toHaveAttribute("src", "/video-frame?src=https%3A%2F%2Fmedia.example%2Fclip.mp4");
+    expect(video).toHaveAttribute("preload", "auto");
+    expect(video).not.toHaveAttribute("poster");
+  });
+
   it("embeds a YouTube watch URL instead of treating it as a file", () => {
     const { container } = render(
       <NoteMediaReveal

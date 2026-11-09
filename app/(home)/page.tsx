@@ -13,8 +13,9 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { DiscoverOverviewBodySkeleton } from "@/components/ui/skeleton";
 import { isDiscovery30dHidden, syncDiscoveryWindow } from "@/lib/discover/window-fallback";
 import { loadHomePageData } from "@/lib/home/load-home-page-data";
-import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
 import { readLanguage } from "@/lib/search-params/language";
+import { applyDiscoverRanking } from "@/lib/search-params/ranking-preference";
+import { readViewer } from "@/lib/search-params/viewer";
 import { toUrlSearchParams } from "@/lib/search-params/pagination";
 import {
   formatDiscoveryWindowEyebrow,
@@ -30,7 +31,9 @@ export async function generateMetadata({
 }: {
   searchParams: SearchParams;
 }): Promise<Metadata> {
-  const lang = readLanguage(await searchParams);
+  const resolved = await searchParams;
+  const lang = readLanguage(resolved);
+  const viewer = readViewer(resolved);
   return withLanguageVariantMetadata(
     {
       title: { absolute: "What’s moving on Nostr — NostrMash" },
@@ -50,7 +53,8 @@ export async function generateMetadata({
       },
     },
     lang,
-    "/"
+    "/",
+    viewer
   );
 }
 
@@ -58,7 +62,7 @@ export const revalidate = 60;
 
 export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
   const resolvedSearchParams = await searchParams;
-  const language = await applyDiscoverLanguage("/", resolvedSearchParams);
+  const { language } = await applyDiscoverRanking("/", resolvedSearchParams);
   await syncDiscoveryWindow("/", resolvedSearchParams);
   const window = readStatsWindow(resolvedSearchParams);
   const windows = selectableStatsWindows(!(await isDiscovery30dHidden()));

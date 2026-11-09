@@ -21,6 +21,9 @@ import {
   startRankedLoad,
 } from "@/lib/explorer/ranked-list";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
+import { applyDiscoverViewer } from "@/lib/search-params/viewer-preference";
+import { readViewer } from "@/lib/search-params/viewer";
+import { withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import { formatStatsWindowSpan, type StatsWindow } from "@/lib/search-params/window";
 import type { Profile } from "@/lib/types/api";
 
@@ -28,12 +31,21 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const PATH = "/discovery/profiles/supported";
 
-export async function generateMetadata(): Promise<Metadata> {
-  return {
-    title: "Most supported",
-    description:
-      "Accounts by sats received in the window, after each sender is capped at 100,000 sats.",
-  };
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}): Promise<Metadata> {
+  return withLanguageVariantMetadata(
+    {
+      title: "Most supported",
+      description:
+        "Accounts by sats received in the window, after each sender is capped at 100,000 sats.",
+    },
+    undefined,
+    PATH,
+    readViewer(await searchParams)
+  );
 }
 
 export default async function MostSupportedProfilesPage({
@@ -42,12 +54,14 @@ export default async function MostSupportedProfilesPage({
   searchParams: SearchParams;
 }) {
   const resolvedSearchParams = await searchParams;
+  const viewer = await applyDiscoverViewer(PATH, resolvedSearchParams);
   const { window, windows, currentSearchParams, pageDefault, rememberWindow, linkedWindow } =
     await readWindowedRankingContext(resolvedSearchParams, PATH, "30d");
-  const offset = readRankedOffset(resolvedSearchParams);
+  const offset = readRankedOffset(resolvedSearchParams, viewer);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () => getMostSupportedProfiles("shortTtl", rankedListRequest(window, undefined, offset)),
+      () =>
+        getMostSupportedProfiles("shortTtl", rankedListRequest(window, undefined, offset, viewer)),
       "Failed to load most supported profiles.",
       { window, path: PATH, params: currentSearchParams }
     )
@@ -97,7 +111,14 @@ async function MostSupportedProfilesBody({
 }) {
   const { payload, errorMessage, semantics } = await data;
   const sourceProfiles = payload?.profiles ?? [];
-  const continuation = rankedPageContinuation("supported", sourceProfiles, offset);
+  const viewer = readViewer({ viewer: searchParams.get("viewer") ?? undefined });
+  const continuation = rankedPageContinuation(
+    "supported",
+    sourceProfiles,
+    offset,
+    undefined,
+    viewer
+  );
   const profiles = await withRankingMetrics(sourceProfiles);
 
   return (
@@ -115,7 +136,7 @@ async function MostSupportedProfilesBody({
         emptyTitle="No supported accounts yet"
         emptyMessage="This list stays empty until the worker rewrites it, once at startup and then about every 5 minutes."
         hasItems={profiles.length > 0}
-        loadMore={loadMoreRanking.bind(null, "supported", window, "")}
+        loadMore={loadMoreRanking.bind(null, "supported", window, "", viewer ?? "")}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

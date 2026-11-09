@@ -22,7 +22,8 @@ import {
 } from "@/lib/explorer/ranked-list";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
 import { readLanguage } from "@/lib/search-params/language";
-import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
+import { applyDiscoverRanking } from "@/lib/search-params/ranking-preference";
+import { readViewer } from "@/lib/search-params/viewer";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { Profile } from "@/lib/types/api";
 
@@ -42,7 +43,8 @@ export async function generateMetadata({
       path: PATH,
     }),
     readLanguage(await searchParams),
-    PATH
+    PATH,
+    readViewer(await searchParams)
   );
 }
 
@@ -52,13 +54,13 @@ export default async function MostBookmarkedNotesPage({
   searchParams: SearchParams;
 }) {
   const resolvedSearchParams = await searchParams;
-  const language = await applyDiscoverLanguage(PATH, resolvedSearchParams);
+  const { language, viewer } = await applyDiscoverRanking(PATH, resolvedSearchParams);
   const { window, windows, currentSearchParams, linkedWindow } =
     await readUnwindowedRankingContext(resolvedSearchParams);
-  const offset = readRankedOffset(resolvedSearchParams);
+  const offset = readRankedOffset(resolvedSearchParams, viewer);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () => getBookmarkedNotes("shortTtl", rankedListRequest(undefined, language, offset)),
+      () => getBookmarkedNotes("shortTtl", rankedListRequest(undefined, language, offset, viewer)),
       "Failed to load bookmarked notes."
     )
   );
@@ -105,7 +107,8 @@ async function MostBookmarkedNotesBody({
 }) {
   const { payload, errorMessage, semantics } = await data;
   const notes = payload?.notes ?? [];
-  const continuation = rankedPageContinuation("bookmarked", notes, offset);
+  const viewer = readViewer({ viewer: searchParams.get("viewer") ?? undefined });
+  const continuation = rankedPageContinuation("bookmarked", notes, offset, undefined, viewer);
 
   let authorsByPubkey: Record<string, Profile> = {};
   if (notes.length > 0) {
@@ -142,7 +145,7 @@ async function MostBookmarkedNotesBody({
         emptyTitle="No public bookmarks yet"
         emptyMessage="Saves are current with ingest. Nothing is publicly bookmarked right now."
         hasItems={notes.length > 0}
-        loadMore={loadMoreRanking.bind(null, "bookmarked", "", language ?? "")}
+        loadMore={loadMoreRanking.bind(null, "bookmarked", "", language ?? "", viewer ?? "")}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

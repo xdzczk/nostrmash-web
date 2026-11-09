@@ -1,20 +1,15 @@
 "use client";
 
 import Link from "@/components/app-link";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
-const STORAGE_KEY = "nm-viewer";
+import { parseViewer, serializeViewerCookie, VIEWER_STORAGE_KEY } from "@/lib/search-params/viewer";
+
 const listeners = new Set<() => void>();
 
-function validViewer(value: string): boolean {
-  const trimmed = value.trim();
-  return /^npub1[02-9ac-hj-np-z]+$/i.test(trimmed) || /^[0-9a-f]{64}$/i.test(trimmed);
-}
-
-function readViewer(): string {
+function readStoredViewer(): string {
   try {
-    const stored = window.localStorage.getItem(STORAGE_KEY) ?? "";
-    return validViewer(stored) ? stored.trim() : "";
+    return parseViewer(window.localStorage.getItem(VIEWER_STORAGE_KEY) ?? undefined) ?? "";
   } catch {
     return "";
   }
@@ -26,9 +21,12 @@ function subscribe(onStoreChange: () => void): () => void {
 }
 
 function publish(next: string) {
+  const parsed = next ? parseViewer(next) : undefined;
+  if (next && !parsed) return false;
   try {
-    if (next) window.localStorage.setItem(STORAGE_KEY, next);
-    else window.localStorage.removeItem(STORAGE_KEY);
+    if (parsed) window.localStorage.setItem(VIEWER_STORAGE_KEY, parsed);
+    else window.localStorage.removeItem(VIEWER_STORAGE_KEY);
+    document.cookie = serializeViewerCookie(parsed);
   } catch {
     return false;
   }
@@ -37,13 +35,18 @@ function publish(next: string) {
 }
 
 export function YourView() {
-  const pubkey = useSyncExternalStore(subscribe, readViewer, () => "");
+  const pubkey = useSyncExternalStore(subscribe, readStoredViewer, () => "");
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    const stored = parseViewer(readStoredViewer());
+    if (stored) document.cookie = serializeViewerCookie(stored);
+  }, [pubkey]);
+
   function save(value: string) {
     const next = value.trim();
-    if (!validViewer(next)) {
+    if (!parseViewer(next)) {
       setError("Paste an npub or a 64-character public key.");
       return;
     }
@@ -71,9 +74,12 @@ export function YourView() {
   return (
     <div className="max-w-xl space-y-6">
       <p className="text-ink-soft text-sm leading-6">
-        Your view stays in this browser. NostrMash does not create an account. A briefing limited to
-        people you follow needs an API filter that is not available yet. Your public profile is
-        available now.
+        Your view stays in this browser. NostrMash does not create an account. The saved key ranks{" "}
+        <Link href="/" className="nm-action-link">
+          Discover
+        </Link>{" "}
+        and the trending lists by what the accounts they follow engage with. Forgetting the key
+        returns the global lists. Your public profile is available now.
       </p>
       {pubkey ? (
         <div className="space-y-3">
@@ -81,6 +87,9 @@ export function YourView() {
           <div className="flex flex-wrap gap-4">
             <Link href={`/profiles/${encodeURIComponent(pubkey)}`} className="nm-action-link">
               Open your profile
+            </Link>
+            <Link href="/" className="nm-action-link">
+              Open Discover
             </Link>
             <button
               type="button"

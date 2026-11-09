@@ -23,7 +23,8 @@ import {
 } from "@/lib/explorer/ranked-list";
 import { buildLanguageHref, readLanguage } from "@/lib/search-params/language";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
-import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
+import { applyDiscoverRanking } from "@/lib/search-params/ranking-preference";
+import { readViewer } from "@/lib/search-params/viewer";
 import { withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { StatsWindow } from "@/lib/search-params/window";
 import type { Profile } from "@/lib/types/api";
@@ -42,22 +43,23 @@ export async function generateMetadata({
         "Small accounts gaining followers fast or earning outsized engagement relative to their audience.",
     },
     readLanguage(await searchParams),
-    "/discovery/profiles/rising"
+    "/discovery/profiles/rising",
+    readViewer(await searchParams)
   );
 }
 
 export default async function RisingProfilesPage({ searchParams }: { searchParams: SearchParams }) {
   const path = "/discovery/profiles/rising";
   const resolvedSearchParams = await searchParams;
-  const language = await applyDiscoverLanguage(path, resolvedSearchParams);
+  const { language, viewer } = await applyDiscoverRanking(path, resolvedSearchParams);
   const { window, windows, currentSearchParams } = await readRankedListContext(
     resolvedSearchParams,
     path
   );
-  const offset = readRankedOffset(resolvedSearchParams);
+  const offset = readRankedOffset(resolvedSearchParams, viewer);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () => getRisingProfiles("shortTtl", rankedListRequest(window, language, offset)),
+      () => getRisingProfiles("shortTtl", rankedListRequest(window, language, offset, viewer)),
       "Failed to load rising profiles.",
       { window, path, params: currentSearchParams }
     )
@@ -107,7 +109,8 @@ async function RisingProfilesBody({
 }) {
   const { payload, errorMessage, semantics } = await data;
   const sourceProfiles = payload?.profiles ?? [];
-  const continuation = rankedPageContinuation("rising", sourceProfiles, offset);
+  const viewer = readViewer({ viewer: searchParams.get("viewer") ?? undefined });
+  const continuation = rankedPageContinuation("rising", sourceProfiles, offset, undefined, viewer);
 
   let hydratedProfiles: Profile[] = [];
   if (sourceProfiles.length > 0) {
@@ -134,7 +137,7 @@ async function RisingProfilesBody({
         emptyTitle="No up-and-coming profiles available"
         emptyMessage="The API did not return up-and-coming profiles for this window."
         hasItems={hydratedProfiles.length > 0}
-        loadMore={loadMoreRanking.bind(null, "rising", window, language ?? "")}
+        loadMore={loadMoreRanking.bind(null, "rising", window, language ?? "", viewer ?? "")}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null

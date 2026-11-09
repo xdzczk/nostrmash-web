@@ -34,6 +34,8 @@ export function publicEdgeCacheHeaders(url: URL, response: Response): Headers | 
   for (const name of DOCUMENT_VARY) vary.add(name);
   // `/` redirects from the nm_lang cookie when `lang` is absent. The query
   // string is already part of the cache key, so an explicit `lang` is shared.
+  // A saved viewer is redirected onto `?viewer=` and is not varied here. The
+  // bare document stays the global ranking; do not render it from the cookie.
   if (url.pathname === "/" && !url.searchParams.has("lang")) vary.add("Cookie");
   headers.set("Vary", [...vary].join(", "));
   return headers;

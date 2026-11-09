@@ -179,6 +179,60 @@ describe("reasonsBesideSourceFigure", () => {
     expect(presented.map((reason) => reason.code)).toEqual(["mention_volume"]);
     expect(reasonsBesideSourceFigure(ranking, presented)).toEqual([]);
   });
+
+  it("says what the followed accounts did, and leads with that sentence", () => {
+    const evidence = (metric: string, value: number, unit: string) => [{ metric, value, unit }];
+    const presented = mapServerRankingReasons({
+      rank: 1,
+      score: 1,
+      reasons: [
+        {
+          code: "audience_size",
+          evidence: evidence("trusted_follower_count", 40, "followers"),
+        },
+        { code: "followed_engagers", evidence: evidence("cohort_accounts", 3, "accounts") },
+        { code: "followed_zappers", evidence: evidence("cohort_sats", 12, "sats") },
+        { code: "followed_savers", evidence: evidence("cohort_savers", 2, "people") },
+        { code: "followed_replies", evidence: evidence("cohort_replies", 4, "replies") },
+        { code: "followed_by", evidence: evidence("cohort_follows", 5, "accounts") },
+        { code: "followed_supporters", evidence: evidence("cohort_sats", 9, "sats") },
+        { code: "followed_authors", evidence: evidence("cohort_authors", 1, "authors") },
+      ],
+    });
+    expect(presented.map((reason) => reason.text)).toEqual([
+      "3 accounts you follow engaged with it",
+      "12 sats from accounts you follow",
+      "Saved by 2 accounts you follow",
+      "4 replies from accounts you follow",
+      "Followed by 5 accounts you follow",
+      "9 sats from accounts you follow",
+      "1 author you follow used it",
+      "40 followers",
+    ]);
+    expect(presented[0]?.text).not.toMatch(/followed engagers/i);
+
+    expect(
+      mapServerRankingReasons({
+        rank: 1,
+        score: 1,
+        reasons: [
+          { code: "followed_by", evidence: evidence("cohort_new_followers", 6, "followers") },
+        ],
+      })
+    ).toEqual([
+      {
+        text: "6 new followers from accounts you follow",
+        code: "followed_by",
+      },
+    ]);
+    expect(
+      mapServerRankingReasons({
+        rank: 1,
+        score: 1,
+        reasons: [{ code: "followed_engagers" }],
+      })[0]?.text
+    ).toBe("Accounts you follow engaged with it");
+  });
 });
 
 describe("sourceCount", () => {

@@ -8,9 +8,14 @@ function collectAttachments(content: string, tags?: unknown): NoteMediaAttachmen
   const seen = new Set(fromContent.map((item) => item.url));
   const merged = [...fromContent];
   for (const extra of extractImetaAttachments(tags)) {
-    if (seen.has(extra.url)) continue;
-    seen.add(extra.url);
-    merged.push(extra);
+    const existing = merged.find((item) => item.url === extra.url);
+    if (!existing) {
+      seen.add(extra.url);
+      merged.push(extra);
+      continue;
+    }
+    if (!existing.poster && extra.poster) existing.poster = extra.poster;
+    if (!existing.alt && extra.alt) existing.alt = extra.alt;
   }
   return merged.slice(0, Math.max(4, fromContent.length));
 }
@@ -82,6 +87,7 @@ export function NoteMedia({
           priority={priority && index === 0}
           hiddenCount={index === visible.length - 1 ? hidden : 0}
           alt={attachment.alt}
+          poster={attachment.poster}
         />
       ))}
     </div>

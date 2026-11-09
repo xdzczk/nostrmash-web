@@ -1,5 +1,6 @@
 import { readSearchParam, type RouteSearchParams } from "@/lib/search-params/pagination";
 import { parseLanguage } from "@/lib/search-params/language";
+import { parseViewer, VIEWER_MAX_OFFSET } from "@/lib/search-params/viewer";
 import { isStatsWindow, type StatsWindow } from "@/lib/search-params/window";
 
 /** Page size sent to every ranked discovery list. The API default is 20. */
@@ -33,27 +34,37 @@ export function isRankingSurface(value: string): value is RankingSurface {
   return RANKING_SURFACE_SET.has(value);
 }
 
-export function readRankedOffset(params: RouteSearchParams): number {
+export function rankedOffsetLimit(viewer: string | undefined): number {
+  return parseViewer(viewer) ? VIEWER_MAX_OFFSET : RANKED_MAX_OFFSET;
+}
+
+export function readRankedOffset(params: RouteSearchParams, viewer?: string): number {
   const raw = Number.parseInt(readSearchParam(params, "offset") ?? "", 10);
   if (!Number.isFinite(raw) || raw < 0) return 0;
-  return Math.min(Math.floor(raw), RANKED_MAX_OFFSET);
+  return Math.min(Math.floor(raw), rankedOffsetLimit(viewer));
 }
 
 export function rankedListRequest(
   window: StatsWindow | undefined,
   language: string | undefined,
-  offset: number
+  offset: number,
+  viewer?: string
 ): {
   window?: StatsWindow;
   offset: number;
   limit: number;
   lang?: string;
+  viewer?: string;
 } {
+  const parsedViewer = parseViewer(viewer);
+  const cap = parsedViewer ? VIEWER_MAX_OFFSET : RANKED_MAX_OFFSET;
+  const safeOffset = Number.isFinite(offset) && offset > 0 ? Math.min(Math.floor(offset), cap) : 0;
   return {
     ...(window ? { window } : {}),
-    offset,
+    offset: safeOffset,
     limit: RANKED_PAGE_SIZE,
     ...(language ? { lang: language } : {}),
+    ...(parsedViewer ? { viewer: parsedViewer } : {}),
   };
 }
 
@@ -68,13 +79,15 @@ export function rankingContinuationQuery(
   surface: RankingSurface,
   window: string,
   lang: string,
-  offset: number
+  offset: number,
+  viewer?: string
 ): ReturnType<typeof rankedListRequest> | null {
   const windowless = WINDOWLESS_RANKINGS.has(surface);
   const statsWindow = isStatsWindow(window) ? window : undefined;
   if (!windowless && !statsWindow) return null;
+  if (offset > rankedOffsetLimit(viewer)) return null;
   const language = LANGUAGELESS_RANKINGS.has(surface) ? undefined : parseLanguage(lang);
-  return rankedListRequest(windowless ? undefined : statsWindow, language, offset);
+  return rankedListRequest(windowless ? undefined : statsWindow, language, offset, viewer);
 }
 
 export function rankingItemAnchor(surface: RankingSurface, item: unknown): string {
@@ -142,11 +155,12 @@ export function rankedPageContinuation(
   surface: RankingSurface,
   items: unknown[],
   offset: number,
-  pageSize = RANKED_PAGE_SIZE
+  pageSize = RANKED_PAGE_SIZE,
+  viewer?: string
 ): { token?: string; nextOffset?: number } {
   if (items.length < pageSize) return {};
   const nextOffset = offset + items.length;
-  if (nextOffset > RANKED_MAX_OFFSET) return {};
+  if (nextOffset > rankedOffsetLimit(viewer)) return {};
   const anchor = rankingItemAnchor(surface, items[0]);
   if (!anchor) return {};
   return { nextOffset, token: encodeRankedContinuation(nextOffset, anchor) };

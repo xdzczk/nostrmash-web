@@ -2,6 +2,7 @@ import type { SearchResponse } from "@/lib/types/api";
 import { ApiError, isApiTimeoutError } from "@/lib/api/http";
 import { normalizeEventRecord, normalizeEventRecords } from "@/lib/api/normalize";
 import { npubToHex } from "@/lib/nostr/npub";
+import { parseViewer } from "@/lib/search-params/viewer";
 import { isStatsWindow } from "@/lib/search-params/window";
 
 export type SearchTab = "all" | "notes" | "profiles" | "hashtags" | "relays";
@@ -176,6 +177,8 @@ export interface CursorQuery {
   lang?: string;
   /** Optional Nostr kind filter (e.g. 1 for short text notes). */
   kind?: number;
+  /** Hex pubkey or npub. Omitted for the global ranking. Invalid values are dropped. */
+  viewer?: string;
 }
 
 export interface OffsetQuery {
@@ -184,6 +187,14 @@ export interface OffsetQuery {
   window?: string;
   /** Lowercase ISO 639-1/639-2 code. Omitted means all languages. */
   lang?: string;
+  /** Hex pubkey or npub. Omitted for the global ranking. Invalid values are dropped. */
+  viewer?: string;
+}
+
+/** Query fragment for a viewer. Invalid and empty values are omitted. */
+export function viewerQueryParam(viewer: string | undefined): { viewer: string } | undefined {
+  const parsed = parseViewer(viewer);
+  return parsed ? { viewer: parsed } : undefined;
 }
 
 export function buildOffsetQuery(
@@ -195,6 +206,7 @@ export function buildOffsetQuery(
     offset: query.offset,
     window: query.window,
     ...(query.lang ? { lang: query.lang } : {}),
+    ...viewerQueryParam(query.viewer),
   };
 }
 
@@ -418,5 +430,6 @@ export function buildCursorQuery(
     window: query.window,
     kind: query.kind,
     ...(query.lang ? { lang: query.lang } : {}),
+    ...viewerQueryParam(query.viewer),
   };
 }

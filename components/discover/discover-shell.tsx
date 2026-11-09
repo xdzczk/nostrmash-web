@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { DiscoverTelemetry } from "@/components/discover/discover-telemetry";
 import { RememberDiscoveryWindow } from "@/components/discover/remember-discovery-window";
+import { RememberViewer } from "@/components/discover/remember-viewer";
 import { DiscoverNav } from "@/components/explorer/discover-nav";
 import { LanguageSelector } from "@/components/explorer/language-selector";
 import { PageHero } from "@/components/explorer/page-hero";
@@ -19,6 +20,7 @@ import {
 import { methodologyHref } from "@/lib/discover/methodology-href";
 import { formatDiscoverEyebrow } from "@/lib/i18n/language-names";
 import { buildDiscoverHref } from "@/lib/search-params/language";
+import { parseViewer } from "@/lib/search-params/viewer";
 import { DEFAULT_STATS_WINDOW, STATS_WINDOWS, type StatsWindow } from "@/lib/search-params/window";
 import type { TopLanguages } from "@/lib/types/api";
 
@@ -107,6 +109,7 @@ export function DiscoverShell({
 }) {
   const modeLinks = DISCOVER_MODE_LINKS[view] ?? [];
   const query = searchParams.toString();
+  const viewer = parseViewer(searchParams.get("viewer") ?? undefined);
   const retryHref = query.length > 0 ? `${path}?${query}` : path;
   const showWindow = showWindowControl ?? rankingControls;
   const showLanguage = showLanguageControl ?? rankingControls;
@@ -117,6 +120,7 @@ export function DiscoverShell({
   return (
     <div className="min-w-0 space-y-6 sm:space-y-7">
       <DiscoverTelemetry view={view} mode={mode} window={window} language={language} />
+      <RememberViewer />
       {rememberWindow ? <RememberDiscoveryWindow window={window} /> : null}
       <LiveRefresh />
       <PageHero
@@ -163,7 +167,7 @@ export function DiscoverShell({
       />
 
       <div className="bg-surface sticky top-14 z-40 -mx-4 min-w-0 space-y-2.5 border-b border-[var(--edge)] px-4 py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <DiscoverNav active={view} window={carriedWindow} lang={language} />
+        <DiscoverNav active={view} window={carriedWindow} lang={language} viewer={viewer} />
         {modeLinks.length > 1 ? (
           <nav aria-label={`${view} modes`} className="flex flex-wrap items-center gap-4">
             {modeLinks.map((item) => {
@@ -174,6 +178,7 @@ export function DiscoverShell({
                   href={buildDiscoverHref(item.href, {
                     window: carries.window ? carriedWindow : undefined,
                     lang: carries.language ? language : undefined,
+                    viewer,
                   })}
                   prefetch={tabLinkPrefetch(true, item.mode === mode)}
                   aria-current={item.mode === mode ? "page" : undefined}

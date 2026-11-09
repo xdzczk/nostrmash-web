@@ -294,6 +294,7 @@ export function normalizeProfile(value: unknown): Profile | null {
     sats_received: asNumber(asProfileRecord.sats_received),
     supporter_count: asNumber(asProfileRecord.supporter_count),
     recent_zap_volume_msats: asNumber(asProfileRecord.recent_zap_volume_msats),
+    viewer_follows: asBoolean(asProfileRecord.viewer_follows),
   };
 
   if (!normalized.pubkey) return null;

@@ -24,7 +24,8 @@ import {
 import { hexToNpub } from "@/lib/nostr/nip19";
 import { buildContinuationHref } from "@/lib/search-params/pagination";
 import { buildLanguageHref, readLanguage } from "@/lib/search-params/language";
-import { applyDiscoverLanguage } from "@/lib/search-params/language-preference";
+import { applyDiscoverRanking } from "@/lib/search-params/ranking-preference";
+import { readViewer } from "@/lib/search-params/viewer";
 import { buildEntityMetadata, withLanguageVariantMetadata } from "@/lib/seo/metadata";
 import type { StatsWindow } from "@/lib/search-params/window";
 import type { Profile } from "@/lib/types/api";
@@ -43,7 +44,8 @@ export async function generateMetadata({
       path: "/trending/profiles",
     }),
     readLanguage(await searchParams),
-    "/trending/profiles"
+    "/trending/profiles",
+    readViewer(await searchParams)
   );
 }
 
@@ -54,15 +56,15 @@ export default async function TrendingProfilesPage({
 }) {
   const path = "/trending/profiles";
   const resolvedSearchParams = await searchParams;
-  const language = await applyDiscoverLanguage(path, resolvedSearchParams);
+  const { language, viewer } = await applyDiscoverRanking(path, resolvedSearchParams);
   const { window, windows, currentSearchParams } = await readRankedListContext(
     resolvedSearchParams,
     path
   );
-  const offset = readRankedOffset(resolvedSearchParams);
+  const offset = readRankedOffset(resolvedSearchParams, viewer);
   const data = startRankedLoad(
     loadRankedListPayload(
-      () => getTrendingProfiles("shortTtl", rankedListRequest(window, language, offset)),
+      () => getTrendingProfiles("shortTtl", rankedListRequest(window, language, offset, viewer)),
       "Failed to load trending profiles.",
       { window, path, params: currentSearchParams }
     )
@@ -111,7 +113,14 @@ async function TrendingProfilesBody({
 }) {
   const { payload, errorMessage, semantics } = await data;
   const sourceProfiles = payload?.profiles ?? [];
-  const continuation = rankedPageContinuation("profiles", sourceProfiles, offset);
+  const viewer = readViewer({ viewer: searchParams.get("viewer") ?? undefined });
+  const continuation = rankedPageContinuation(
+    "profiles",
+    sourceProfiles,
+    offset,
+    undefined,
+    viewer
+  );
 
   let hydratedProfiles: Profile[] = [];
   if (sourceProfiles.length > 0) {
@@ -148,7 +157,7 @@ async function TrendingProfilesBody({
         emptyTitle="No ranked profiles yet"
         emptyMessage="Ranked profiles have not populated for this window."
         hasItems={hydratedProfiles.length > 0}
-        loadMore={loadMoreRanking.bind(null, "profiles", window, language ?? "")}
+        loadMore={loadMoreRanking.bind(null, "profiles", window, language ?? "", viewer ?? "")}
         loadMoreCursor={continuation.token}
         continuationHref={
           continuation.nextOffset != null
