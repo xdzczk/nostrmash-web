@@ -6,6 +6,7 @@ import nextWorker, {
 } from "../.open-next/worker.js";
 
 import { publicEdgeCacheHeaders } from "../lib/caching/public-edge-cache";
+import { videoFrameCacheResponse } from "../lib/caching/video-frame-cache";
 
 export { BucketCachePurge, DOQueueHandler, DOShardedTagCache };
 
@@ -13,6 +14,7 @@ const worker = {
   async fetch(request: Request, env: unknown, ctx: Parameters<typeof nextWorker.fetch>[2]) {
     const response = await nextWorker.fetch(request, env, ctx);
     if (request.method !== "GET") return response;
+    if (new URL(request.url).pathname === "/video-frame") return videoFrameCacheResponse(response);
 
     const headers = publicEdgeCacheHeaders(new URL(request.url), response);
     if (!headers) return response;
