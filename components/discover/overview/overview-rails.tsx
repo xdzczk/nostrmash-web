@@ -256,7 +256,7 @@ function RailHeader({
 }) {
   return (
     <div className="min-w-0">
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex min-w-0 flex-wrap items-end justify-between gap-x-3 gap-y-1">
         <div className="min-w-0">
           <p className="nm-kicker">{kicker}</p>
           <h2
@@ -307,25 +307,25 @@ export function FormatLeaders({
   const leadMetric = attentionMetric(lead.event);
 
   return (
-    <section aria-labelledby="media-leaders">
+    <section aria-labelledby="media-leaders" className="min-w-0">
       <h2 id="media-leaders" className="nm-kicker scroll-mt-24">
         Leading each format
       </h2>
       <div
-        className={`mt-4 grid items-start gap-8 ${
+        className={`mt-4 grid min-w-0 items-start gap-8 ${
           rest.length > 0
             ? "lg:grid-cols-[minmax(16rem,0.72fr)_minmax(0,1.45fr)] lg:items-stretch lg:gap-12"
             : ""
         }`}
       >
         {rest.length > 0 ? (
-          <div className="order-2 flex flex-col gap-5 lg:order-1 lg:h-full lg:justify-between lg:gap-4">
+          <div className="order-2 flex min-w-0 flex-col gap-5 lg:order-1 lg:h-full lg:justify-between lg:gap-4">
             {rest.map((entry) => {
               const art = formatArt(entry, contentResolution);
               const href = eventPageHref(entry.event);
               const metric = attentionMetric(entry.event);
               return (
-                <article key={entry.key} className="flex items-center gap-3">
+                <article key={entry.key} className="flex min-w-0 items-center gap-3">
                   {href ? (
                     <Link
                       href={href}
@@ -384,7 +384,7 @@ export function FormatLeaders({
             })}
           </div>
         ) : null}
-        <article className={rest.length > 0 ? "order-1 lg:order-2" : undefined}>
+        <article className={rest.length > 0 ? "order-1 min-w-0 lg:order-2" : "min-w-0"}>
           <div className="mb-3 flex items-center justify-between gap-3">
             <h3 className="nm-kicker">{lead.label}</h3>
             <Link
@@ -421,12 +421,12 @@ export function FormatLeaders({
             leadHref ? (
               <Link
                 href={leadHref}
-                className="text-ink-strong font-display mt-3 line-clamp-2 block text-2xl tracking-[-0.03em] hover:underline"
+                className="text-ink-strong font-display mt-3 line-clamp-2 text-2xl tracking-[-0.03em] [overflow-wrap:anywhere] hover:underline"
               >
                 {leadArt.title}
               </Link>
             ) : (
-              <p className="text-ink-strong font-display mt-3 line-clamp-2 text-2xl tracking-[-0.03em]">
+              <p className="text-ink-strong font-display mt-3 line-clamp-2 text-2xl tracking-[-0.03em] [overflow-wrap:anywhere]">
                 {leadArt.title}
               </p>
             )
@@ -475,7 +475,7 @@ export function LiveStrip({
   return (
     <section
       aria-label="Happening now"
-      className="border-edge/70 flex flex-wrap items-center gap-x-6 gap-y-2 border-y py-3"
+      className="border-edge/70 flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2 border-y py-3"
     >
       <h2 className="nm-kicker flex items-center gap-2">
         <span className="nm-live-dot" aria-hidden />
@@ -528,12 +528,12 @@ export function ConversationZapRails({
 
   return (
     <div
-      className={`grid items-start gap-12 lg:gap-14 ${
+      className={`grid min-w-0 items-start gap-12 lg:gap-14 ${
         split ? "lg:grid-cols-[minmax(0,1.5fr)_minmax(16rem,19rem)]" : ""
       }`}
     >
       {conversations.length > 0 ? (
-        <section aria-labelledby="conversations-heading">
+        <section aria-labelledby="conversations-heading" className="min-w-0">
           <RailHeader
             kicker="Conversations"
             title="Threads still growing"
@@ -579,7 +579,7 @@ export function ConversationZapRails({
         </section>
       ) : null}
       {zapped.length > 0 ? (
-        <section aria-labelledby="zaps-heading">
+        <section aria-labelledby="zaps-heading" className="min-w-0">
           <RailHeader
             kicker="Zaps"
             title="Where the sats went"
@@ -609,12 +609,14 @@ export function ConversationZapRails({
                   {href ? (
                     <Link
                       href={href}
-                      className="text-ink mt-1 line-clamp-2 block text-sm font-medium hover:underline"
+                      className="text-ink mt-1 line-clamp-2 min-w-0 text-sm font-medium [overflow-wrap:anywhere] hover:underline"
                     >
                       {line}
                     </Link>
                   ) : (
-                    <p className="text-ink mt-1 line-clamp-2 text-sm font-medium">{line}</p>
+                    <p className="text-ink mt-1 line-clamp-2 min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+                      {line}
+                    </p>
                   )}
                   <p className="nm-meta mt-1 flex min-w-0 items-center gap-1.5">
                     <AuthorFace event={event} authorsByPubkey={authorsByPubkey} />
@@ -635,7 +637,7 @@ export function ConversationZapRails({
 export function MoversColumn({ movers }: { movers: HomeMover[] }) {
   if (movers.length === 0) return null;
   return (
-    <section aria-labelledby="emerging-heading">
+    <section aria-labelledby="emerging-heading" className="min-w-0">
       <RailHeader
         kicker="Movers"
         title="Moving fastest"

@@ -65,7 +65,7 @@ export function NoteMedia({
 
   const wrapperClassName =
     variant === "compact"
-      ? "w-[5.5rem]"
+      ? "w-[5.5rem] max-w-full min-w-0"
       : variant === "feed"
         ? "mt-3 w-full max-w-xl"
         : variant === "lead"

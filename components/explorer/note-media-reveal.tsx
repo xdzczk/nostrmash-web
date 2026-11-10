@@ -151,13 +151,15 @@ export function NoteMediaReveal({
 
   const [imageReady, setImageReady] = useState(kind !== "image");
   const youtubeId = kind === "video" ? parseYoutubeVideoId(url) : null;
+  // min-w-0 lets max-w-full win over a video poster's intrinsic width, which
+  // otherwise pushes the card past the screen on a phone.
   const frameWidthClass = youtubeId
-    ? `w-full ${variant === "portrait" ? "aspect-[9/16]" : "aspect-video"}`
+    ? `w-full min-w-0 ${variant === "portrait" ? "aspect-[9/16]" : "aspect-video"}`
     : fill
-      ? `${fixedRatio}${variant === "portrait" ? " w-full" : ""}`
+      ? `w-full min-w-0 max-w-full ${fixedRatio}`
       : kind === "audio"
-        ? "w-full"
-        : "w-fit max-w-full";
+        ? "w-full min-w-0"
+        : "w-fit max-w-full min-w-0";
 
   return (
     <div

@@ -373,7 +373,7 @@ function EditorialNote({
   // screenshot cannot outrank the lead note in the other column.
   return (
     <article
-      className={`border-edge/70 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 border-t py-2.5 first:border-t-0 ${
+      className={`border-edge/70 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-4 border-t py-2.5 first:border-t-0 ${
         noteHref ? cardHitTargetClassName : ""
       }`}
     >
@@ -390,7 +390,7 @@ function EditorialNote({
         ) : null}
       </div>
       {hasContent ? (
-        <div className="w-[5.5rem] self-end">
+        <div className="w-[5.5rem] max-w-full min-w-0 self-end overflow-hidden">
           <NoteMedia content={note.content as string} variant="compact" />
         </div>
       ) : null}
@@ -662,7 +662,7 @@ function TopicsIndex({
     })
     .filter((row): row is IndexRow => row !== null);
   return (
-    <section aria-labelledby="topics-most-used">
+    <section aria-labelledby="topics-most-used" className="min-w-0">
       <SectionHeader
         kicker="Topics"
         title="Most used topics"
@@ -724,7 +724,7 @@ function LinksIndex({
     })
     .filter((row): row is IndexRow => row !== null);
   return (
-    <section aria-labelledby="links-circulating">
+    <section aria-labelledby="links-circulating" className="min-w-0">
       <SectionHeader
         kicker="Links"
         title="Most shared links"
@@ -769,8 +769,8 @@ function LeadSection({
   return (
     // Sticky so the lead stays in view if the supporting column runs longer;
     // `items-start` on the parent grid is required for this to take effect.
-    <section aria-labelledby={headingId} className="lg:sticky lg:top-20 lg:self-start">
-      <div className="mb-4 flex items-end justify-between gap-4">
+    <section aria-labelledby={headingId} className="min-w-0 lg:sticky lg:top-20 lg:self-start">
+      <div className="mb-4 flex min-w-0 flex-wrap items-end justify-between gap-x-4 gap-y-1">
         <h2 id={headingId} className="nm-kicker scroll-mt-24">
           The note to read first
         </h2>
@@ -818,8 +818,8 @@ function SupportingNotes({
   contentResolution?: NoteContentResolution;
 }) {
   return (
-    <section aria-labelledby={headingId}>
-      <div className="mb-3 flex items-end justify-between gap-3">
+    <section aria-labelledby={headingId} className="min-w-0">
+      <div className="mb-3 flex min-w-0 flex-wrap items-end justify-between gap-x-3 gap-y-1">
         <h2 id={headingId} className="nm-kicker">
           Also moving
         </h2>
@@ -935,7 +935,7 @@ export async function EditorialOverview({
       />
       <section
         aria-label="Leading notes"
-        className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.75fr)_minmax(16rem,0.8fr)] lg:gap-14"
+        className="grid min-w-0 items-start gap-10 lg:grid-cols-[minmax(0,1.75fr)_minmax(16rem,0.8fr)] lg:gap-14"
       >
         <LeadSection
           lead={lead}
@@ -979,9 +979,9 @@ export async function EditorialOverview({
         contentResolution={contentResolution}
       />
 
-      <div className="grid items-start gap-12 lg:grid-cols-[minmax(16rem,0.7fr)_minmax(0,1.45fr)] lg:gap-14">
+      <div className="grid min-w-0 items-start gap-12 lg:grid-cols-[minmax(16rem,0.7fr)_minmax(0,1.45fr)] lg:gap-14">
         <ProfileRanking
-          className="order-2 lg:order-1"
+          className="order-2 min-w-0 lg:order-1"
           profiles={risingProfiles}
           degraded={sectionFailures.risingProfiles}
           window={window}
@@ -1003,7 +1003,7 @@ export async function EditorialOverview({
           degradedMessage="Up-and-coming profiles are temporarily unavailable."
         />
         <ProfileRanking
-          className="order-1 lg:order-2"
+          className="order-1 min-w-0 lg:order-2"
           profiles={profiles}
           degraded={sectionFailures.profiles}
           window={window}
@@ -1015,7 +1015,7 @@ export async function EditorialOverview({
       </div>
 
       <div
-        className={`grid items-start gap-14 ${
+        className={`grid min-w-0 items-start gap-14 ${
           rails.movers.length > 0 ? "lg:grid-cols-3 lg:gap-x-10" : "lg:grid-cols-2 lg:gap-16"
         }`}
       >
