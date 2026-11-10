@@ -39,9 +39,9 @@
     "generate:api-types": "openapi-typescript ../nostrmash/docs/openapi.yaml -o lib/types/generated/api.d.ts"
   },
   "dependencies": {
-    "@sentry/nextjs": "^11.10.0",
+    "@sentry/nextjs": "^11.11.0",
     "hls.js": "^1.7.4",
-    "next": "16.4.3",
+    "next": "16.4.5",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-markdown": "^10.1.0",
