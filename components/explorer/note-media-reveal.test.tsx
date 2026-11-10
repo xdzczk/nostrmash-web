@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { resetBlossomImageCache } from "@/hooks/use-blossom-image-src";
 import { BLOSSOM_MIRRORS } from "@/lib/media/blossom";
@@ -9,6 +9,7 @@ import { NoteMediaReveal } from "./note-media-reveal";
 
 afterEach(() => {
   resetBlossomImageCache();
+  vi.restoreAllMocks();
 });
 
 describe("NoteMediaReveal", () => {
@@ -116,10 +117,85 @@ describe("NoteMediaReveal", () => {
     const { container } = render(
       <NoteMediaReveal url="https://media.example/clip.mp4#t=0.001" kind="video" />
     );
-    const video = container.querySelector("video");
-    expect(video).toHaveAttribute("src", "/video-frame?src=https%3A%2F%2Fmedia.example%2Fclip.mp4");
-    expect(video).toHaveAttribute("preload", "auto");
-    expect(video).not.toHaveAttribute("poster");
+    const [player, capture] = container.querySelectorAll("video");
+    expect(player).toHaveAttribute("src", "https://media.example/clip.mp4");
+    expect(player).toHaveAttribute("preload", "none");
+    expect(player).not.toHaveAttribute("poster");
+    // The start time makes iPhone Safari decode a frame it would otherwise skip.
+    expect(capture).toHaveAttribute(
+      "src",
+      "/video-frame?src=https%3A%2F%2Fmedia.example%2Fclip.mp4#t=0.001"
+    );
+    expect(capture).toHaveAttribute("preload", "auto");
+    expect(capture).not.toHaveAttribute("controls");
+    expect(capture).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("keeps the preview out of a video that brings its own poster", () => {
+    const { container } = render(
+      <NoteMediaReveal
+        url="https://media.example/clip.mp4"
+        kind="video"
+        poster="https://media.example/poster.jpg"
+      />
+    );
+    expect(container.querySelectorAll("video")).toHaveLength(1);
+  });
+
+  it("turns the decoded preview frame into the player's poster", () => {
+    const drawImage = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      drawImage,
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/jpeg;base64,AA");
+
+    const { container } = render(
+      <NoteMediaReveal url="https://media.example/clip.mp4" kind="video" />
+    );
+    const capture = container.querySelectorAll("video")[1]!;
+    Object.defineProperties(capture, {
+      videoWidth: { value: 1280 },
+      videoHeight: { value: 720 },
+      readyState: { value: 4 },
+    });
+    fireEvent.loadedData(capture);
+
+    const videos = container.querySelectorAll("video");
+    expect(videos).toHaveLength(1);
+    expect(drawImage).toHaveBeenCalledWith(capture, 0, 0);
+    expect(videos[0]).toHaveAttribute("poster", "data:image/jpeg;base64,AA");
+    expect(videos[0]).toHaveAttribute("src", "https://media.example/clip.mp4");
+    expect(videos[0]).toHaveAttribute("preload", "none");
+  });
+
+  it("waits for a frame when only the size of the preview is known", () => {
+    const toDataURL = vi.spyOn(HTMLCanvasElement.prototype, "toDataURL");
+    const { container } = render(
+      <NoteMediaReveal url="https://media.example/clip.mp4" kind="video" />
+    );
+    const capture = container.querySelectorAll("video")[1]!;
+    Object.defineProperties(capture, {
+      videoWidth: { value: 1280 },
+      videoHeight: { value: 720 },
+      readyState: { value: 1 },
+    });
+    fireEvent.loadedData(capture);
+
+    expect(toDataURL).not.toHaveBeenCalled();
+    expect(container.querySelectorAll("video")).toHaveLength(2);
+  });
+
+  it("leaves a plain player when no preview can be built", () => {
+    const { container } = render(
+      <NoteMediaReveal url="https://media.example/clip.webm" kind="video" />
+    );
+    fireEvent.error(container.querySelectorAll("video")[1]!);
+
+    const videos = container.querySelectorAll("video");
+    expect(videos).toHaveLength(1);
+    expect(videos[0]).toHaveAttribute("src", "https://media.example/clip.webm");
+    expect(videos[0]).toHaveAttribute("controls");
+    expect(videos[0]).not.toHaveAttribute("poster");
   });
 
   it("embeds a YouTube watch URL instead of treating it as a file", () => {

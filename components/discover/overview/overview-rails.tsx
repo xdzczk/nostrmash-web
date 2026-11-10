@@ -219,17 +219,21 @@ function FormatFrame({
           decoding="async"
           className="absolute inset-0 h-full w-full object-cover"
         />
-      ) : videoUrl ? (
-        <VideoStill url={videoUrl} className="absolute inset-0 h-full w-full object-cover" />
       ) : (
-        <span
-          className={`absolute inset-0 grid place-items-center ${
-            article ? "text-ink-faint font-display text-lg" : "text-ink-faint text-sm"
-          }`}
-          aria-hidden
-        >
-          {article ? "Aa" : "▶"}
-        </span>
+        <>
+          <span
+            className={`absolute inset-0 grid place-items-center ${
+              article ? "text-ink-faint font-display text-lg" : "text-ink-faint text-sm"
+            }`}
+            aria-hidden
+          >
+            {article ? "Aa" : "▶"}
+          </span>
+          {/* The still covers the mark once a frame is ready. */}
+          {videoUrl ? (
+            <VideoStill url={videoUrl} className="absolute inset-0 h-full w-full object-cover" />
+          ) : null}
+        </>
       )}
     </div>
   );

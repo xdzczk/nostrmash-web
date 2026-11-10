@@ -1,52 +1,75 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-/** Same-origin preview the media cards already use to paint a first frame. */
-function frameSrc(url: string): string {
-  const hashIndex = url.indexOf("#");
-  const clean = hashIndex >= 0 ? url.slice(0, hashIndex) : url;
-  return `/video-frame?src=${encodeURIComponent(clean)}`;
-}
-
-function captureStill(video: HTMLVideoElement): string | null {
-  if (video.videoWidth < 1 || video.videoHeight < 1) return null;
-  try {
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const context = canvas.getContext("2d");
-    if (!context) return null;
-    context.drawImage(video, 0, 0);
-    return canvas.toDataURL("image/jpeg", 0.72);
-  } catch {
-    return null;
-  }
-}
+import { captureVideoStill, videoFrameSrc } from "@/components/explorer/video-frame";
 
 /**
- * Fixed-frame thumbnail for a video that has no poster image.
- * The preview stays inside the caller's box; it is not a player.
+ * Decodes the one-frame preview of a video out of sight and hands back a copy
+ * of the picture. It is a separate element from any player: Safari loads the
+ * whole original file when an element that showed the preview is given the
+ * real source, even with preload off.
  */
-export function VideoStill({ url, className }: { url: string; className?: string }) {
+export function VideoFrameCapture({
+  url,
+  onStill,
+  onFail,
+}: {
+  url: string;
+  onStill: (still: string) => void;
+  onFail: () => void;
+}) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [still, setStill] = useState<string | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || still) return;
-    // loadeddata is easy to miss when the preview finishes before this effect.
+    if (!video) return;
     const hold = () => {
-      const captured = captureStill(video);
-      if (captured) setStill(captured);
+      const captured = captureVideoStill(video);
+      if (captured) onStill(captured);
     };
     video.addEventListener("loadeddata", hold);
-    const frame = requestAnimationFrame(hold);
+    video.addEventListener("error", onFail);
+    // The preview can settle before hydration, which leaves no event to hear.
+    const frame = requestAnimationFrame(() => {
+      if (video.error) onFail();
+      else hold();
+    });
     return () => {
       cancelAnimationFrame(frame);
       video.removeEventListener("loadeddata", hold);
+      video.removeEventListener("error", onFail);
     };
-  }, [still, url]);
+  }, [url, onStill, onFail]);
+
+  return (
+    <video
+      ref={videoRef}
+      src={videoFrameSrc(url)}
+      muted
+      playsInline
+      preload="auto"
+      aria-hidden
+      tabIndex={-1}
+      className="pointer-events-none absolute top-0 left-0 h-px w-px opacity-0"
+    />
+  );
+}
+
+/** The first frame of a video as an image source, once it can be built. */
+export function useVideoStill() {
+  const [still, setStill] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const fail = useCallback(() => setFailed(true), []);
+  return { still, failed, setStill, fail };
+}
+
+/**
+ * Fixed-frame thumbnail for a video that has no poster image. The caller's
+ * box shows through until the frame is ready, and stays when none can be built.
+ */
+export function VideoStill({ url, className }: { url: string; className?: string }) {
+  const { still, failed, setStill, fail } = useVideoStill();
 
   if (still) {
     return (
@@ -55,17 +78,6 @@ export function VideoStill({ url, className }: { url: string; className?: string
       <img src={still} alt="" className={className} />
     );
   }
-
-  return (
-    <video
-      ref={videoRef}
-      src={frameSrc(url)}
-      muted
-      playsInline
-      preload="auto"
-      aria-hidden
-      tabIndex={-1}
-      className={`pointer-events-none ${className ?? ""}`}
-    />
-  );
+  if (failed) return null;
+  return <VideoFrameCapture url={url} onStill={setStill} onFail={fail} />;
 }

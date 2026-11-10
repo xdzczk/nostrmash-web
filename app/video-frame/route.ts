@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { resolveByteRange } from "@/lib/media/byte-range";
 import {
   buildPreviewMp4,
   locatePreviewSample,
@@ -80,6 +81,43 @@ function missing(): NextResponse {
   });
 }
 
+const PREVIEW_HEADERS = {
+  "content-type": "video/mp4",
+  "cache-control": "public, max-age=86400, s-maxage=604800",
+  "accept-ranges": "bytes",
+  "x-content-type-options": "nosniff",
+};
+
+/**
+ * Safari probes a video with `Range: bytes=0-1` and gives up on any answer
+ * other than 206, so the preview has to be served in the ranges it asks for.
+ */
+function previewResponse(body: ArrayBuffer, rangeHeader: string | null): NextResponse {
+  const total = body.byteLength;
+  const range = resolveByteRange(rangeHeader, total);
+  if (range === "unsatisfiable") {
+    return new NextResponse(null, {
+      status: 416,
+      headers: { "content-range": `bytes */${total}`, "accept-ranges": "bytes" },
+    });
+  }
+  if (!range) {
+    return new NextResponse(body, {
+      status: 200,
+      headers: { ...PREVIEW_HEADERS, "content-length": String(total) },
+    });
+  }
+  const part = body.slice(range.start, range.end + 1);
+  return new NextResponse(part, {
+    status: 206,
+    headers: {
+      ...PREVIEW_HEADERS,
+      "content-range": `bytes ${range.start}-${range.end}/${total}`,
+      "content-length": String(part.byteLength),
+    },
+  });
+}
+
 /**
  * A one-frame MP4 for a remote video. The original file stays unloaded until
  * someone presses play.
@@ -96,10 +134,16 @@ export async function GET(request: Request) {
     return new NextResponse("Bad url", { status: 400 });
   }
 
+  // The cache holds the whole preview. Each request is cut from it, so a
+  // ranged request never stores or returns a partial body under this key.
+  const rangeHeader = request.headers.get("range");
   const cacheKey = new Request(url.toString(), { method: "GET" });
   const cache = cacheStore();
   const cached = await cache?.match(cacheKey).catch(() => undefined);
-  if (cached) return cached;
+  if (cached) {
+    const stored = await cached.arrayBuffer().catch(() => null);
+    if (stored && stored.byteLength > 0) return previewResponse(stored, rangeHeader);
+  }
 
   try {
     const head = await readRange(target, 0, VIDEO_PREVIEW_HEAD_BYTES - 1, VIDEO_PREVIEW_HEAD_BYTES);
@@ -132,16 +176,8 @@ export async function GET(request: Request) {
     // or pooled buffer does not.
     const body = new ArrayBuffer(preview.byteLength);
     new Uint8Array(body).set(preview);
-    const response = new NextResponse(body, {
-      status: 200,
-      headers: {
-        "content-type": "video/mp4",
-        "cache-control": "public, max-age=86400, s-maxage=604800",
-        "x-content-type-options": "nosniff",
-      },
-    });
-    await cache?.put(cacheKey, response.clone()).catch(() => undefined);
-    return response;
+    await cache?.put(cacheKey, previewResponse(body, null)).catch(() => undefined);
+    return previewResponse(body, rangeHeader);
   } catch {
     return missing();
   }

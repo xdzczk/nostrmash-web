@@ -1,42 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, type SyntheticEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { videoSrc } from "@/components/explorer/video-frame";
+import { useVideoStill, VideoFrameCapture } from "@/components/explorer/video-still";
 import { BlossomImage } from "@/components/ui/blossom-image";
 import { EnlargeableImage } from "@/components/ui/image-lightbox";
 import { parseYoutubeVideoId, youtubeEmbedSrc } from "@/lib/notes/embeds";
 
 type MediaKind = "image" | "video" | "audio";
-
-/** Drop a media fragment so the element does not seek into the file on its own. */
-function videoSrc(url: string): string {
-  const hashIndex = url.indexOf("#");
-  return hashIndex >= 0 ? url.slice(0, hashIndex) : url;
-}
-
-function frameSrc(url: string): string {
-  return `/video-frame?src=${encodeURIComponent(url)}`;
-}
-
-function isFrameSource(src: string): boolean {
-  return src.includes("/video-frame?");
-}
-
-/** Same-origin preview frames can be copied. A cross-origin file cannot. */
-function captureStill(video: HTMLVideoElement): string | null {
-  if (video.videoWidth < 1 || video.videoHeight < 1) return null;
-  try {
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const context = canvas.getContext("2d");
-    if (!context) return null;
-    context.drawImage(video, 0, 0);
-    return canvas.toDataURL("image/jpeg", 0.72);
-  } catch {
-    return null;
-  }
-}
 
 function listen(target: EventTarget, type: string, handler: () => void) {
   target.addEventListener(type, handler);
@@ -73,59 +45,7 @@ function NoteVideoPlayer({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const realSrc = videoSrc(url);
-  const [still, setStill] = useState<string | null>(null);
-  const [forceReal, setForceReal] = useState(false);
-  const playingRef = useRef(false);
-  const showReal = Boolean(poster || still || forceReal);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !playingRef.current || !showReal) return;
-    void video.play().catch(() => undefined);
-  }, [showReal, realSrc]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || showReal) return;
-    // The preview can finish before hydration, so loadeddata is easy to miss.
-    const hold = () => {
-      const source = video.currentSrc || video.getAttribute("src") || "";
-      if (!isFrameSource(source) || video.videoWidth < 1) return;
-      const captured = captureStill(video);
-      if (captured) setStill(captured);
-    };
-    video.addEventListener("loadeddata", hold);
-    const frame = requestAnimationFrame(hold);
-    return () => {
-      cancelAnimationFrame(frame);
-      video.removeEventListener("loadeddata", hold);
-    };
-  }, [showReal, realSrc]);
-
-  const holdStill = (video: HTMLVideoElement) => {
-    if (!isFrameSource(video.currentSrc)) return;
-    const captured = captureStill(video);
-    if (captured) setStill(captured);
-  };
-
-  const onLoadedData = (event: SyntheticEvent<HTMLVideoElement>) => {
-    holdStill(event.currentTarget);
-  };
-
-  const onPlay = (event: SyntheticEvent<HTMLVideoElement>) => {
-    const video = event.currentTarget;
-    if (!isFrameSource(video.currentSrc)) return;
-    playingRef.current = true;
-    video.pause();
-    const captured = captureStill(video);
-    if (captured) setStill(captured);
-    else setForceReal(true);
-  };
-
-  const onPreviewError = (event: SyntheticEvent<HTMLVideoElement>) => {
-    if (!isFrameSource(event.currentTarget.currentSrc)) return;
-    setForceReal(true);
-  };
+  const { still, failed, setStill, fail } = useVideoStill();
 
   useEffect(() => {
     const video = videoRef.current;
@@ -149,19 +69,23 @@ function NoteVideoPlayer({
     };
   }, [url]);
 
+  // The player only ever holds the real file, unloaded until someone presses
+  // play. A poster-less video gets its first frame from a separate capture.
   return (
-    <video
-      ref={videoRef}
-      src={showReal ? realSrc : frameSrc(realSrc)}
-      poster={still ?? poster}
-      controls
-      playsInline
-      preload={showReal ? "none" : "auto"}
-      className={className}
-      onLoadedData={showReal ? undefined : onLoadedData}
-      onPlay={showReal ? undefined : onPlay}
-      onError={showReal ? undefined : onPreviewError}
-    />
+    <>
+      <video
+        ref={videoRef}
+        src={realSrc}
+        poster={poster ?? still ?? undefined}
+        controls
+        playsInline
+        preload="none"
+        className={className}
+      />
+      {!poster && !still && !failed ? (
+        <VideoFrameCapture url={realSrc} onStill={setStill} onFail={fail} />
+      ) : null}
+    </>
   );
 }
 

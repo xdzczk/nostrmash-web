@@ -8,7 +8,9 @@
  */
 
 export const VIDEO_PREVIEW_HEAD_BYTES = 256 * 1024;
-export const VIDEO_PREVIEW_MAX_MOOV = 2 * 1024 * 1024;
+// The index grows with running time. An hour-long recording carries about
+// 4 MB of it, so this covers roughly two hours.
+export const VIDEO_PREVIEW_MAX_MOOV = 8 * 1024 * 1024;
 export const VIDEO_PREVIEW_MAX_SAMPLE = 1_500_000;
 
 export type MoovPlan =
