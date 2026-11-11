@@ -6,8 +6,8 @@
   },
   "main": "cloudflare/worker.ts",
   "name": "nostrmash-web",
-  // Cache hits for `/`, `/relays`, and `/methodology` are served before this
-  // Worker runs. Other responses stay private and are not stored.
+  // Cache hits for the paths in lib/caching/public-edge-cache.ts are served
+  // before this Worker runs. Other responses stay private and are not stored.
   "cache": {
     "enabled": true,
   },

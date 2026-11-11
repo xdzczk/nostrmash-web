@@ -1,38 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { isValidPubkeyOrNpubParam } from "@/lib/routing/params";
+import { RANKING_PATHS, VIEWER_ONLY_PATHS } from "@/lib/routing/ranking-paths";
 import { LANGUAGE_COOKIE, resolveRankingPreference } from "@/lib/search-params/ranking-decision";
 import { VIEWER_COOKIE, resolveViewerPreference } from "@/lib/search-params/viewer";
-
-/**
- * Rankings whose URL is the cache key. A cookie-only personalization would
- * publish one viewer's document. These redirects are 307s, so the edge cache
- * (which stores 200s) never keeps a body that names a viewer.
- */
-const RANKING_PATHS = new Set([
-  "/",
-  "/trending",
-  "/trending/notes",
-  "/trending/long-form",
-  "/trending/profiles",
-  "/trending/hashtags",
-  "/trending/domains",
-  "/trending/pictures",
-  "/trending/videos",
-  "/trending/shorts",
-  "/discovery/conversations/hot",
-  "/discovery/notes/bookmarked",
-  "/discovery/notes/zapped",
-  "/discovery/profiles/followed",
-  "/discovery/profiles/rising",
-  "/discovery/profiles/supported",
-]);
-
-/** Followed and supported ignore `lang`. Do not start writing it onto them. */
-const VIEWER_ONLY_PATHS = new Set([
-  "/discovery/profiles/followed",
-  "/discovery/profiles/supported",
-]);
 
 function rankingRedirect(request: NextRequest): string | undefined {
   if (request.method !== "GET" && request.method !== "HEAD") return undefined;
